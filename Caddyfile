@@ -1,0 +1,58 @@
+{
+    # Global options
+    email devops@disher.io
+    # Disable admin API for security
+    admin off
+}
+
+# Dynamic Configuration for Disher.io
+# When DOMAIN is an IP address (http://x.x.x.x), Caddy serves HTTP only (no TLS).
+# When DOMAIN is a real domain, Caddy auto-provisions HTTPS via Let's Encrypt.
+{$DOMAIN} {
+
+    # API Backend
+    handle /api/* {
+        reverse_proxy backend:3000
+    }
+
+    # Socket.io WebSocket support
+    handle /socket.io/* {
+        reverse_proxy backend:3000 {
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up Upgrade {>Upgrade}
+            header_up Connection {>Connection}
+        }
+    }
+
+    # Frontend - Angular App (fallback for all other routes)
+    handle {
+        reverse_proxy frontend:80 {
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+
+    # Security Headers
+    header {
+        X-Content-Type-Options nosniff
+        X-Frame-Options DENY
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy strict-origin-when-cross-origin
+        Permissions-Policy "camera=(), microphone=(), geolocation=()"
+        -Server
+    }
+
+    # Compression
+    encode zstd gzip
+
+    # Logging
+    log {
+        output file /data/access.log {
+            roll_size 10mb
+            roll_keep 10
+        }
+    }
+}

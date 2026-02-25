@@ -1,0 +1,222 @@
+version: '3.9'
+
+# Raspberry Pi optimized Docker Compose configuration
+# Usage: docker compose -f docker-compose.yml -f docker-compose.rpi.yml up -d
+# 
+# Optimizations:
+# - Reduced memory limits (1GB RAM to <512MB total)
+# - CPU limits for 4-core RPi
+# - Smaller cache sizes
+# - Efficient logging
+# - Optimized health checks
+
+services:
+  database:
+    image: mongo:7
+    container_name: disher-db
+    restart: always
+    
+    environment:
+      # Raspberry Pi has limited RAM - reduce cache aggressively
+      MONGO_CACHE_SIZE_MB: 128  # 128MB cache max
+    
+    volumes:
+      - mongo-data:/data/db
+    
+    networks:
+      - disher-network
+    
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 60s  # Longer interval to reduce CPU wake-ups
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    
+    # Raspberry Pi resource limits (4GB RAM Raspberry Pi 4)
+    deploy:
+      resources:
+        limits:
+          cpus: '2'        # Use 2 of 4 cores
+          memory: 256M     # Limit MongoDB to 256MB
+        reservations:
+          cpus: '1'
+          memory: 128M
+    
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"     # Smaller logs
+        max-file: "2"
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      # This will automatically use arm64 base image on Raspberry Pi
+    
+    image: disher-backend:latest
+    container_name: disher-backend
+    restart: always
+    
+    environment:
+      - MONGODB_URI=mongodb://database:27017/disher
+      - PORT=3000
+      - NODE_ENV=production
+      - DOMAIN=${DOMAIN}
+      - INSTALL_MODE=raspberry-pi
+      - JWT_SECRET=${JWT_SECRET}
+      - LOG_LEVEL=info
+      
+      # Raspberry Pi: Reduce Node.js heap
+      - NODE_OPTIONS=--max-old-space-size=256 --max-http-header-size=16384
+      - MONGODB_POOL_SIZE=5  # Reduced pool for low-resource environment
+    
+    depends_on:
+      database:
+        condition: service_healthy
+    
+    networks:
+      - disher-network
+    
+    expose:
+      - 3000
+    
+    healthcheck:
+      test: ["CMD", "node", "-e", "const http=require('http');const r=http.get('http://localhost:3000/api/health',s=>{process.exit(s.statusCode===200?0:1)});r.on('error',()=>process.exit(1))"]
+      interval: 60s   # Longer intervals on RPi
+      timeout: 10s
+      retries: 2
+      start_period: 60s
+    
+    # Raspberry Pi resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '1.5'      # 1.5 cores for backend
+          memory: 256M     # 256MB max
+        reservations:
+          cpus: '0.75'
+          memory: 128M
+    
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "3"
+        labels: "service=backend"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    
+    image: disher-frontend:latest
+    container_name: disher-frontend
+    restart: always
+    
+    networks:
+      - disher-network
+    
+    expose:
+      - 80
+    
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/index.html"]
+      interval: 60s
+      timeout: 10s
+      retries: 2
+      start_period: 30s
+    
+    # Raspberry Pi resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'      # Frontend needs minimal CPU
+          memory: 128M
+        reservations:
+          cpus: '0.25'
+          memory: 64M
+    
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "2"
+        labels: "service=frontend"
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: disher-proxy
+    restart: always
+    
+    environment:
+      - DOMAIN=${DOMAIN}
+      - INSTALL_MODE=raspberry-pi
+    
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data:rw
+      - caddy-config:/config:rw
+    
+    ports:
+      - "80:80"
+      - "443:443"
+    
+    depends_on:
+      frontend:
+        condition: service_started
+      backend:
+        condition: service_healthy
+    
+    networks:
+      - disher-network
+    
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'      # Minimal CPU
+          memory: 128M
+        reservations:
+          cpus: '0.25'
+          memory: 64M
+    
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "3"
+        labels: "service=caddy"
+
+networks:
+  disher-network:
+    driver: bridge
+
+volumes:
+  mongo-data:
+    driver: local
+  caddy-data:
+    driver: local
+  caddy-config:
+    driver: local
+
+# Raspberry Pi Specific Notes:
+#
+# For best performance on Raspberry Pi 4B with 4GB RAM:
+#
+# 1. Use 64-bit Raspberry Pi OS (required for MongoDB)
+# 2. Ensure adequate cooling (heatsinks/fan for sustained use)
+# 3. USB SSD recommended for better I/O performance
+# 4. Use ethernet instead of WiFi for stability
+# 5. Disable unnecessary services: sudo systemctl disable docker.socket
+# 6. Increase swap: sudo nano /etc/dphys-swapfile (CONF_SWAPSIZE=2048)
+#
+# Monitor resources:
+#   docker stats
+#   watch -n 1 'docker stats --no-stream'
+#
+# If performance issues:
+#   - Reduce MONGODB_POOL_SIZE
+#   - Increase service restart delays
+#   - Enable read-only filesystem where possible
+#   - Use external SSD for MongoDB data

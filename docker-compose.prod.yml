@@ -1,0 +1,220 @@
+version: '3.9'
+
+# Production-ready Docker Compose configuration
+# Usage: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+services:
+  database:
+    image: mongo:7
+    container_name: disher-db
+    restart: always
+    
+    environment:
+      # Optional: Set MongoDB authentication
+      # MONGO_INITDB_ROOT_USERNAME: admin
+      # MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
+      
+      # Cache size for Raspberry Pi optimization
+      # Value in MB - adjust based on available RAM
+      MONGO_CACHE_SIZE_MB: ${MONGO_CACHE_SIZE_MB:-512}
+    
+    volumes:
+      - mongo-data:/data/db
+      - mongo-logs:/var/log/mongodb
+    
+    networks:
+      - disher-network
+    
+    # Production health check
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    
+    # Production resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 1G
+        reservations:
+          cpus: '1'
+          memory: 512M
+    
+    # Production logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    
+    image: disher-backend:latest
+    container_name: disher-backend
+    restart: always
+    
+    environment:
+      - MONGODB_URI=mongodb://database:27017/disher
+      - PORT=3000
+      - NODE_ENV=production
+      - DOMAIN=${DOMAIN}
+      - INSTALL_MODE=${INSTALL_MODE:-production}
+      - JWT_SECRET=${JWT_SECRET}
+      - LOG_LEVEL=warn  # Reduced logging in production
+      
+      # Performance tuning
+      - NODE_OPTIONS=--max-old-space-size=${NODE_MAX_MEMORY_MB:-512}
+      - MONGODB_POOL_SIZE=${MONGODB_POOL_SIZE:-10}
+      
+      # Optional
+      - DEBUG_REQUESTS=false
+    
+    depends_on:
+      database:
+        condition: service_healthy
+    
+    networks:
+      - disher-network
+    
+    # Don't expose port directly in production - use Caddy reverse proxy
+    expose:
+      - 3000
+    
+    # Production health check
+    healthcheck:
+      test: ["CMD", "node", "-e", "const http=require('http');const r=http.get('http://localhost:3000/api/health',s=>{process.exit(s.statusCode===200?0:1)});r.on('error',()=>process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    
+    # Production resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 1G
+        reservations:
+          cpus: '1'
+          memory: 512M
+    
+    # Production logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+        labels: "service=backend"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    
+    image: disher-frontend:latest
+    container_name: disher-frontend
+    restart: always
+    
+    networks:
+      - disher-network
+    
+    # Don't expose port directly in production - use Caddy reverse proxy
+    expose:
+      - 80
+    
+    # Production health check
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/index.html"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    
+    # Production resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+    
+    # Production logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        labels: "service=frontend"
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: disher-proxy
+    restart: always
+    
+    environment:
+      - DOMAIN=${DOMAIN}
+      - INSTALL_MODE=${INSTALL_MODE:-production}
+    
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data:rw
+      - caddy-config:/config:rw
+    
+    ports:
+      - "80:80"
+      - "443:443"
+    
+    depends_on:
+      frontend:
+        condition: service_started
+      backend:
+        condition: service_healthy
+    
+    networks:
+      - disher-network
+    
+    # Production resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 256M
+        reservations:
+          cpus: '0.5'
+          memory: 128M
+    
+    # Production logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "10"
+        labels: "service=caddy"
+
+networks:
+  disher-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.24.0.0/16
+
+volumes:
+  mongo-data:
+    driver: local
+    driver_opts:
+      type: tmpfs
+      device: tmpfs
+  mongo-logs:
+    driver: local
+  caddy-data:
+    driver: local
+  caddy-config:
+    driver: local

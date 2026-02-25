@@ -1,0 +1,13 @@
+node_modules
+npm-debug.log
+.env
+.git
+.gitignore
+*.md
+seed.js
+backend_logs.txt
+Dockerfile
+eslint.config.js
+.vscode
+.idea
+*.log
