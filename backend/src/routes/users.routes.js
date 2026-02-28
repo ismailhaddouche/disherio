@@ -30,6 +30,36 @@ router.get('/users/restaurant/:slug', verifyToken, requireAdmin, async (req, res
     }
 });
 
+// PATCH /users/me - Update own profile
+router.patch('/users/me',
+    verifyToken,
+    [
+        body('username').optional().trim().notEmpty().withMessage('Username cannot be empty'),
+        body('password').optional().isLength({ min: 8 }).withMessage('Password must be at least 8 characters')
+    ],
+    validate,
+    async (req, res) => {
+        try {
+            const user = await User.findById(req.user.userId);
+            if (!user) return res.status(404).json({ error: 'User not found' });
+
+            if (req.body.username) user.username = req.body.username;
+            if (req.body.password) user.password = req.body.password;
+
+            await user.save();
+            
+            const result = user.toObject();
+            delete result.password;
+            res.json(result);
+        } catch (error) {
+            if (error.code === 11000) {
+                return res.status(400).json({ error: 'Username already in use' });
+            }
+            res.status(500).json({ error: error.message });
+        }
+    }
+);
+
 // POST /users - Create or update user
 router.post('/users',
     verifyToken,

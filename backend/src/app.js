@@ -8,6 +8,9 @@ const routes = require('./routes');
 
 const app = express();
 
+// Trust proxy for express-rate-limit when behind Caddy
+app.set('trust proxy', 1);
+
 // Security: Helmet protects against common vulnerabilities
 app.use(helmet({
     contentSecurityPolicy: {
