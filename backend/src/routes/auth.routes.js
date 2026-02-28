@@ -39,6 +39,37 @@ router.post('/login',
     }
 );
 
+// POST /auth/customer-session - Guest joining a table via Totem
+router.post('/customer-session',
+    [
+        body('restaurantSlug').notEmpty().withMessage('Restaurant slug is required'),
+        body('totemId').notEmpty().withMessage('Totem ID is required'),
+        body('name').trim().notEmpty().withMessage('Guest name is required')
+    ],
+    async (req, res) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) return res.status(400).json({ error: errors.array()[0].msg });
+
+        try {
+            const { restaurantSlug, totemId, name } = req.body;
+            
+            // Create a temporary JWT for the customer
+            const token = generateToken({
+                userId: `guest-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+                username: name,
+                role: 'customer',
+                restaurantSlug,
+                totemId
+            });
+
+            res.cookie(COOKIE_NAME, token, getCookieOptions());
+            res.json({ username: name, role: 'customer', restaurantSlug, totemId });
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    }
+);
+
 // POST /auth/logout
 router.post('/logout', (req, res) => {
     res.clearCookie(COOKIE_NAME, { path: '/' });

@@ -99,29 +99,55 @@ router.post('/orders/table/:tableNumber/add-items',
     }
 );
 
-// POST /orders - Create a new order
+// POST /orders - Create or update a table order (Works for Totem Customers or Waiters)
 router.post('/orders',
+    verifyToken, // Identify who is ordering
     [
-        body('totemId').notEmpty().withMessage('totemId is required'),
-        body('items').isArray().withMessage('items must be an array'),
-        body('totalAmount').isFloat({ min: 0 }).withMessage('totalAmount must be a non-negative number')
+        body('totemId').optional().notEmpty().withMessage('totemId is required'),
+        body('items').isArray({ min: 1 }).withMessage('items must be a non-empty array')
     ],
     validate,
     async (req, res) => {
         try {
-            const { tableNumber, totemId, items, totalAmount } = req.body;
-            const order = new Order({
-                tableNumber: tableNumber || String(totemId),
-                totemId,
-                items: items || [],
-                totalAmount: totalAmount || 0
+            const { tableNumber, totemId, items } = req.body;
+            const tId = totemId || req.user.totemId;
+            const tNumber = tableNumber || String(tId);
+
+            if (!tId) return res.status(400).json({ error: 'Totem ID could not be determined' });
+
+            let order = await Order.findOne({ 
+                totemId: tId, 
+                status: 'active' 
             });
+
+            if (!order) {
+                order = new Order({
+                    tableNumber: tNumber,
+                    totemId: tId,
+                    items: [],
+                    totalAmount: 0
+                });
+            }
+
+            let addedAmount = 0;
+            const taggedItems = items.map(item => {
+                addedAmount += (item.price * item.quantity);
+                return {
+                    ...item,
+                    status: 'pending',
+                    orderedBy: {
+                        id: req.user.userId,
+                        name: req.user.username
+                    }
+                };
+            });
+
+            order.items.push(...taggedItems);
+            order.totalAmount += addedAmount;
             await order.save();
 
             const io = req.app.get('io');
-            if (io) {
-                io.emit('order-update', order);
-            }
+            if (io) io.emit('order-updated', order);
 
             res.status(201).json(order);
         } catch (error) {
@@ -164,7 +190,7 @@ router.patch('/orders/:orderId/items/:itemId',
         param('orderId').isMongoId().withMessage('Invalid order ID'),
         body('status')
             .notEmpty().withMessage('Status is required')
-            .isIn(['pending', 'preparing', 'ready']).withMessage('Status must be pending, preparing, or ready')
+            .isIn(['pending', 'preparing', 'ready', 'served', 'cancelled']).withMessage('Status must be valid')
     ],
     validate,
     verifyToken,
@@ -226,7 +252,7 @@ router.post('/orders/:orderId/complete',
     }
 );
 
-// POST /orders/:orderId/checkout - Process checkout (Full, Equal split, or Partial by items)
+// POST /orders/:orderId/checkout - Process checkout (Full, Equal, By Item, or By User)
 router.post('/orders/:orderId/checkout',
     [
         param('orderId').isMongoId().withMessage('Invalid order ID'),
@@ -235,19 +261,22 @@ router.post('/orders/:orderId/checkout',
             .isIn(['cash', 'card']).withMessage('Method must be cash or card'),
         body('splitType')
             .optional()
-            .isIn(['equal', 'single', 'by-item']).withMessage('splitType must be equal, single or by-item'),
+            .isIn(['equal', 'single', 'by-item', 'by-user']).withMessage('splitType must be valid'),
         body('parts')
             .optional()
             .isInt({ min: 1, max: 20 }).withMessage('parts must be between 1 and 20'),
         body('itemIds')
             .optional()
-            .isArray().withMessage('itemIds must be an array of item ObjectIds')
+            .isArray().withMessage('itemIds must be an array'),
+        body('userId')
+            .optional()
+            .notEmpty().withMessage('userId is required for splitType: by-user')
     ],
     validate,
     verifyToken,
     async (req, res) => {
         try {
-            const { splitType, parts, method, billingConfig, itemIds } = req.body;
+            const { splitType, parts, method, billingConfig, itemIds, userId } = req.body;
             const order = await Order.findById(req.params.orderId);
             if (!order) return res.status(404).json({ error: 'Order not found' });
 
@@ -255,8 +284,26 @@ router.post('/orders/:orderId/checkout',
             let itemsSummary = [];
             let totalPaidFlag = false;
 
-            if (splitType === 'by-item' && itemIds && itemIds.length > 0) {
-                // PARTIAL PAYMENT: Calculate amount only for these items
+            if (splitType === 'by-user' && userId) {
+                // BY USER: Pay everything ordered by a specific person
+                const userItems = order.items.filter(item => 
+                    item.orderedBy.id === userId && !item.isPaid
+                );
+
+                if (userItems.length === 0) {
+                    return res.status(400).json({ error: 'No unpaid items found for this user' });
+                }
+
+                userItems.forEach(item => {
+                    finalAmount += (item.price * item.quantity);
+                    itemsSummary.push(`${item.quantity}x ${item.name}`);
+                    item.isPaid = true;
+                });
+
+                const remaining = order.items.filter(i => !i.isPaid);
+                if (remaining.length === 0) totalPaidFlag = true;
+
+            } else if (splitType === 'by-item' && itemIds && itemIds.length > 0) {
                 const itemsToPay = order.items.filter(item => 
                     itemIds.includes(item._id.toString()) && !item.isPaid
                 );
@@ -268,10 +315,9 @@ router.post('/orders/:orderId/checkout',
                 itemsToPay.forEach(item => {
                     finalAmount += (item.price * item.quantity);
                     itemsSummary.push(`${item.quantity}x ${item.name}`);
-                    item.isPaid = true; // Mark as paid
+                    item.isPaid = true;
                 });
 
-                // Check if the whole order is now paid
                 const unpaidItems = order.items.filter(item => !item.isPaid);
                 if (unpaidItems.length === 0) totalPaidFlag = true;
 
@@ -279,7 +325,6 @@ router.post('/orders/:orderId/checkout',
                 // FULL or EQUAL SPLIT
                 let baseAmount = order.totalAmount || 0;
                 
-                // Add VAT/Tips only to the TOTAL calculation if they apply globally
                 if (billingConfig?.vatPercentage) baseAmount *= (1 + billingConfig.vatPercentage / 100);
                 if (billingConfig?.tipEnabled && billingConfig?.tipPercentage) baseAmount *= (1 + billingConfig.tipPercentage / 100);
 
@@ -312,7 +357,7 @@ router.post('/orders/:orderId/checkout',
             if (totalPaidFlag) {
                 order.paymentStatus = 'paid';
                 order.status = 'completed';
-            } else if (splitType === 'by-item') {
+            } else if (splitType === 'by-item' || splitType === 'by-user') {
                 order.paymentStatus = 'split';
             }
 
