@@ -226,7 +226,7 @@ router.post('/orders/:orderId/complete',
     }
 );
 
-// POST /orders/:orderId/checkout - Process checkout with payment splitting
+// POST /orders/:orderId/checkout - Process checkout (Full, Equal split, or Partial by items)
 router.post('/orders/:orderId/checkout',
     [
         param('orderId').isMongoId().withMessage('Invalid order ID'),
@@ -235,57 +235,93 @@ router.post('/orders/:orderId/checkout',
             .isIn(['cash', 'card']).withMessage('Method must be cash or card'),
         body('splitType')
             .optional()
-            .isIn(['equal', 'single']).withMessage('splitType must be equal or single'),
+            .isIn(['equal', 'single', 'by-item']).withMessage('splitType must be equal, single or by-item'),
         body('parts')
             .optional()
-            .isInt({ min: 1, max: 20 }).withMessage('parts must be between 1 and 20')
+            .isInt({ min: 1, max: 20 }).withMessage('parts must be between 1 and 20'),
+        body('itemIds')
+            .optional()
+            .isArray().withMessage('itemIds must be an array of item ObjectIds')
     ],
     validate,
     verifyToken,
     async (req, res) => {
         try {
-            const { splitType, parts, method, billingConfig } = req.body;
+            const { splitType, parts, method, billingConfig, itemIds } = req.body;
             const order = await Order.findById(req.params.orderId);
-            if (!order) {
-                return res.status(404).json({ error: 'Order not found' });
+            if (!order) return res.status(404).json({ error: 'Order not found' });
+
+            let finalAmount = 0;
+            let itemsSummary = [];
+            let totalPaidFlag = false;
+
+            if (splitType === 'by-item' && itemIds && itemIds.length > 0) {
+                // PARTIAL PAYMENT: Calculate amount only for these items
+                const itemsToPay = order.items.filter(item => 
+                    itemIds.includes(item._id.toString()) && !item.isPaid
+                );
+
+                if (itemsToPay.length === 0) {
+                    return res.status(400).json({ error: 'No unpaid items found for the provided IDs' });
+                }
+
+                itemsToPay.forEach(item => {
+                    finalAmount += (item.price * item.quantity);
+                    itemsSummary.push(`${item.quantity}x ${item.name}`);
+                    item.isPaid = true; // Mark as paid
+                });
+
+                // Check if the whole order is now paid
+                const unpaidItems = order.items.filter(item => !item.isPaid);
+                if (unpaidItems.length === 0) totalPaidFlag = true;
+
+            } else {
+                // FULL or EQUAL SPLIT
+                let baseAmount = order.totalAmount || 0;
+                
+                // Add VAT/Tips only to the TOTAL calculation if they apply globally
+                if (billingConfig?.vatPercentage) baseAmount *= (1 + billingConfig.vatPercentage / 100);
+                if (billingConfig?.tipEnabled && billingConfig?.tipPercentage) baseAmount *= (1 + billingConfig.tipPercentage / 100);
+
+                const numParts = (splitType === 'equal' && parts > 1) ? parts : 1;
+                finalAmount = Math.round((baseAmount / numParts) * 100) / 100;
+                itemsSummary = order.items.map(item => `${item.quantity}x ${item.name}`);
+                
+                if (splitType !== 'equal' || (splitType === 'equal' && numParts === 1)) {
+                    totalPaidFlag = true;
+                    order.items.forEach(i => i.isPaid = true);
+                }
             }
 
-            let baseAmount = order.totalAmount || 0;
+            // Create the ticket(s)
+            const ticketCount = (splitType === 'equal' && parts > 1) ? parts : 1;
+            const generatedTickets = [];
 
-            if (billingConfig && billingConfig.vatPercentage) {
-                baseAmount = baseAmount * (1 + billingConfig.vatPercentage / 100);
-            }
-
-            if (billingConfig && billingConfig.tipEnabled && billingConfig.tipPercentage) {
-                baseAmount = baseAmount * (1 + billingConfig.tipPercentage / 100);
-            }
-
-            const tickets = [];
-            const numParts = (splitType === 'equal' && parts > 1) ? parts : 1;
-            const amountPerPart = Math.round((baseAmount / numParts) * 100) / 100;
-
-            for (let i = 0; i < numParts; i++) {
+            for (let i = 0; i < ticketCount; i++) {
                 const ticket = new Ticket({
                     orderId: order._id,
-                    customId: `${order._id.toString().slice(-6).toUpperCase()}/${i + 1}-${numParts}`,
+                    customId: `${order._id.toString().slice(-6).toUpperCase()}/${i + 1}-${ticketCount}`,
                     method: method || 'cash',
-                    amount: amountPerPart,
-                    itemsSummary: order.items.map(item => `${item.quantity}x ${item.name}`)
+                    amount: finalAmount,
+                    itemsSummary
                 });
                 await ticket.save();
-                tickets.push(ticket);
+                generatedTickets.push(ticket);
             }
 
-            order.paymentStatus = 'paid';
-            order.status = 'completed';
+            if (totalPaidFlag) {
+                order.paymentStatus = 'paid';
+                order.status = 'completed';
+            } else if (splitType === 'by-item') {
+                order.paymentStatus = 'split';
+            }
+
             await order.save();
 
             const io = req.app.get('io');
-            if (io) {
-                io.emit('order-updated', order);
-            }
+            if (io) io.emit('order-updated', order);
 
-            res.json({ tickets });
+            res.json({ tickets: generatedTickets, orderStatus: order.status });
         } catch (error) {
             res.status(500).json({ error: error.message });
         }

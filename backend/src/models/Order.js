@@ -26,7 +26,8 @@ const OrderItemSchema = new mongoose.Schema({
     }],
     notes: String,
     emoji: String,
-    isCustom: { type: Boolean, default: false }
+    isCustom: { type: Boolean, default: false },
+    isPaid: { type: Boolean, default: false }
 });
 
 const OrderSchema = new mongoose.Schema({
