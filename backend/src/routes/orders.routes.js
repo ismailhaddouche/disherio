@@ -76,7 +76,6 @@ router.post('/orders/table/:tableNumber/add-items',
                     ...item,
                     status: 'pending',
                     orderedBy: {
-                        // If waiter provides a guest, use it. Otherwise, it's an orphan.
                         id: guestId || 'orphan',
                         name: guestName || 'Huérfano'
                     }
@@ -97,7 +96,7 @@ router.post('/orders/table/:tableNumber/add-items',
     }
 );
 
-// PATCH /orders/:orderId/items/:itemId/associate - Cashier associating orphan item to a user
+// PATCH /orders/:orderId/items/:itemId/associate - Cashier associating orphan item
 router.patch('/orders/:orderId/items/:itemId/associate',
     [
         param('orderId').isMongoId(),
@@ -111,22 +110,19 @@ router.patch('/orders/:orderId/items/:itemId/associate',
         try {
             const order = await Order.findById(req.params.orderId);
             if (!order) return res.status(404).json({ error: 'Order not found' });
+            if (order.status !== 'active') return res.status(400).json({ error: 'Order is not active' });
 
             const item = order.items.id(req.params.itemId) || 
                          order.items.find(i => i.id === req.params.itemId || String(i._id) === req.params.itemId);
             
             if (!item) return res.status(404).json({ error: 'Item not found' });
+            if (item.isPaid) return res.status(400).json({ error: 'Item already paid' });
 
-            item.orderedBy = {
-                id: req.body.userId,
-                name: req.body.userName
-            };
-
+            item.orderedBy = { id: req.body.userId, name: req.body.userName };
             await order.save();
             
             const io = req.app.get('io');
             if (io) io.emit('order-updated', order);
-
             res.json(order);
         } catch (error) {
             res.status(500).json({ error: error.message });
@@ -134,9 +130,9 @@ router.patch('/orders/:orderId/items/:itemId/associate',
     }
 );
 
-// POST /orders - Create or update a table order (Works for Totem Customers or Waiters)
+// POST /orders - Create or update a table order
 router.post('/orders',
-    verifyToken, // Identify who is ordering
+    verifyToken,
     [
         body('totemId').optional().notEmpty().withMessage('totemId is required'),
         body('items').isArray({ min: 1 }).withMessage('items must be a non-empty array')
@@ -150,18 +146,9 @@ router.post('/orders',
 
             if (!tId) return res.status(400).json({ error: 'Totem ID could not be determined' });
 
-            let order = await Order.findOne({ 
-                totemId: tId, 
-                status: 'active' 
-            });
-
+            let order = await Order.findOne({ totemId: tId, status: 'active' });
             if (!order) {
-                order = new Order({
-                    tableNumber: tNumber,
-                    totemId: tId,
-                    items: [],
-                    totalAmount: 0
-                });
+                order = new Order({ tableNumber: tNumber, totemId: tId, items: [], totalAmount: 0 });
             }
 
             let addedAmount = 0;
@@ -170,10 +157,7 @@ router.post('/orders',
                 return {
                     ...item,
                     status: 'pending',
-                    orderedBy: {
-                        id: req.user.userId,
-                        name: req.user.username
-                    }
+                    orderedBy: { id: req.user.userId, name: req.user.username }
                 };
             });
 
@@ -183,7 +167,6 @@ router.post('/orders',
 
             const io = req.app.get('io');
             if (io) io.emit('order-updated', order);
-
             res.status(201).json(order);
         } catch (error) {
             res.status(500).json({ error: error.message });
@@ -198,20 +181,10 @@ router.patch('/orders/:orderId',
     verifyToken,
     async (req, res) => {
         try {
-            const order = await Order.findByIdAndUpdate(
-                req.params.orderId,
-                { $set: req.body },
-                { new: true }
-            );
-            if (!order) {
-                return res.status(404).json({ error: 'Order not found' });
-            }
-
+            const order = await Order.findByIdAndUpdate(req.params.orderId, { $set: req.body }, { new: true });
+            if (!order) return res.status(404).json({ error: 'Order not found' });
             const io = req.app.get('io');
-            if (io) {
-                io.emit('order-updated', order);
-            }
-
+            if (io) io.emit('order-updated', order);
             res.json(order);
         } catch (error) {
             res.status(500).json({ error: error.message });
@@ -219,39 +192,24 @@ router.patch('/orders/:orderId',
     }
 );
 
-// PATCH /orders/:orderId/items/:itemId - Update a single item's status
+// PATCH /orders/:orderId/items/:itemId - Update item status
 router.patch('/orders/:orderId/items/:itemId',
     [
         param('orderId').isMongoId().withMessage('Invalid order ID'),
-        body('status')
-            .notEmpty().withMessage('Status is required')
-            .isIn(['pending', 'preparing', 'ready', 'served', 'cancelled']).withMessage('Status must be valid')
+        body('status').notEmpty().isIn(['pending', 'preparing', 'ready', 'served', 'cancelled'])
     ],
     validate,
     verifyToken,
     async (req, res) => {
         try {
-            const { status } = req.body;
             const order = await Order.findById(req.params.orderId);
-            if (!order) {
-                return res.status(404).json({ error: 'Order not found' });
-            }
-
-            const item = order.items.find(
-                i => i.id === req.params.itemId || String(i._id) === req.params.itemId
-            );
-            if (!item) {
-                return res.status(404).json({ error: 'Item not found' });
-            }
-
-            item.status = status;
+            if (!order) return res.status(404).json({ error: 'Order not found' });
+            const item = order.items.find(i => i.id === req.params.itemId || String(i._id) === req.params.itemId);
+            if (!item) return res.status(404).json({ error: 'Item not found' });
+            item.status = req.body.status;
             await order.save();
-
             const io = req.app.get('io');
-            if (io) {
-                io.emit('order-updated', order);
-            }
-
+            if (io) io.emit('order-updated', order);
             res.json(order);
         } catch (error) {
             res.status(500).json({ error: error.message });
@@ -259,53 +217,16 @@ router.patch('/orders/:orderId/items/:itemId',
     }
 );
 
-// POST /orders/:orderId/complete - Mark order as completed
-router.post('/orders/:orderId/complete',
-    param('orderId').isMongoId().withMessage('Invalid order ID'),
-    validate,
-    verifyToken,
-    async (req, res) => {
-        try {
-            const order = await Order.findByIdAndUpdate(
-                req.params.orderId,
-                { status: 'completed', paymentStatus: 'paid' },
-                { new: true }
-            );
-            if (!order) {
-                return res.status(404).json({ error: 'Order not found' });
-            }
-
-            const io = req.app.get('io');
-            if (io) {
-                io.emit('order-updated', order);
-            }
-
-            res.json(order);
-        } catch (error) {
-            res.status(500).json({ error: error.message });
-        }
-    }
-);
-
-// POST /orders/:orderId/checkout - Process checkout (Full, Equal, By Item, or By User)
+// POST /orders/:orderId/checkout - Process checkout
 router.post('/orders/:orderId/checkout',
     [
         param('orderId').isMongoId().withMessage('Invalid order ID'),
-        body('method')
-            .notEmpty().withMessage('Payment method is required')
-            .isIn(['cash', 'card']).withMessage('Method must be cash or card'),
-        body('splitType')
-            .optional()
-            .isIn(['equal', 'single', 'by-item', 'by-user']).withMessage('splitType must be valid'),
-        body('parts')
-            .optional()
-            .isInt({ min: 1, max: 20 }).withMessage('parts must be between 1 and 20'),
-        body('itemIds')
-            .optional()
-            .isArray().withMessage('itemIds must be an array'),
-        body('userId')
-            .optional()
-            .notEmpty().withMessage('userId is required for splitType: by-user')
+        body('method').notEmpty().isIn(['cash', 'card']),
+        body('splitType').optional().isIn(['equal', 'single', 'by-item', 'by-user']),
+        body('parts').optional().isInt({ min: 1, max: 20 }),
+        body('itemIds').optional().isArray(),
+        body('userId').optional().notEmpty(),
+        body('billingConfig').optional().isObject()
     ],
     validate,
     verifyToken,
@@ -315,65 +236,41 @@ router.post('/orders/:orderId/checkout',
             const order = await Order.findById(req.params.orderId);
             if (!order) return res.status(404).json({ error: 'Order not found' });
 
-            let finalAmount = 0;
+            let itemsTotal = 0;
             let itemsSummary = [];
             let totalPaidFlag = false;
 
             if (splitType === 'by-user' && userId) {
-                // Check if there are ANY orphans in the order before allowing per-user payment
                 const hasOrphans = order.items.some(item => item.orderedBy.id === 'orphan' && !item.isPaid);
-                if (hasOrphans) {
-                    return res.status(400).json({ 
-                        error: 'Cannot process per-user payment while orphan items exist. Please associate all items first.',
-                        code: 'ORPHANS_EXIST'
-                    });
-                }
+                if (hasOrphans) return res.status(400).json({ error: 'Existen platos huérfanos', code: 'ORPHANS_EXIST' });
 
-                // BY USER: Pay everything ordered by a specific person
-                const userItems = order.items.filter(item => 
-                    item.orderedBy.id === userId && !item.isPaid
-                );
-
-                if (userItems.length === 0) {
-                    return res.status(400).json({ error: 'No unpaid items found for this user' });
-                }
+                const userItems = order.items.filter(item => item.orderedBy.id === userId && !item.isPaid);
+                if (userItems.length === 0) return res.status(400).json({ error: 'No hay items pendientes para este usuario' });
 
                 userItems.forEach(item => {
-                    finalAmount += (item.price * item.quantity);
+                    itemsTotal += (item.price * item.quantity);
                     itemsSummary.push(`${item.quantity}x ${item.name}`);
                     item.isPaid = true;
                 });
-
                 const remaining = order.items.filter(i => !i.isPaid);
                 if (remaining.length === 0) totalPaidFlag = true;
 
-            } else if (splitType === 'by-item' && itemIds && itemIds.length > 0) {
-                const itemsToPay = order.items.filter(item => 
-                    itemIds.includes(item._id.toString()) && !item.isPaid
-                );
-
-                if (itemsToPay.length === 0) {
-                    return res.status(400).json({ error: 'No unpaid items found for the provided IDs' });
-                }
+            } else if (splitType === 'by-item' && itemIds?.length > 0) {
+                const itemsToPay = order.items.filter(item => itemIds.includes(item._id.toString()) && !item.isPaid);
+                if (itemsToPay.length === 0) return res.status(400).json({ error: 'No hay items pendientes seleccionados' });
 
                 itemsToPay.forEach(item => {
-                    finalAmount += (item.price * item.quantity);
+                    itemsTotal += (item.price * item.quantity);
                     itemsSummary.push(`${item.quantity}x ${item.name}`);
                     item.isPaid = true;
                 });
-
-                const unpaidItems = order.items.filter(item => !item.isPaid);
-                if (unpaidItems.length === 0) totalPaidFlag = true;
+                const unpaid = order.items.filter(item => !item.isPaid);
+                if (unpaid.length === 0) totalPaidFlag = true;
 
             } else {
                 // FULL or EQUAL SPLIT
-                let baseAmount = order.totalAmount || 0;
-                
-                if (billingConfig?.vatPercentage) baseAmount *= (1 + billingConfig.vatPercentage / 100);
-                if (billingConfig?.tipEnabled && billingConfig?.tipPercentage) baseAmount *= (1 + billingConfig.tipPercentage / 100);
-
                 const numParts = (splitType === 'equal' && parts > 1) ? parts : 1;
-                finalAmount = Math.round((baseAmount / numParts) * 100) / 100;
+                itemsTotal = (order.totalAmount || 0) / numParts;
                 itemsSummary = order.items.map(item => `${item.quantity}x ${item.name}`);
                 
                 if (splitType !== 'equal' || (splitType === 'equal' && numParts === 1)) {
@@ -382,7 +279,13 @@ router.post('/orders/:orderId/checkout',
                 }
             }
 
-            // Create the ticket(s)
+            // Calculation Logic: Prices already have VAT. Tips are added on top.
+            let finalTicketAmount = itemsTotal;
+            if (billingConfig?.tipEnabled && billingConfig?.tipPercentage) {
+                finalTicketAmount += (itemsTotal * (billingConfig.tipPercentage / 100));
+            }
+            finalTicketAmount = Math.round(finalTicketAmount * 100) / 100;
+
             const ticketCount = (splitType === 'equal' && parts > 1) ? parts : 1;
             const generatedTickets = [];
 
@@ -391,7 +294,7 @@ router.post('/orders/:orderId/checkout',
                     orderId: order._id,
                     customId: `${order._id.toString().slice(-6).toUpperCase()}/${i + 1}-${ticketCount}`,
                     method: method || 'cash',
-                    amount: finalAmount,
+                    amount: finalTicketAmount,
                     itemsSummary
                 });
                 await ticket.save();
@@ -401,12 +304,11 @@ router.post('/orders/:orderId/checkout',
             if (totalPaidFlag) {
                 order.paymentStatus = 'paid';
                 order.status = 'completed';
-            } else if (splitType === 'by-item' || splitType === 'by-user') {
+            } else {
                 order.paymentStatus = 'split';
             }
 
             await order.save();
-
             const io = req.app.get('io');
             if (io) io.emit('order-updated', order);
 
