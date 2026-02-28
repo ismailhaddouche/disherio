@@ -93,7 +93,10 @@ export class FilterOccupiedPipe implements PipeTransform {
                   <h3>Desglose por Comensales</h3>
                   <div class="comensales-list">
                     @for (user of vm.getComensales(table.order); track user.id) {
-                      <div class="user-strip glass-card">
+                      <div class="user-strip glass-card clickable" 
+                           [class.orphan-warning]="user.id === 'orphan'"
+                           (click)="vm.payByUser(user.id)"
+                           title="Cobrar solo a este comensal">
                         <div class="user-info">
                           <span class="user-name">👤 {{ user.name }}</span>
                           <span class="user-total">{{ user.total | currency:'EUR' }}</span>

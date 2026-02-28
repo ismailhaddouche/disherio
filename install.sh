@@ -28,6 +28,25 @@ if [[ $EUID -ne 0 ]]; then
    exit 1
 fi
 
+# --- Port Availability Check ---
+check_port() {
+    if command -v lsof &> /dev/null; then
+        lsof -i :$1 > /dev/null 2>&1
+        return $?
+    elif command -v netstat &> /dev/null; then
+        netstat -tuln | grep -q ":$1 "
+        return $?
+    fi
+    return 1
+}
+
+echo -e "${CYAN}Verificando disponibilidad de puertos...${NC}"
+if check_port 80 || check_port 443; then
+    echo -e "${RED}Error: Los puertos 80 o 443 ya están en uso.${NC}"
+    echo -e "${YELLOW}Asegúrate de detener cualquier otro servidor web (Apache, Nginx) antes de instalar Disher.io.${NC}"
+    exit 1
+fi
+
 # --- Architecture & OS Detection ---
 ARCH=$(uname -m)
 echo -e "${CYAN}[1/8] Verificando Sistema...${NC}"

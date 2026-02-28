@@ -3,7 +3,7 @@ import { Router } from '@angular/router';
 
 import { environment } from '../../environments/environment';
 
-export type UserRole = 'admin' | 'kitchen' | 'pos' | 'customer';
+export type UserRole = 'admin' | 'kitchen' | 'pos' | 'customer' | 'waiter';
 
 export interface UserSession {
     username: string;
@@ -46,7 +46,8 @@ export class AuthService {
 
             const redirect = session.role === 'admin' ? '/admin/dashboard' :
                 session.role === 'kitchen' ? '/admin/kds' :
-                    session.role === 'pos' ? '/admin/pos' : '/';
+                    session.role === 'pos' ? '/admin/pos' :
+                        session.role === 'waiter' ? '/admin/totems' : '/';
 
             this.router.navigate([redirect]);
             return true;

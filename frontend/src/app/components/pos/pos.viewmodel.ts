@@ -5,7 +5,7 @@ import { environment } from '../../../environments/environment';
 
 export interface POSTable {
     number: string;
-    name?: string; // Add name support
+    name?: string; 
     status: 'empty' | 'occupied' | 'billing';
     order?: any;
     id: number;
@@ -18,27 +18,23 @@ export class POSViewModel {
 
     // State
     public orders = signal<any[]>([]);
-    public tables = signal<any[]>([]); // Dynamic Totems
-    public tickets = signal<any[]>([]); // History
+    public tables = signal<any[]>([]); 
+    public tickets = signal<any[]>([]); 
     public selectedTable = signal<POSTable | null>(null);
     public loading = signal<boolean>(true);
     public viewMode = signal<'tables' | 'history'>('tables');
-    public billingConfig = signal<any>(null); // VAT and Tip configuration
-    public menuItems = signal<any[]>([]); // Available menu items
-    public editMode = signal<boolean>(false); // Order editing mode
+    public billingConfig = signal<any>(null); 
+    public menuItems = signal<any[]>([]); 
+    public editMode = signal<boolean>(false); 
     public showAddItemModal = signal<boolean>(false);
     public showCustomLineModal = signal<boolean>(false);
-    public localConfig = signal<any>(null); // Printer settings (local)
+    public localConfig = signal<any>(null); 
 
-    // Computed: Map orders to configured tables
     public tableStates = computed(() => {
         const activeOrders = this.orders().filter(o => o.status === 'active');
-
-        // Only show active and configured totems
-        const activeTotems = this.tables().filter(t => t.active !== false); // Default is true if undefined
+        const activeTotems = this.tables().filter(t => t.active !== false);
 
         return activeTotems.map(totem => {
-            // Find order by totemId (preferred) or legacy tableNumber
             const order = activeOrders.find(o =>
                 (o.totemId && o.totemId === totem.id) ||
                 (o.tableNumber && o.tableNumber == totem.id)
@@ -99,9 +95,8 @@ export class POSViewModel {
                 const index = prev.findIndex(o => o._id === updatedOrder._id);
 
                 if (updatedOrder.status === 'completed') {
-                    this.loadHistory(); // Refresh history
+                    this.loadHistory(); 
                     if (index !== -1) {
-                        // Remove from active orders
                         return prev.filter(o => o._id !== updatedOrder._id);
                     }
                     return prev;
@@ -132,23 +127,28 @@ export class POSViewModel {
         if (!order) return [];
         const usersMap = new Map();
         order.items.forEach((item: any, originalIndex: number) => {
+            if (item.isPaid) return; // Only show unpaid items in breakdown
             const user = item.orderedBy;
-            if (!usersMap.has(user.id)) {
-                usersMap.set(user.id, { id: user.id || 'unknown', name: user.name || 'Invitado', total: 0, items: [] });
+            const userId = user.id || 'orphan';
+            if (!usersMap.has(userId)) {
+                usersMap.set(userId, { 
+                    id: userId, 
+                    name: user.name || 'Huérfano', 
+                    total: 0, 
+                    items: [] 
+                });
             }
-            const userData = usersMap.get(user.id);
+            const userData = usersMap.get(userId);
             userData.total += item.price * item.quantity;
-            // Attach original index to the item for the view to use
             userData.items.push({ ...item, _originalIndex: originalIndex });
         });
         return Array.from(usersMap.values());
     }
 
-    // Calculate billing breakdown (prices come with VAT included)
     public calculateBilling(totalWithVAT: number) {
         const config = this.billingConfig();
         if (!config || config.vatPercentage === null) {
-            return null; // Cannot calculate without VAT
+            return null; 
         }
 
         const vatMultiplier = 1 + (config.vatPercentage / 100);
@@ -177,8 +177,7 @@ export class POSViewModel {
         };
     }
 
-    public async processPayment(orderId?: string, splitType: 'single' | 'equal' = 'single', parts: number = 1) {
-        // If orderId is not provided, try to use the selected table's order
+    public async processPayment(orderId?: string, splitType: 'single' | 'equal' | 'by-user' = 'single', parts: number = 1, userId?: string) {
         const targetOrderId = orderId || this.selectedTable()?.order?._id;
 
         if (!targetOrderId) {
@@ -186,40 +185,68 @@ export class POSViewModel {
             return;
         }
 
-        // Validate VAT configuration first
         const config = this.billingConfig();
         if (!config || config.vatPercentage === null || config.vatPercentage === undefined) {
             alert('⚠️ No se puede generar ticket sin configurar el IVA.\\n\\nPor favor, ve a Configuración y establece un porcentaje de IVA.');
             return;
         }
 
-        if (!confirm(`¿Confirmar cobro ${splitType === 'equal' ? 'dividido entre ' + parts : 'total'}?`)) return;
+        let confirmMsg = '¿Confirmar cobro total?';
+        if (splitType === 'equal') confirmMsg = `¿Confirmar cobro dividido en ${parts} partes?`;
+        if (splitType === 'by-user') confirmMsg = `¿Confirmar cobro para este comensal?`;
+
+        if (!confirm(confirmMsg)) return;
 
         try {
             const res = await fetch(`${environment.apiUrl}/api/orders/${targetOrderId}/checkout`, {
                 method: 'POST',
                 headers: this.auth.getHeaders(),
-                body: JSON.stringify({ splitType, parts, method: 'cash', billingConfig: config }) // Pass billing config
+                body: JSON.stringify({ 
+                    splitType, 
+                    parts, 
+                    userId,
+                    method: 'cash', 
+                    billingConfig: config 
+                })
             });
 
-            if (!res.ok) throw new Error('Error processing payment');
+            if (!res.ok) {
+                const err = await res.json();
+                if (err.code === 'ORPHANS_EXIST') {
+                    alert('⚠️ Hay platos sin asignar (Huérfanos). Asígnale estos platos a alguien antes de cobrar por comensal.');
+                } else {
+                    alert('Error: ' + (err.error || 'No se pudo procesar el pago'));
+                }
+                return;
+            }
 
             const result = await res.json();
-            this.auth.logActivity('ORDER_PAID', { orderId: targetOrderId, type: splitType, tickets: result.tickets.length });
+            this.auth.logActivity('ORDER_PAID', { orderId: targetOrderId, type: splitType, userId });
 
-            this.selectedTable.set(null);
-            this.viewMode.set('history'); // Switch to history to see new tickets
-            this.loadHistory(); // Reload history ensures we see the latest
+            if (result.orderStatus === 'completed' || splitType === 'single') {
+                this.selectedTable.set(null);
+                this.viewMode.set('history'); 
+            }
+            
+            this.loadHistory();
+            const updatedOrders = await this.comms.syncOrders();
+            if(updatedOrders) this.orders.set(updatedOrders);
 
-            // Auto-print if configured
             if (this.localConfig()?.printer?.autoPrint && result.tickets?.[0]) {
-                const ticket = result.tickets[result.tickets.length - 1]; // Print last ticket (common for single payment)
-                this.printTicket(ticket);
+                result.tickets.forEach((t: any) => this.printTicket(t));
             }
 
         } catch (e) {
             alert('Error al procesar el cobro');
         }
+    }
+
+    public async payByUser(userId: string) {
+        if (userId === 'orphan') {
+            alert('No se puede cobrar a "Huérfano". Asigna primero los platos a un comensal.');
+            return;
+        }
+        await this.processPayment(undefined, 'by-user', 1, userId);
     }
 
     public async deleteTicket(ticketId: string) {
@@ -234,7 +261,7 @@ export class POSViewModel {
             if (!res.ok) throw new Error('Error deleting ticket');
 
             this.auth.logActivity('TICKET_DELETED', { ticketId });
-            this.loadHistory(); // Refresh list
+            this.loadHistory(); 
 
         } catch (e) {
             console.error('Error deleting ticket', e);
@@ -250,11 +277,10 @@ export class POSViewModel {
         } else {
             console.log('Printing to system printer...');
             alert(`🖨️ (Sistema) Imprimiendo Ticket ${ticket.customId}\\nTotal: ${ticket.amount}€`);
-            window.print(); // Browser native print
+            window.print(); 
         }
     }
 
-    // Order Editing Methods
     public toggleEditMode() {
         this.editMode.update(v => !v);
     }
@@ -280,6 +306,25 @@ export class POSViewModel {
         } catch (e) {
             console.error('Error removing item', e);
             alert('No se pudo eliminar el producto');
+        }
+    }
+
+    public async associateOrphanItem(orderId: string, itemId: string, userId: string, userName: string) {
+        try {
+            const res = await fetch(`${environment.apiUrl}/api/orders/${orderId}/items/${itemId}/associate`, {
+                method: 'PATCH',
+                headers: this.auth.getHeaders(),
+                body: JSON.stringify({ userId, userName })
+            });
+
+            if (!res.ok) throw new Error('Error associating item');
+
+            const updatedOrder = await res.json();
+            this.orders.update(prev => prev.map(o => o._id === orderId ? updatedOrder : o));
+            
+        } catch (e) {
+            console.error('Error associating item', e);
+            alert('No se pudo asociar el plato.');
         }
     }
 
@@ -373,8 +418,6 @@ export class POSViewModel {
 
             this.auth.logActivity('TABLE_OPENED_MANUALLY', { tableNumber: table.number });
 
-            // The real-time listener will pick up the new order and update the table state
-
         } catch (e) {
             console.error('Error opening table', e);
             alert('No se pudo abrir la mesa');
@@ -382,6 +425,13 @@ export class POSViewModel {
     }
 
     public openSplitModal() {
-        alert('Funcionalidad de dividir cuenta próximamente.');
+        const type = prompt('¿Cómo deseas dividir?\\n1. Partes iguales\\n2. Por comensal', '1');
+        if (type === '1') {
+            const p = prompt('¿En cuántas partes?', '2');
+            const parts = parseInt(p || '0');
+            if (parts > 1) this.processPayment(undefined, 'equal', parts);
+        } else if (type === '2') {
+            alert('Haz clic en el nombre de un comensal para cobrar su parte individual.');
+        }
     }
 }
