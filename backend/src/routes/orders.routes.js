@@ -41,35 +41,34 @@ router.get('/orders/table/:tableNumber',
     }
 );
 
-// POST /orders/table/:tableNumber/add-items - Waiter adding items to an existing order
+// POST /orders/table/:tableNumber/add-items - Waiter adding items
 router.post('/orders/table/:tableNumber/add-items',
     [
         param('tableNumber').trim().notEmpty().withMessage('Table number is required'),
         body('items').isArray({ min: 1 }).withMessage('items must be a non-empty array'),
         body('items.*.name').notEmpty().withMessage('Item name is required'),
         body('items.*.price').isFloat({ min: 0 }).withMessage('Item price must be non-negative'),
-        body('items.*.quantity').isInt({ min: 1 }).withMessage('Item quantity must be at least 1')
+        body('items.*.quantity').isInt({ min: 1 }).withMessage('Item quantity must be at least 1'),
+        body('guestId').optional().notEmpty(),
+        body('guestName').optional().notEmpty()
     ],
     validate,
-    verifyToken, // Ensure only logged-in staff can use this
+    verifyToken,
     async (req, res) => {
         try {
             const { tableNumber } = req.params;
-            const { items } = req.body;
+            const { items, guestId, guestName } = req.body;
 
             let order = await Order.findOne({ tableNumber, status: 'active' });
-
             if (!order) {
-                // If no active order, create a new one automatically (first round)
                 order = new Order({
                     tableNumber,
-                    totemId: parseInt(tableNumber) || 0, // Fallback to tableNumber as totemId
+                    totemId: parseInt(tableNumber) || 0,
                     items: [],
                     totalAmount: 0
                 });
             }
 
-            // Append new items and update total
             let addedAmount = 0;
             const newItems = items.map(item => {
                 addedAmount += item.price * item.quantity;
@@ -77,8 +76,9 @@ router.post('/orders/table/:tableNumber/add-items',
                     ...item,
                     status: 'pending',
                     orderedBy: {
-                        id: req.user.userId,
-                        name: req.user.username
+                        // If waiter provides a guest, use it. Otherwise, it's an orphan.
+                        id: guestId || 'orphan',
+                        name: guestName || 'Huérfano'
                     }
                 };
             });
@@ -88,11 +88,46 @@ router.post('/orders/table/:tableNumber/add-items',
             await order.save();
 
             const io = req.app.get('io');
-            if (io) {
-                io.emit('order-updated', order);
-            }
+            if (io) io.emit('order-updated', order);
 
             res.status(200).json(order);
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    }
+);
+
+// PATCH /orders/:orderId/items/:itemId/associate - Cashier associating orphan item to a user
+router.patch('/orders/:orderId/items/:itemId/associate',
+    [
+        param('orderId').isMongoId(),
+        param('itemId').notEmpty(),
+        body('userId').notEmpty().withMessage('userId is required'),
+        body('userName').notEmpty().withMessage('userName is required')
+    ],
+    validate,
+    verifyToken,
+    async (req, res) => {
+        try {
+            const order = await Order.findById(req.params.orderId);
+            if (!order) return res.status(404).json({ error: 'Order not found' });
+
+            const item = order.items.id(req.params.itemId) || 
+                         order.items.find(i => i.id === req.params.itemId || String(i._id) === req.params.itemId);
+            
+            if (!item) return res.status(404).json({ error: 'Item not found' });
+
+            item.orderedBy = {
+                id: req.body.userId,
+                name: req.body.userName
+            };
+
+            await order.save();
+            
+            const io = req.app.get('io');
+            if (io) io.emit('order-updated', order);
+
+            res.json(order);
         } catch (error) {
             res.status(500).json({ error: error.message });
         }
@@ -285,6 +320,15 @@ router.post('/orders/:orderId/checkout',
             let totalPaidFlag = false;
 
             if (splitType === 'by-user' && userId) {
+                // Check if there are ANY orphans in the order before allowing per-user payment
+                const hasOrphans = order.items.some(item => item.orderedBy.id === 'orphan' && !item.isPaid);
+                if (hasOrphans) {
+                    return res.status(400).json({ 
+                        error: 'Cannot process per-user payment while orphan items exist. Please associate all items first.',
+                        code: 'ORPHANS_EXIST'
+                    });
+                }
+
                 // BY USER: Pay everything ordered by a specific person
                 const userItems = order.items.filter(item => 
                     item.orderedBy.id === userId && !item.isPaid
