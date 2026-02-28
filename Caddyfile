@@ -5,11 +5,9 @@
     admin off
 }
 
-# Dynamic Configuration for Disher.io
-# When DOMAIN is an IP address (http://x.x.x.x), Caddy serves HTTP only (no TLS).
-# When DOMAIN is a real domain, Caddy auto-provisions HTTPS via Let's Encrypt.
+# Primary Domain (Dynamic from .env)
+# This handles http://disher.local, http://IP, or https://domain.com
 {$DOMAIN} {
-
     # API Backend
     handle /api/* {
         reverse_proxy backend:3000
@@ -27,12 +25,7 @@
 
     # Frontend - Angular App (fallback for all other routes)
     handle {
-        reverse_proxy frontend:80 {
-            header_up Host {host}
-            header_up X-Real-IP {remote_host}
-            header_up X-Forwarded-For {remote_host}
-            header_up X-Forwarded-Proto {scheme}
-        }
+        reverse_proxy frontend:80
     }
 
     # Security Headers
