@@ -12,7 +12,17 @@ const UserSchema = new mongoose.Schema({
         default: 'admin'
     },
     restaurantSlug: { type: String, required: true, default: 'default' },
-    active: { type: Boolean, default: true }
+    active: { type: Boolean, default: true },
+
+    // Printing Configuration
+    printerId: String, // Ref to restaurant.printers.id
+    printTemplate: {
+        header: { type: String, default: '' },
+        footer: { type: String, default: 'Gracias por su visita' },
+        showLogo: { type: Boolean, default: true },
+        showPrices: { type: Boolean, default: true },
+        fontSize: { type: String, enum: ['small', 'medium', 'large'], default: 'medium' }
+    }
 }, { timestamps: true });
 
 // Hash password before saving

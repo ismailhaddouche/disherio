@@ -9,6 +9,7 @@ const TotemSchema = new mongoose.Schema({
 
 const RestaurantSchema = new mongoose.Schema({
     name: { type: String, required: true },
+    slug: { type: String, required: true, unique: true },
     address: String,
     phone: String,
     email: String,
@@ -18,6 +19,15 @@ const RestaurantSchema = new mongoose.Schema({
     // Totems configuration
     totems: [TotemSchema],
     nextTotemId: { type: Number, default: 1 },
+
+    // Printers Catalog
+    printers: [{
+        id: { type: String, required: true },
+        name: { type: String, required: true },
+        type: { type: String, enum: ['network', 'usb', 'cloud'], default: 'network' },
+        address: String, // IP Address or Device Path
+        connection: String // e.g. "9100" for network ports
+    }],
 
     // Kitchen stations
     stations: [{

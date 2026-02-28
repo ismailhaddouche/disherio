@@ -119,4 +119,60 @@ router.delete('/users/:id',
     }
 );
 
+// PATCH /users/:id/print-settings - Update printer and template for a user
+router.patch('/users/:id/print-settings',
+    verifyToken,
+    requireAdmin,
+    param('id').isMongoId().withMessage('Invalid user ID'),
+    [
+        body('printerId').optional().notEmpty().withMessage('printerId cannot be empty'),
+        body('printTemplate').optional().isObject().withMessage('printTemplate must be an object')
+    ],
+    validate,
+    async (req, res) => {
+        try {
+            const user = await User.findById(req.params.id);
+            if (!user) return res.status(404).json({ error: 'User not found' });
+
+            if (req.body.printerId) user.printerId = req.body.printerId;
+            if (req.body.printTemplate) {
+                user.printTemplate = { ...user.printTemplate.toObject(), ...req.body.printTemplate };
+            }
+
+            await user.save();
+            res.json(user);
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    }
+);
+
+// POST /users/:id/copy-print-settings/:sourceUserId - Copy template from another user
+router.post('/users/:id/copy-print-settings/:sourceUserId',
+    verifyToken,
+    requireAdmin,
+    [
+        param('id').isMongoId().withMessage('Invalid target user ID'),
+        param('sourceUserId').isMongoId().withMessage('Invalid source user ID')
+    ],
+    validate,
+    async (req, res) => {
+        try {
+            const sourceUser = await User.findById(req.params.sourceUserId);
+            if (!sourceUser) return res.status(404).json({ error: 'Source user not found' });
+
+            const targetUser = await User.findById(req.params.id);
+            if (!targetUser) return res.status(404).json({ error: 'Target user not found' });
+
+            targetUser.printerId = sourceUser.printerId;
+            targetUser.printTemplate = sourceUser.printTemplate;
+
+            await targetUser.save();
+            res.json({ message: 'Print settings copied successfully', targetUser });
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    }
+);
+
 module.exports = router;
