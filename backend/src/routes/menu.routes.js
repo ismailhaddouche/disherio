@@ -12,6 +12,22 @@ const validate = (req, res, next) => {
     next();
 };
 
+// Middleware to restrict certain actions to admin OR kitchen (for specific categories)
+const authorizeKitchenAction = async (req, res, next) => {
+    if (req.user.role === 'admin') return next();
+    
+    if (req.user.role === 'kitchen') {
+        // If it's a POST/DELETE, check if the category is "Fuera de Carta"
+        const category = req.body.category || (req.params.id ? (await MenuItem.findById(req.params.id))?.category : null);
+        if (category === 'Fuera de Carta') {
+            return next();
+        }
+        return res.status(403).json({ error: 'La cocina solo puede gestionar platos "Fuera de Carta"' });
+    }
+    
+    res.status(403).json({ error: 'Acceso denegado' });
+};
+
 // GET /menu - List all menu items
 router.get('/menu', async (req, res) => {
     try {
@@ -24,19 +40,25 @@ router.get('/menu', async (req, res) => {
 
 // POST /menu - Create or update a menu item
 router.post('/menu',
+    verifyToken,
+    authorizeKitchenAction,
     [
         body('name').trim().notEmpty().withMessage('Item name is required'),
         body('price').isFloat({ min: 0 }).withMessage('Price must be a non-negative number'),
         body('category').trim().notEmpty().withMessage('Category is required')
     ],
     validate,
-    verifyToken,
     async (req, res) => {
         try {
             const { _id, ...data } = req.body;
 
             let item;
             if (_id) {
+                // If kitchen is updating, ensure they don't change category to something else
+                if (req.user.role === 'kitchen' && data.category !== 'Fuera de Carta') {
+                    return res.status(403).json({ error: 'La cocina no puede mover platos fuera de "Fuera de Carta"' });
+                }
+
                 item = await MenuItem.findByIdAndUpdate(_id, data, { new: true });
                 if (!item) {
                     return res.status(404).json({ error: 'Menu item not found' });
@@ -60,9 +82,10 @@ router.post('/menu',
 
 // DELETE /menu/:id - Delete a menu item
 router.delete('/menu/:id',
+    verifyToken,
+    authorizeKitchenAction,
     param('id').isMongoId().withMessage('Invalid menu item ID'),
     validate,
-    verifyToken,
     async (req, res) => {
         try {
             const item = await MenuItem.findByIdAndDelete(req.params.id);
@@ -82,11 +105,15 @@ router.delete('/menu/:id',
     }
 );
 
-// POST /menu/:productId/toggle - Toggle item availability
+// POST /menu/:productId/toggle - Toggle item availability (Allow both Admin and Kitchen)
 router.post('/menu/:productId/toggle',
+    verifyToken,
+    async (req, res, next) => {
+        if (['admin', 'kitchen'].includes(req.user.role)) return next();
+        res.status(403).json({ error: 'Solo administración o cocina pueden cambiar la disponibilidad' });
+    },
     param('productId').isMongoId().withMessage('Invalid menu item ID'),
     validate,
-    verifyToken,
     async (req, res) => {
         try {
             const item = await MenuItem.findById(req.params.productId);
