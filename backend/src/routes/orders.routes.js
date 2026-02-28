@@ -41,6 +41,64 @@ router.get('/orders/table/:tableNumber',
     }
 );
 
+// POST /orders/table/:tableNumber/add-items - Waiter adding items to an existing order
+router.post('/orders/table/:tableNumber/add-items',
+    [
+        param('tableNumber').trim().notEmpty().withMessage('Table number is required'),
+        body('items').isArray({ min: 1 }).withMessage('items must be a non-empty array'),
+        body('items.*.name').notEmpty().withMessage('Item name is required'),
+        body('items.*.price').isFloat({ min: 0 }).withMessage('Item price must be non-negative'),
+        body('items.*.quantity').isInt({ min: 1 }).withMessage('Item quantity must be at least 1')
+    ],
+    validate,
+    verifyToken, // Ensure only logged-in staff can use this
+    async (req, res) => {
+        try {
+            const { tableNumber } = req.params;
+            const { items } = req.body;
+
+            let order = await Order.findOne({ tableNumber, status: 'active' });
+
+            if (!order) {
+                // If no active order, create a new one automatically (first round)
+                order = new Order({
+                    tableNumber,
+                    totemId: parseInt(tableNumber) || 0, // Fallback to tableNumber as totemId
+                    items: [],
+                    totalAmount: 0
+                });
+            }
+
+            // Append new items and update total
+            let addedAmount = 0;
+            const newItems = items.map(item => {
+                addedAmount += item.price * item.quantity;
+                return {
+                    ...item,
+                    status: 'pending',
+                    orderedBy: {
+                        id: req.user.userId,
+                        name: req.user.username
+                    }
+                };
+            });
+
+            order.items.push(...newItems);
+            order.totalAmount += addedAmount;
+            await order.save();
+
+            const io = req.app.get('io');
+            if (io) {
+                io.emit('order-updated', order);
+            }
+
+            res.status(200).json(order);
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    }
+);
+
 // POST /orders - Create a new order
 router.post('/orders',
     [
