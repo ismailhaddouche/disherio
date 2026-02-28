@@ -11,7 +11,7 @@ const UserSchema = new mongoose.Schema({
         enum: ['admin', 'kitchen', 'pos', 'customer'],
         default: 'admin'
     },
-    restaurantSlug: { type: String, required: true },
+    restaurantSlug: { type: String, required: true, default: 'default' },
     active: { type: Boolean, default: true }
 }, { timestamps: true });
 
