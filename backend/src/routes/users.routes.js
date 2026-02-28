@@ -12,21 +12,18 @@ const validate = (req, res, next) => {
     next();
 };
 
-// Secure all user management routes
-router.use(verifyToken);
-
 // Middleware to ensure admin role
 const requireAdmin = (req, res, next) => {
-    if (req.user.role !== 'admin') {
-        return res.status(403).json({ error: 'Admin role required' });
+    if (!req.user || req.user.role !== 'admin') {
+        return res.status(403).json({ error: 'Acceso denegado: Se requiere rol de administrador' });
     }
     next();
 };
 
-// GET /users - Get all users
-router.get('/users', requireAdmin, async (req, res) => {
+// GET /users/restaurant/:slug - Get all users for a restaurant
+router.get('/users/restaurant/:slug', verifyToken, requireAdmin, async (req, res) => {
     try {
-        const users = await User.find().select('-password');
+        const users = await User.find({ restaurantSlug: req.params.slug }).select('-password');
         res.json(users);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -35,6 +32,7 @@ router.get('/users', requireAdmin, async (req, res) => {
 
 // POST /users - Create or update user
 router.post('/users',
+    verifyToken,
     requireAdmin,
     [
         body('username').trim().notEmpty().withMessage('Username is required'),
@@ -50,6 +48,11 @@ router.post('/users',
     async (req, res) => {
         try {
             const { _id, ...data } = req.body;
+
+            // Prevent creating users for other restaurants
+            if (data.restaurantSlug !== req.user.restaurantSlug && req.user.role !== 'admin') {
+                return res.status(403).json({ error: 'No puedes crear usuarios para otro restaurante' });
+            }
 
             let user;
             if (_id) {
@@ -72,6 +75,7 @@ router.post('/users',
 
 // DELETE /users/:id - Delete user
 router.delete('/users/:id',
+    verifyToken,
     requireAdmin,
     param('id').isMongoId().withMessage('Invalid user ID'),
     validate,
