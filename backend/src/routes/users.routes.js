@@ -20,6 +20,16 @@ const requireAdmin = (req, res, next) => {
     next();
 };
 
+// GET /users - Get all users (Compatible with frontend expectation)
+router.get('/users', verifyToken, requireAdmin, async (req, res) => {
+    try {
+        const users = await User.find().select('-password');
+        res.json(users);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // GET /users/restaurant/:slug - Get all users for a restaurant
 router.get('/users/restaurant/:slug', verifyToken, requireAdmin, async (req, res) => {
     try {
@@ -68,7 +78,7 @@ router.post('/users',
         body('username').trim().notEmpty().withMessage('Username is required'),
         body('role')
             .notEmpty().withMessage('Role is required')
-            .isIn(['admin', 'kitchen', 'pos']).withMessage('Role must be admin, kitchen, or pos'),
+            .isIn(['admin', 'kitchen', 'pos', 'customer', 'waiter']).withMessage('Invalid role'),
         body('password')
             .if(body('_id').not().exists())
             .notEmpty().withMessage('Password is required for new users')
@@ -78,11 +88,6 @@ router.post('/users',
     async (req, res) => {
         try {
             const { _id, ...data } = req.body;
-
-            // Prevent creating users for other restaurants
-            if (data.restaurantSlug !== req.user.restaurantSlug && req.user.role !== 'admin') {
-                return res.status(403).json({ error: 'No puedes crear usuarios para otro restaurante' });
-            }
 
             let user;
             if (_id) {
