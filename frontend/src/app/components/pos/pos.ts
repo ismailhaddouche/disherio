@@ -274,23 +274,24 @@ export class FilterOccupiedPipe implements PipeTransform {
 
     .tables-grid {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
       gap: 12px;
     }
 
     .history-list { display: flex; flex-direction: column; gap: 12px; }
     .history-card { padding: 16px; border: 1px solid rgba(255,255,255,0.05); cursor: default; }
-    .h-top { display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 8px; }
+    .h-top { display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 8px; }
     .h-id { font-family: monospace; color: var(--text-muted); }
     .h-date { color: var(--text-muted); opacity: 0.8; }
-    .h-total { font-size: 1.2rem; font-weight: bold; color: var(--highlight); }
+    .h-total { font-size: 1.3rem; font-weight: bold; color: var(--highlight); }
     
-    .h-bottom { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; }
-    .h-actions { display: flex; gap: 8px; }
+    .h-bottom { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; }
+    .h-actions { display: flex; gap: 12px; }
     .btn-icon { 
         background: none; border: 1px solid rgba(255,255,255,0.2); 
-        border-radius: 6px; padding: 6px 10px; cursor: pointer; color: var(--text-base); 
-        opacity: 0.7; transition: all 0.2s; font-size: 1.1rem;
+        border-radius: 8px; padding: 10px 14px; cursor: pointer; color: var(--text-base); 
+        opacity: 0.8; transition: all 0.2s; font-size: 1.2rem;
+        display: flex; align-items: center; justify-content: center;
     }
     .btn-icon:hover { opacity: 1; background: rgba(255,255,255,0.1); }
     .btn-icon.print { border-color: var(--highlight); color: var(--highlight); }
@@ -335,21 +336,24 @@ export class FilterOccupiedPipe implements PipeTransform {
       padding-bottom: 24px;
     }
     
-    .checkout-actions { display: flex; gap: 8px; }
+    .checkout-actions { display: flex; gap: 12px; flex-wrap: wrap; }
 
-    .order-id { font-size: 0.8rem; color: var(--text-muted); font-family: monospace; }
+    .order-id { font-size: 0.85rem; color: var(--text-muted); font-family: monospace; }
     .btn-print {
       background: var(--highlight);
       color: var(--bg-dark);
       border: none;
-      padding: 12px 24px;
+      padding: 16px 24px;
       border-radius: 12px;
       font-weight: 900;
+      font-size: 1rem;
       cursor: pointer;
+      flex: 1;
     }
     .btn-split {
         background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.2);
-        padding: 12px 16px; border-radius: 12px; font-weight: bold; cursor: pointer;
+        padding: 16px 20px; border-radius: 12px; font-weight: bold; cursor: pointer;
+        flex: 1;
     }
 
     .comensales-list {

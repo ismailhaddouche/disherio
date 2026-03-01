@@ -219,38 +219,46 @@ import { LucideAngularModule } from 'lucide-angular';
 
     .kds-item {
       display: flex;
+      flex-wrap: wrap;
       justify-content: space-between;
       align-items: center;
       padding: 16px;
-      margin-bottom: 8px;
+      margin-bottom: 12px;
       border-radius: 12px;
       background: rgba(255,255,255,0.03);
+      gap: 16px;
     }
 
     .kds-item.preparing { background: rgba(192, 132, 252, 0.1); border-left: 4px solid var(--accent-secondary); }
     .kds-item.ready { opacity: 0.5; background: rgba(34, 197, 94, 0.05); }
     .kds-item.cancelled { opacity: 0.5; border: 1px dashed #ef4444; }
 
-    .item-info { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+    .item-info { flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 200px; }
     .name-row { display: flex; align-items: center; gap: 8px; }
     .qty { font-weight: 900; color: var(--accent-primary); font-size: 1.1rem; }
     .name { font-weight: 700; font-size: 1.1rem; color: var(--text-base); }
-    .ordered-by { font-size: 0.75rem; color: var(--text-muted); }
+    .ordered-by { font-size: 0.85rem; color: var(--text-muted); }
 
     .action-buttons { 
       display: flex; 
+      flex-wrap: wrap;
       align-items: center; 
       gap: 12px; 
-      margin-left: 16px; 
+      flex: 1;
+      justify-content: flex-end;
     }
 
     .btn-action {
+      flex: 1;
       border: none;
-      padding: 12px 20px;
+      padding: 16px 20px; /* Larger touch target */
       border-radius: 10px;
       font-weight: 800;
+      font-size: 0.9rem;
       cursor: pointer;
       min-width: 120px;
+      max-width: 200px;
+      text-align: center;
     }
     .prepare { background: var(--accent-primary); color: var(--bg-dark); }
     .ready { background: var(--highlight); color: var(--bg-dark); }
@@ -258,34 +266,33 @@ import { LucideAngularModule } from 'lucide-angular';
         background: rgba(34, 197, 94, 0.1); 
         color: var(--highlight); 
         border: 1px solid rgba(34, 197, 94, 0.3); 
-        min-width: 60px;
-        padding-left: 12px;
-        padding-right: 12px;
     }
 
-    .ready-actions { display: flex; gap: 8px; }
+    .ready-actions { display: flex; gap: 8px; flex: 1; justify-content: flex-end; flex-wrap: wrap; }
 
-
-    .done-check-box { display: flex; align-items: center; gap: 12px; }
+    .done-check-box { display: flex; align-items: center; gap: 16px; }
     .btn-reprint {
         background: rgba(255,255,255,0.05);
         border: 1px solid rgba(255,255,255,0.1);
         color: var(--text-base);
-        padding: 4px 8px;
-        border-radius: 6px;
+        padding: 10px 14px;
+        border-radius: 8px;
         cursor: pointer;
-        font-size: 0.8rem;
+        font-size: 0.9rem;
     }
 
     .btn-cancel {
       background: rgba(239, 68, 68, 0.1);
       color: #ef4444;
       border: 1px solid rgba(239, 68, 68, 0.2);
-      width: 44px;
-      height: 44px;
+      width: 50px;
+      height: 50px;
       border-radius: 10px;
       font-size: 1.2rem;
       cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
     .cancelled-tag { color: #ef4444; font-weight: bold; font-size: 0.8rem; }
