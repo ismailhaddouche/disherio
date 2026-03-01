@@ -31,7 +31,9 @@ router.post('/login',
 
             res.json({
                 username: user.username,
-                role: user.role
+                role: user.role,
+                printerId: user.printerId,
+                printTemplate: user.printTemplate
             });
         } catch (error) {
             res.status(500).json({ error: error.message });
@@ -72,7 +74,10 @@ router.post('/customer-session',
 
 // POST /auth/logout
 router.post('/logout', (req, res) => {
-    res.clearCookie(COOKIE_NAME, { path: '/' });
+    const { getCookieOptions, COOKIE_NAME } = require('../middleware/auth.middleware');
+    const options = { ...getCookieOptions() };
+    delete options.maxAge; // Remove maxAge for clearing
+    res.clearCookie(COOKIE_NAME, { path: options.path || '/' });
     res.json({ message: 'Logged out successfully' });
 });
 

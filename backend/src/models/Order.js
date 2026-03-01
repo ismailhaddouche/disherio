@@ -47,4 +47,9 @@ const OrderSchema = new mongoose.Schema({
     }
 }, { timestamps: true });
 
+// Indexes for performance optimization
+OrderSchema.index({ status: 1, createdAt: -1 });
+OrderSchema.index({ totemId: 1, status: 1 });
+OrderSchema.index({ tableNumber: 1, status: 1 });
+
 module.exports = mongoose.model('Order', OrderSchema);

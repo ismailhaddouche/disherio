@@ -14,14 +14,16 @@ const validate = (req, res, next) => {
 
 // Middleware to ensure admin role
 const requireAdmin = (req, res, next) => {
+    console.log(`[DEBUG AUTH] User: ${req.user?.userId}, Role: ${req.user?.role}`);
     if (!req.user || req.user.role !== 'admin') {
+        console.error(`[AUTH DENIED] User with role ${req.user?.role} tried to access admin route`);
         return res.status(403).json({ error: 'Acceso denegado: Se requiere rol de administrador' });
     }
     next();
 };
 
-// GET /users - Get all users (Compatible with frontend expectation)
-router.get('/users', verifyToken, requireAdmin, async (req, res) => {
+// GET / - List all users (Full path: /api/users/)
+router.get('/', verifyToken, requireAdmin, async (req, res) => {
     try {
         const users = await User.find().select('-password');
         res.json(users);
@@ -30,8 +32,8 @@ router.get('/users', verifyToken, requireAdmin, async (req, res) => {
     }
 });
 
-// GET /users/restaurant/:slug - Get all users for a restaurant
-router.get('/users/restaurant/:slug', verifyToken, requireAdmin, async (req, res) => {
+// GET /restaurant/:slug - Get users for a restaurant
+router.get('/restaurant/:slug', verifyToken, requireAdmin, async (req, res) => {
     try {
         const users = await User.find({ restaurantSlug: req.params.slug }).select('-password');
         res.json(users);
@@ -40,8 +42,8 @@ router.get('/users/restaurant/:slug', verifyToken, requireAdmin, async (req, res
     }
 });
 
-// PATCH /users/me - Update own profile
-router.patch('/users/me',
+// PATCH /me - Update own profile
+router.patch('/me',
     verifyToken,
     [
         body('username').optional().trim().notEmpty().withMessage('Username cannot be empty'),
@@ -70,8 +72,8 @@ router.patch('/users/me',
     }
 );
 
-// POST /users - Create or update user
-router.post('/users',
+// POST / - Create or update user
+router.post('/',
     verifyToken,
     requireAdmin,
     [
@@ -108,8 +110,8 @@ router.post('/users',
     }
 );
 
-// DELETE /users/:id - Delete user
-router.delete('/users/:id',
+// DELETE /:id - Delete user
+router.delete('/:id',
     verifyToken,
     requireAdmin,
     param('id').isMongoId().withMessage('Invalid user ID'),
@@ -124,8 +126,8 @@ router.delete('/users/:id',
     }
 );
 
-// PATCH /users/:id/print-settings - Update printer and template for a user
-router.patch('/users/:id/print-settings',
+// PATCH /:id/print-settings - Update printer settings
+router.patch('/:id/print-settings',
     verifyToken,
     requireAdmin,
     param('id').isMongoId().withMessage('Invalid user ID'),
@@ -152,8 +154,8 @@ router.patch('/users/:id/print-settings',
     }
 );
 
-// POST /users/:id/copy-print-settings/:sourceUserId - Copy template from another user
-router.post('/users/:id/copy-print-settings/:sourceUserId',
+// POST /:id/copy-print-settings/:sourceUserId
+router.post('/:id/copy-print-settings/:sourceUserId',
     verifyToken,
     requireAdmin,
     [

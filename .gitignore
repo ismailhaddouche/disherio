@@ -127,3 +127,4 @@ docs_local/
 *.orig
 *.rej
 .merge_file_*
+/backend/public/uploads

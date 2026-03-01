@@ -4,12 +4,16 @@ const helmet = require('helmet');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const cookieParser = require('cookie-parser');
+const path = require('path');
 const routes = require('./routes');
 
 const app = express();
 
 // Trust proxy for express-rate-limit when behind Caddy
 app.set('trust proxy', 1);
+
+// Serve static files from the uploads directory
+app.use('/uploads', express.static(path.join(__dirname, '../public/uploads')));
 
 // Security: Helmet protects against common vulnerabilities
 app.use(helmet({

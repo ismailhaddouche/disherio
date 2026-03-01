@@ -31,6 +31,8 @@ services:
         condition: service_healthy
     networks:
       - disher-network
+    volumes:
+      - uploads-data:/app/public/uploads
     healthcheck:
       test: ["CMD", "node", "-e", "const http=require('http');const r=http.get('http://localhost:3000/api/health',s=>{process.exit(s.statusCode===200?0:1)});r.on('error',()=>process.exit(1))"]
       interval: 15s
@@ -76,3 +78,4 @@ volumes:
   mongo-data:
   caddy-data:
   caddy-config:
+  uploads-data:

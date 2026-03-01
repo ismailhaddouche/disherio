@@ -102,6 +102,34 @@ export class StoreConfigViewModel {
         }
     }
 
+    public async uploadLogo(file: File) {
+        if (!file) return;
+        this.saving.set(true);
+        const formData = new FormData();
+        formData.append('logo', file);
+
+        try {
+            const res = await fetch(`${environment.apiUrl}/api/upload-logo`, {
+                method: 'POST',
+                credentials: 'include', // Ensure httpOnly cookie is sent
+                body: formData
+            });
+
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.error || 'Error al subir el logo');
+            }
+
+            const { url } = await res.json();
+            this.config.set({ ...this.config(), logo: url });
+            
+        } catch (e: any) {
+            alert(e.message);
+        } finally {
+            this.saving.set(false);
+        }
+    }
+
     // Helpers for binding nested objects
     updateSocial(platform: string, value: string) {
         const current = this.config();

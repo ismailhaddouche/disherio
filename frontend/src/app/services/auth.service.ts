@@ -8,6 +8,14 @@ export type UserRole = 'admin' | 'kitchen' | 'pos' | 'customer' | 'waiter';
 export interface UserSession {
     username: string;
     role: UserRole;
+    printerId?: string;
+    printTemplate?: {
+        header?: string;
+        footer?: string;
+        showLogo?: boolean;
+        showPrices?: boolean;
+        fontSize?: string;
+    };
 }
 
 @Injectable({

@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { StoreConfigViewModel } from './store-config.viewmodel';
 import { AuthService } from '../../services/auth.service';
 import { LucideAngularModule } from 'lucide-angular';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-store-config',
@@ -41,9 +42,17 @@ import { LucideAngularModule } from 'lucide-angular';
                 </div>
 
                 <div class="form-group">
-                    <label>Logo (URL)</label>
-                    <input type="url" [(ngModel)]="vm.config().logo" class="glass-input" placeholder="https://ejemplo.com/logo.png">
-                    <small *ngIf="vm.config().logo">Vista previa: <img [src]="vm.config().logo" style="height: 20px; vertical-align: middle"></small>
+                    <label>Logo del Restaurante</label>
+                    <div style="display:flex; gap: 12px; align-items:center;">
+                        <input type="text" [(ngModel)]="vm.config().logo" class="glass-input" placeholder="https://ejemplo.com/logo.png" style="flex:1">
+                        <button class="btn-secondary" style="padding: 12px; border-radius: 12px; display: flex; align-items: center; background: rgba(255,255,255,0.05); color: var(--text-base); border: 1px solid var(--glass-border); cursor: pointer;" (click)="logoInput.click()" title="Subir imagen">
+                            <lucide-icon name="camera" [size]="18"></lucide-icon>
+                        </button>
+                        <input type="file" #logoInput hidden (change)="vm.uploadLogo(logoInput.files![0])" accept="image/*">
+                    </div>
+                    <small *ngIf="vm.config().logo">
+                        Vista previa: <img [src]="vm.config().logo.startsWith('/') ? environment.apiUrl + vm.config().logo : vm.config().logo" style="height: 30px; vertical-align: middle; border-radius: 4px; margin-left: 8px;">
+                    </small>
                 </div>
             </div>
 
@@ -344,4 +353,5 @@ import { LucideAngularModule } from 'lucide-angular';
 })
 export class StoreConfigComponent {
   public vm = inject(StoreConfigViewModel);
+  public environment = environment;
 }

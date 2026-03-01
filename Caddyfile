@@ -6,7 +6,6 @@
 }
 
 # Primary Domain (Dynamic from .env)
-# This handles http://disher.local, http://IP, or https://domain.com
 {$DOMAIN} {
     # API Backend
     handle /api/* {
@@ -15,12 +14,7 @@
 
     # Socket.io WebSocket support
     handle /socket.io/* {
-        reverse_proxy backend:3000 {
-            header_up Host {host}
-            header_up X-Real-IP {remote_host}
-            header_up Upgrade {>Upgrade}
-            header_up Connection {>Connection}
-        }
+        reverse_proxy backend:3000
     }
 
     # Frontend - Angular App (fallback for all other routes)
