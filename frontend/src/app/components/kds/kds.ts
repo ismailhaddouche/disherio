@@ -14,8 +14,8 @@ import { LucideAngularModule } from 'lucide-angular';
     <div class="kds-container animate-fade-in">
       <header class="view-header" style="margin-bottom: 0;">
         <div>
-          <h1 class="view-title"><lucide-icon name="chef-hat" [size]="28" class="text-muted"></lucide-icon> {{ theme.restaurantName ? theme.restaurantName.toUpperCase() : 'KITCHEN' }}</h1>
-          <p class="view-desc">Pantalla de Gestión de Cocina (KDS).</p>
+          <h1 class="view-title"><lucide-icon name="chef-hat" [size]="28" class="text-muted"></lucide-icon> Pantalla Cocina (KDS)</h1>
+          <p class="view-desc">Gestión de comandas y estado de preparación.</p>
         </div>
         <div class="kds-controls">
           @if (vm.error()) {
