@@ -94,50 +94,25 @@ import { LucideAngularModule } from 'lucide-angular';
           <!-- Appearance -->
           <section class="card-section glass-card">
             <h2 class="card-title">Apariencia de la App</h2>
-            <p class="card-subtitle">Personaliza los colores que ven tus clientes.</p>
+            <p class="card-subtitle">Personaliza los colores que ven tus clientes y tu equipo.</p>
 
-            <div class="colors-grid">
-                <div class="color-picker">
-                    <label>Color Principal</label>
-                    <div class="cp-wrapper">
-                        <input type="color" [ngModel]="vm.config().theme?.primaryColor" (ngModelChange)="vm.updateTheme('primaryColor', $event)">
-                        <input type="text" [ngModel]="vm.config().theme?.primaryColor" (ngModelChange)="vm.updateTheme('primaryColor', $event)" class="glass-input code">
+            <div class="themes-grid">
+                @for (theme of vm.predefinedThemes; track theme.id) {
+                    <div class="theme-card glass-card" 
+                         [class.active]="vm.isThemeActive(theme.id)"
+                         (click)="vm.selectPredefinedTheme(theme.id)">
+                        
+                        <div class="theme-preview" [style.background]="theme.colors.backgroundColor">
+                            <div class="theme-accent" [style.background]="'linear-gradient(135deg, ' + theme.colors.primaryColor + ', ' + theme.colors.secondaryColor + ')'"></div>
+                            <div class="theme-text" [style.color]="theme.colors.textColor">Aa</div>
+                        </div>
+                        
+                        <div class="theme-info">
+                            <span class="theme-name">{{ theme.name }}</span>
+                            <lucide-icon *ngIf="vm.isThemeActive(theme.id)" name="check-circle-2" [size]="18" class="text-primary"></lucide-icon>
+                        </div>
                     </div>
-                </div>
-
-                <div class="color-picker">
-                    <label>Color Secundario</label>
-                    <div class="cp-wrapper">
-                        <input type="color" [ngModel]="vm.config().theme?.secondaryColor" (ngModelChange)="vm.updateTheme('secondaryColor', $event)">
-                        <input type="text" [ngModel]="vm.config().theme?.secondaryColor" (ngModelChange)="vm.updateTheme('secondaryColor', $event)" class="glass-input code">
-                    </div>
-                </div>
-
-                <div class="color-picker">
-                    <label>Fondo App</label>
-                    <div class="cp-wrapper">
-                        <input type="color" [ngModel]="vm.config().theme?.backgroundColor" (ngModelChange)="vm.updateTheme('backgroundColor', $event)">
-                        <input type="text" [ngModel]="vm.config().theme?.backgroundColor" (ngModelChange)="vm.updateTheme('backgroundColor', $event)" class="glass-input code">
-                    </div>
-                </div>
-
-                <div class="color-picker">
-                    <label>Color de Texto</label>
-                    <div class="cp-wrapper">
-                        <input type="color" [ngModel]="vm.config().theme?.textColor" (ngModelChange)="vm.updateTheme('textColor', $event)">
-                        <input type="text" [ngModel]="vm.config().theme?.textColor" (ngModelChange)="vm.updateTheme('textColor', $event)" class="glass-input code">
-                    </div>
-                </div>
-            </div>
-
-            <div class="preview-box" [style.background]="vm.config().theme?.backgroundColor">
-                <div class="preview-card" 
-                     [style.border-top-color]="vm.config().theme?.primaryColor"
-                     [style.color]="vm.config().theme?.textColor">
-                    <h3 [style.color]="vm.config().theme?.textColor">{{ vm.config().name || 'Nombre Restaurante' }}</h3>
-                    <p style="font-size: 0.8rem; opacity: 0.8">Ejemplo de texto con el color seleccionado.</p>
-                    <button [style.background]="vm.config().theme?.secondaryColor">Botón Acción</button>
-                </div>
+                }
             </div>
           </section>
 
@@ -305,33 +280,62 @@ import { LucideAngularModule } from 'lucide-angular';
     .input-icon span { font-size: 1.2rem; }
     .input-icon input { flex: 1; }
 
-    .colors-grid { display: flex; flex-direction: column; gap: 12px; }
-    .color-picker { display: flex; justify-content: space-between; align-items: center; }
-    .cp-wrapper { display: flex; gap: 8px; align-items: center; }
-    
-    input[type="color"] {
-        width: 40px; height: 40px; padding: 0; border: none; cursor: pointer; background: none;
+    .themes-grid { 
+        display: grid; 
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); 
+        gap: 16px; 
+        margin-top: 12px; 
     }
-    .glass-input.code { width: 80px; text-align: center; font-family: monospace; }
-
-    .preview-box {
-        margin-top: 16px;
-        padding: 24px;
-        border-radius: 12px;
-        border: 1px dashed rgba(255,255,255,0.2);
-        display: flex; justify-content: center;
+    .theme-card { 
+        cursor: pointer; 
+        padding: 12px; 
+        border: 2px solid transparent; 
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
     }
-    .preview-card {
-        padding: 16px;
-        background: rgba(255,255,255,0.1);
-        border-radius: 8px;
-        border-top: 4px solid;
-        text-align: center;
-        width: 100%;
+    .theme-card:hover { 
+        border-color: rgba(255,255,255,0.2); 
+        transform: translateY(-2px); 
     }
-    .preview-card button {
-        margin-top: 8px; border: none; padding: 8px 16px; border-radius: 4px; color: white; font-weight: bold;
+    .theme-card.active { 
+        border-color: var(--accent-primary); 
+        background: rgba(255,255,255,0.05);
+        box-shadow: 0 8px 24px -4px rgba(99, 102, 241, 0.3); 
     }
+    .theme-preview { 
+        height: 80px; 
+        border-radius: 8px; 
+        position: relative; 
+        overflow: hidden; 
+        display: flex; 
+        align-items: center; 
+        justify-content: center; 
+        border: 1px solid rgba(255,255,255,0.1); 
+    }
+    .theme-accent { 
+        position: absolute; 
+        top: 0; 
+        left: 0; 
+        right: 0; 
+        height: 6px; 
+    }
+    .theme-text { 
+        font-family: 'Space Grotesk', sans-serif; 
+        font-weight: 800; 
+        font-size: 1.5rem; 
+    }
+    .theme-info { 
+        display: flex; 
+        justify-content: space-between; 
+        align-items: center; 
+    }
+    .theme-name { 
+        font-weight: 600; 
+        font-size: 0.85rem; 
+    }
+    .text-primary { color: var(--accent-primary); }
 
     /* Billing Section */
     .billing-section { background: linear-gradient(135deg, rgba(59, 130, 246, 0.05), rgba(16, 185, 129, 0.05)); }
