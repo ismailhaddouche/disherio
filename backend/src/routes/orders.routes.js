@@ -13,7 +13,7 @@ const validate = (req, res, next) => {
     next();
 };
 
-// GET / - List active orders (Full: /api/orders/)
+// GET / - List active orders (Restricted to staff)
 router.get('/', verifyToken, async (req, res) => {
     try {
         const orders = await Order.find({ status: 'active' }).sort({ createdAt: -1 });
@@ -23,7 +23,7 @@ router.get('/', verifyToken, async (req, res) => {
     }
 });
 
-// GET /table/:tableNumber - Get order for table
+// GET /table/:tableNumber - Get order for table (Public for Totem)
 router.get('/table/:tableNumber',
     param('tableNumber').trim().notEmpty().withMessage('Table number is required'),
     validate,
@@ -33,15 +33,16 @@ router.get('/table/:tableNumber',
                 tableNumber: req.params.tableNumber,
                 status: 'active'
             });
-            res.json(order);
+            res.json(order || null);
         } catch (error) {
             res.status(500).json({ error: error.message });
         }
     }
 );
 
-// POST /table/:tableNumber/add-items - Waiter adding items
+// POST /table/:tableNumber/add-items - Waiter adding items (Restricted)
 router.post('/table/:tableNumber/add-items',
+    verifyToken,
     [
         param('tableNumber').trim().notEmpty().withMessage('Table number is required'),
         body('items').isArray({ min: 1 }).withMessage('items must be a non-empty array'),
@@ -50,7 +51,6 @@ router.post('/table/:tableNumber/add-items',
         body('items.*.quantity').isInt({ min: 1 }).withMessage('Item quantity must be at least 1')
     ],
     validate,
-    verifyToken,
     async (req, res) => {
         try {
             const { tableNumber } = req.params;
@@ -73,8 +73,8 @@ router.post('/table/:tableNumber/add-items',
                     ...item,
                     status: 'pending',
                     orderedBy: {
-                        id: guestId || 'orphan',
-                        name: guestName || 'Huérfano'
+                        id: guestId || 'staff',
+                        name: guestName || req.user.username || 'Personal'
                     }
                 };
             });
@@ -93,8 +93,9 @@ router.post('/table/:tableNumber/add-items',
     }
 );
 
-// PATCH /:orderId/items/:itemId/associate
+// PATCH /:orderId/items/:itemId/associate - Restricted to staff
 router.patch('/:orderId/items/:itemId/associate',
+    verifyToken,
     [
         param('orderId').isMongoId(),
         param('itemId').notEmpty(),
@@ -102,7 +103,6 @@ router.patch('/:orderId/items/:itemId/associate',
         body('userName').notEmpty()
     ],
     validate,
-    verifyToken,
     async (req, res) => {
         try {
             const order = await Order.findById(req.params.orderId);
@@ -120,20 +120,19 @@ router.patch('/:orderId/items/:itemId/associate',
     }
 );
 
-// POST / - Create or update a table order
+// POST / - Create or update a table order (Public for Totem Customers)
+// No verifyToken here to allow QR customers to order
 router.post('/',
-    verifyToken,
     [
-        body('totemId').optional().notEmpty(),
-        body('items').isArray({ min: 1 })
+        body('totemId').notEmpty().withMessage('totemId is required'),
+        body('items').isArray({ min: 1 }).withMessage('items must be an array')
     ],
     validate,
     async (req, res) => {
         try {
             const { tableNumber, totemId, items } = req.body;
-            const tId = totemId || req.user.totemId;
+            const tId = totemId;
             const tNumber = tableNumber || String(tId);
-            if (!tId) return res.status(400).json({ error: 'Totem ID required' });
 
             let order = await Order.findOne({ totemId: tId, status: 'active' });
             if (!order) {
@@ -146,7 +145,11 @@ router.post('/',
                 return {
                     ...item,
                     status: 'pending',
-                    orderedBy: { id: req.user.userId, name: req.user.username }
+                    orderedBy: { 
+                        // If they have a session cookie use it, else it's an orphan/guest
+                        id: req.user?.userId || 'guest', 
+                        name: req.user?.username || 'Invitado' 
+                    }
                 };
             });
 
@@ -163,11 +166,11 @@ router.post('/',
     }
 );
 
-// PATCH /:orderId - Update order
+// PATCH /:orderId - Update order (Restricted)
 router.patch('/:orderId',
+    verifyToken,
     param('orderId').isMongoId(),
     validate,
-    verifyToken,
     async (req, res) => {
         try {
             const order = await Order.findByIdAndUpdate(req.params.orderId, { $set: req.body }, { new: true });
@@ -181,14 +184,14 @@ router.patch('/:orderId',
     }
 );
 
-// PATCH /:orderId/items/:itemId - Status update
+// PATCH /:orderId/items/:itemId - Status update (Restricted)
 router.patch('/:orderId/items/:itemId',
+    verifyToken,
     [
         param('orderId').isMongoId(),
         body('status').notEmpty().isIn(['pending', 'preparing', 'ready', 'served', 'cancelled'])
     ],
     validate,
-    verifyToken,
     async (req, res) => {
         try {
             const order = await Order.findById(req.params.orderId);
@@ -206,15 +209,15 @@ router.patch('/:orderId/items/:itemId',
     }
 );
 
-// POST /:orderId/checkout - Process payment
+// POST /:orderId/checkout - Process payment (Restricted)
 router.post('/:orderId/checkout',
+    verifyToken,
     [
         param('orderId').isMongoId(),
         body('method').notEmpty().isIn(['cash', 'card']),
         body('splitType').optional().isIn(['equal', 'single', 'by-item', 'by-user'])
     ],
     validate,
-    verifyToken,
     async (req, res) => {
         try {
             const { splitType, parts, method, billingConfig, itemIds, userId } = req.body;
