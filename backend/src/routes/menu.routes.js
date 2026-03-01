@@ -17,7 +17,6 @@ const authorizeKitchenAction = async (req, res, next) => {
     if (req.user.role === 'admin') return next();
     
     if (req.user.role === 'kitchen') {
-        // If it's a POST/DELETE, check if the category is "Fuera de Carta"
         const category = req.body.category || (req.params.id ? (await MenuItem.findById(req.params.id))?.category : null);
         if (category === 'Fuera de Carta') {
             return next();
@@ -28,8 +27,8 @@ const authorizeKitchenAction = async (req, res, next) => {
     res.status(403).json({ error: 'Acceso denegado' });
 };
 
-// GET /menu - List all menu items
-router.get('/menu', async (req, res) => {
+// GET / - List all menu items (Full path: /api/menu/)
+router.get('/', async (req, res) => {
     try {
         const items = await MenuItem.find().sort({ category: 1, order: 1, name: 1 });
         res.json(items);
@@ -38,8 +37,8 @@ router.get('/menu', async (req, res) => {
     }
 });
 
-// POST /menu - Create or update a menu item
-router.post('/menu',
+// POST / - Create or update a menu item
+router.post('/',
     verifyToken,
     authorizeKitchenAction,
     [
@@ -54,7 +53,6 @@ router.post('/menu',
 
             let item;
             if (_id) {
-                // If kitchen is updating, ensure they don't change category to something else
                 if (req.user.role === 'kitchen' && data.category !== 'Fuera de Carta') {
                     return res.status(403).json({ error: 'La cocina no puede mover platos fuera de "Fuera de Carta"' });
                 }
@@ -80,8 +78,8 @@ router.post('/menu',
     }
 );
 
-// DELETE /menu/:id - Delete a menu item
-router.delete('/menu/:id',
+// DELETE /:id - Delete a menu item
+router.delete('/:id',
     verifyToken,
     authorizeKitchenAction,
     param('id').isMongoId().withMessage('Invalid menu item ID'),
@@ -105,8 +103,8 @@ router.delete('/menu/:id',
     }
 );
 
-// POST /menu/:productId/toggle - Toggle item availability (Allow both Admin and Kitchen)
-router.post('/menu/:productId/toggle',
+// POST /:productId/toggle - Toggle item availability
+router.post('/:productId/toggle',
     verifyToken,
     async (req, res, next) => {
         if (['admin', 'kitchen'].includes(req.user.role)) return next();
