@@ -29,6 +29,7 @@ export class POSViewModel {
     public showAddItemModal = signal<boolean>(false);
     public showCustomLineModal = signal<boolean>(false);
     public localConfig = signal<any>(null); 
+    public globalPrinters = signal<any[]>([]);
 
     public tableStates = computed(() => {
         const activeOrders = this.orders().filter(o => o.status === 'active');
@@ -80,6 +81,7 @@ export class POSViewModel {
             if (totems) this.tables.set(totems);
             if (tickets) this.tickets.set(tickets);
             if (restaurant?.billing) this.billingConfig.set(restaurant.billing);
+            if (restaurant?.printers) this.globalPrinters.set(restaurant.printers);
             if (menu) this.menuItems.set(menu);
 
         } catch (e) {
@@ -270,13 +272,26 @@ export class POSViewModel {
     }
 
     public printTicket(ticket: any) {
-        const p = this.localConfig()?.printer;
-        if (p?.type === 'thermal') {
-            console.log(`Printing to thermal ${p.ip}:${p.port}...`);
-            alert(`🖨️ (Térmica ${p.ip}) Imprimiendo Ticket ${ticket.customId}\\nTotal: ${ticket.amount}€`);
+        const currentUser = this.auth.currentUser();
+        let p = null;
+
+        // 1. First try to use the user's assigned printer
+        if (currentUser?.printerId) {
+            p = this.globalPrinters().find(pr => pr.id === currentUser.printerId);
+        }
+
+        // 2. Fallback to local device config
+        if (!p) {
+            p = this.localConfig()?.printer;
+        }
+
+        if (p?.type === 'thermal' || p?.type === 'network') {
+            const ip = p.address || p.ip;
+            console.log(`Printing to thermal/network ${ip}:${p.port || p.connection}...`);
+            alert(`🖨️ (Térmica/Red ${ip}) Imprimiendo Ticket ${ticket.customId}\\nTotal: ${ticket.amount}€\\n\\n${currentUser?.printTemplate?.header || ''}`);
         } else {
             console.log('Printing to system printer...');
-            alert(`🖨️ (Sistema) Imprimiendo Ticket ${ticket.customId}\\nTotal: ${ticket.amount}€`);
+            alert(`🖨️ (Sistema local) Imprimiendo Ticket ${ticket.customId}\\nTotal: ${ticket.amount}€`);
             window.print(); 
         }
     }
