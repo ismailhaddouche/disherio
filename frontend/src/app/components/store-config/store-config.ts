@@ -327,6 +327,18 @@ import { LucideAngularModule } from 'lucide-angular';
     .checkbox-label input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }
     .form-group.indent { margin-left: 24px; padding-left: 16px; border-left: 2px solid rgba(59, 130, 246, 0.3); }
 
+    .btn-del {
+      background: rgba(239, 68, 68, 0.05);
+      color: var(--danger); 
+      border: 1px solid rgba(239, 68, 68, 0.2);
+      padding: 8px 12px; 
+      border-radius: 8px; 
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .btn-del:hover { background: var(--danger); color: white; }
+
     /* fadeIn animation now in global styles.css */
   `]
 })
