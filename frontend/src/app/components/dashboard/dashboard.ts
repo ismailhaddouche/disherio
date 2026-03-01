@@ -75,15 +75,43 @@ import { LucideAngularModule } from 'lucide-angular';
                 <div class="totem-card glass-card">
                     <div class="totem-id">#{{ totem.id }}</div>
                     <div class="totem-name">{{ totem.name }}</div>
-                    <button class="btn-qr-action" (click)="openQR(totem.id)">
-                        Ver QR
-                    </button>
+                    
+                    <div class="totem-actions">
+                        <button class="btn-qr-action" (click)="openQR(totem.id)" title="Ver QR">
+                            <lucide-icon name="printer" [size]="14"></lucide-icon>
+                        </button>
+                        <button class="btn-qr-action" (click)="vm.editingTotem.set(totem)" title="Editar">
+                            <lucide-icon name="pen-line" [size]="14"></lucide-icon>
+                        </button>
+                        <button class="btn-qr-action btn-danger-icon" (click)="vm.deleteTotem(totem.id)" title="Eliminar">
+                            <lucide-icon name="trash-2" [size]="14"></lucide-icon>
+                        </button>
+                    </div>
                 </div>
             } @empty {
                 <div class="empty-state">No hay tótems configurados.</div>
             }
         </div>
       </div>
+
+      <!-- Edit Totem Modal -->
+      @if (vm.editingTotem(); as totem) {
+        <div class="modal-overlay" (click)="vm.editingTotem.set(null)">
+          <div class="modal-content glass-card" (click)="$event.stopPropagation()">
+            <h2 class="card-title">Editar Tótem #{{ totem.id }}</h2>
+            
+            <div class="form-group">
+                <label>Nombre del Tótem / Mesa</label>
+                <input type="text" #editName [value]="totem.name" class="glass-input" (keyup.enter)="vm.updateTotem(totem.id, editName.value)">
+            </div>
+
+            <div class="modal-actions" style="margin-top: 24px;">
+              <button class="btn-secondary" style="padding: 10px 16px; border-radius: 8px;" (click)="vm.editingTotem.set(null)">Cancelar</button>
+              <button class="btn-primary" (click)="vm.updateTotem(totem.id, editName.value)">Guardar Cambios</button>
+            </div>
+          </div>
+        </div>
+      }
 
       <!-- Main Content -->
       <div class="dashboard-content">
@@ -208,20 +236,51 @@ import { LucideAngularModule } from 'lucide-angular';
 
     .btn-qr-action {
         background: rgba(255,255,255,0.05);
-        border: 1px solid rgba(255,255,255,0.1);
+        border: 1px solid var(--glass-border);
         color: white;
-        padding: 6px 16px;
+        padding: 8px;
         border-radius: 8px;
-        font-size: 0.75rem;
         cursor: pointer;
-        width: 100%;
         transition: all 0.3s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 
     .btn-qr-action:hover {
         background: var(--accent-primary);
         color: var(--bg-dark);
     }
+
+    .btn-qr-action.btn-danger-icon:hover {
+        background: var(--danger);
+        color: white;
+    }
+
+    .totem-actions {
+        display: flex;
+        gap: 8px;
+        width: 100%;
+        margin-top: 12px;
+    }
+
+    .btn-secondary {
+      background: rgba(255,255,255,0.05);
+      color: var(--text-base);
+      border: 1px solid var(--glass-border);
+      cursor: pointer;
+    }
+
+    .modal-overlay {
+      position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+      background: rgba(0, 0, 0, 0.7); display: flex; align-items: center; justify-content: center;
+      z-index: 1000; backdrop-filter: blur(4px);
+    }
+    .modal-content {
+      max-width: 400px; width: 90%;
+      padding: 32px; display: flex; flex-direction: column; gap: 16px;
+    }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 12px; }
 
     .error-banner {
       display: flex;

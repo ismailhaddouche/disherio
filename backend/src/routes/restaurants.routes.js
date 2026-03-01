@@ -121,20 +121,29 @@ router.get('/totems', async (req, res) => {
 
 // POST /totems - Add a new totem
 router.post('/totems',
-    body('name').optional().trim(),
+    [
+        body('name').trim().notEmpty().withMessage('El nombre del tótem es obligatorio')
+    ],
+    validate,
     verifyToken,
+    requireAdmin,
     async (req, res) => {
         try {
+            const { name } = req.body;
             let restaurant = await Restaurant.findOne();
             if (!restaurant) {
-                restaurant = new Restaurant({
-                    name: process.env.RESTAURANT_NAME || 'Mi Restaurante'
-                });
+                restaurant = new Restaurant({ name: 'Mi Restaurante' });
+            }
+
+            // CHECK DUPLICATE NAME
+            const duplicate = restaurant.totems.find(t => t.name.toLowerCase() === name.toLowerCase());
+            if (duplicate) {
+                return res.status(400).json({ error: 'Ya existe un tótem con ese nombre' });
             }
 
             const newTotem = {
                 id: restaurant.nextTotemId,
-                name: req.body.name || `Mesa ${restaurant.nextTotemId}`,
+                name: name,
                 active: true
             };
 
@@ -143,6 +152,61 @@ router.post('/totems',
             await restaurant.save();
 
             res.status(201).json(newTotem);
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    }
+);
+
+// PATCH /totems/:id - Edit totem
+router.patch('/totems/:id',
+    [
+        param('id').notEmpty().withMessage('ID is required'),
+        body('name').trim().notEmpty().withMessage('Name is required')
+    ],
+    validate,
+    verifyToken,
+    requireAdmin,
+    async (req, res) => {
+        try {
+            const { id } = req.params;
+            const { name } = req.body;
+            let restaurant = await Restaurant.findOne();
+            if (!restaurant) return res.status(404).json({ error: 'Restaurant not found' });
+
+            const totem = restaurant.totems.find(t => String(t.id) === id);
+            if (!totem) return res.status(404).json({ error: 'Totem not found' });
+
+            // CHECK DUPLICATE (excluding itself)
+            const duplicate = restaurant.totems.find(t => t.name.toLowerCase() === name.toLowerCase() && String(t.id) !== id);
+            if (duplicate) return res.status(400).json({ error: 'Ya existe otro tótem con ese nombre' });
+
+            totem.name = name;
+            await restaurant.save();
+
+            res.json(totem);
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    }
+);
+
+// DELETE /totems/:id - Delete totem
+router.delete('/totems/:id',
+    [param('id').notEmpty()],
+    validate,
+    verifyToken,
+    requireAdmin,
+    async (req, res) => {
+        try {
+            const { id } = req.params;
+            let restaurant = await Restaurant.findOne();
+            if (!restaurant) return res.status(404).json({ error: 'Restaurant not found' });
+
+            restaurant.totems = restaurant.totems.filter(t => String(t.id) !== id);
+            await restaurant.save();
+
+            res.json({ message: 'Totem deleted successfully' });
         } catch (error) {
             res.status(500).json({ error: error.message });
         }

@@ -25,6 +25,9 @@ export class DashboardViewModel {
     public loading = signal<boolean>(false);
     public error = signal<string | null>(null);
 
+    // Editing State
+    public editingTotem = signal<any | null>(null);
+
     // Computed values
     public activeOrdersCount = computed(() =>
         this.orders().filter(o => o.status === 'active').length
@@ -80,17 +83,55 @@ export class DashboardViewModel {
     }
 
     public async addTotem(name: string) {
+        if (!name) return;
         try {
             const res = await fetch(`${environment.apiUrl}/api/totems`, {
                 method: 'POST',
                 headers: this.auth.getHeaders(),
                 body: JSON.stringify({ name })
             });
-            const newTotem = await res.json();
-            this.totems.update(curr => [...curr, newTotem]);
-            this.auth.logActivity('TOTEM_ADDED', { totemId: newTotem.id, name });
-        } catch (e) {
-            this.error.set('No se pudo añadir el tótem.');
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Error adding totem');
+
+            this.totems.update(curr => [...curr, data]);
+            this.auth.logActivity('TOTEM_ADDED', { totemId: data.id, name });
+        } catch (e: any) {
+            alert(e.message);
+        }
+    }
+
+    public async updateTotem(id: number, newName: string) {
+        if (!newName) return;
+        try {
+            const res = await fetch(`${environment.apiUrl}/api/totems/${id}`, {
+                method: 'PATCH',
+                headers: this.auth.getHeaders(),
+                body: JSON.stringify({ name: newName })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Error updating totem');
+
+            this.totems.update(curr => curr.map(t => t.id === id ? data : t));
+            this.auth.logActivity('TOTEM_UPDATED', { totemId: id, name: newName });
+            this.editingTotem.set(null);
+        } catch (e: any) {
+            alert(e.message);
+        }
+    }
+
+    public async deleteTotem(id: number) {
+        if (!confirm('¿Estás seguro de eliminar este tótem? Se perderá el acceso por QR actual.')) return;
+        try {
+            const res = await fetch(`${environment.apiUrl}/api/totems/${id}`, {
+                method: 'DELETE',
+                headers: this.auth.getHeaders()
+            });
+            if (!res.ok) throw new Error('Error deleting totem');
+
+            this.totems.update(curr => curr.filter(t => t.id !== id));
+            this.auth.logActivity('TOTEM_DELETED', { totemId: id });
+        } catch (e: any) {
+            alert(e.message);
         }
     }
 
