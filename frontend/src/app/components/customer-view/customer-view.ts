@@ -2,11 +2,12 @@ import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CustomerViewModel } from './customer-view.viewmodel';
 import { RouterLink, RouterLinkActive } from '@angular/router';
+import { LucideAngularModule } from 'lucide-angular';
 
 @Component({
   selector: 'app-customer-view',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, LucideAngularModule],
   providers: [CustomerViewModel],
   template: `
     <div class="customer-container">
@@ -53,7 +54,10 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
               <div class="glass-card menu-item" 
                    [class.unavailable]="!item.available"
                    (click)="vm.handleItemClick(item)">
-                <div class="item-visual">{{ item.category === 'Bebidas' ? '🍹' : '🍽️' }}</div>
+                <div class="item-visual">
+                  <lucide-icon *ngIf="item.category === 'Bebidas'" name="glass-water" [size]="28"></lucide-icon>
+                  <lucide-icon *ngIf="item.category !== 'Bebidas'" name="utensils" [size]="28"></lucide-icon>
+                </div>
                 <div class="item-details">
                   <h3>{{ item.name }}</h3>
                   <p>{{ item.description }}</p>
@@ -131,7 +135,10 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
                                              [class.selected]="vm.selectedAddons().includes(a)"
                                              (click)="vm.toggleAddon(a)">
                                             <div class="addon-info">
-                                                <span class="checkbox">{{ vm.selectedAddons().includes(a) ? '✅' : '⬜' }}</span>
+                                                <span class="checkbox">
+                                                  <lucide-icon *ngIf="vm.selectedAddons().includes(a)" name="check-circle-2" [size]="16" color="var(--highlight)"></lucide-icon>
+                                                  <lucide-icon *ngIf="!vm.selectedAddons().includes(a)" name="circle" [size]="16" color="var(--text-muted)"></lucide-icon>
+                                                </span>
                                                 <span class="name">{{ a.name }}</span>
                                             </div>
                                             <span class="price">+{{ a.price }}€</span>
@@ -173,7 +180,7 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
                         </div>
                     }
                     <div class="item-status-info">
-                      <span class="who">👤 {{ item.orderedBy?.name || 'Mesa' }}</span>
+                      <span class="who"><lucide-icon name="user" [size]="12" class="inline-icon"></lucide-icon> {{ item.orderedBy?.name || 'Mesa' }}</span>
                         <span class="status-badge" [class]="item.status">
                         {{ item.status === 'pending' ? 'Recibido' : 
                            item.status === 'preparing' ? 'En Fuego' : 
@@ -274,6 +281,8 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
       font-size: 0.8rem;
       opacity: 0.7;
     }
+    
+    .inline-icon { display: inline-block; vertical-align: text-bottom; margin-right: 4px; }
 
     .btn-checkout {
       background: rgba(255,255,255,0.05);

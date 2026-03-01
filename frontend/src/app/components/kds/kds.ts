@@ -3,11 +3,12 @@ import { CommonModule } from '@angular/common';
 import { KDSViewModel } from './kds.viewmodel';
 import { AuthService } from '../../services/auth.service';
 import { ThemeService } from '../../services/theme.service';
+import { LucideAngularModule } from 'lucide-angular';
 
 @Component({
   selector: 'app-kds',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, LucideAngularModule],
   providers: [KDSViewModel],
   template: `
     <div class="kds-container">
@@ -22,7 +23,7 @@ import { ThemeService } from '../../services/theme.service';
             <div class="err-msg">⚠️ {{ vm.error() }}</div>
           }
           <button class="btn-stock" (click)="vm.showStockManager.set(!vm.showStockManager())">
-            📦 GESTIÓN STOCK
+            <lucide-icon name="package" [size]="16" class="inline-icon"></lucide-icon> GESTIÓN STOCK
           </button>
           <div class="stat">
             <span class="val">{{ vm.filteredOrders().length }}</span>
@@ -54,7 +55,7 @@ import { ThemeService } from '../../services/theme.service';
                             <span class="qty">{{ item.quantity }}x</span>
                             <span class="name">{{ item.name }}</span>
                         </div>
-                        <span class="ordered-by">👤 {{ item.orderedBy?.name }}</span>
+                        <span class="ordered-by"><lucide-icon name="user" [size]="12" class="inline-icon"></lucide-icon> {{ item.orderedBy?.name }}</span>
                         </div>
                         
                         <div class="action-buttons">
@@ -72,14 +73,14 @@ import { ThemeService } from '../../services/theme.service';
                                 ¡LISTO!
                                 </button>
                                 <button class="btn-action ready-print" (click)="vm.updateItemStatus(order._id, item._id || item.id, 'ready', true)">
-                                🖨️ + LISTO
+                                <lucide-icon name="printer" [size]="14" class="inline-icon"></lucide-icon> + LISTO
                                 </button>
                             </div>
                         }
                         @if (item.status === 'ready') {
                             <div class="done-check-box">
-                                <div class="done-check">✅</div>
-                                <button class="btn-reprint" (click)="vm.printItemTicket(order, item)" title="Reimprimir vale">🖨️</button>
+                                <div class="done-check"><lucide-icon name="check-circle-2" [size]="20" color="var(--highlight)"></lucide-icon></div>
+                                <button class="btn-reprint" (click)="vm.printItemTicket(order, item)" title="Reimprimir vale"><lucide-icon name="printer" [size]="16"></lucide-icon></button>
                             </div>
                         }
                         @if (item.status === 'cancelled') {
@@ -92,7 +93,7 @@ import { ThemeService } from '../../services/theme.service';
                 </div>
             } @empty {
                 <div class="empty-kds">
-                <div class="empty-icon">🍳</div>
+                <div class="empty-icon"><lucide-icon name="chef-hat" [size]="64" color="var(--text-muted)"></lucide-icon></div>
                 <h2>Cocina en calma</h2>
                 <p>No hay pedidos pendientes en este momento.</p>
                 </div>
@@ -349,6 +350,7 @@ import { ThemeService } from '../../services/theme.service';
       color: #ef4444;
       border: 1px solid #ef4444;
     }
+    .inline-icon { display: inline-block; vertical-align: text-bottom; margin-right: 4px; }
 
     /* Loader, slideInRight, flash: now in global styles.css */
   `]

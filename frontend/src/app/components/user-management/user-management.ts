@@ -2,11 +2,12 @@ import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { UserManagementViewModel } from './user-management.viewmodel';
 import { AuthService } from '../../services/auth.service';
+import { LucideAngularModule } from 'lucide-angular';
 
 @Component({
     selector: 'app-user-management',
     standalone: true,
-    imports: [CommonModule],
+    imports: [CommonModule, LucideAngularModule],
     providers: [UserManagementViewModel],
     template: `
     <div class="user-management-container">
@@ -51,7 +52,7 @@ import { AuthService } from '../../services/auth.service';
                     @if (user.username !== 'admin') {
                         <button class="btn-del" (click)="vm.deleteUser(user._id)">Eliminar</button>
                     } @else {
-                        <span class="admin-lock">🔒 Sistema</span>
+                        <span class="admin-lock"><lucide-icon name="lock" [size]="12" class="inline-icon"></lucide-icon> Sistema</span>
                     }
                 </div>
              }
@@ -133,6 +134,7 @@ import { AuthService } from '../../services/auth.service';
     .btn-del:hover { background: #ef4444; color: white; }
 
     .admin-lock { font-size: 0.8rem; opacity: 0.5; margin-top: auto; display: block; text-align: right; }
+    .inline-icon { display: inline-block; vertical-align: text-bottom; margin-right: 4px; }
 
     /* fadeIn now in global styles.css */
   `]

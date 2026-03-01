@@ -2,11 +2,12 @@ import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MenuEditorViewModel } from './menu-editor.viewmodel';
+import { LucideAngularModule } from 'lucide-angular';
 
 @Component({
   selector: 'app-menu-editor',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, LucideAngularModule],
   providers: [MenuEditorViewModel],
   template: `
     <div class="editor-container">
@@ -16,7 +17,7 @@ import { MenuEditorViewModel } from './menu-editor.viewmodel';
             <img src="logo.svg" alt="Disher.io Logo" style="height: 32px; border-radius: 6px;">
             <h2 class="gradient-text" style="margin: 0;">CARTAS DISHER</h2>
           </div>
-          <button class="btn-primary" (click)="vm.selectItem(null)">+ Nuevo Plato</button>
+          <button class="btn-primary" (click)="vm.selectItem(null)"><lucide-icon name="plus" [size]="16" class="inline-icon mr-2"></lucide-icon>Nuevo Plato</button>
         </header>
 
         <div class="categories-list">
@@ -34,8 +35,8 @@ import { MenuEditorViewModel } from './menu-editor.viewmodel';
                     <h4>{{ item.name }}</h4>
                     <p class="description">{{ item.description }}</p>
                     <div class="item-footer">
-                      <span class="allergen-count">🚫 {{ item.allergens.length }}</span>
-                      <span class="variant-count">📦 {{ item.variants.length }} var.</span>
+                      <span class="allergen-count"><lucide-icon name="alert-triangle" [size]="12" class="inline-icon"></lucide-icon> {{ item.allergens.length }}</span>
+                      <span class="variant-count"><lucide-icon name="package" [size]="12" class="inline-icon"></lucide-icon> {{ item.variants.length }} var.</span>
                     </div>
                   </div>
                 }
@@ -194,7 +195,7 @@ import { MenuEditorViewModel } from './menu-editor.viewmodel';
           </div>
         } @else {
           <div class="no-selection-empty glass-card">
-            <div class="icon">📖</div>
+            <div class="icon"><lucide-icon name="book-open" [size]="64" color="var(--text-muted)"></lucide-icon></div>
             <h2>Gestor de Menú Profesional</h2>
             <p>Selecciona un plato para editar sus detalles o crea uno nuevo desde cero.</p>
           </div>
@@ -284,6 +285,9 @@ import { MenuEditorViewModel } from './menu-editor.viewmodel';
       font-size: 0.7rem; 
       opacity: 0.6;
     }
+    
+    .inline-icon { display: inline-block; vertical-align: text-bottom; margin-right: 4px; }
+    .mr-2 { margin-right: 8px; }
 
     .editor-detail { overflow-y: auto; padding-right: 8px; }
 

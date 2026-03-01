@@ -3,16 +3,17 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { StoreConfigViewModel } from './store-config.viewmodel';
 import { AuthService } from '../../services/auth.service';
+import { LucideAngularModule } from 'lucide-angular';
 
 @Component({
   selector: 'app-store-config',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, LucideAngularModule],
   providers: [StoreConfigViewModel],
   template: `
     <div class="config-container">
       <header class="config-header glass-card">
-        <h1>⚙️ Configuración de Tienda</h1>
+        <h1><lucide-icon name="settings" class="inline-icon mr-2"></lucide-icon>Configuración de Tienda</h1>
         <button class="btn-save" (click)="vm.saveConfig()">
           {{ vm.saving() ? 'Guardando...' : 'GUARDAR CAMBIOS' }}
         </button>
@@ -68,7 +69,7 @@ import { AuthService } from '../../services/auth.service';
             <div class="form-group">
                 <label>Instagram</label>
                 <div class="input-icon">
-                    <span>📸</span>
+                    <lucide-icon name="camera" class="text-muted"></lucide-icon>
                     <input type="text" [ngModel]="vm.config().socials?.instagram" (ngModelChange)="vm.updateSocial('instagram', $event)" class="glass-input" placeholder="@usuario">
                 </div>
             </div>
@@ -76,7 +77,7 @@ import { AuthService } from '../../services/auth.service';
             <div class="form-group">
                 <label>Facebook</label>
                 <div class="input-icon">
-                    <span>📘</span>
+                    <lucide-icon name="facebook" class="text-muted"></lucide-icon>
                     <input type="text" [ngModel]="vm.config().socials?.facebook" (ngModelChange)="vm.updateSocial('facebook', $event)" class="glass-input">
                 </div>
             </div>
@@ -84,7 +85,7 @@ import { AuthService } from '../../services/auth.service';
             <div class="form-group">
                 <label>Sitio Web</label>
                 <div class="input-icon">
-                    <span>🌐</span>
+                    <lucide-icon name="globe" class="text-muted"></lucide-icon>
                     <input type="text" [ngModel]="vm.config().socials?.website" (ngModelChange)="vm.updateSocial('website', $event)" class="glass-input">
                 </div>
             </div>
@@ -142,7 +143,7 @@ import { AuthService } from '../../services/auth.service';
 
           <!-- Billing Configuration -->
           <section class="config-section glass-card billing-section">
-            <h2>💳 Configuración de Facturación</h2>
+            <h2><lucide-icon name="credit-card" class="inline-icon mr-2"></lucide-icon>Configuración de Facturación</h2>
             <p class="subtitle">Configura cómo se calculan los tickets e impuestos.</p>
             
             <div class="form-group">
@@ -194,7 +195,7 @@ import { AuthService } from '../../services/auth.service';
 
           <!-- Printer Configuration (Local) -->
           <section class="config-section glass-card printer-section">
-            <h2>🖨️ Configuración de Impresora</h2>
+            <h2><lucide-icon name="printer" class="inline-icon mr-2"></lucide-icon>Configuración de Impresora</h2>
             <p class="subtitle">Configuración específica de este dispositivo.</p>
             
             <div class="form-group">
@@ -305,9 +306,12 @@ import { AuthService } from '../../services/auth.service';
       gap: 16px;
     }
 
-    h2 { font-size: 1.2rem; margin-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px; }
+    h2 { font-size: 1.2rem; margin-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px; display: flex; align-items: center; }
     .subtitle { font-size: 0.8rem; opacity: 0.6; margin-top: -8px; margin-bottom: 12px; }
-
+    .inline-icon { display: inline-block; vertical-align: text-bottom; }
+    .mr-2 { margin-right: 8px; }
+    .text-muted { color: var(--text-muted); opacity: 0.8; }
+    
     .form-group { display: flex; flex-direction: column; gap: 6px; color: var(--text-base); }
     label { font-size: 0.8rem; font-weight: bold; color: var(--text-base); opacity: 0.8; }
     

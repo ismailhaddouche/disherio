@@ -6,11 +6,12 @@ import { AuthService } from './services/auth.service';
 import { ThemeService } from './services/theme.service';
 import { SidebarComponent } from './components/sidebar/sidebar';
 import { trigger, transition, style, query, animate, group } from '@angular/animations';
+import { LucideAngularModule } from 'lucide-angular';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, CommonModule, SidebarComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, CommonModule, SidebarComponent, LucideAngularModule],
   templateUrl: './app.html',
   styleUrl: './app.css',
   animations: [

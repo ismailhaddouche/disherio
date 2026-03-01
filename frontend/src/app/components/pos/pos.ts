@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { POSViewModel, POSTable } from './pos.viewmodel';
 import { Pipe, PipeTransform } from '@angular/core';
+import { LucideAngularModule } from 'lucide-angular';
 
 @Pipe({ name: 'filterOccupied', standalone: true })
 export class FilterOccupiedPipe implements PipeTransform {
@@ -14,7 +15,7 @@ export class FilterOccupiedPipe implements PipeTransform {
 @Component({
   selector: 'app-pos',
   standalone: true,
-  imports: [CommonModule, FormsModule, FilterOccupiedPipe],
+  imports: [CommonModule, FormsModule, FilterOccupiedPipe, LucideAngularModule],
   providers: [POSViewModel],
   template: `
     <div class="pos-container">
@@ -56,8 +57,8 @@ export class FilterOccupiedPipe implements PipeTransform {
                         <div class="h-bottom">
                             <div class="h-total">{{ ticket.amount | currency:'EUR' }}</div>
                             <div class="h-actions">
-                                <button class="btn-icon print" (click)="vm.printTicket(ticket)" title="Imprimir">🖨️</button>
-                                <button class="btn-icon delete" (click)="vm.deleteTicket(ticket._id)" title="Eliminar">🗑️</button>
+                                <button class="btn-icon print" (click)="vm.printTicket(ticket)" title="Imprimir"><lucide-icon name="printer" [size]="16"></lucide-icon></button>
+                                <button class="btn-icon delete" (click)="vm.deleteTicket(ticket._id)" title="Eliminar"><lucide-icon name="trash-2" [size]="16"></lucide-icon></button>
                             </div>
                         </div>
                     </div>
@@ -82,10 +83,15 @@ export class FilterOccupiedPipe implements PipeTransform {
             
             <div class="checkout-actions">
               <button class="btn-edit" (click)="vm.toggleEditMode()">
-                {{ vm.editMode() ? 'Listo' : '✏️ Editar' }}
+                <lucide-icon *ngIf="!vm.editMode()" name="pen-line" [size]="14" class="inline-icon"></lucide-icon>
+                {{ vm.editMode() ? 'Listo' : 'Editar' }}
               </button>
-              <button class="btn-split" (click)="vm.openSplitModal()">➗ Dividir</button>
-              <button class="btn-print" (click)="vm.processPayment()">💳 PAGAR TOTAL</button>
+              <button class="btn-split" (click)="vm.openSplitModal()">
+                <lucide-icon name="users" [size]="14" class="inline-icon"></lucide-icon> Dividir
+              </button>
+              <button class="btn-print" (click)="vm.processPayment()">
+                <lucide-icon name="credit-card" [size]="14" class="inline-icon"></lucide-icon> PAGAR TOTAL
+              </button>
             </div>
           </div>
               <div class="ticket-content">
@@ -98,7 +104,7 @@ export class FilterOccupiedPipe implements PipeTransform {
                            (click)="vm.payByUser(user.id)"
                            title="Cobrar solo a este comensal">
                         <div class="user-info">
-                          <span class="user-name">👤 {{ user.name }}</span>
+                          <span class="user-name"><lucide-icon name="user" [size]="14" class="inline-icon"></lucide-icon> {{ user.name }}</span>
                           <span class="user-total">{{ user.total | currency:'EUR' }}</span>
                         </div>
                         <div class="user-items">
@@ -113,7 +119,7 @@ export class FilterOccupiedPipe implements PipeTransform {
                         <span class="price">{{ (item.price * item.quantity) | currency:'EUR' }}</span>
                         @if (vm.editMode()) {
                           <button class="btn-delete-item" (click)="vm.removeItemFromOrder(table.order._id, item._originalIndex)">
-                            🗑️
+                            <lucide-icon name="trash-2" [size]="12"></lucide-icon>
                           </button>
                         }
                       </div>
@@ -162,7 +168,7 @@ export class FilterOccupiedPipe implements PipeTransform {
             </div>
           } @else {
             <div class="empty-detail glass-card">
-              <div class="icon">🪑</div>
+              <div class="icon"><lucide-icon name="layout-dashboard" [size]="64" color="var(--text-muted)"></lucide-icon></div>
               <h2>Mesa Vacía</h2>
               <p>{{ table.name }} no tiene una sesión activa.</p>
               <button class="btn-primary" (click)="vm.openTable(table)">Abrir Mesa (Manual)</button>
