@@ -47,7 +47,7 @@ export class CustomerViewModel {
 
             // Fetch restaurant name
             try {
-                const restRes = await fetch(`${environment.apiUrl}/api/restaurants/restaurant`);
+                const restRes = await fetch(`${environment.apiUrl}/api/restaurant`);
                 if (restRes.ok) {
                     const restData = await restRes.json();
                     this.restaurantName.set(restData.name || 'Mi Restaurante');

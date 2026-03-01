@@ -84,7 +84,7 @@ export class AuthService {
         };
 
         try {
-            await fetch(`${environment.apiUrl}/api/restaurants/logs`, {
+            await fetch(`${environment.apiUrl}/api/logs`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',

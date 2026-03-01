@@ -25,11 +25,11 @@ router.get('/health', (req, res) => {
     });
 });
 
-// Mount Routes
+// Mount Routes - Explicit prefixes for core entities, global for single-tenant config
 router.use('/auth', authRoutes);
-router.use('/', userRoutes);
-router.use('/', orderRoutes);
-router.use('/', menuRoutes);
-router.use('/', restaurantRoutes);
+router.use('/users', userRoutes);
+router.use('/orders', orderRoutes);
+router.use('/menu', menuRoutes);
+router.use('/', restaurantRoutes); // Mounted at root since it contains global settings, totems, and history
 
 module.exports = router;

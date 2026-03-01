@@ -60,7 +60,7 @@ export class StoreConfigViewModel {
     private async loadConfig() {
         this.loading.set(true);
         try {
-            const res = await fetch(`${environment.apiUrl}/api/restaurants/restaurant`);
+            const res = await fetch(`${environment.apiUrl}/api/restaurant`);
             const data = await res.json();
 
             // Merge with defaults to avoid null checks in template
@@ -84,7 +84,7 @@ export class StoreConfigViewModel {
         this.message.set('');
 
         try {
-            const res = await fetch(`${environment.apiUrl}/api/restaurants/restaurant`, {
+            const res = await fetch(`${environment.apiUrl}/api/restaurant`, {
                 method: 'PATCH',
                 headers: this.auth.getHeaders(),
                 body: JSON.stringify(this.config())
