@@ -20,6 +20,7 @@ import { AuthService } from '../../services/auth.service';
             <div class="user-add-controls">
                 <input type="text" #usernameInput placeholder="Nuevo Usuario (ej: camarero1)" class="glass-input">
                 <select #roleInput class="glass-input">
+                    <option value="waiter">Camarero (Tótems)</option>
                     <option value="kitchen">Pantalla Cocina (KDS)</option>
                     <option value="pos">Pantalla Caja (POS)</option>
                     <option value="admin">Administrador</option>
@@ -118,6 +119,7 @@ import { AuthService } from '../../services/auth.service';
     .role-badge.admin { background: rgba(192, 132, 252, 0.2); color: var(--accent-secondary); }
     .role-badge.kitchen { background: rgba(251, 191, 36, 0.2); color: #fbbf24; }
     .role-badge.pos { background: rgba(56, 189, 248, 0.2); color: var(--accent-primary); }
+    .role-badge.waiter { background: rgba(16, 185, 129, 0.2); color: var(--highlight); }
 
     .u-created { font-size: 0.75rem; opacity: 0.4; font-style: italic; }
 
