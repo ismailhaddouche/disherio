@@ -251,9 +251,7 @@ import { AuthService } from '../../services/auth.service';
   styles: [`
     .config-container {
       padding: 16px;
-      height: 100vh;
-      overflow-y: auto;
-      background: var(--bg-dark);
+      background: transparent;
       display: flex;
       flex-direction: column;
       gap: 16px;

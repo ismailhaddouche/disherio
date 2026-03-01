@@ -448,7 +448,7 @@ export class DashboardComponent {
 
   public openQR(totemId: number) {
     const base = window.location.origin;
-    window.open(`${base}/api/qr/${totemId}`, '_blank');
+    window.open(`${base}/api/restaurants/qr/${totemId}`, '_blank');
   }
 
   public loadAgain() {

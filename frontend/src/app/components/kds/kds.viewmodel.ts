@@ -73,7 +73,7 @@ export class KDSViewModel {
             const [orders, products, totems]: any = await Promise.all([
                 this.comms.syncOrders(),
                 fetch(`${environment.apiUrl}/api/menu`).then(res => res.json()),
-                fetch(`${environment.apiUrl}/api/totems`).then(res => res.json())
+                fetch(`${environment.apiUrl}/api/restaurants/totems`).then(res => res.json())
             ]);
 
             if (orders) this.orders.set(orders);

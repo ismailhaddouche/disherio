@@ -31,7 +31,7 @@ export class ThemeService {
 
     private async loadAndApplyConfig() {
         try {
-            const res = await fetch(`${environment.apiUrl}/api/restaurant`);
+            const res = await fetch(`${environment.apiUrl}/api/restaurants/restaurant`);
             const config = await res.json();
             if (config) {
                 if (config.theme) this.applyTheme(config.theme);

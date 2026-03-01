@@ -48,8 +48,8 @@ export class DashboardViewModel {
         try {
             const [orders, logs, totems]: any[] = await Promise.all([
                 this.comms.syncOrders(),
-                fetch(`${environment.apiUrl}/api/logs`).then(res => res.json()),
-                fetch(`${environment.apiUrl}/api/totems`).then(res => res.json())
+                fetch(`${environment.apiUrl}/api/restaurants/logs`).then(res => res.json()),
+                fetch(`${environment.apiUrl}/api/restaurants/totems`).then(res => res.json())
             ]);
 
             if (orders) this.orders.set(orders);
@@ -81,7 +81,7 @@ export class DashboardViewModel {
 
     public async addTotem(name: string) {
         try {
-            const res = await fetch(`${environment.apiUrl}/api/totems`, {
+            const res = await fetch(`${environment.apiUrl}/api/restaurants/totems`, {
                 method: 'POST',
                 headers: this.auth.getHeaders(),
                 body: JSON.stringify({ name })

@@ -70,9 +70,9 @@ export class POSViewModel {
         try {
             const [orders, totems, tickets, restaurant, menu] = await Promise.all([
                 this.comms.syncOrders(),
-                fetch(`${environment.apiUrl}/api/totems`).then(res => res.json()),
-                fetch(`${environment.apiUrl}/api/history`).then(res => res.json()),
-                fetch(`${environment.apiUrl}/api/restaurant`).then(res => res.json()),
+                fetch(`${environment.apiUrl}/api/restaurants/totems`).then(res => res.json()),
+                fetch(`${environment.apiUrl}/api/restaurants/history`).then(res => res.json()),
+                fetch(`${environment.apiUrl}/api/restaurants/restaurant`).then(res => res.json()),
                 fetch(`${environment.apiUrl}/api/menu`).then(res => res.json())
             ]) as [any[], any[], any[], any, any[]];
 
@@ -114,7 +114,7 @@ export class POSViewModel {
 
     public async loadHistory() {
         try {
-            const tickets = await fetch(`${environment.apiUrl}/api/history`).then(res => res.json()) as any[];
+            const tickets = await fetch(`${environment.apiUrl}/api/restaurants/history`).then(res => res.json()) as any[];
             this.tickets.set(tickets);
         } catch (e) { console.error('Error loading history', e); }
     }
@@ -230,7 +230,7 @@ export class POSViewModel {
             
             this.loadHistory();
             const updatedOrders = await this.comms.syncOrders();
-            if(updatedOrders) this.orders.set(updatedOrders);
+            if(updatedOrders) this.orders.set(updatedOrders as any[]);
 
             if (this.localConfig()?.printer?.autoPrint && result.tickets?.[0]) {
                 result.tickets.forEach((t: any) => this.printTicket(t));
@@ -253,7 +253,7 @@ export class POSViewModel {
         if (!confirm('¿Estás seguro de que quieres eliminar este ticket? Esta acción no se puede deshacer.')) return;
 
         try {
-            const res = await fetch(`${environment.apiUrl}/api/tickets/${ticketId}`, {
+            const res = await fetch(`${environment.apiUrl}/api/restaurants/tickets/${ticketId}`, {
                 method: 'DELETE',
                 headers: this.auth.getHeaders()
             });
