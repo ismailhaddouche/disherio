@@ -30,7 +30,7 @@ app.use(compression());
 // Security: Global rate limiting to prevent abuse
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100,
+    max: 1000, // Increased to 1000 to support heavy admin dashboard navigation
     standardHeaders: true,
     legacyHeaders: false,
     message: { error: 'Too many requests, please try again later.' }
