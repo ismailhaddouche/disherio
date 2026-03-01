@@ -35,6 +35,10 @@ import { LucideAngularModule } from 'lucide-angular';
             <lucide-icon name="users" class="icon"></lucide-icon>
             <span class="label" *ngIf="!isCollapsed">Personal</span>
           </a>
+          <a *ngIf="auth.hasRole('waiter')" routerLink="/admin/waiter" routerLinkActive="active" class="nav-item">
+            <lucide-icon name="hand-platter" class="icon"></lucide-icon>
+            <span class="label" *ngIf="!isCollapsed">Camarero</span>
+          </a>
         </div>
 
         <div class="nav-group">

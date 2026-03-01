@@ -8,6 +8,7 @@ import { LoginComponent } from './components/login/login';
 import { MenuEditorComponent } from './components/menu-editor/menu-editor';
 import { UserManagementComponent } from './components/user-management/user-management';
 import { StoreConfigComponent } from './components/store-config/store-config';
+import { WaiterViewComponent } from './components/waiter-view/waiter-view';
 import { authGuard } from './guards/auth.guard';
 
 export const routes: Routes = [
@@ -19,6 +20,12 @@ export const routes: Routes = [
         component: DashboardComponent,
         canActivate: [authGuard],
         data: { role: 'admin' }
+    },
+    {
+        path: 'admin/waiter',
+        component: WaiterViewComponent,
+        canActivate: [authGuard],
+        data: { role: 'waiter' }
     },
     {
         path: 'admin/kds',

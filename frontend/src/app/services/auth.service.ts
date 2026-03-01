@@ -55,7 +55,7 @@ export class AuthService {
             const redirect = session.role === 'admin' ? '/admin/dashboard' :
                 session.role === 'kitchen' ? '/admin/kds' :
                     session.role === 'pos' ? '/admin/pos' :
-                        session.role === 'waiter' ? '/admin/totems' : '/';
+                        session.role === 'waiter' ? '/admin/waiter' : '/';
 
             this.router.navigate([redirect]);
             return true;
