@@ -48,7 +48,12 @@ router.get('/restaurant', async (req, res) => {
             });
             await restaurant.save();
         }
-        res.json(restaurant);
+        
+        // Inject current domain from ENV to ensure it's always accurate and read-only for frontend
+        const config = restaurant.toObject();
+        config.domain = process.env.DOMAIN || `http://${req.get('host')}`;
+        
+        res.json(config);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }

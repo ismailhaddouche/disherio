@@ -68,9 +68,9 @@ import { environment } from '../../../environments/environment';
                 </div>
 
                 <div class="form-group">
-                    <label>Dominio (URL)</label>
-                    <input type="url" [(ngModel)]="vm.config().domain" class="glass-input" placeholder="https://mirestaurante.com">
-                    <small>Enlace principal para QR y compartidos.</small>
+                    <label>Dominio del Sistema</label>
+                    <input type="url" [ngModel]="vm.config().domain" class="glass-input readonly" readonly title="Configurado en la instalación">
+                    <small>Este es el enlace base para los códigos QR (Configurado en la instalación).</small>
                 </div>
             </div>
           </section>
