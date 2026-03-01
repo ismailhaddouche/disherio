@@ -191,7 +191,7 @@ import { LucideAngularModule } from 'lucide-angular';
                             <input type="text" [(ngModel)]="printer.name" class="glass-input" placeholder="Nombre (Ej: Barra, Cocina)" style="flex:1; font-weight:bold;">
                             <button class="btn-del" style="margin-left: 12px;" (click)="vm.removePrinter(i)"><lucide-icon name="trash-2" [size]="16"></lucide-icon></button>
                         </div>
-                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <div class="form-row">
                             <div class="form-group">
                                 <label>Dirección IP o Ruta</label>
                                 <input type="text" [(ngModel)]="printer.address" class="glass-input" placeholder="Ej: 192.168.1.100">
@@ -242,15 +242,17 @@ import { LucideAngularModule } from 'lucide-angular';
     }
 
     .config-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-      gap: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 32px;
       padding-bottom: 40px;
+      max-width: 900px;
+      margin: 0 auto;
+      width: 100%;
     }
 
     @media (max-width: 768px) {
       .btn-save { width: 100%; }
-      .config-grid { grid-template-columns: 1fr; }
     }
 
     .inline-icon { display: inline-block; vertical-align: text-bottom; }
