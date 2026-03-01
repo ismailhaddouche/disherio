@@ -104,10 +104,10 @@ h1, h2, h3, h4, .brand-font {
 /* Bespoke Inputs & Buttons */
 .glass-input {
     background: rgba(255, 255, 255, 0.02);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--glass-border);
     padding: 14px 20px;
     border-radius: var(--radius-md);
-    color: white;
+    color: var(--text-base);
     outline: none;
     font-family: inherit;
     font-size: 0.95rem;
@@ -117,7 +117,21 @@ h1, h2, h3, h4, .brand-font {
 .glass-input:focus {
     border-color: var(--accent-primary);
     background: rgba(255, 255, 255, 0.05);
-    box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.08);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent-primary) 20%, transparent);
+}
+
+select.glass-input {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+    background-size: 1.2rem;
+    padding-right: 2.5rem;
+}
+
+select.glass-input option {
+    background-color: var(--bg-dark);
+    color: var(--text-base);
 }
 
 .btn-primary {
