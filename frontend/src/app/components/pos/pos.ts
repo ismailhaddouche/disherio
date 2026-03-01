@@ -18,7 +18,14 @@ export class FilterOccupiedPipe implements PipeTransform {
   imports: [CommonModule, FormsModule, FilterOccupiedPipe, LucideAngularModule],
   providers: [POSViewModel],
   template: `
-    <div class="pos-container">
+    <div class="pos-container animate-fade-in">
+      <header class="view-header" style="grid-column: 1 / -1; margin-bottom: 0;">
+        <div>
+          <h1 class="view-title"><lucide-icon name="wallet" [size]="28" class="text-muted"></lucide-icon> Punto de Venta (POS)</h1>
+          <p class="view-desc">Gestión de comandas, cobros y mesas activas.</p>
+        </div>
+      </header>
+
       <!-- Left Sidebar: Map of Tables or History -->
       <aside class="pos-sidebar glass-card">
         <div class="sidebar-header">
@@ -228,10 +235,11 @@ export class FilterOccupiedPipe implements PipeTransform {
     .pos-container {
       display: grid;
       grid-template-columns: 350px 1fr;
+      grid-template-rows: auto 1fr;
       height: 100vh;
-      background: var(--bg-dark);
+      background: transparent;
       gap: 16px;
-      padding: 16px;
+      padding: 0;
       overflow: hidden;
     }
 

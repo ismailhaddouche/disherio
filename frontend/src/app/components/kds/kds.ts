@@ -11,12 +11,11 @@ import { LucideAngularModule } from 'lucide-angular';
   imports: [CommonModule, LucideAngularModule],
   providers: [KDSViewModel],
   template: `
-    <div class="kds-container">
-      <header class="kds-header glass-card">
-        <div class="brand">
-          <img src="logo.svg" alt="Disher.io Logo" style="height: 32px; border-radius: 6px;">
-          <span class="gradient-text">{{ theme.restaurantName ? theme.restaurantName.toUpperCase() : 'KITCHEN' }}</span>
-          <span class="station-tag">Pantalla Cocina</span>
+    <div class="kds-container animate-fade-in">
+      <header class="view-header" style="margin-bottom: 0;">
+        <div>
+          <h1 class="view-title"><lucide-icon name="chef-hat" [size]="28" class="text-muted"></lucide-icon> {{ theme.restaurantName ? theme.restaurantName.toUpperCase() : 'KITCHEN' }}</h1>
+          <p class="view-desc">Pantalla de Gestión de Cocina (KDS).</p>
         </div>
         <div class="kds-controls">
           @if (vm.error()) {
@@ -158,16 +157,6 @@ import { LucideAngularModule } from 'lucide-angular';
         gap: 20px;
         opacity: 0.7;
     }
-
-    .kds-header {
-      padding: 16px 24px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .brand { display: flex; align-items: center; gap: 16px; }
-    .brand span:first-child { font-size: 1.5rem; font-weight: 900; }
     
     .kds-controls { display: flex; align-items: center; gap: 24px; }
     .btn-stock {

@@ -10,16 +10,16 @@ import { LucideAngularModule } from 'lucide-angular';
   imports: [CommonModule, FormsModule, LucideAngularModule],
   providers: [MenuEditorViewModel],
   template: `
-    <div class="editor-container">
-      <aside class="menu-structure glass-card">
-        <header class="section-header">
-          <div style="display: flex; align-items: center; gap: 12px;">
-            <img src="logo.svg" alt="Disher.io Logo" style="height: 32px; border-radius: 6px;">
-            <h2 class="gradient-text" style="margin: 0;">CARTAS DISHER</h2>
-          </div>
-          <button class="btn-primary" (click)="vm.selectItem(null)"><lucide-icon name="plus" [size]="16" class="inline-icon mr-2"></lucide-icon>Nuevo Plato</button>
-        </header>
+    <div class="editor-container animate-fade-in">
+      <header class="view-header" style="grid-column: 1 / -1; margin-bottom: 0;">
+        <div>
+          <h1 class="view-title"><lucide-icon name="utensils" [size]="28" class="text-muted"></lucide-icon> Gestor de Menú</h1>
+          <p class="view-desc">Crea y modifica los platos, variantes y menús de tu restaurante.</p>
+        </div>
+        <button class="btn-primary" (click)="vm.selectItem(null)"><lucide-icon name="plus" [size]="16" class="inline-icon mr-2"></lucide-icon>Nuevo Plato</button>
+      </header>
 
+      <aside class="menu-structure glass-card">
         <div class="categories-list">
           @for (cat of vm.categories(); track cat.name) {
             <div class="category-group">
@@ -207,15 +207,16 @@ import { LucideAngularModule } from 'lucide-angular';
     .editor-container {
       display: grid;
       grid-template-columns: 400px 1fr;
+      grid-template-rows: auto 1fr;
       gap: 24px;
       height: 100vh;
-      padding: 24px;
-      background: var(--bg-dark);
+      padding: 0;
+      background: transparent;
       overflow: hidden;
     }
 
     @media (max-width: 1024px) {
-      .editor-container { grid-template-columns: 320px 1fr; gap: 16px; padding: 16px; }
+      .editor-container { grid-template-columns: 320px 1fr; gap: 16px; }
     }
     @media (max-width: 768px) {
       .editor-container { grid-template-columns: 1fr; height: auto; }
@@ -229,12 +230,6 @@ import { LucideAngularModule } from 'lucide-angular';
       gap: 24px;
       padding: 24px;
       overflow-y: auto;
-    }
-
-    .section-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
     }
 
     .categories-list {
