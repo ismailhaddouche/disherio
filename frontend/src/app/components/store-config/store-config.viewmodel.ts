@@ -43,7 +43,8 @@ export class StoreConfigViewModel {
         { id: 'emerald', name: 'Emerald Forest', colors: { primaryColor: '#10b981', secondaryColor: '#14b8a6', backgroundColor: '#022c22', textColor: '#f0fdf4' } },
         { id: 'ocean', name: 'Ocean Breeze', colors: { primaryColor: '#0ea5e9', secondaryColor: '#3b82f6', backgroundColor: '#082f49', textColor: '#f0f9ff' } },
         { id: 'sunset', name: 'Sunset Gold', colors: { primaryColor: '#f59e0b', secondaryColor: '#eab308', backgroundColor: '#2e1005', textColor: '#fffbeb' } },
-        { id: 'slate', name: 'Monochrome Slate', colors: { primaryColor: '#94a3b8', secondaryColor: '#64748b', backgroundColor: '#0f172a', textColor: '#f8fafc' } }
+        { id: 'slate', name: 'Monochrome Slate', colors: { primaryColor: '#94a3b8', secondaryColor: '#64748b', backgroundColor: '#0f172a', textColor: '#f8fafc' } },
+        { id: 'light', name: 'Clean Light', colors: { primaryColor: '#2563eb', secondaryColor: '#60a5fa', backgroundColor: '#f8fafc', textColor: '#0f172a' } }
     ];
 
     public selectPredefinedTheme(themeId: string) {
