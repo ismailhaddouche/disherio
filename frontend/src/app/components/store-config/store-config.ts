@@ -11,9 +11,9 @@ import { LucideAngularModule } from 'lucide-angular';
   imports: [CommonModule, FormsModule, LucideAngularModule],
   providers: [StoreConfigViewModel],
   template: `
-    <div class="config-container">
-      <header class="config-header glass-card">
-        <h1><lucide-icon name="settings" class="inline-icon mr-2"></lucide-icon>Configuración de Tienda</h1>
+    <div class="config-container animate-fade-in">
+      <header class="view-header">
+        <h1 class="view-title"><lucide-icon name="settings" class="inline-icon text-muted"></lucide-icon>Configuración de Tienda</h1>
         <button class="btn-save" (click)="vm.saveConfig()">
           {{ vm.saving() ? 'Guardando...' : 'GUARDAR CAMBIOS' }}
         </button>
@@ -31,8 +31,8 @@ import { LucideAngularModule } from 'lucide-angular';
         <main class="config-grid">
           
           <!-- General Info -->
-          <section class="config-section glass-card">
-            <h2>Información General</h2>
+          <section class="card-section glass-card">
+            <h2 class="card-title">Información General</h2>
             
             <div class="form-group">
                 <label>Nombre del Restaurante</label>
@@ -63,8 +63,8 @@ import { LucideAngularModule } from 'lucide-angular';
           </section>
 
           <!-- Social Networks -->
-          <section class="config-section glass-card">
-            <h2>Redes Sociales</h2>
+          <section class="card-section glass-card">
+            <h2 class="card-title">Redes Sociales</h2>
             
             <div class="form-group">
                 <label>Instagram</label>
@@ -92,9 +92,9 @@ import { LucideAngularModule } from 'lucide-angular';
           </section>
 
           <!-- Appearance -->
-          <section class="config-section glass-card">
-            <h2>Apariencia de la App</h2>
-            <p class="subtitle">Personaliza los colores que ven tus clientes.</p>
+          <section class="card-section glass-card">
+            <h2 class="card-title">Apariencia de la App</h2>
+            <p class="card-subtitle">Personaliza los colores que ven tus clientes.</p>
 
             <div class="colors-grid">
                 <div class="color-picker">
@@ -142,9 +142,9 @@ import { LucideAngularModule } from 'lucide-angular';
           </section>
 
           <!-- Billing Configuration -->
-          <section class="config-section glass-card billing-section">
-            <h2><lucide-icon name="credit-card" class="inline-icon mr-2"></lucide-icon>Configuración de Facturación</h2>
-            <p class="subtitle">Configura cómo se calculan los tickets e impuestos.</p>
+          <section class="card-section glass-card billing-section">
+            <h2 class="card-title"><lucide-icon name="credit-card" class="inline-icon mr-2"></lucide-icon>Configuración de Facturación</h2>
+            <p class="card-subtitle">Configura cómo se calculan los tickets e impuestos.</p>
             
             <div class="form-group">
                 <label>IVA (%)</label>
@@ -194,9 +194,9 @@ import { LucideAngularModule } from 'lucide-angular';
           </section>
 
           <!-- Printer Configuration (Local) -->
-          <section class="config-section glass-card printer-section">
-            <h2><lucide-icon name="printer" class="inline-icon mr-2"></lucide-icon>Configuración de Impresora</h2>
-            <p class="subtitle">Configuración específica de este dispositivo.</p>
+          <section class="card-section glass-card printer-section">
+            <h2 class="card-title"><lucide-icon name="printer" class="inline-icon mr-2"></lucide-icon>Configuración de Impresora</h2>
+            <p class="card-subtitle">Configuración específica de este dispositivo.</p>
             
             <div class="form-group">
                 <label>Dirección IP de la Impresora</label>
@@ -251,24 +251,12 @@ import { LucideAngularModule } from 'lucide-angular';
   `,
   styles: [`
     .config-container {
-      padding: 16px;
+      padding: 0;
       background: transparent;
       display: flex;
       flex-direction: column;
       gap: 16px;
     }
-
-    .config-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 16px 24px;
-      position: sticky; top: 0; z-index: 10;
-      background: rgba(15, 23, 42, 0.8);
-      backdrop-filter: blur(10px);
-    }
-    
-    h1 { font-size: 1.5rem; margin: 0; }
 
     .btn-save {
       background: var(--highlight);
@@ -289,25 +277,15 @@ import { LucideAngularModule } from 'lucide-angular';
     .config-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-      gap: 16px;
+      gap: 24px;
       padding-bottom: 40px;
     }
 
     @media (max-width: 768px) {
-      .config-header { flex-direction: column; gap: 12px; align-items: stretch; }
-      .config-header h1 { font-size: 1.2rem; }
       .btn-save { width: 100%; }
+      .config-grid { grid-template-columns: 1fr; }
     }
 
-    .config-section {
-      padding: 24px;
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
-
-    h2 { font-size: 1.2rem; margin-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px; display: flex; align-items: center; }
-    .subtitle { font-size: 0.8rem; opacity: 0.6; margin-top: -8px; margin-bottom: 12px; }
     .inline-icon { display: inline-block; vertical-align: text-bottom; }
     .mr-2 { margin-right: 8px; }
     .text-muted { color: var(--text-muted); opacity: 0.8; }

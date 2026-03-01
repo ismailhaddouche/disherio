@@ -56,10 +56,10 @@ import { LucideAngularModule } from 'lucide-angular';
 
       <!-- Totem Management -->
       <div class="glass-card qr-section">
-        <div class="section-header">
+        <div class="view-header">
             <div>
-                <h3>Gestión de Tótems Dinámicos</h3>
-                <p class="section-desc">Identificadores incrementales para tus mesas.</p>
+                <h3 class="view-title">Gestión de Tótems Dinámicos</h3>
+                <p class="view-desc">Identificadores incrementales para tus mesas.</p>
             </div>
             <div class="totem-add-controls">
                 <input type="text" #totemName placeholder="Nombre (Ej: Terraza 4)" class="glass-input">
@@ -88,8 +88,8 @@ import { LucideAngularModule } from 'lucide-angular';
       <!-- Main Content -->
       <div class="dashboard-content">
         <div class="glass-card orders-section">
-          <div class="section-header">
-            <h3>Pedidos en Tiempo Real</h3>
+          <div class="view-header" style="margin-bottom: 24px;">
+            <h3 class="view-title">Pedidos en Tiempo Real</h3>
             <span class="live-indicator">LIVE</span>
           </div>
 
@@ -139,8 +139,8 @@ import { LucideAngularModule } from 'lucide-angular';
         </div>
 
         <div class="glass-card activity-section">
-          <div class="section-header">
-            <h3>Registro de Actividad</h3>
+          <div class="view-header" style="margin-bottom: 24px;">
+            <h3 class="view-title">Registro de Actividad</h3>
             <lucide-icon name="bell" [size]="20" class="text-muted"></lucide-icon>
           </div>
 
@@ -301,13 +301,6 @@ import { LucideAngularModule } from 'lucide-angular';
 
     .text-online { color: var(--highlight); }
 
-    .section-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 24px;
-    }
-
     .live-indicator {
       background: rgba(34, 197, 94, 0.1);
       color: var(--highlight);
@@ -381,10 +374,9 @@ import { LucideAngularModule } from 'lucide-angular';
 
     .qr-section {
       padding: 32px;
-      background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(56, 189, 248, 0.05) 100%);
+      border-radius: var(--radius-lg);
+      background: linear-gradient(135deg, rgba(255,255,255,0.02) 0%, rgba(99, 102, 241, 0.05) 100%);
     }
-
-    .section-desc { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px; }
 
     .orders-list {
       display: flex;
