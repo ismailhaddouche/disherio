@@ -66,9 +66,9 @@ import { LucideAngularModule } from 'lucide-angular';
     .sidebar {
       width: var(--sidebar-width);
       height: 100vh;
-      background: rgba(13, 18, 33, 0.95);
-      backdrop-filter: blur(20px);
-      border-right: 1px solid rgba(255, 255, 255, 0.05);
+      background: var(--glass-bg);
+      backdrop-filter: var(--glass-blur);
+      border-right: 1px solid var(--glass-border);
       display: flex;
       flex-direction: column;
       transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
@@ -104,7 +104,7 @@ import { LucideAngularModule } from 'lucide-angular';
       align-items: center;
       justify-content: center;
       font-weight: 800;
-      color: white;
+      color: white; /* Keep logo letter white regardless of theme */
       flex-shrink: 0;
     }
 
@@ -113,14 +113,15 @@ import { LucideAngularModule } from 'lucide-angular';
       font-size: 1.25rem;
       font-weight: 700;
       white-space: nowrap;
+      color: var(--text-base);
     }
 
     .logo-text .dot { color: var(--accent-primary); }
 
     .toggle-btn {
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      color: white;
+      background: transparent;
+      border: 1px solid var(--glass-border);
+      color: var(--text-base);
       width: 28px;
       height: 28px;
       border-radius: 6px;
@@ -131,7 +132,7 @@ import { LucideAngularModule } from 'lucide-angular';
       transition: all 0.3s;
     }
 
-    .toggle-btn:hover { background: rgba(255, 255, 255, 0.1); }
+    .toggle-btn:hover { background: var(--glass-border); }
 
     .sidebar-nav {
       flex: 1;
@@ -169,14 +170,15 @@ import { LucideAngularModule } from 'lucide-angular';
     }
 
     .nav-item:hover {
-      background: rgba(255, 255, 255, 0.03);
-      color: white;
+      background: var(--glass-border);
+      color: var(--text-base);
     }
 
     .nav-item.active {
-      background: rgba(56, 189, 248, 0.08);
+      background: rgba(56, 189, 248, 0.08); /* fallback */
+      background: color-mix(in srgb, var(--accent-primary) 10%, transparent);
       color: var(--accent-primary);
-      box-shadow: inset 0 0 0 1px rgba(56, 189, 248, 0.2);
+      box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-primary) 20%, transparent);
     }
 
     .icon {
@@ -187,7 +189,7 @@ import { LucideAngularModule } from 'lucide-angular';
 
     .sidebar-footer {
       padding: 24px 16px;
-      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      border-top: 1px solid var(--glass-border);
     }
 
     .logout-btn {
@@ -207,7 +209,7 @@ import { LucideAngularModule } from 'lucide-angular';
     }
 
     .logout-btn:hover {
-      background: rgba(244, 63, 94, 0.08);
+      background: color-mix(in srgb, var(--danger) 10%, transparent);
     }
 
     @media (max-width: 768px) {
