@@ -34,15 +34,17 @@ import { LucideAngularModule } from 'lucide-angular';
           <section class="card-section glass-card">
             <h2 class="card-title">Información General</h2>
             
-            <div class="form-group">
-                <label>Nombre del Restaurante</label>
-                <input type="text" [(ngModel)]="vm.config().name" class="glass-input">
-            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Nombre del Restaurante</label>
+                    <input type="text" [(ngModel)]="vm.config().name" class="glass-input">
+                </div>
 
-            <div class="form-group">
-                <label>Logo (URL)</label>
-                <input type="url" [(ngModel)]="vm.config().logo" class="glass-input" placeholder="https://ejemplo.com/logo.png">
-                <small *ngIf="vm.config().logo">Vista previa: <img [src]="vm.config().logo" style="height: 20px; vertical-align: middle"></small>
+                <div class="form-group">
+                    <label>Logo (URL)</label>
+                    <input type="url" [(ngModel)]="vm.config().logo" class="glass-input" placeholder="https://ejemplo.com/logo.png">
+                    <small *ngIf="vm.config().logo">Vista previa: <img [src]="vm.config().logo" style="height: 20px; vertical-align: middle"></small>
+                </div>
             </div>
 
             <div class="form-group">
@@ -50,15 +52,17 @@ import { LucideAngularModule } from 'lucide-angular';
                 <textarea [(ngModel)]="vm.config().description" class="glass-input" rows="3"></textarea>
             </div>
 
-            <div class="form-group">
-                <label>Teléfono de Contacto</label>
-                <input type="tel" [(ngModel)]="vm.config().phone" class="glass-input">
-            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Teléfono de Contacto</label>
+                    <input type="tel" [(ngModel)]="vm.config().phone" class="glass-input">
+                </div>
 
-            <div class="form-group">
-                <label>Dominio (URL)</label>
-                <input type="url" [(ngModel)]="vm.config().domain" class="glass-input" placeholder="https://mirestaurante.com">
-                <small>Enlace principal para QR y compartidos.</small>
+                <div class="form-group">
+                    <label>Dominio (URL)</label>
+                    <input type="url" [(ngModel)]="vm.config().domain" class="glass-input" placeholder="https://mirestaurante.com">
+                    <small>Enlace principal para QR y compartidos.</small>
+                </div>
             </div>
           </section>
 
@@ -66,19 +70,21 @@ import { LucideAngularModule } from 'lucide-angular';
           <section class="card-section glass-card">
             <h2 class="card-title">Redes Sociales</h2>
             
-            <div class="form-group">
-                <label>Instagram</label>
-                <div class="input-icon">
-                    <lucide-icon name="camera" class="text-muted"></lucide-icon>
-                    <input type="text" [ngModel]="vm.config().socials?.instagram" (ngModelChange)="vm.updateSocial('instagram', $event)" class="glass-input" placeholder="@usuario">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Instagram</label>
+                    <div class="input-icon">
+                        <lucide-icon name="camera" class="text-muted"></lucide-icon>
+                        <input type="text" [ngModel]="vm.config().socials?.instagram" (ngModelChange)="vm.updateSocial('instagram', $event)" class="glass-input" placeholder="@usuario">
+                    </div>
                 </div>
-            </div>
 
-            <div class="form-group">
-                <label>Facebook</label>
-                <div class="input-icon">
-                    <lucide-icon name="facebook" class="text-muted"></lucide-icon>
-                    <input type="text" [ngModel]="vm.config().socials?.facebook" (ngModelChange)="vm.updateSocial('facebook', $event)" class="glass-input">
+                <div class="form-group">
+                    <label>Facebook</label>
+                    <div class="input-icon">
+                        <lucide-icon name="facebook" class="text-muted"></lucide-icon>
+                        <input type="text" [ngModel]="vm.config().socials?.facebook" (ngModelChange)="vm.updateSocial('facebook', $event)" class="glass-input">
+                    </div>
                 </div>
             </div>
 
@@ -251,18 +257,7 @@ import { LucideAngularModule } from 'lucide-angular';
     .mr-2 { margin-right: 8px; }
     .text-muted { color: var(--text-muted); opacity: 0.8; }
     
-    .form-group { display: flex; flex-direction: column; gap: 6px; color: var(--text-base); }
-    label { font-size: 0.8rem; font-weight: bold; color: var(--text-base); opacity: 0.8; }
-    
-    .glass-input {
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.1);
-      color: var(--text-base);
-      padding: 10px;
-      border-radius: 8px;
-    }
-
-    .input-icon { display: flex; align-items: center; gap: 8px; }
+    .input-icon { display: flex; align-items: center; gap: 8px; width: 100%; }
     .input-icon span { font-size: 1.2rem; }
     .input-icon input { flex: 1; }
 
@@ -329,9 +324,6 @@ import { LucideAngularModule } from 'lucide-angular';
     .checkbox-label { display: flex; align-items: center; gap: 8px; cursor: pointer; }
     .checkbox-label input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }
     .form-group.indent { margin-left: 24px; padding-left: 16px; border-left: 2px solid rgba(59, 130, 246, 0.3); }
-    small { font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; }
-    select.glass-input { width: 100%; cursor: pointer; color: var(--text-base); }
-    select.glass-input option { background: var(--bg-dark); color: var(--text-base); }
 
     /* fadeIn animation now in global styles.css */
   `]

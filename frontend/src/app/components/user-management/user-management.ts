@@ -32,14 +32,16 @@ import { LucideAngularModule } from 'lucide-angular';
 
         <main class="card-section glass-card" style="max-width: 600px; margin: 0 auto;">
           <h2 class="card-title">Datos de Acceso</h2>
-          <div class="form-group">
-              <label>Nombre de Usuario</label>
-              <input type="text" [(ngModel)]="editUser.username" class="glass-input">
-          </div>
+          <div class="form-row">
+            <div class="form-group">
+                <label>Nombre de Usuario</label>
+                <input type="text" [(ngModel)]="editUser.username" class="glass-input">
+            </div>
 
-          <div class="form-group">
-              <label>Nueva Contraseña <small>(Dejar en blanco para no cambiar)</small></label>
-              <input type="password" [(ngModel)]="editUser.password" class="glass-input" placeholder="********">
+            <div class="form-group">
+                <label>Nueva Contraseña <small>(Opcional)</small></label>
+                <input type="password" [(ngModel)]="editUser.password" class="glass-input" placeholder="********">
+            </div>
           </div>
 
           <h2 class="card-title" style="margin-top: 24px;">Configuración de Impresión</h2>
@@ -54,14 +56,16 @@ import { LucideAngularModule } from 'lucide-angular';
               </select>
           </div>
 
-          <div class="form-group">
-              <label>Mensaje de Cabecera del Ticket</label>
-              <input type="text" [(ngModel)]="editUser.printTemplate.header" class="glass-input" placeholder="Ej: Mesa asignada a Carlos">
-          </div>
+          <div class="form-row">
+            <div class="form-group">
+                <label>Mensaje de Cabecera</label>
+                <input type="text" [(ngModel)]="editUser.printTemplate.header" class="glass-input" placeholder="Ej: Mesa asignada a Carlos">
+            </div>
 
-          <div class="form-group">
-              <label>Mensaje de Pie de Ticket</label>
-              <input type="text" [(ngModel)]="editUser.printTemplate.footer" class="glass-input" placeholder="Ej: ¡Gracias por su visita!">
+            <div class="form-group">
+                <label>Mensaje de Pie</label>
+                <input type="text" [(ngModel)]="editUser.printTemplate.footer" class="glass-input" placeholder="Ej: ¡Gracias por su visita!">
+            </div>
           </div>
 
           <div class="form-actions" style="margin-top: 32px; display: flex; justify-content: flex-end;">
