@@ -1,5 +1,6 @@
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { UserManagementViewModel } from './user-management.viewmodel';
 import { AuthService } from '../../services/auth.service';
 import { LucideAngularModule } from 'lucide-angular';
@@ -7,7 +8,7 @@ import { LucideAngularModule } from 'lucide-angular';
 @Component({
     selector: 'app-user-management',
     standalone: true,
-    imports: [CommonModule, LucideAngularModule],
+    imports: [CommonModule, FormsModule, LucideAngularModule],
     providers: [UserManagementViewModel],
     template: `
     <div class="user-management-container animate-fade-in">
@@ -46,18 +47,75 @@ import { LucideAngularModule } from 'lucide-angular';
                       <span class="u-name">{{ user.username }}</span>
                       <div class="role-badge" [class]="user.role">{{ user.role }}</div>
                   </div>
-                  <div class="u-created">Creado con pin por defecto</div>
+                  <div class="u-created">
+                    @if (user.printerId) {
+                        <span>🖨️ Impresora Asignada</span>
+                    } @else {
+                        <span>Sin impresora asignada</span>
+                    }
+                  </div>
                   
-                  @if (user.username !== 'admin') {
-                      <button class="btn-del" (click)="vm.deleteUser(user._id)">
-                        <lucide-icon name="trash-2" [size]="14" class="inline-icon"></lucide-icon> Eliminar
-                      </button>
-                  } @else {
-                      <span class="admin-lock"><lucide-icon name="lock" [size]="12" class="inline-icon"></lucide-icon> Sistema</span>
-                  }
+                  <div class="user-actions">
+                    <button class="btn-edit" (click)="vm.openEditModal(user)">
+                      <lucide-icon name="pen-line" [size]="14" class="inline-icon"></lucide-icon> Editar
+                    </button>
+                    @if (user.username !== 'admin') {
+                        <button class="btn-del" (click)="vm.deleteUser(user._id)">
+                          <lucide-icon name="trash-2" [size]="14" class="inline-icon"></lucide-icon>
+                        </button>
+                    } @else {
+                        <span class="admin-lock"><lucide-icon name="lock" [size]="12" class="inline-icon"></lucide-icon> Sistema</span>
+                    }
+                  </div>
               </div>
             }
       </div>
+
+      <!-- Edit User Modal -->
+      @if (vm.editingUser(); as editUser) {
+        <div class="modal-overlay" (click)="vm.closeEditModal()">
+          <div class="modal-content glass-card" (click)="$event.stopPropagation()">
+            <h2 class="card-title">Editar Usuario</h2>
+            
+            <div class="form-group">
+                <label>Nombre de Usuario</label>
+                <input type="text" [(ngModel)]="editUser.username" class="glass-input">
+            </div>
+
+            <div class="form-group">
+                <label>Nueva Contraseña <small>(Dejar en blanco para no cambiar)</small></label>
+                <input type="password" [(ngModel)]="editUser.password" class="glass-input" placeholder="********">
+            </div>
+
+            <h3 style="margin-top: 16px; font-size: 1rem;">Configuración de Impresión</h3>
+
+            <div class="form-group">
+                <label>Impresora Predeterminada</label>
+                <select [(ngModel)]="editUser.printerId" class="glass-input">
+                    <option [ngValue]="null">Ninguna (Usar sistema)</option>
+                    @for (printer of vm.printers(); track printer.id) {
+                        <option [value]="printer.id">{{ printer.name }} ({{ printer.type }})</option>
+                    }
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Mensaje de Cabecera del Ticket</label>
+                <input type="text" [(ngModel)]="editUser.printTemplate.header" class="glass-input" placeholder="Ej: Mesa asignada a Carlos">
+            </div>
+
+            <div class="form-group">
+                <label>Mensaje de Pie de Ticket</label>
+                <input type="text" [(ngModel)]="editUser.printTemplate.footer" class="glass-input" placeholder="Ej: ¡Gracias por su visita!">
+            </div>
+
+            <div class="modal-actions" style="margin-top: 24px;">
+              <button class="btn-secondary" style="padding: 10px 16px; border-radius: 8px;" (click)="vm.closeEditModal()">Cancelar</button>
+              <button class="btn-primary" (click)="vm.saveUser()">Guardar Cambios</button>
+            </div>
+          </div>
+        </div>
+      }
     </div>
   `,
     styles: [`
@@ -110,27 +168,52 @@ import { LucideAngularModule } from 'lucide-angular';
 
     .u-created { font-size: 0.8rem; opacity: 0.5; font-style: italic; }
 
+    .user-actions { display: flex; gap: 8px; margin-top: auto; align-items: center; }
+
+    .btn-edit {
+      flex: 1;
+      background: rgba(255,255,255,0.05);
+      color: var(--text-base);
+      border: 1px solid rgba(255,255,255,0.2);
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+    }
+    .btn-edit:hover { background: rgba(255,255,255,0.1); }
+
     .btn-del {
       background: rgba(239, 68, 68, 0.05);
       color: var(--danger); 
       border: 1px solid rgba(239, 68, 68, 0.2);
       padding: 8px 12px; 
       border-radius: 8px; 
-      font-size: 0.85rem; 
-      font-weight: bold;
       cursor: pointer;
-      margin-top: auto;
       transition: all 0.2s;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
+      display: flex; align-items: center; justify-content: center;
     }
     .btn-del:hover { background: var(--danger); color: white; }
 
-    .admin-lock { font-size: 0.8rem; opacity: 0.5; margin-top: auto; display: block; text-align: right; }
+    .admin-lock { font-size: 0.8rem; opacity: 0.5; flex: 1; text-align: right; }
     .inline-icon { display: inline-block; vertical-align: text-bottom; }
     .text-muted { color: var(--text-muted); opacity: 0.8; }
+
+    /* Modal Styles */
+    .modal-overlay {
+      position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+      background: rgba(0, 0, 0, 0.7); display: flex; align-items: center; justify-content: center;
+      z-index: 1000; backdrop-filter: blur(4px);
+    }
+    .modal-content {
+      max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto;
+      padding: 32px; display: flex; flex-direction: column; gap: 16px;
+    }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group label { font-size: 0.8rem; font-weight: bold; opacity: 0.8; }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 12px; }
   `]
 })
 export class UserManagementComponent {

@@ -19,18 +19,8 @@ export class StoreConfigViewModel {
             tipEnabled: false,
             tipPercentage: 0,
             tipDescription: 'La propina es opcional'
-        }
-    });
-
-    // Local configuration (Device specific, saved in localStorage)
-    public localConfig = signal<any>({
-        printer: {
-            ip: '',
-            port: '9100',
-            type: 'thermal', // thermal | system
-            autoPrint: false,
-            paperWidth: '80mm'
-        }
+        },
+        printers: []
     });
 
     public loading = signal<boolean>(true);
@@ -65,22 +55,6 @@ export class StoreConfigViewModel {
 
     constructor() {
         this.loadConfig();
-        this.loadLocalConfig();
-    }
-
-    private loadLocalConfig() {
-        const saved = localStorage.getItem('disher_local_config');
-        if (saved) {
-            try {
-                this.localConfig.set(JSON.parse(saved));
-            } catch (e) {
-                console.error('Error parsing local config', e);
-            }
-        }
-    }
-
-    private saveLocalConfig() {
-        localStorage.setItem('disher_local_config', JSON.stringify(this.localConfig()));
     }
 
     private async loadConfig() {
@@ -153,12 +127,28 @@ export class StoreConfigViewModel {
         });
     }
 
-    updateLocalConfig(section: string, prop: string, value: any) {
-        const current = this.localConfig();
-        this.localConfig.set({
+    addPrinter() {
+        const current = this.config();
+        const newPrinter = {
+            id: 'printer_' + Date.now(),
+            name: 'Nueva Impresora',
+            type: 'network',
+            address: '192.168.1.100',
+            connection: '9100'
+        };
+        this.config.set({
             ...current,
-            [section]: { ...current[section], [prop]: value }
+            printers: [...(current.printers || []), newPrinter]
         });
-        this.saveLocalConfig();
+    }
+
+    removePrinter(index: number) {
+        const current = this.config();
+        const updatedPrinters = [...(current.printers || [])];
+        updatedPrinters.splice(index, 1);
+        this.config.set({
+            ...current,
+            printers: updatedPrinters
+        });
     }
 }

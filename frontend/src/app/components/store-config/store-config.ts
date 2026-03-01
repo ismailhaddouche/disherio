@@ -168,56 +168,42 @@ import { LucideAngularModule } from 'lucide-angular';
             }
           </section>
 
-          <!-- Printer Configuration (Local) -->
+          <!-- Printer Configuration (Global) -->
           <section class="card-section glass-card printer-section">
-            <h2 class="card-title"><lucide-icon name="printer" class="inline-icon mr-2"></lucide-icon>Configuración de Impresora</h2>
-            <p class="card-subtitle">Configuración específica de este dispositivo.</p>
+            <div style="display:flex; justify-content: space-between; align-items:center;">
+                <div>
+                    <h2 class="card-title"><lucide-icon name="printer" class="inline-icon mr-2"></lucide-icon>Impresoras del Local</h2>
+                    <p class="card-subtitle">Registra las impresoras disponibles para asignar a los usuarios.</p>
+                </div>
+                <button class="btn-primary" style="padding: 8px 12px; font-size: 0.8rem;" (click)="vm.addPrinter()">+ Añadir</button>
+            </div>
             
-            <div class="form-group">
-                <label>Dirección IP de la Impresora</label>
-                <input type="text" 
-                       [ngModel]="vm.localConfig().printer?.ip" 
-                       (ngModelChange)="vm.updateLocalConfig('printer', 'ip', $event)" 
-                       class="glass-input" 
-                       placeholder="Ej: 192.168.1.100">
-            </div>
-
-            <div class="form-group">
-                <label>Puerto</label>
-                <input type="text" 
-                       [ngModel]="vm.localConfig().printer?.port" 
-                       (ngModelChange)="vm.updateLocalConfig('printer', 'port', $event)" 
-                       class="glass-input" 
-                       placeholder="9100">
-            </div>
-
-            <div class="form-group">
-                <label>Tipo de Impresora</label>
-                <select [ngModel]="vm.localConfig().printer?.type" 
-                        (ngModelChange)="vm.updateLocalConfig('printer', 'type', $event)" 
-                        class="glass-input">
-                    <option value="thermal">Térmica (ESC/POS)</option>
-                    <option value="system">Sistema (Windows/Mac/Android)</option>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label>Ancho de Papel</label>
-                <select [ngModel]="vm.localConfig().printer?.paperWidth" 
-                        (ngModelChange)="vm.updateLocalConfig('printer', 'paperWidth', $event)" 
-                        class="glass-input">
-                    <option value="80mm">80mm</option>
-                    <option value="58mm">58mm</option>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label class="checkbox-label">
-                    <input type="checkbox" 
-                           [ngModel]="vm.localConfig().printer?.autoPrint" 
-                           (ngModelChange)="vm.updateLocalConfig('printer', 'autoPrint', $event)">
-                    <span>Impresión Automática al Cobrar</span>
-                </label>
+            <div class="printers-list">
+                @for (printer of vm.config().printers; track printer.id; let i = $index) {
+                    <div class="printer-card glass-card" style="padding: 16px; margin-bottom: 12px;">
+                        <div style="display:flex; justify-content: space-between; margin-bottom: 12px;">
+                            <input type="text" [(ngModel)]="printer.name" class="glass-input" placeholder="Nombre (Ej: Barra, Cocina)" style="flex:1; font-weight:bold;">
+                            <button class="btn-del" style="margin-left: 12px;" (click)="vm.removePrinter(i)"><lucide-icon name="trash-2" [size]="16"></lucide-icon></button>
+                        </div>
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                            <div class="form-group">
+                                <label>Dirección IP o Ruta</label>
+                                <input type="text" [(ngModel)]="printer.address" class="glass-input" placeholder="Ej: 192.168.1.100">
+                            </div>
+                            <div class="form-group">
+                                <label>Tipo de Conexión</label>
+                                <select [(ngModel)]="printer.type" class="glass-input">
+                                    <option value="network">Red (IP/WiFi)</option>
+                                    <option value="usb">USB Local</option>
+                                    <option value="cloud">Nube</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                }
+                @if (!vm.config().printers || vm.config().printers.length === 0) {
+                    <p style="opacity:0.5; text-align:center; padding: 20px;">No hay impresoras configuradas.</p>
+                }
             </div>
           </section>
         </main>

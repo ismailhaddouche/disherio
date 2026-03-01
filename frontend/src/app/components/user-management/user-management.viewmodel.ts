@@ -10,21 +10,31 @@ export class UserManagementViewModel {
     private http = inject(HttpClient);
 
     public users = signal<any[]>([]);
+    public printers = signal<any[]>([]);
     public loading = signal<boolean>(false);
     public error = signal<string | null>(null);
 
+    // Editing State
+    public editingUser = signal<any | null>(null);
+
     constructor() {
-        this.loadUsers();
+        this.loadData();
     }
 
-    private async loadUsers() {
+    private async loadData() {
         this.loading.set(true);
         this.error.set(null);
         try {
-            const users: any = await lastValueFrom(this.http.get(`${environment.apiUrl}/api/users`));
+            const [users, config]: any = await Promise.all([
+                lastValueFrom(this.http.get(`${environment.apiUrl}/api/users`)),
+                lastValueFrom(this.http.get(`${environment.apiUrl}/api/restaurant`))
+            ]);
+            
             if (users) this.users.set(users);
+            if (config && config.printers) this.printers.set(config.printers);
+
         } catch (error: any) {
-            console.error('Error loading users', error);
+            console.error('Error loading data', error);
             this.error.set(error.message || 'Error al conectar con el servidor');
         } finally {
             this.loading.set(false);
@@ -57,6 +67,42 @@ export class UserManagementViewModel {
             this.auth.logActivity('USER_DELETED', { userId });
         } catch (e: any) {
             this.error.set('No se pudo eliminar el usuario.');
+        }
+    }
+
+    public openEditModal(user: any) {
+        this.editingUser.set({
+            ...user,
+            password: '', // Empty password field means it won't be updated
+            printTemplate: user.printTemplate || {
+                header: '',
+                footer: 'Gracias por su visita'
+            }
+        });
+    }
+
+    public closeEditModal() {
+        this.editingUser.set(null);
+    }
+
+    public async saveUser() {
+        const user = this.editingUser();
+        if (!user) return;
+
+        try {
+            const payload = { ...user };
+            if (!payload.password) {
+                delete payload.password;
+            }
+
+            const updatedUser: any = await lastValueFrom(this.http.post(`${environment.apiUrl}/api/users`, payload));
+            
+            this.users.update(curr => curr.map(u => u._id === updatedUser._id ? updatedUser : u));
+            this.auth.logActivity('USER_UPDATED', { username: updatedUser.username });
+            this.closeEditModal();
+        } catch (e: any) {
+            console.error(e);
+            alert('No se pudo actualizar el usuario.');
         }
     }
 }
