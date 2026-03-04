@@ -119,7 +119,7 @@ import { TranslateModule } from '@ngx-translate/core';
         <div class="glass-card orders-section">
           <div class="view-header" style="margin-bottom: 24px;">
             <h3 class="view-title">{{ 'DASHBOARD.REALTIME' | translate }}</h3>
-            <span class="live-indicator">LIVE</span>
+            <span class="live-indicator">{{ 'DASHBOARD.LIVE' | translate }}</span>
           </div>
 
           @if (vm.loading()) {
@@ -132,7 +132,7 @@ import { TranslateModule } from '@ngx-translate/core';
               @for (order of vm.orders(); track order._id) {
                 <div class="order-item glass-card" [class.active-border]="order.status === 'active'">
                   <div class="order-info">
-                    <span class="table-tag">Tótem #{{ order.totemId }}</span>
+                    <span class="table-tag">{{ 'DASHBOARD.TOTEM' | translate }} #{{ order.totemId }}</span>
                     <span class="order-time">
                         <lucide-icon name="clock" [size]="12" class="inline-icon"></lucide-icon>
                         {{ order.createdAt | date:'HH:mm' }}

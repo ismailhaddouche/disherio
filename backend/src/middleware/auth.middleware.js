@@ -13,13 +13,13 @@ function verifyToken(req, res, next) {
 
     if (!token) {
         console.log('[AUTH] No token found in cookies or headers');
-        return res.status(403).json({ error: 'No token provided' });
+        return res.status(403).json({ error: req.t('ERRORS.NO_TOKEN_PROVIDED') });
     }
 
     jwt.verify(token, JWT_SECRET, (err, decoded) => {
         if (err) {
             console.error('[AUTH] JWT Verification failed:', err.message);
-            return res.status(401).json({ error: 'Failed to authenticate token' });
+            return res.status(401).json({ error: req.t('ERRORS.FAILED_AUTH_TOKEN') });
         }
 
         console.log('[AUTH] Token verified. Payload:', decoded);
@@ -35,12 +35,12 @@ function generateToken(payload) {
 function getCookieOptions() {
     // Detect if we should use Secure flag (only for HTTPS)
     const isHttps = process.env.DOMAIN && process.env.DOMAIN.startsWith('https');
-    
+
     return {
         httpOnly: true,
         secure: isHttps, // ONLY true if domain is https
         sameSite: 'lax',
-        maxAge: 24 * 60 * 60 * 1000, 
+        maxAge: 24 * 60 * 60 * 1000,
         path: '/'
     };
 }

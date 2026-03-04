@@ -106,9 +106,9 @@ router.patch('/:orderId/items/:itemId/associate',
     async (req, res) => {
         try {
             const order = await Order.findById(req.params.orderId);
-            if (!order) return res.status(404).json({ error: 'Order not found' });
+            if (!order) return res.status(404).json({ error: req.t('ERRORS.ORDER_NOT_FOUND') });
             const item = order.items.find(i => String(i._id) === req.params.itemId);
-            if (!item) return res.status(404).json({ error: 'Item not found' });
+            if (!item) return res.status(404).json({ error: req.t('ERRORS.ITEM_NOT_FOUND') });
             item.orderedBy = { id: req.body.userId, name: req.body.userName };
             await order.save();
             const io = req.app.get('io');
@@ -189,10 +189,10 @@ router.patch('/:orderId',
                 }
             }
             if (Object.keys(updateData).length === 0) {
-                return res.status(400).json({ error: 'No valid fields provided for update' });
+                return res.status(400).json({ error: req.t('ERRORS.NO_VALID_FIELDS') });
             }
             const order = await Order.findByIdAndUpdate(req.params.orderId, { $set: updateData }, { new: true });
-            if (!order) return res.status(404).json({ error: 'Order not found' });
+            if (!order) return res.status(404).json({ error: req.t('ERRORS.ORDER_NOT_FOUND') });
             const io = req.app.get('io');
             if (io) io.emit('order-updated', order);
             res.json(order);
@@ -213,9 +213,9 @@ router.patch('/:orderId/items/:itemId',
     async (req, res) => {
         try {
             const order = await Order.findById(req.params.orderId);
-            if (!order) return res.status(404).json({ error: 'Order not found' });
+            if (!order) return res.status(404).json({ error: req.t('ERRORS.ORDER_NOT_FOUND') });
             const item = order.items.find(i => String(i._id) === req.params.itemId);
-            if (!item) return res.status(404).json({ error: 'Item not found' });
+            if (!item) return res.status(404).json({ error: req.t('ERRORS.ITEM_NOT_FOUND') });
             item.status = req.body.status;
             await order.save();
             const io = req.app.get('io');
@@ -240,7 +240,7 @@ router.post('/:orderId/checkout',
         try {
             const { splitType, parts, method, billingConfig, itemIds, userId } = req.body;
             const order = await Order.findById(req.params.orderId);
-            if (!order) return res.status(404).json({ error: 'Order not found' });
+            if (!order) return res.status(404).json({ error: req.t('ERRORS.ORDER_NOT_FOUND') });
 
             let itemsTotal = 0;
             let itemsSummary = [];

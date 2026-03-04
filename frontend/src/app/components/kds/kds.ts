@@ -106,7 +106,7 @@ import { TranslateModule } from '@ngx-translate/core';
           <aside class="stock-sidebar glass-card">
             <header>
               <h3>{{ 'KDS.AVAILABILITY' | translate }}</h3>
-              <p>Desactiva platos que se hayan agotado.</p>
+              <p>{{ 'KDS.AVAILABILITY_DESC' | translate }}</p>
             </header>
             <div class="stock-list">
               @for (item of vm.productList(); track item._id) {

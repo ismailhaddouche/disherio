@@ -5,5 +5,31 @@
         "not_found": "Not Found",
         "cannot_method_path": "Cannot {{method}} {{path}}",
         "internal_error": "Internal Server Error"
+    },
+    "ERRORS": {
+        "USER_NOT_FOUND": "User not found",
+        "ACCESS_DENIED_ADMIN": "Access denied: Administrator role required",
+        "USERNAME_IN_USE": "Username already in use",
+        "SOURCE_USER_NOT_FOUND": "Source user not found",
+        "TARGET_USER_NOT_FOUND": "Target user not found",
+        "NO_IMAGE_PROVIDED": "No image provided",
+        "DUPLICATE_TOTEM_NAME": "A totem with that name already exists",
+        "RESTAURANT_NOT_FOUND": "Restaurant not found",
+        "TOTEM_NOT_FOUND": "Totem not found",
+        "TICKET_NOT_FOUND": "Ticket not found",
+        "ORDER_NOT_FOUND": "Order not found",
+        "ITEM_NOT_FOUND": "Item not found",
+        "NO_VALID_FIELDS": "No valid fields provided for update",
+        "INVALID_CREDENTIALS": "Invalid credentials",
+        "LOGGED_OUT": "Logged out successfully",
+        "NO_TOKEN_PROVIDED": "No access token provided",
+        "FAILED_AUTH_TOKEN": "Failed to authenticate token"
+    },
+    "AUTH": {
+        "REQ_USERNAME": "Username is required",
+        "REQ_PASSWORD": "Password is required",
+        "REQ_SLUG": "Restaurant slug is required",
+        "REQ_TOTEM": "Totem ID is required",
+        "REQ_GUEST": "Guest name is required"
     }
 }

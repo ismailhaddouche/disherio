@@ -22,7 +22,7 @@ const validate = (req, res, next) => {
 // Middleware to ensure admin role
 const requireAdmin = (req, res, next) => {
     if (!req.user || req.user.role !== 'admin') {
-        return res.status(403).json({ error: 'Acceso denegado: Se requiere rol de administrador' });
+        return res.status(403).json({ error: req.t('ERRORS.ACCESS_DENIED_ADMIN') });
     }
     next();
 };
@@ -94,7 +94,7 @@ router.patch('/restaurant', verifyToken, requireAdmin, async (req, res) => {
 // POST /upload-logo - Upload and optimize restaurant logo
 router.post('/upload-logo', verifyToken, requireAdmin, upload.single('logo'), async (req, res) => {
     try {
-        if (!req.file) return res.status(400).json({ error: 'No image provided' });
+        if (!req.file) return res.status(400).json({ error: req.t('ERRORS.NO_IMAGE_PROVIDED') });
 
         const uploadDir = path.join(__dirname, '../../public/uploads');
         if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
@@ -148,7 +148,7 @@ router.post('/totems',
             // CHECK DUPLICATE NAME
             const duplicate = restaurant.totems.find(t => t.name.toLowerCase() === name.toLowerCase());
             if (duplicate) {
-                return res.status(400).json({ error: 'Ya existe un tótem con ese nombre' });
+                return res.status(400).json({ error: req.t('ERRORS.DUPLICATE_TOTEM_NAME') });
             }
 
             const newTotem = {
@@ -182,14 +182,14 @@ router.patch('/totems/:id',
             const { id } = req.params;
             const { name } = req.body;
             let restaurant = await Restaurant.findOne();
-            if (!restaurant) return res.status(404).json({ error: 'Restaurant not found' });
+            if (!restaurant) return res.status(404).json({ error: req.t('ERRORS.RESTAURANT_NOT_FOUND') });
 
             const totem = restaurant.totems.find(t => String(t.id) === id);
-            if (!totem) return res.status(404).json({ error: 'Totem not found' });
+            if (!totem) return res.status(404).json({ error: req.t('ERRORS.TOTEM_NOT_FOUND') });
 
             // CHECK DUPLICATE (excluding itself)
             const duplicate = restaurant.totems.find(t => t.name.toLowerCase() === name.toLowerCase() && String(t.id) !== id);
-            if (duplicate) return res.status(400).json({ error: 'Ya existe otro tótem con ese nombre' });
+            if (duplicate) return res.status(400).json({ error: req.t('ERRORS.DUPLICATE_TOTEM_NAME') });
 
             totem.name = name;
             await restaurant.save();
@@ -211,7 +211,7 @@ router.delete('/totems/:id',
         try {
             const { id } = req.params;
             let restaurant = await Restaurant.findOne();
-            if (!restaurant) return res.status(404).json({ error: 'Restaurant not found' });
+            if (!restaurant) return res.status(404).json({ error: req.t('ERRORS.RESTAURANT_NOT_FOUND') });
 
             restaurant.totems = restaurant.totems.filter(t => String(t.id) !== id);
             await restaurant.save();
@@ -318,7 +318,7 @@ router.delete('/tickets/:ticketId',
         try {
             const ticket = await Ticket.findByIdAndDelete(req.params.ticketId);
             if (!ticket) {
-                return res.status(404).json({ error: 'Ticket not found' });
+                return res.status(404).json({ error: req.t('ERRORS.TICKET_NOT_FOUND') });
             }
             res.json({ message: 'Ticket deleted' });
         } catch (error) {

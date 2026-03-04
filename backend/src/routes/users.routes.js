@@ -17,7 +17,7 @@ const requireAdmin = (req, res, next) => {
     console.log(`[DEBUG AUTH] User: ${req.user?.userId}, Role: ${req.user?.role}`);
     if (!req.user || req.user.role !== 'admin') {
         console.error(`[AUTH DENIED] User with role ${req.user?.role} tried to access admin route`);
-        return res.status(403).json({ error: 'Acceso denegado: Se requiere rol de administrador' });
+        return res.status(403).json({ error: req.t('ERRORS.ACCESS_DENIED_ADMIN') });
     }
     next();
 };
@@ -53,7 +53,7 @@ router.patch('/me',
     async (req, res) => {
         try {
             const user = await User.findById(req.user.userId);
-            if (!user) return res.status(404).json({ error: 'User not found' });
+            if (!user) return res.status(404).json({ error: req.t('ERRORS.USER_NOT_FOUND') });
 
             if (req.body.username) user.username = req.body.username;
             if (req.body.password) user.password = req.body.password;
@@ -65,7 +65,7 @@ router.patch('/me',
             res.json(result);
         } catch (error) {
             if (error.code === 11000) {
-                return res.status(400).json({ error: 'Username already in use' });
+                return res.status(400).json({ error: req.t('ERRORS.USERNAME_IN_USE') });
             }
             res.status(500).json({ error: error.message });
         }
@@ -77,7 +77,7 @@ router.post('/',
     verifyToken,
     requireAdmin,
     [
-        body('username').trim().notEmpty().withMessage('Username is required'),
+        body('username').trim().notEmpty().withMessage((value, { req }) => req.t('AUTH.REQ_USERNAME')),
         body('role')
             .notEmpty().withMessage('Role is required')
             .isIn(['admin', 'kitchen', 'pos', 'customer', 'waiter']).withMessage('Invalid role'),
@@ -94,7 +94,7 @@ router.post('/',
             let user;
             if (_id) {
                 user = await User.findById(_id);
-                if (!user) return res.status(404).json({ error: 'User not found' });
+                if (!user) return res.status(404).json({ error: req.t('ERRORS.USER_NOT_FOUND') });
                 Object.assign(user, data);
                 await user.save();
             } else {
@@ -139,7 +139,7 @@ router.patch('/:id/print-settings',
     async (req, res) => {
         try {
             const user = await User.findById(req.params.id);
-            if (!user) return res.status(404).json({ error: 'User not found' });
+            if (!user) return res.status(404).json({ error: req.t('ERRORS.USER_NOT_FOUND') });
 
             if (req.body.printerId) user.printerId = req.body.printerId;
             if (req.body.printTemplate) {
@@ -166,10 +166,10 @@ router.post('/:id/copy-print-settings/:sourceUserId',
     async (req, res) => {
         try {
             const sourceUser = await User.findById(req.params.sourceUserId);
-            if (!sourceUser) return res.status(404).json({ error: 'Source user not found' });
+            if (!sourceUser) return res.status(404).json({ error: req.t('ERRORS.SOURCE_USER_NOT_FOUND') });
 
             const targetUser = await User.findById(req.params.id);
-            if (!targetUser) return res.status(404).json({ error: 'Target user not found' });
+            if (!targetUser) return res.status(404).json({ error: req.t('ERRORS.TARGET_USER_NOT_FOUND') });
 
             targetUser.printerId = sourceUser.printerId;
             targetUser.printTemplate = sourceUser.printTemplate;

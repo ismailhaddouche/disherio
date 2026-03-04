@@ -1,9 +1,35 @@
 {
-  "errors": {
-    "too_many_requests": "Demasiadas solicitudes, por favor intente de nuevo más tarde.",
-    "too_many_login_attempts": "Demasiados intentos de inicio de sesión. Por favor, inténtelo de nuevo en 15 minutos.",
-    "not_found": "No encontrado",
-    "cannot_method_path": "No se puede {{method}} {{path}}",
-    "internal_error": "Error Interno del Servidor"
-  }
+    "errors": {
+        "too_many_requests": "Demasiadas solicitudes, por favor intente de nuevo más tarde.",
+        "too_many_login_attempts": "Demasiados intentos de inicio de sesión. Por favor, inténtelo de nuevo en 15 minutos.",
+        "not_found": "No encontrado",
+        "cannot_method_path": "No se puede {{method}} {{path}}",
+        "internal_error": "Error Interno del Servidor"
+    },
+    "ERRORS": {
+        "USER_NOT_FOUND": "Usuario no encontrado",
+        "ACCESS_DENIED_ADMIN": "Acceso denegado: Se requiere rol de administrador",
+        "USERNAME_IN_USE": "El nombre de usuario ya está en uso",
+        "SOURCE_USER_NOT_FOUND": "Usuario origen no encontrado",
+        "TARGET_USER_NOT_FOUND": "Usuario destino no encontrado",
+        "NO_IMAGE_PROVIDED": "No se proporcionó imagen",
+        "DUPLICATE_TOTEM_NAME": "Ya existe un tótem con ese nombre",
+        "RESTAURANT_NOT_FOUND": "Restaurante no encontrado",
+        "TOTEM_NOT_FOUND": "Tótem no encontrado",
+        "TICKET_NOT_FOUND": "Ticket no encontrado",
+        "ORDER_NOT_FOUND": "Pedido no encontrado",
+        "ITEM_NOT_FOUND": "Artículo no encontrado",
+        "NO_VALID_FIELDS": "No se proporcionaron campos válidos para actualizar",
+        "INVALID_CREDENTIALS": "Credenciales inválidas o incorrectas",
+        "LOGGED_OUT": "Sesión cerrada correctamente",
+        "NO_TOKEN_PROVIDED": "No se proporcionó ningún token de acceso",
+        "FAILED_AUTH_TOKEN": "Fallo al autenticar el token"
+    },
+    "AUTH": {
+        "REQ_USERNAME": "El nombre de usuario es obligatorio",
+        "REQ_PASSWORD": "La contraseña es obligatoria",
+        "REQ_SLUG": "El identificador del restaurante es obligatorio",
+        "REQ_TOTEM": "El ID del tótem es obligatorio",
+        "REQ_GUEST": "El nombre del invitado es obligatorio"
+    }
 }

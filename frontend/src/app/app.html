@@ -16,13 +16,13 @@
     <!-- Top Bar (Contextual Info) -->
     <header class="top-bar glass-card" *ngIf="auth.isAuthenticated()">
       <div class="breadcrumb">
-        <span class="restaurant-name gradient-text">Restaurante Digital</span>
+        <span class="restaurant-name gradient-text">{{ 'APP.RESTAURANT_NAME' | translate }}</span>
       </div>
 
       <div class="status-indicators">
         <div class="socket-badge" [class]="comms.connectionStatus()">
           <span class="status-dot" [class.online]="comms.isOnline()"></span>
-          {{ comms.isOnline() ? 'En Línea' : 'Desconectado' }}
+          {{ comms.isOnline() ? ('APP.ONLINE' | translate) : ('APP.OFFLINE' | translate) }}
         </div>
         
         <div class="user-pill glass-card">

@@ -7,8 +7,8 @@ const { generateToken, getCookieOptions, COOKIE_NAME } = require('../middleware/
 // POST /auth/login
 router.post('/login',
     [
-        body('username').trim().notEmpty().withMessage('Username is required'),
-        body('password').notEmpty().withMessage('Password is required')
+        body('username').trim().notEmpty().withMessage((value, { req }) => req.t('AUTH.REQ_USERNAME')),
+        body('password').notEmpty().withMessage((value, { req }) => req.t('AUTH.REQ_PASSWORD'))
     ],
     async (req, res) => {
         const errors = validationResult(req);
@@ -21,7 +21,7 @@ router.post('/login',
             const user = await User.findOne({ username, active: true });
 
             if (!user || !(await user.comparePassword(password))) {
-                return res.status(401).json({ error: 'Invalid credentials' });
+                return res.status(401).json({ error: req.t('ERRORS.INVALID_CREDENTIALS') });
             }
 
             const token = generateToken({ userId: user._id, role: user.role });
@@ -44,9 +44,9 @@ router.post('/login',
 // POST /auth/customer-session - Guest joining a table via Totem
 router.post('/customer-session',
     [
-        body('restaurantSlug').notEmpty().withMessage('Restaurant slug is required'),
-        body('totemId').notEmpty().withMessage('Totem ID is required'),
-        body('name').trim().notEmpty().withMessage('Guest name is required')
+        body('restaurantSlug').notEmpty().withMessage((value, { req }) => req.t('AUTH.REQ_SLUG')),
+        body('totemId').notEmpty().withMessage((value, { req }) => req.t('AUTH.REQ_TOTEM')),
+        body('name').trim().notEmpty().withMessage((value, { req }) => req.t('AUTH.REQ_GUEST'))
     ],
     async (req, res) => {
         const errors = validationResult(req);
@@ -78,7 +78,7 @@ router.post('/logout', (req, res) => {
     const options = { ...getCookieOptions() };
     delete options.maxAge; // Remove maxAge for clearing
     res.clearCookie(COOKIE_NAME, { path: options.path || '/' });
-    res.json({ message: 'Logged out successfully' });
+    res.json({ message: req.t('ERRORS.LOGGED_OUT') });
 });
 
 module.exports = router;
