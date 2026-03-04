@@ -27,8 +27,18 @@ echo -e "2) English"
 read -p "Opcion [1-2] (default: 1): " LANG_OPT
 
 if [ "$LANG_OPT" = "2" ]; then
-    MSG_DOM="[1/6] Domain Configuration"
+    MSG_DOM="[1/6] Access Configuration"
+    MSG_DOM_TYPE="Select access type:"
+    MSG_TYPE_DOM="1) Domain (recommended)"
+    MSG_TYPE_IP="2) IP Address"
+    MSG_DOM_OPT="Select domain type:"
+    MSG_DOM_LOC="1) Local domain (disherio.local)"
+    MSG_DOM_CUS="2) Custom domain"
     MSG_DOM_PROMPT="Enter your domain (e.g. app.disher.io): "
+    MSG_IP_OPT="Select IP type:"
+    MSG_IP_LOC="1) Local IP"
+    MSG_IP_PUB="2) Public IP"
+    MSG_ERR_DOM="Invalid domain. IPs or empty values are not allowed."
     MSG_SEC="[2/6] Configuring Security..."
     MSG_ENV="[3/6] Saving Configuration..."
     MSG_DOCKER="[4/6] Checking Docker..."
@@ -45,8 +55,18 @@ if [ "$LANG_OPT" = "2" ]; then
     MSG_WARN_DOCK="Docker not found. Installing automatically..."
     MSG_ERR_DOCK="Docker Compose could not be installed. Please install it manually."
 else
-    MSG_DOM="[1/6] Configuración de Dominio"
+    MSG_DOM="[1/6] Configuración de Acceso"
+    MSG_DOM_TYPE="Selecciona el tipo de acceso:"
+    MSG_TYPE_DOM="1) Dominio (recomendado)"
+    MSG_TYPE_IP="2) Dirección IP"
+    MSG_DOM_OPT="Selecciona el tipo de dominio:"
+    MSG_DOM_LOC="1) Dominio local (disherio.local)"
+    MSG_DOM_CUS="2) Dominio personalizado"
     MSG_DOM_PROMPT="Introduce tu dominio (ej: app.disher.io): "
+    MSG_IP_OPT="Selecciona el tipo de IP:"
+    MSG_IP_LOC="1) IP Local"
+    MSG_IP_PUB="2) IP Pública"
+    MSG_ERR_DOM="Dominio inválido. No se permiten IPs ni dejarse en blanco."
     MSG_SEC="[2/6] Configurando Seguridad..."
     MSG_ENV="[3/6] Guardando Configuración..."
     MSG_DOCKER="[4/6] Comprobando Docker..."
@@ -64,23 +84,48 @@ else
     MSG_ERR_DOCK="No se pudo auto-instalar Docker Compose. Por favor, instálalo manualmente."
 fi
 
-# 2. Domain
+# 2. Domain or IP
 echo -e "\n${CYAN}${MSG_DOM}${NC}"
-while true; do
-    read -p "${MSG_DOM_PROMPT}" CADDY_DOMAIN
+echo -e "${MSG_DOM_TYPE}"
+echo -e "${MSG_TYPE_DOM}"
+echo -e "${MSG_TYPE_IP}"
+read -p "Opcion [1-2] (default: 1): " ACCESS_OPT
+
+if [ "$ACCESS_OPT" = "2" ]; then
+    echo -e "\n${MSG_IP_OPT}"
+    echo -e "${MSG_IP_LOC}"
+    echo -e "${MSG_IP_PUB}"
+    read -p "Opcion [1-2] (default: 1): " IP_OPT
     
-    # Validar formato dominio simple (ej. dominio.com, app.dominio.io)
-    # ^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ (letras/numeros/guiones, un punto y una extension de al menos 2 letras - prohibe IPs puros)
-    if [[ "$CADDY_DOMAIN" =~ ^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]; then
-        break
+    if [ "$IP_OPT" = "2" ]; then
+        CADDY_DOMAIN=$(curl -s ifconfig.me)
+        echo -e "${GREEN}Detected Public IP: ${CADDY_DOMAIN}${NC}"
     else
-        if [ "$LANG_OPT" = "2" ]; then
-            echo -e "${RED}Invalid domain. IPs or empty values are not allowed.${NC}"
-        else
-            echo -e "${RED}Dominio inválido. No se permiten IPs ni dejarse en blanco.${NC}"
-        fi
+        CADDY_DOMAIN=$(hostname -I | awk '{print $1}')
+        echo -e "${GREEN}Detected Local IP: ${CADDY_DOMAIN}${NC}"
     fi
-done
+    PROTOCOL="http"
+else
+    echo -e "\n${MSG_DOM_OPT}"
+    echo -e "${MSG_DOM_LOC}"
+    echo -e "${MSG_DOM_CUS}"
+    read -p "Opcion [1-2] (default: 1): " DOM_OPT
+    
+    if [ "$DOM_OPT" = "2" ]; then
+        while true; do
+            read -p "${MSG_DOM_PROMPT}" CADDY_DOMAIN
+            if [[ "$CADDY_DOMAIN" =~ ^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]; then
+                break
+            else
+                echo -e "${RED}${MSG_ERR_DOM}${NC}"
+            fi
+        done
+        PROTOCOL="https"
+    else
+        CADDY_DOMAIN="disherio.local"
+        PROTOCOL="http"
+    fi
+fi
 
 # 3. Security
 echo -e "\n${CYAN}${MSG_SEC}${NC}"
@@ -158,7 +203,7 @@ $DOCKER_CMD exec -e MONGO_URI="$MONGODB_URI" \
 echo -e "\n${GREEN}============================================${NC}"
 echo -e "${GREEN}   ${MSG_INST}${NC}"
 echo -e "${GREEN}============================================${NC}"
-echo -e "  ${MSG_ACCESS}https://${CADDY_DOMAIN}"
+echo -e "  ${MSG_ACCESS}${PROTOCOL}://${CADDY_DOMAIN}"
 
 echo -e "\n${YELLOW}${MSG_CRED}${NC}"
 echo -e "  ${MSG_USRADM}${CYAN}admin${NC}"
