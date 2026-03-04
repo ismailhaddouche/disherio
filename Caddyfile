@@ -1,13 +1,12 @@
 {
-    # Global options
-    email devops@disher.io
-    # Disable admin API for security
+    # Global options - disable automatic HTTPS so it works with IPs
     admin off
+    # Do not attempt to get certificates automatically
+    auto_https off
 }
 
-# Primary Domain (Dynamic from .env)
-# Using http:// prefix allows access via IP without attempting SSL
-http://{$CADDY_DOMAIN} {
+# Listen on port 80 - works with both domains and IPs
+:80 {
     # API Backend
     handle /api/* {
         reverse_proxy backend:3000
