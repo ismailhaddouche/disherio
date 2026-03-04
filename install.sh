@@ -86,46 +86,75 @@ fi
 
 # 2. Domain or IP
 echo -e "\n${CYAN}${MSG_DOM}${NC}"
-echo -e "${MSG_DOM_TYPE}"
-echo -e "${MSG_TYPE_DOM}"
-echo -e "${MSG_TYPE_IP}"
-read -p "Opcion [1-2] (default: 1): " ACCESS_OPT
 
-if [ "$ACCESS_OPT" = "2" ]; then
-    echo -e "\n${MSG_IP_OPT}"
-    echo -e "${MSG_IP_LOC}"
-    echo -e "${MSG_IP_PUB}"
-    read -p "Opcion [1-2] (default: 1): " IP_OPT
-    
-    if [ "$IP_OPT" = "2" ]; then
-        CADDY_DOMAIN=$(curl -s ifconfig.me)
-        echo -e "${GREEN}Detected Public IP: ${CADDY_DOMAIN}${NC}"
-    else
-        CADDY_DOMAIN=$(hostname -I | awk '{print $1}')
-        echo -e "${GREEN}Detected Local IP: ${CADDY_DOMAIN}${NC}"
-    fi
-    PROTOCOL="http"
-else
-    echo -e "\n${MSG_DOM_OPT}"
-    echo -e "${MSG_DOM_LOC}"
-    echo -e "${MSG_DOM_CUS}"
-    read -p "Opcion [1-2] (default: 1): " DOM_OPT
-    
-    if [ "$DOM_OPT" = "2" ]; then
+while true; do
+    echo -e "${MSG_DOM_TYPE}"
+    echo -e "${MSG_TYPE_DOM}"
+    echo -e "${MSG_TYPE_IP}"
+    read -p "Opcion [1-2] (default: 1): " ACCESS_OPT
+    ACCESS_OPT=${ACCESS_OPT:-1}
+
+    if [ "$ACCESS_OPT" = "1" ]; then
+        # Submenú Dominio
         while true; do
-            read -p "${MSG_DOM_PROMPT}" CADDY_DOMAIN
-            if [[ "$CADDY_DOMAIN" =~ ^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]; then
-                break
-            else
-                echo -e "${RED}${MSG_ERR_DOM}${NC}"
+            echo -e "\n${MSG_DOM_OPT}"
+            echo -e "${MSG_DOM_LOC}"
+            echo -e "${MSG_DOM_CUS}"
+            read -p "Opcion [1-2] (default: 1): " DOM_OPT
+            DOM_OPT=${DOM_OPT:-1}
+
+            if [ "$DOM_OPT" = "1" ]; then
+                CADDY_DOMAIN="disherio.local"
+                PROTOCOL="http"
+                break 2
+            elif [ "$DOM_OPT" = "2" ]; then
+                while true; do
+                    read -p "${MSG_DOM_PROMPT}" CADDY_DOMAIN
+                    if [[ "$CADDY_DOMAIN" =~ ^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]; then
+                        PROTOCOL="https"
+                        break 3
+                    else
+                        echo -e "${RED}${MSG_ERR_DOM}${NC}"
+                    fi
+                done
             fi
         done
-        PROTOCOL="https"
+    elif [ "$ACCESS_OPT" = "2" ]; then
+        # Submenú IP
+        while true; do
+            echo -e "\n${MSG_IP_OPT}"
+            echo -e "${MSG_IP_LOC}"
+            echo -e "${MSG_IP_PUB}"
+            read -p "Opcion [1-2] (default: 1): " IP_OPT
+            IP_OPT=${IP_OPT:-1}
+            
+            if [ "$IP_OPT" = "2" ]; then
+                CADDY_DOMAIN=$(curl -s ifconfig.me)
+                if [ -z "$CADDY_DOMAIN" ]; then
+                    echo -e "${RED}Error detecting Public IP. Please check internet connection.${NC}"
+                    continue
+                fi
+                echo -e "${GREEN}Detected Public IP: ${CADDY_DOMAIN}${NC}"
+            else
+                CADDY_DOMAIN=$(hostname -I | awk '{print $1}')
+                if [ -z "$CADDY_DOMAIN" ]; then
+                     CADDY_DOMAIN="127.0.0.1"
+                fi
+                echo -e "${GREEN}Detected Local IP: ${CADDY_DOMAIN}${NC}"
+            fi
+            
+            read -p "Confirm IP ${CADDY_DOMAIN}? [Y/n]: " CONFIRM_IP
+            if [[ "$CONFIRM_IP" =~ ^[Nn]$ ]]; then
+                read -p "Enter IP manually: " CADDY_DOMAIN
+            fi
+            
+            PROTOCOL="http"
+            break 2
+        done
     else
-        CADDY_DOMAIN="disherio.local"
-        PROTOCOL="http"
+        echo -e "${RED}Invalid option.${NC}"
     fi
-fi
+done
 
 # 3. Security
 echo -e "\n${CYAN}${MSG_SEC}${NC}"
