@@ -136,10 +136,20 @@ router.post('/totems',
     ],
     validate,
     verifyToken,
-    requireAdmin,
+    async (req, res, next) => {
+        // Allow waiters only if isVirtual is true
+        if (req.user.role === 'waiter' && req.body.isVirtual !== true) {
+            return res.status(403).json({ error: req.t('ERRORS.ACCESS_DENIED_ADMIN') });
+        }
+        // If not waiter and not admin, block (though verifyToken/roles usually handled by middleware but here requireAdmin was used)
+        if (req.user.role !== 'admin' && req.user.role !== 'waiter') {
+            return res.status(403).json({ error: req.t('ERRORS.ACCESS_DENIED_ADMIN') });
+        }
+        next();
+    },
     async (req, res) => {
         try {
-            const { name } = req.body;
+            const { name, isVirtual } = req.body;
             let restaurant = await Restaurant.findOne();
             if (!restaurant) {
                 restaurant = new Restaurant({ name: 'Mi Restaurante' });
@@ -154,7 +164,8 @@ router.post('/totems',
             const newTotem = {
                 id: restaurant.nextTotemId,
                 name: name,
-                active: true
+                active: true,
+                isVirtual: isVirtual === true
             };
 
             restaurant.totems.push(newTotem);
@@ -206,12 +217,24 @@ router.delete('/totems/:id',
     [param('id').notEmpty()],
     validate,
     verifyToken,
-    requireAdmin,
     async (req, res) => {
         try {
             const { id } = req.params;
             let restaurant = await Restaurant.findOne();
             if (!restaurant) return res.status(404).json({ error: req.t('ERRORS.RESTAURANT_NOT_FOUND') });
+
+            const totem = restaurant.totems.find(t => String(t.id) === id);
+            if (!totem) return res.status(404).json({ error: req.t('ERRORS.TOTEM_NOT_FOUND') });
+
+            // Waiter can only delete virtual totems
+            if (req.user.role === 'waiter' && !totem.isVirtual) {
+                return res.status(403).json({ error: req.t('ERRORS.ACCESS_DENIED_ADMIN') });
+            }
+
+            // Only admin or waiter (with check above) can delete
+            if (req.user.role !== 'admin' && req.user.role !== 'waiter') {
+                return res.status(403).json({ error: req.t('ERRORS.ACCESS_DENIED_ADMIN') });
+            }
 
             restaurant.totems = restaurant.totems.filter(t => String(t.id) !== id);
             await restaurant.save();

@@ -280,7 +280,11 @@
         "DESC": "Selecciona una mesa para tomar comandas.",
         "LOADING": "Cargando mesas...",
         "TOUCH_ORDER": "TOCAR PARA PEDIR",
-        "NO_TABLES": "No hay mesas configuradas aún."
+        "NO_TABLES": "No hay mesas configuradas aún.",
+        "ADD_VIRTUAL": "Abrir Mesa Temporal",
+        "DELETE_CONFIRM": "¿Eliminar esta mesa temporal?",
+        "VIRTUAL_TAG": "TEMP",
+        "NEW_VIRTUAL_NAME": "Nombre (ej: Barra 2, Grupo Terraza)"
     },
     "USER_MGMT": {
         "SYSTEM_ROLE": "Rol del sistema:",

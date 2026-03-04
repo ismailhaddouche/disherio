@@ -148,10 +148,10 @@ router.post('/',
                 return {
                     ...item,
                     status: 'pending',
-                    orderedBy: { 
+                    orderedBy: {
                         // If they have a session cookie use it, else it's an orphan/guest
-                        id: req.user?.userId || 'guest', 
-                        name: req.user?.username || 'Invitado' 
+                        id: req.user?.userId || 'guest',
+                        name: req.user?.username || 'Invitado'
                     }
                 };
             });
@@ -296,7 +296,20 @@ router.post('/:orderId/checkout',
             }
 
             order.paymentStatus = totalPaidFlag ? 'paid' : 'split';
-            if (totalPaidFlag) order.status = 'completed';
+            if (totalPaidFlag) {
+                order.status = 'completed';
+                // Trigger auto-deletion of virtual totem if applicable
+                const Restaurant = require('../models/Restaurant');
+                const restaurant = await Restaurant.findOne();
+                if (restaurant) {
+                    const totem = restaurant.totems.find(t => t.id === order.totemId);
+                    if (totem && totem.isVirtual) {
+                        restaurant.totems = restaurant.totems.filter(t => t.id !== order.totemId);
+                        await restaurant.save();
+                        console.log(`[CLEANUP] Virtual totem ${order.totemId} deleted after payment.`);
+                    }
+                }
+            }
             await order.save();
             const io = req.app.get('io');
             if (io) io.emit('order-updated', order);

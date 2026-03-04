@@ -4,7 +4,8 @@ const TotemSchema = new mongoose.Schema({
     id: { type: Number, required: true }, // The identifying number (1, 2, 3...)
     name: String, // Optional name like "Mesa Terraza 1"
     qrUrl: String,
-    active: { type: Boolean, default: true }
+    active: { type: Boolean, default: true },
+    isVirtual: { type: Boolean, default: false }
 });
 
 const RestaurantSchema = new mongoose.Schema({
