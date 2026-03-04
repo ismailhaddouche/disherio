@@ -59,12 +59,26 @@ async function initStore() {
         }
 
         // Crear o actualizar usuario admin
-        await User.findOneAndUpdate(
-            { username: ADMIN_USER },
-            { password: ADMIN_PASS, role: 'admin', restaurantSlug: RESTAURANT_SLUG },
-            { upsert: true, new: true, setDefaultsOnInsert: true }
-        );
-        console.log(`✅ Usuario '${ADMIN_USER}' creado/actualizado con éxito.`);
+        // IMPORTANTE: usar save() para que el hook pre('save') de bcrypt hashee la contraseña
+        let adminUser = await User.findOne({ username: ADMIN_USER });
+        if (adminUser) {
+            adminUser.password = ADMIN_PASS;
+            adminUser.role = 'admin';
+            adminUser.restaurantSlug = RESTAURANT_SLUG;
+            adminUser.active = true;
+            await adminUser.save();
+            console.log(`✅ Usuario '${ADMIN_USER}' actualizado con éxito.`);
+        } else {
+            const newAdmin = new User({
+                username: ADMIN_USER,
+                password: ADMIN_PASS,
+                role: 'admin',
+                restaurantSlug: RESTAURANT_SLUG,
+                active: true
+            });
+            await newAdmin.save();
+            console.log(`✅ Usuario '${ADMIN_USER}' creado con éxito.`);
+        }
 
         console.log('✅ Inicialización de la tienda completada.');
         process.exit(0);
