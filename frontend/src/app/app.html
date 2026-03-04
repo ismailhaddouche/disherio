@@ -1,0 +1,138 @@
+<div class="mesh-background"></div>
+
+<!-- App Layout -->
+<div class="app-layout" [class.with-sidebar]="auth.isAuthenticated()">
+  
+  <!-- Sidebar (Only for authenticated staff) -->
+  <app-sidebar 
+    *ngIf="auth.isAuthenticated()"
+    [isCollapsed]="sidebarCollapsed()"
+    (collapsedChange)="sidebarCollapsed.set($event)">
+  </app-sidebar>
+
+  <!-- Main Content Area -->
+  <main class="main-content">
+    
+    <!-- Top Bar (Contextual Info) -->
+    <header class="top-bar glass-card" *ngIf="auth.isAuthenticated()">
+      <div class="breadcrumb">
+        <span class="restaurant-name gradient-text">Restaurante Digital</span>
+      </div>
+
+      <div class="status-indicators">
+        <div class="socket-badge" [class]="comms.connectionStatus()">
+          <span class="status-dot" [class.online]="comms.isOnline()"></span>
+          {{ comms.isOnline() ? 'En Línea' : 'Desconectado' }}
+        </div>
+        
+        <div class="user-pill glass-card">
+          <span class="role-icon"><lucide-icon name="user" [size]="14"></lucide-icon></span>
+          <span class="username">{{ auth.currentUser()?.username }}</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Router Content with Animations -->
+    <div class="content-wrapper" [@routeAnimations]="getRouteAnimationData()">
+      <router-outlet></router-outlet>
+    </div>
+
+  </main>
+</div>
+
+<style>
+  .app-layout {
+    display: flex;
+    min-height: 100vh;
+    background: transparent;
+  }
+
+  .main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    position: relative;
+  }
+
+  .top-bar {
+    height: 70px;
+    margin: 16px 24px;
+    padding: 0 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-radius: 16px;
+    z-index: 50;
+  }
+
+  .restaurant-name {
+    font-weight: 800;
+    font-size: 1.1rem;
+    letter-spacing: -0.02em;
+  }
+
+  .status-indicators {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .socket-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 100px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-muted);
+  }
+
+  .socket-badge.connected {
+    color: var(--accent-primary);
+    border-color: rgba(56, 189, 248, 0.2);
+  }
+
+  .status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--danger);
+  }
+
+  .status-dot.online {
+    background: var(--highlight);
+    box-shadow: 0 0 10px var(--highlight);
+  }
+
+  .user-pill {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 14px;
+    border-radius: 100px;
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+
+  .role-icon { font-size: 1rem; }
+
+  .content-wrapper {
+    flex: 1;
+    padding: 0 24px 24px 24px;
+    overflow-y: auto;
+  }
+
+  /* Responsive Adjustments */
+  @media (max-width: 768px) {
+    .top-bar {
+      margin: 12px;
+      padding: 0 16px;
+    }
+    .restaurant-name { display: none; }
+    .content-wrapper { padding: 12px; }
+  }
+</style>

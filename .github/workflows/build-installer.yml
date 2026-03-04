@@ -1,0 +1,179 @@
+name: Build Offline Installer
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: 'Target platform for Docker images'
+        required: true
+        default: 'linux/amd64'
+        type: choice
+        options:
+          - linux/amd64
+          - linux/arm64
+
+jobs:
+  build-and-package:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU (for ARM builds)
+        if: inputs.platform == 'linux/arm64'
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Backend Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          platforms: ${{ inputs.platform }}
+          tags: disher-backend:latest
+          load: true
+
+      - name: Build Frontend Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          platforms: ${{ inputs.platform }}
+          tags: disher-frontend:latest
+          load: true
+
+      - name: Pull External Images
+        run: |
+          docker pull --platform ${{ inputs.platform }} mongo:7
+          docker pull --platform ${{ inputs.platform }} caddy:2
+
+      - name: Save All Images to Tar
+        run: |
+          mkdir -p disher-installer
+          docker save -o disher-installer/images.tar \
+            disher-backend:latest \
+            disher-frontend:latest \
+            mongo:7 \
+            caddy:2
+
+      - name: Generate Production docker-compose.yml
+        run: |
+          cat > disher-installer/docker-compose.yml << 'ENDOFCOMPOSE'
+          services:
+            database:
+              image: mongo:7
+              container_name: disher-db
+              restart: always
+              volumes:
+                - mongo-data:/data/db
+              networks:
+                - disher-network
+              healthcheck:
+                test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+                interval: 10s
+                timeout: 5s
+                retries: 5
+                start_period: 20s
+
+            backend:
+              image: disher-backend:latest
+              container_name: disher-backend
+              restart: always
+              environment:
+                - MONGODB_URI=mongodb://database:27017/disher
+                - PORT=3000
+                - NODE_ENV=production
+                - DOMAIN=${DOMAIN}
+                - INSTALL_MODE=${INSTALL_MODE:-local}
+                - JWT_SECRET=${JWT_SECRET}
+              depends_on:
+                database:
+                  condition: service_healthy
+              networks:
+                - disher-network
+              healthcheck:
+                test: ["CMD", "node", "-e", "const http=require('http');const r=http.get('http://localhost:3000/api/health',s=>{process.exit(s.statusCode===200?0:1)});r.on('error',()=>process.exit(1))"]
+                interval: 15s
+                timeout: 5s
+                retries: 5
+                start_period: 30s
+
+            frontend:
+              image: disher-frontend:latest
+              container_name: disher-frontend
+              restart: always
+              networks:
+                - disher-network
+
+            caddy:
+              image: caddy:2
+              container_name: disher-proxy
+              restart: always
+              ports:
+                - "80:80"
+                - "443:443"
+              environment:
+                - DOMAIN=${DOMAIN}
+                - INSTALL_MODE=${INSTALL_MODE:-local}
+              volumes:
+                - ./Caddyfile:/etc/caddy/Caddyfile
+                - caddy-data:/data
+                - caddy-config:/config
+              depends_on:
+                frontend:
+                  condition: service_started
+                backend:
+                  condition: service_healthy
+              networks:
+                - disher-network
+
+          networks:
+            disher-network:
+              driver: bridge
+
+          volumes:
+            mongo-data:
+            caddy-data:
+            caddy-config:
+          ENDOFCOMPOSE
+
+      - name: Copy Scripts and Configs
+        run: |
+          cp install.sh disher-installer/
+          cp configure.sh disher-installer/
+          cp check-ip.sh disher-installer/
+          cp Caddyfile disher-installer/
+          chmod +x disher-installer/*.sh
+
+      - name: Validate docker-compose.yml
+        run: |
+          echo "--- Generated docker-compose.yml ---"
+          cat disher-installer/docker-compose.yml
+          echo "--- Validating syntax ---"
+          cd disher-installer
+          DOMAIN=test.example.com INSTALL_MODE=cloud JWT_SECRET=test123 \
+            docker compose config > /dev/null
+          echo "docker-compose.yml is valid"
+
+      - name: Create Tarball
+        run: |
+          PLATFORM_TAG=$(echo "${{ inputs.platform }}" | tr '/' '-')
+          tar -czvf "disher-setup-${PLATFORM_TAG}.tar.gz" -C disher-installer .
+          echo "ARTIFACT_NAME=disher-setup-${PLATFORM_TAG}" >> $GITHUB_ENV
+          echo "TARBALL_NAME=disher-setup-${PLATFORM_TAG}.tar.gz" >> $GITHUB_ENV
+
+      - name: Show Artifact Info
+        run: |
+          echo "Platform:  ${{ inputs.platform }}"
+          echo "Artifact:  ${{ env.TARBALL_NAME }}"
+          echo "Size:      $(du -h ${{ env.TARBALL_NAME }} | cut -f1)"
+          echo ""
+          echo "Contents:"
+          tar -tzvf ${{ env.TARBALL_NAME }}
+
+      - name: Upload Installer Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: ${{ env.TARBALL_NAME }}
+          retention-days: 30

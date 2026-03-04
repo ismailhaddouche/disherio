@@ -1,0 +1,9 @@
+{
+    "errors": {
+        "too_many_requests": "Too many requests, please try again later.",
+        "too_many_login_attempts": "Too many login attempts. Please try again in 15 minutes.",
+        "not_found": "Not Found",
+        "cannot_method_path": "Cannot {{method}} {{path}}",
+        "internal_error": "Internal Server Error"
+    }
+}

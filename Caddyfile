@@ -1,0 +1,45 @@
+{
+    # Global options
+    email devops@disher.io
+    # Disable admin API for security
+    admin off
+}
+
+# Primary Domain (Dynamic from .env)
+{$DOMAIN} {
+    # API Backend
+    handle /api/* {
+        reverse_proxy backend:3000
+    }
+
+    # Socket.io WebSocket support
+    handle /socket.io/* {
+        reverse_proxy backend:3000
+    }
+
+    # Frontend - Angular App (fallback for all other routes)
+    handle {
+        reverse_proxy frontend:80
+    }
+
+    # Security Headers
+    header {
+        X-Content-Type-Options nosniff
+        X-Frame-Options DENY
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy strict-origin-when-cross-origin
+        Permissions-Policy "camera=(), microphone=(), geolocation=()"
+        -Server
+    }
+
+    # Compression
+    encode zstd gzip
+
+    # Logging
+    log {
+        output file /data/access.log {
+            roll_size 10mb
+            roll_keep 10
+        }
+    }
+}

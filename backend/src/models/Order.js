@@ -1,0 +1,55 @@
+const mongoose = require('mongoose');
+
+const OrderItemSchema = new mongoose.Schema({
+    id: String,
+    name: { type: String, required: true },
+    price: { type: Number, required: true, min: 0 }, // Price at the moment of order (base + variants)
+    quantity: { type: Number, required: true, min: 1 },
+    status: {
+        type: String,
+        enum: ['pending', 'preparing', 'ready', 'served', 'cancelled'],
+        default: 'pending'
+    },
+    station: { type: String, default: 'Kitchen' },
+    orderedBy: {
+        id: String,
+        name: String
+    },
+    // Support for complex menu choices
+    selectedVariant: {
+        name: String,
+        priceAddon: Number
+    },
+    selectedAddons: [{
+        name: String,
+        price: Number
+    }],
+    notes: String,
+    emoji: String,
+    isCustom: { type: Boolean, default: false },
+    isPaid: { type: Boolean, default: false }
+});
+
+const OrderSchema = new mongoose.Schema({
+    tableNumber: String,
+    totemId: { type: Number, required: true }, // PM FIX: Added identifying totem number
+    items: [OrderItemSchema],
+    totalAmount: { type: Number, default: 0 },
+    paymentStatus: {
+        type: String,
+        enum: ['unpaid', 'paid', 'split', 'processing'],
+        default: 'unpaid'
+    },
+    status: {
+        type: String,
+        enum: ['active', 'completed', 'cancelled'],
+        default: 'active'
+    }
+}, { timestamps: true });
+
+// Indexes for performance optimization
+OrderSchema.index({ status: 1, createdAt: -1 });
+OrderSchema.index({ totemId: 1, status: 1 });
+OrderSchema.index({ tableNumber: 1, status: 1 });
+
+module.exports = mongoose.model('Order', OrderSchema);

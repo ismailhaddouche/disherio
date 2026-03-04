@@ -1,0 +1,183 @@
+const fs = require('fs');
+
+const STRINGS_ES = {
+    "MENU_EDITOR": {
+        "TITLE": "Gestor de Menú",
+        "DESC": "Crea y modifica los platos, variantes y menús de tu restaurante.",
+        "NEW_ITEM": "Nuevo Plato",
+        "VAR": "var.",
+        "EDIT_ITEM": "Editar Plato",
+        "CANCEL": "Cancelar",
+        "SAVE_CHANGES": "Guardar Cambios",
+        "BASIC_INFO": "Información Básica",
+        "ITEM_NAME": "Nombre del Plato",
+        "CATEGORY": "Categoría",
+        "CAT_PLACEHOLDER": "Nueva o existente...",
+        "BASE_PRICE": "Precio Base (€)",
+        "PRICE_DEF_VAR": "Definido por variantes",
+        "PRICE_HINT": "El precio base se ignora cuando hay variantes.",
+        "DESCRIPTION": "Descripción",
+        "ALLERGENS_TAGS": "Alérgenos y Etiquetas",
+        "TAGS": "Etiquetas (separadas por coma)",
+        "TAGS_PLACEHOLDER": "Vegano, Picante, Chef...",
+        "IS_MENU": "¿Es un Menú? (Ej: Menú del día)",
+        "YES_MENU": "Sí, permite elegir varios platos por un precio fijo.",
+        "NO_MENU": "No, es un plato individual.",
+        "MENU_STRUCT": "Estructura del Menú (Primeros, Segundos...)",
+        "ADD_SEC": "+ Añadir Sección",
+        "AVAILABLE_OPTS": "Opciones disponibles:",
+        "OPT_PLACEHOLDER": "Nombre del plato",
+        "ADD_DISH": "+ Añadir Plato",
+        "VARIANTS": "Variantes (Tamaños/Versiones)",
+        "ADD": "+ Añadir",
+        "VAR_NAME_PH": "Nombre (ej: XL)",
+        "TOTAL_PRICE_PH": "Precio Total",
+        "ADDONS": "Complementos / Extras",
+        "ADDON_PH": "Extra (ej: Queso)",
+        "PRICE_PH": "Precio",
+        "DEL_PERMANENTLY": "Eliminar Plato Permanentemente",
+        "PRO_MANAGER": "Gestor de Menú Profesional",
+        "SELECT_HINT": "Selecciona un plato para editar sus detalles o crea uno nuevo desde cero."
+    },
+    "STORE_CONFIG": {
+        "TITLE": "Configuración de Tienda",
+        "SAVING": "Guardando...",
+        "SAVE": "GUARDAR CAMBIOS",
+        "LOADING": "Cargando configuración...",
+        "GEN_INFO": "Información General",
+        "REST_NAME": "Nombre del Restaurante",
+        "REST_LOGO": "Logo del Restaurante",
+        "UPLOAD_IMG": "Subir imagen",
+        "PREVIEW": "Vista previa:",
+        "DESC_SLOGAN": "Descripción / Slogan",
+        "PHONE": "Teléfono de Contacto",
+        "DOMAIN": "Dominio del Sistema",
+        "DOMAIN_HINT": "Este es el enlace base para los códigos QR (Configurado en la instalación).",
+        "SOCIALS": "Redes Sociales",
+        "WEBSITE": "Sitio Web",
+        "APP_APPEARANCE": "Apariencia de la App",
+        "APPEARANCE_SUB": "Personaliza los colores que ven tus clientes y tu equipo.",
+        "BILLING": "Configuración de Facturación",
+        "BILLING_SUB": "Configura cómo se calculan los tickets e impuestos.",
+        "VAT": "IVA (%)",
+        "VAT_HINT": "⚠️ Obligatorio para generar tickets. Los precios se introducen con IVA incluido.",
+        "TIP_ENABLE": "Activar Propinas",
+        "TIP_PCT": "Porcentaje de Propina (%)",
+        "TIP_DESC": "Descripción de la Propina",
+        "TIP_DESC_HINT": "Este texto se muestra en el ticket.",
+        "PRINTERS": "Impresoras del Local",
+        "PRINTERS_SUB": "Registra las impresoras disponibles para asignar a los usuarios.",
+        "NAME_PH": "Nombre (Ej: Barra, Cocina)",
+        "IP_PATH": "Dirección IP o Ruta",
+        "CONN_TYPE": "Tipo de Conexión",
+        "NET_WIFI": "Red (IP/WiFi)",
+        "USB": "USB Local",
+        "CLOUD": "Nube",
+        "NO_PRINTERS": "No hay impresoras configuradas."
+    },
+    "WAITER": {
+        "PANEL": "Panel de Camarero",
+        "DESC": "Selecciona una mesa para tomar comandas.",
+        "LOADING": "Cargando mesas...",
+        "TOUCH_ORDER": "TOCAR PARA PEDIR",
+        "NO_TABLES": "No hay mesas configuradas aún."
+    }
+};
+
+const STRINGS_EN = {
+    "MENU_EDITOR": {
+        "TITLE": "Menu Manager",
+        "DESC": "Create and modify dishes, variants, and menus for your restaurant.",
+        "NEW_ITEM": "New Dish",
+        "VAR": "var.",
+        "EDIT_ITEM": "Edit Dish",
+        "CANCEL": "Cancel",
+        "SAVE_CHANGES": "Save Changes",
+        "BASIC_INFO": "Basic Information",
+        "ITEM_NAME": "Dish Name",
+        "CATEGORY": "Category",
+        "CAT_PLACEHOLDER": "New or existing...",
+        "BASE_PRICE": "Base Price (€)",
+        "PRICE_DEF_VAR": "Defined by variants",
+        "PRICE_HINT": "Base price is ignored when variants exist.",
+        "DESCRIPTION": "Description",
+        "ALLERGENS_TAGS": "Allergens and Tags",
+        "TAGS": "Tags (comma-separated)",
+        "TAGS_PLACEHOLDER": "Vegan, Spicy, Chef...",
+        "IS_MENU": "Is it a Menu? (e.g., Daily Menu)",
+        "YES_MENU": "Yes, allows choosing multiple dishes for a fixed price.",
+        "NO_MENU": "No, it is an individual dish.",
+        "MENU_STRUCT": "Menu Structure (Starters, Mains...)",
+        "ADD_SEC": "+ Add Section",
+        "AVAILABLE_OPTS": "Available Options:",
+        "OPT_PLACEHOLDER": "Dish name",
+        "ADD_DISH": "+ Add Dish",
+        "VARIANTS": "Variants (Sizes/Versions)",
+        "ADD": "+ Add",
+        "VAR_NAME_PH": "Name (e.g., XL)",
+        "TOTAL_PRICE_PH": "Total Price",
+        "ADDONS": "Addons / Extras",
+        "ADDON_PH": "Extra (e.g., Cheese)",
+        "PRICE_PH": "Price",
+        "DEL_PERMANENTLY": "Delete Dish Permanently",
+        "PRO_MANAGER": "Professional Menu Manager",
+        "SELECT_HINT": "Select a dish to edit its details or create a new one from scratch."
+    },
+    "STORE_CONFIG": {
+        "TITLE": "Store Configuration",
+        "SAVING": "Saving...",
+        "SAVE": "SAVE CHANGES",
+        "LOADING": "Loading configuration...",
+        "GEN_INFO": "General Information",
+        "REST_NAME": "Restaurant Name",
+        "REST_LOGO": "Restaurant Logo",
+        "UPLOAD_IMG": "Upload image",
+        "PREVIEW": "Preview:",
+        "DESC_SLOGAN": "Description / Slogan",
+        "PHONE": "Contact Phone",
+        "DOMAIN": "System Domain",
+        "DOMAIN_HINT": "This is the base link for QR codes (Configured during installation).",
+        "SOCIALS": "Social Networks",
+        "WEBSITE": "Website",
+        "APP_APPEARANCE": "App Appearance",
+        "APPEARANCE_SUB": "Customize the colors your customers and team see.",
+        "BILLING": "Billing Configuration",
+        "BILLING_SUB": "Configure how tickets and taxes are calculated.",
+        "VAT": "VAT (%)",
+        "VAT_HINT": "⚠️ Mandatory for generating tickets. Prices are entered with VAT included.",
+        "TIP_ENABLE": "Enable Tips",
+        "TIP_PCT": "Tip Percentage (%)",
+        "TIP_DESC": "Tip Description",
+        "TIP_DESC_HINT": "This text is shown on the ticket.",
+        "PRINTERS": "Local Printers",
+        "PRINTERS_SUB": "Register available printers to assign to users.",
+        "NAME_PH": "Name (e.g., Bar, Kitchen)",
+        "IP_PATH": "IP Address or Path",
+        "CONN_TYPE": "Connection Type",
+        "NET_WIFI": "Network (IP/WiFi)",
+        "USB": "Local USB",
+        "CLOUD": "Cloud",
+        "NO_PRINTERS": "No printers configured yet."
+    },
+    "WAITER": {
+        "PANEL": "Waiter Panel",
+        "DESC": "Select a table to take orders.",
+        "LOADING": "Loading tables...",
+        "TOUCH_ORDER": "TAP TO ORDER",
+        "NO_TABLES": "No tables configured yet."
+    }
+};
+
+try {
+    const esData = JSON.parse(fs.readFileSync('frontend/src/assets/i18n/es.json'));
+    const enData = JSON.parse(fs.readFileSync('frontend/src/assets/i18n/en.json'));
+
+    Object.assign(esData, STRINGS_ES);
+    Object.assign(enData, STRINGS_EN);
+
+    fs.writeFileSync('frontend/src/assets/i18n/es.json', JSON.stringify(esData, null, 2));
+    fs.writeFileSync('frontend/src/assets/i18n/en.json', JSON.stringify(enData, null, 2));
+    console.log("Translation files updated.");
+} catch (e) {
+    console.error(e);
+}

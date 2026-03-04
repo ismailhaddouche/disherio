@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" width="400" height="300">
+  <!-- Fondo Lila -->
+  <rect width="400" height="300" rx="40" fill="#cdb4db" />
+
+  <g transform="translate(100, 75)">
+    <!-- Letra "i" (La Cuchara) -->
+    <!-- Mango de la cuchara -->
+    <rect x="35" y="55" width="10" height="90" rx="5" fill="#f8f9fa" />
+    
+    <!-- Parte principal de la cuchara (el óvalo de arriba) -->
+    <ellipse cx="40" cy="30" rx="20" ry="32" fill="#f8f9fa" />
+    <ellipse cx="40" cy="30" rx="14" ry="24" fill="#dee2e6" />
+
+    <!-- Letra "o" (El Plato) -->
+    <!-- Plato base -->
+    <circle cx="150" cy="75" r="70" fill="#f8f9fa" />
+    <!-- Borde interior del plato -->
+    <circle cx="150" cy="75" r="50" fill="none" stroke="#dee2e6" stroke-width="4" />
+    <circle cx="150" cy="75" r="46" fill="#ffffff" />
+  </g>
+</svg>

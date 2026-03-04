@@ -1,0 +1,9 @@
+{
+  "errors": {
+    "too_many_requests": "Demasiadas solicitudes, por favor intente de nuevo más tarde.",
+    "too_many_login_attempts": "Demasiados intentos de inicio de sesión. Por favor, inténtelo de nuevo en 15 minutos.",
+    "not_found": "No encontrado",
+    "cannot_method_path": "No se puede {{method}} {{path}}",
+    "internal_error": "Error Interno del Servidor"
+  }
+}
