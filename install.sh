@@ -54,6 +54,10 @@ if [ "$LANG_OPT" = "2" ]; then
     MSG_ACCESS="Access: "
     MSG_WARN_DOCK="Docker not found. Installing automatically..."
     MSG_ERR_DOCK="Docker Compose could not be installed. Please install it manually."
+    MSG_PORT="[1.5/6] Port Configuration"
+    MSG_PORT_PROMPT="HTTP Port (default 80, use 8080 if 80 is busy): "
+    MSG_PORT_BUSY="Port is already in use! Try another port (e.g. 8080):"
+    MSG_PORT_OK="Port available"
 else
     MSG_DOM="[1/6] Configuración de Acceso"
     MSG_DOM_TYPE="Selecciona el tipo de acceso:"
@@ -82,6 +86,10 @@ else
     MSG_ACCESS="Acceso: "
     MSG_WARN_DOCK="Docker no encontrado. Instalando automáticamente..."
     MSG_ERR_DOCK="No se pudo auto-instalar Docker Compose. Por favor, instálalo manualmente."
+    MSG_PORT="[1.5/6] Configuración de Puerto"
+    MSG_PORT_PROMPT="Puerto HTTP (por defecto 80, usa 8080 si el 80 está ocupado): "
+    MSG_PORT_BUSY="El puerto está en uso. Prueba otro (ej: 8080):"
+    MSG_PORT_OK="Puerto disponible"
 fi
 
 # 2. Domain or IP
@@ -158,7 +166,28 @@ while true; do
     fi
 done
 
-# 3. Security
+# 2.5. Port selection
+echo -e "\n${CYAN}${MSG_PORT}${NC}"
+while true; do
+    read -p "${MSG_PORT_PROMPT}" HTTP_PORT
+    HTTP_PORT=${HTTP_PORT:-80}
+    
+    # Validate it's a number
+    if ! [[ "$HTTP_PORT" =~ ^[0-9]+$ ]]; then
+        echo -e "${RED}Puerto inválido. Introduce un número (ej: 80, 8080).${NC}"
+        continue
+    fi
+    
+    # Check if port is already in use
+    if ss -tlnp 2>/dev/null | grep -q ":${HTTP_PORT} " || \
+       netstat -tlnp 2>/dev/null | grep -q ":${HTTP_PORT} "; then
+        echo -e "${RED}${MSG_PORT_BUSY}${NC}"
+    else
+        echo -e "${GREEN}${MSG_PORT_OK}: ${HTTP_PORT}${NC}"
+        break
+    fi
+done
+
 echo -e "\n${CYAN}${MSG_SEC}${NC}"
 JWT_SECRET=$(openssl rand -base64 32)
 MONGO_PASS=$(openssl rand -base64 16)
@@ -186,6 +215,7 @@ MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASS}
 CADDY_DOMAIN=${CADDY_DOMAIN}
 DOMAIN=${CADDY_DOMAIN}
 PROTOCOL=${PROTOCOL}
+HTTP_PORT=${HTTP_PORT}
 EOF
 
 # 5. Docker Detection
@@ -236,12 +266,20 @@ $DOCKER_CMD exec -e MONGO_URI="$MONGODB_URI" \
 echo -e "\n${GREEN}============================================${NC}"
 echo -e "${GREEN}   ${MSG_INST}${NC}"
 echo -e "${GREEN}============================================${NC}"
-echo -e "  ${MSG_ACCESS}${PROTOCOL}://${CADDY_DOMAIN}"
+
+# Construir URL de acceso
+if [ "$HTTP_PORT" = "80" ]; then
+    ACCESS_URL="${PROTOCOL}://${CADDY_DOMAIN}"
+else
+    ACCESS_URL="${PROTOCOL}://${CADDY_DOMAIN}:${HTTP_PORT}"
+fi
+
+echo -e "  ${MSG_ACCESS}${ACCESS_URL}"
 
 echo -e "\n${YELLOW}${MSG_CRED}${NC}"
 echo -e "  ${MSG_USRADM}${CYAN}admin${NC}"
 echo -e "  ${MSG_PWDADM}${CYAN}$ADMIN_PASS${NC}"
-echo -e "\n  ${MSG_ACCESS}${PROTOCOL}://${CADDY_DOMAIN}"
+echo -e "\n  Acceso: ${CYAN}${ACCESS_URL}${NC}"
 echo -e "\n  ${MSG_USRWT}${CYAN}waiter${NC}"
 echo -e "  ${MSG_PWDWT}${CYAN}$WAITER_PASS${NC}"
 
