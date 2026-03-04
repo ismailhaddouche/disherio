@@ -150,6 +150,16 @@ import { TranslateModule } from '@ngx-translate/core';
         margin-bottom: 8px;
     }
 
+    /*
+     - Los cambios ya están pusheados al repositorio.
+
+    ## Tótems Virtuales para Camareros
+    - Se ha implementado la funcionalidad de **Tótems Virtuales**:
+      - Los camareros ahora pueden crear "Mesas Temporales" desde su panel.
+      - Estos tótems tienen una etiqueta **TEMP** para distinguirlos de los fijos.
+      - **Auto-Eliminación**: Cuando se completa el pago total de una comanda asociada a un tótem virtual, este se elimina automáticamente del sistema para mantener el panel limpio.
+      - Los camareros pueden eliminar manualmente tótems virtuales, pero no los fijos.
+    */
     .card-header {
       position: absolute;
       top: 12px;
@@ -157,7 +167,6 @@ import { TranslateModule } from '@ngx-translate/core';
       right: 12px;
       display: flex;
       justify-content: space-between;
-      align-items: center;
     }
 
     .type-tag {
