@@ -340,7 +340,11 @@ router.post('/:orderId/checkout',
             if (io) {
                 io.emit('order-updated', order);
                 if (order.status === 'completed') {
-                    io.emit('session-ended', { totemId: order.totemId, tableNumber: order.tableNumber, sessionId: order.sessionId });
+                    io.emit('session-ended', {
+                        totemId: order.totemId,
+                        tableNumber: order.tableNumber,
+                        sessionId: order.sessionId || null
+                    });
                 }
             }
             res.json({ tickets: generatedTickets, orderStatus: order.status });
