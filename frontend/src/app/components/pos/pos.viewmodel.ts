@@ -31,8 +31,10 @@ export class POSViewModel {
     public editMode = signal<boolean>(false);
     public showAddItemModal = signal<boolean>(false);
     public showCustomLineModal = signal<boolean>(false);
+    public showSplitDetailedModal = signal<boolean>(false);
     public localConfig = signal<any>(null);
     public globalPrinters = signal<any[]>([]);
+    public activeTipPercentage = signal<number>(0);
 
     public tableStates = computed(() => {
         const activeOrders = this.orders().filter(o => o.status === 'active');
@@ -127,6 +129,10 @@ export class POSViewModel {
 
     public selectTable(table: POSTable) {
         this.selectedTable.set(table);
+        if (table?.order) {
+            const config = this.billingConfig();
+            this.activeTipPercentage.set(config?.tipPercentage || 0);
+        }
     }
 
     public getComensales(order: any) {
@@ -151,12 +157,13 @@ export class POSViewModel {
         return Array.from(usersMap.values());
     }
 
-    public calculateBilling(totalWithVAT: number) {
+    public calculateBilling(totalWithVAT: number, customTip?: number) {
         const config = this.billingConfig();
         if (!config || config.vatPercentage === null) {
             return null;
         }
 
+        const tipPercent = customTip !== undefined ? customTip : this.activeTipPercentage();
         const vatMultiplier = 1 + (config.vatPercentage / 100);
         const basePrice = totalWithVAT / vatMultiplier;
         const vatAmount = totalWithVAT - basePrice;
@@ -166,7 +173,7 @@ export class POSViewModel {
         let grandTotal = subtotal;
 
         if (config.tipEnabled) {
-            tipAmount = subtotal * (config.tipPercentage / 100);
+            tipAmount = subtotal * (tipPercent / 100);
             grandTotal = subtotal + tipAmount;
         }
 
@@ -176,7 +183,7 @@ export class POSViewModel {
             vatPercentage: config.vatPercentage,
             subtotal: Number(subtotal.toFixed(2)),
             tipAmount: Number(tipAmount.toFixed(2)),
-            tipPercentage: config.tipPercentage,
+            tipPercentage: tipPercent,
             tipDescription: config.tipDescription,
             tipEnabled: config.tipEnabled,
             grandTotal: Number(grandTotal.toFixed(2))
@@ -306,6 +313,61 @@ export class POSViewModel {
 
     public toggleEditMode() {
         this.editMode.update(v => !v);
+    }
+
+    public async updateItemPrice(orderId: string, itemIndex: number, newPrice: number) {
+        try {
+            const order = this.orders().find(o => o._id === orderId);
+            if (!order) return;
+
+            const updatedItems = [...order.items];
+            updatedItems[itemIndex].price = newPrice;
+
+            const newTotal = updatedItems.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0);
+
+            await fetch(`${environment.apiUrl}/api/orders/${orderId}`, {
+                method: 'PATCH',
+                headers: this.auth.getHeaders(),
+                body: JSON.stringify({ items: updatedItems, totalAmount: newTotal })
+            });
+
+        } catch (e) { console.error('Error updating price', e); }
+    }
+
+    public async updateItemName(orderId: string, itemIndex: number, newName: string) {
+        try {
+            const order = this.orders().find(o => o._id === orderId);
+            if (!order) return;
+
+            const updatedItems = [...order.items];
+            updatedItems[itemIndex].name = newName;
+
+            await fetch(`${environment.apiUrl}/api/orders/${orderId}`, {
+                method: 'PATCH',
+                headers: this.auth.getHeaders(),
+                body: JSON.stringify({ items: updatedItems })
+            });
+
+        } catch (e) { console.error('Error updating name', e); }
+    }
+
+    public async reassignItem(orderId: string, itemIndex: number, guestName: string) {
+        try {
+            const order = this.orders().find(o => o._id === orderId);
+            if (!order) return;
+
+            const updatedItems = [...order.items];
+            // If name is new, we can generate a simple id from it or keep it as guest
+            const guestId = guestName.toLowerCase().replace(/\s+/g, '-');
+            updatedItems[itemIndex].orderedBy = { id: guestId, name: guestName };
+
+            await fetch(`${environment.apiUrl}/api/orders/${orderId}`, {
+                method: 'PATCH',
+                headers: this.auth.getHeaders(),
+                body: JSON.stringify({ items: updatedItems })
+            });
+
+        } catch (e) { console.error('Error reassigning item', e); }
     }
 
     public async removeItemFromOrder(orderId: string, itemIndex: number) {
@@ -448,14 +510,7 @@ export class POSViewModel {
     }
 
     public openSplitModal() {
-        const type = prompt(this.translate.instant('POS.SPLIT_PROMPT_TYPE'), '1');
-        if (type === '1') {
-            const p = prompt(this.translate.instant('POS.SPLIT_PROMPT_PARTS'), '2');
-            const parts = parseInt(p || '0');
-            if (parts > 1) this.processPayment(undefined, 'equal', parts);
-        } else if (type === '2') {
-            alert(this.translate.instant('POS.SPLIT_BY_USER_HINT'));
-        }
+        this.showSplitDetailedModal.set(true);
     }
 
     public async deleteVirtualTable(tableId: number) {

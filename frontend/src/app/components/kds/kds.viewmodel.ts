@@ -36,11 +36,11 @@ export class KDSViewModel {
             .filter(order => order.status === 'active') // Only active sessions
             .map(order => ({
                 ...order,
-                // Filter items that belong to the "Kitchen" station and are not "served" or "ready"
+                // Filter items that belong to the kitchen and are not fully served
                 kitchenItems: order.items.filter(item =>
-                    item.status !== 'ready' &&
                     item.status !== 'served' &&
-                    item.status !== 'completed'
+                    item.status !== 'completed' &&
+                    item.status !== 'cancelled'
                 )
             }))
             .filter(order => order.kitchenItems.length > 0)
@@ -104,8 +104,14 @@ export class KDSViewModel {
     }
 
     public getTimeDiff(createdAt: string): string {
+        if (!createdAt) return '0m';
         const diff = Math.floor((new Date().getTime() - new Date(createdAt).getTime()) / 60000);
         return `${diff}m`;
+    }
+
+    public getTimeDiffMinutes(createdAt: string): number {
+        if (!createdAt) return 0;
+        return Math.floor((new Date().getTime() - new Date(createdAt).getTime()) / 60000);
     }
 
     public async updateItemStatus(orderId: string, itemId: string, nextStatus: string, print: boolean = false) {
@@ -129,6 +135,17 @@ export class KDSViewModel {
             console.error('Error updating status', e);
             alert(this.translate.instant('KDS.UPDATE_ERROR'));
         }
+    }
+
+    public async bulkUpdateItemsStatus(orderId: string, status: string) {
+        try {
+            await fetch(`${environment.apiUrl}/api/orders/${orderId}/items/bulk-status`, {
+                method: 'PATCH',
+                headers: this.auth.getHeaders(),
+                body: JSON.stringify({ status })
+            });
+            this.auth.logActivity('ORDER_ITEMS_BULK_UPDATE', { orderId, status });
+        } catch (e) { console.error('Error bulk updating', e); }
     }
 
     public printItemTicket(order: any, item: any) {

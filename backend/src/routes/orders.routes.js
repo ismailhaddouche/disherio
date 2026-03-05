@@ -190,7 +190,7 @@ router.post('/',
 
 // PATCH /:orderId - Update order (Restricted)
 // Only whitelisted fields can be updated to prevent arbitrary field injection
-const ALLOWED_ORDER_UPDATE_FIELDS = ['status', 'paymentStatus'];
+const ALLOWED_ORDER_UPDATE_FIELDS = ['status', 'paymentStatus', 'items', 'totalAmount'];
 router.patch('/:orderId',
     verifyToken,
     [
@@ -212,6 +212,35 @@ router.patch('/:orderId',
             }
             const order = await Order.findByIdAndUpdate(req.params.orderId, { $set: updateData }, { new: true });
             if (!order) return res.status(404).json({ error: req.t('ERRORS.ORDER_NOT_FOUND') });
+            const io = req.app.get('io');
+            if (io) io.emit('order-updated', order);
+            res.json(order);
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    }
+);
+
+// PATCH /:orderId/items/bulk-status - Bulk status update (Restricted)
+router.patch('/:orderId/items/bulk-status',
+    verifyToken,
+    [
+        param('orderId').isMongoId(),
+        body('status').notEmpty().isIn(['pending', 'preparing', 'ready', 'served', 'cancelled'])
+    ],
+    validate,
+    async (req, res) => {
+        try {
+            const order = await Order.findById(req.params.orderId);
+            if (!order) return res.status(404).json({ error: req.t('ERRORS.ORDER_NOT_FOUND') });
+
+            // Only update those that are NOT already 'served' or 'cancelled'
+            order.items.forEach(item => {
+                if (item.status !== 'served' && item.status !== 'cancelled') {
+                    item.status = req.body.status;
+                }
+            });
+            await order.save();
             const io = req.app.get('io');
             if (io) io.emit('order-updated', order);
             res.json(order);
@@ -266,15 +295,28 @@ router.post('/:orderId/checkout',
             let totalPaidFlag = false;
 
             if (splitType === 'by-user' && userId) {
-                const hasOrphans = order.items.some(item => item.orderedBy.id === 'orphan' && !item.isPaid);
-                if (hasOrphans) return res.status(400).json({ error: 'Existen platos huérfanos', code: 'ORPHANS_EXIST' });
-                const userItems = order.items.filter(item => item.orderedBy.id === userId && !item.isPaid);
-                if (userItems.length === 0) return res.status(400).json({ error: 'No unpaid items' });
+                // If userId is 'all-by-user', it means everyone pays their own part sequentially
+                // But let's stick to paying one user at a time as current UI does.
+                // We must ensure NO unpaid items are orphans IF we are in "Each pays their own" mode
+                const unpaidItems = order.items.filter(i => !i.isPaid);
+                const hasOrphans = unpaidItems.some(item => !item.orderedBy || !item.orderedBy.id || item.orderedBy.id === 'orphan' || item.orderedBy.id === 'staff' || item.orderedBy.id === 'pos');
+
+                if (hasOrphans) {
+                    return res.status(400).json({
+                        error: 'Existen platos sin comensal asignado. Asígnalos a un nombre antes de cobrar individualmente.',
+                        code: 'HAS_ORPHANS'
+                    });
+                }
+
+                const userItems = unpaidItems.filter(item => item.orderedBy.id === userId);
+                if (userItems.length === 0) return res.status(400).json({ error: 'Este comensal no tiene platos pendientes de pago.' });
+
                 userItems.forEach(item => {
                     itemsTotal += (item.price * item.quantity);
                     itemsSummary.push(`${item.quantity}x ${item.name}`);
                     item.isPaid = true;
                 });
+
                 if (order.items.every(i => i.isPaid)) totalPaidFlag = true;
             } else if (splitType === 'by-item' && itemIds?.length > 0) {
                 const itemsToPay = order.items.filter(item => itemIds.includes(item._id.toString()) && !item.isPaid);

@@ -43,8 +43,18 @@ import { TranslateModule } from '@ngx-translate/core';
             @for (order of vm.filteredOrders(); track order._id) {
                 <div class="order-card glass-card" [class.urgent]="vm.getTimeDiff(order.createdAt).includes('15')">
                 <div class="order-head">
-                    <span class="table-num">{{ 'ROLES.Table' | translate }} #{{ order.totemId || order.tableNumber }}</span>
-                    <span class="time-elapsed">{{ vm.getTimeDiff(order.createdAt) }}</span>
+                    <div style="display: flex; flex-direction: column;">
+                        <span class="table-num">{{ 'ROLES.Table' | translate }} #{{ order.totemId || order.tableNumber }}</span>
+                        <span class="time-elapsed">{{ vm.getTimeDiff(order.createdAt) }}</span>
+                    </div>
+                    <div class="bulk-actions">
+                        <button class="btn-bulk ready" (click)="vm.bulkUpdateItemsStatus(order._id, 'ready')" title="Todo listo">
+                            <lucide-icon name="check-check" [size]="16"></lucide-icon>
+                        </button>
+                        <button class="btn-bulk served" (click)="vm.bulkUpdateItemsStatus(order._id, 'served')" title="Todo servido">
+                            <lucide-icon name="bell-ring" [size]="16"></lucide-icon>
+                        </button>
+                    </div>
                 </div>
 
                 <div class="items-list">
@@ -54,8 +64,17 @@ import { TranslateModule } from '@ngx-translate/core';
                         <div class="name-row">
                             <span class="qty">{{ item.quantity }}x</span>
                             <span class="name">{{ item.name }}</span>
+                            <!-- Per-item timer: added as requested -->
+                            @if (item.createdAt && item.status !== 'ready') {
+                                <span class="item-timer" [class.urgent]="vm.getTimeDiffMinutes(item.createdAt) >= 15">{{ vm.getTimeDiff(item.createdAt) }}</span>
+                            }
                         </div>
-                        <span class="ordered-by"><lucide-icon name="user" [size]="12" class="inline-icon"></lucide-icon> {{ item.orderedBy?.name }}</span>
+                        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                            <span class="ordered-by"><lucide-icon name="user" [size]="12" class="inline-icon"></lucide-icon> {{ item.orderedBy?.name }}</span>
+                            @if (item.notes) {
+                                <span class="item-note">"{{ item.notes }}"</span>
+                            }
+                        </div>
                         </div>
                         
                         <div class="action-buttons">
@@ -178,6 +197,7 @@ import { TranslateModule } from '@ngx-translate/core';
     .stat .lab { font-size: 0.7rem; opacity: 0.6; }
 
     .kds-layout {
+      flex: 1;
       display: flex;
       flex-direction: column;
       gap: 24px;
@@ -185,14 +205,16 @@ import { TranslateModule } from '@ngx-translate/core';
     }
 
     .kds-grid {
-      display: flex;
-      flex-direction: column;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+      align-items: start;
       gap: 20px;
       width: 100%;
       padding-bottom: 40px;
     }
 
     @media (max-width: 768px) {
+      .kds-grid { grid-template-columns: 1fr; }
       .kds-container { padding: 12px; gap: 16px; }
       .kds-controls {
         flex-direction: column;
@@ -227,12 +249,27 @@ import { TranslateModule } from '@ngx-translate/core';
     .order-card.urgent { border-top-color: #ef4444; animation: flash 2s infinite; }
 
     .order-head {
-      padding: 16px;
+      padding: 16px 20px;
       background: rgba(255,255,255,0.02);
       display: flex;
       justify-content: space-between;
       align-items: center;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
     }
+
+    .table-num { font-size: 1.4rem; font-weight: 900; color: var(--accent-primary); text-transform: uppercase; }
+    .time-elapsed { font-size: 1.1rem; font-weight: bold; opacity: 0.8; font-family: monospace; }
+    
+    .bulk-actions { display: flex; gap: 8px; }
+    .btn-bulk { 
+        width: 44px; height: 44px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);
+        display: flex; align-items: center; justify-content: center; cursor: pointer; color: white;
+        transition: all 0.2s;
+    }
+    .btn-bulk.ready { background: rgba(34, 197, 94, 0.1); color: var(--highlight); border-color: rgba(34, 197, 94, 0.3); }
+    .btn-bulk.ready:hover { background: var(--highlight); color: var(--bg-dark); }
+    .btn-bulk.served { background: rgba(59, 130, 246, 0.1); color: #60a5fa; border-color: rgba(59, 130, 246, 0.3); }
+    .btn-bulk.served:hover { background: #3b82f6; color: white; }
 
     .items-list { padding: 8px; }
 
@@ -256,7 +293,20 @@ import { TranslateModule } from '@ngx-translate/core';
     .name-row { display: flex; align-items: center; gap: 8px; }
     .qty { font-weight: 900; color: var(--accent-primary); font-size: 1.1rem; }
     .name { font-weight: 700; font-size: 1.1rem; color: var(--text-base); }
-    .ordered-by { font-size: 0.85rem; color: var(--text-muted); }
+    .ordered-by { font-size: 0.8rem; color: var(--text-muted); opacity: 0.8; }
+    
+    .item-timer { 
+        background: rgba(255,255,255,0.05); 
+        padding: 2px 8px; 
+        border-radius: 6px; 
+        font-size: 0.8rem; 
+        font-family: monospace; 
+        font-weight: bold; 
+        color: var(--text-muted); 
+    }
+    .item-timer.urgent { background: #ef4444; color: white; box-shadow: 0 0 10px rgba(239, 68, 68, 0.3); }
+
+    .item-note { font-style: italic; font-size: 0.75rem; color: var(--highlight); opacity: 0.9; margin-left: 12px; }
 
     .action-buttons { 
       display: flex; 
