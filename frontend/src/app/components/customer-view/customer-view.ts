@@ -17,7 +17,7 @@ import { TranslateModule } from '@ngx-translate/core';
           <div class="loader-ripple"><div></div><div></div></div>
           <p class="gradient-text">{{ 'CUSTOMER.CONNECTING' | translate }}</p>
         </div>
-      } @else if (!vm.comms.userName() || vm.comms.userName() === 'Comensal') {
+      } @else if (!vm.session()?.sessionId || !vm.comms.userName() || vm.comms.userName() === 'Comensal') {
         <div class="name-selection glass-card">
           @if (vm.isStaff()) {
             <h2 class="gradient-text">{{ 'WAITER.NEW_ORDER_FOR' | translate }}</h2>
@@ -26,20 +26,20 @@ import { TranslateModule } from '@ngx-translate/core';
             @if (vm.existingNames().length > 0) {
               <div class="existing-names">
                 @for (name of vm.existingNames(); track name) {
-                  <button class="btn-name" (click)="vm.comms.setUserName(name)">{{ name }}</button>
+                  <button class="btn-name" (click)="vm.registerNameAndStartSession(name)">{{ name }}</button>
                 }
               </div>
             }
             
-            <input type="text" #nameInput [placeholder]="'WAITER.NEW_NAME_OPTIONAL' | translate" class="glass-input">
-            <button class="btn-primary" (click)="vm.comms.setUserName(nameInput.value || 'Camarero')">
+            <input type="text" #nameInput [placeholder]="'WAITER.NEW_NAME_OPTIONAL' | translate" class="glass-input" (keyup.enter)="vm.registerNameAndStartSession(nameInput.value || 'Camarero')" [value]="vm.comms.userName() !== 'Comensal' ? vm.comms.userName() : ''">
+            <button class="btn-primary" (click)="vm.registerNameAndStartSession(nameInput.value || 'Camarero')">
               {{ 'WAITER.START_ORDERING' | translate }}
             </button>
           } @else {
             <h2 class="gradient-text">{{ 'CUSTOMER.HELLO' | translate }}</h2>
             <p>{{ 'CUSTOMER.HOW_TO_CALL' | translate }}</p>
-            <input type="text" #nameInput [placeholder]="'CUSTOMER.YOUR_NAME' | translate" class="glass-input">
-            <button class="btn-primary" (click)="vm.comms.setUserName(nameInput.value)">
+            <input type="text" #nameInput [placeholder]="'CUSTOMER.YOUR_NAME' | translate" class="glass-input" (keyup.enter)="vm.registerNameAndStartSession(nameInput.value)" [value]="vm.comms.userName() !== 'Comensal' ? vm.comms.userName() : ''">
+            <button class="btn-primary" (click)="vm.registerNameAndStartSession(nameInput.value)">
               {{ 'CUSTOMER.START_ORDERING' | translate }}
             </button>
           }

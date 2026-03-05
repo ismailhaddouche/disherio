@@ -55,23 +55,42 @@ export class CustomerViewModel {
         const totemParam = this.route.snapshot.paramMap.get('tableNumber');
         const sessionParam = this.route.snapshot.paramMap.get('sessionCode');
 
-        // REDIRECT LOGIC: If on physical totem ID route, get/init a secure session
+        // REDIRECT LOGIC: If on physical totem ID route, check if session is active
         if (totemParam) {
             try {
                 const res = await fetch(`${environment.apiUrl}/api/totems/${totemParam}/session`);
                 if (!res.ok) throw new Error('Failed to get session');
                 const data = await res.json();
 
-                // Save meta-data locally so the /s/:id route can initialize faster
-                localStorage.setItem('disher_current_session', JSON.stringify({
-                    sessionId: data.sessionId,
-                    totemId: data.totemId,
-                    tableNumber: data.tableNumber,
-                    activeOrder: null
-                }));
+                if (data.sessionId) {
+                    // Session already exists! Redirect to it
+                    localStorage.setItem('disher_current_session', JSON.stringify({
+                        sessionId: data.sessionId,
+                        totemId: data.totemId,
+                        tableNumber: data.tableNumber,
+                        activeOrder: null
+                    }));
+                    this.router.navigate(['/s', data.sessionId], { replaceUrl: true });
+                    return;
+                } else {
+                    // Session is NOT started. Wait for user to input name.
+                    this.session.set({
+                        sessionId: undefined,
+                        totemId: data.totemId,
+                        tableNumber: data.tableNumber,
+                        activeOrder: null
+                    });
 
-                this.router.navigate(['/s', data.sessionId], { replaceUrl: true });
-                return;
+                    // Fetch restaurant config for basics (name)
+                    const restRes = await fetch(`${environment.apiUrl}/api/restaurant`);
+                    if (restRes.ok) {
+                        const restData = await restRes.json();
+                        this.restaurantName.set(restData.name);
+                    }
+
+                    this.loading.set(false);
+                    return;
+                }
             } catch (e) {
                 console.error('Session init error', e);
                 this.error.set('No se pudo establecer conexión con la mesa.');
@@ -119,6 +138,33 @@ export class CustomerViewModel {
         }
 
         this.loading.set(false);
+    }
+
+    public async registerNameAndStartSession(name: string) {
+        if (!name || name.trim() === '') name = 'Comensal ' + Math.floor(Math.random() * 100);
+        this.comms.setUserName(name);
+
+        const currentSession = this.session();
+
+        // If we are on the /:totemId page and there's no sessionId, we must start one
+        if (currentSession && !currentSession.sessionId && currentSession.totemId) {
+            this.loading.set(true);
+            try {
+                const res = await fetch(`${environment.apiUrl}/api/totems/${currentSession.totemId}/session`, {
+                    method: 'POST',
+                    headers: this.auth.getHeaders() // or 'Content-Type': 'application/json' if anon
+                });
+                if (!res.ok) throw new Error('Failed to start session');
+                const data = await res.json();
+
+                // Immediately navigate to the secure session URL.
+                this.router.navigate(['/s', data.sessionId], { replaceUrl: true });
+            } catch (error) {
+                console.error('Error starting new session', error);
+                this.error.set('Error al intentar abrir la mesa.');
+                this.loading.set(false);
+            }
+        }
     }
 
     private setupTableListeners() {

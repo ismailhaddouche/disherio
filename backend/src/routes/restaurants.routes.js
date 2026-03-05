@@ -128,7 +128,7 @@ const generateSessionId = () => {
     return `${result}-${currentYear}-${currentYear + 1}`;
 };
 
-// GET /totems/:id/session - Get or generate a dynamic session ID for a totem
+// GET /totems/:id/session - Get active session ID for a totem (no auto-generation)
 router.get('/totems/:id/session', async (req, res) => {
     try {
         const totemId = parseInt(req.params.id);
@@ -137,25 +137,69 @@ router.get('/totems/:id/session', async (req, res) => {
 
         const totem = restaurant.totems.find(t => t.id === totemId);
         if (!totem) return res.status(404).json({ error: 'Totem not found' });
-
-        // If totem is not active, return error
         if (!totem.active) return res.status(403).json({ error: 'Mesa desactivada' });
 
-        // If there's an active session in the totem, we check if there's actually an active order for it
         let sessionId = totem.currentSessionId;
 
         if (sessionId) {
             const activeOrder = await Order.findOne({ sessionId, status: 'active' });
             if (!activeOrder) {
-                sessionId = null; // Stale session ID, clear it
+                // Stale session, clear it.
+                sessionId = null;
+                totem.currentSessionId = null;
+                await restaurant.save();
             }
         }
 
-        if (!sessionId) {
-            sessionId = generateSessionId();
-            totem.currentSessionId = sessionId;
-            await restaurant.save();
+        res.json({
+            sessionId: sessionId || null,
+            totemId: totem.id,
+            tableNumber: totem.name || totem.id.toString()
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// POST /totems/:id/session - Generate and start a new session for a totem
+router.post('/totems/:id/session', async (req, res) => {
+    try {
+        const totemId = parseInt(req.params.id);
+        const restaurant = await Restaurant.findOne();
+        if (!restaurant) return res.status(404).json({ error: 'Restaurant not found' });
+
+        const totem = restaurant.totems.find(t => t.id === totemId);
+        if (!totem) return res.status(404).json({ error: 'Totem not found' });
+        if (!totem.active) return res.status(403).json({ error: 'Mesa desactivada' });
+
+        let sessionId = totem.currentSessionId;
+
+        // Verify if a real active session already exists
+        if (sessionId) {
+            const activeOrder = await Order.findOne({ sessionId, status: 'active' });
+            if (activeOrder) {
+                // Session already started by someone else, return existing
+                return res.json({ sessionId, totemId: totem.id, tableNumber: totem.name || totem.id.toString() });
+            }
         }
+
+        // Generate new session since none exists or it was stale
+        sessionId = generateSessionId();
+        totem.currentSessionId = sessionId;
+        await restaurant.save();
+
+        // Initialize an empty active Order to lock the session
+        const newOrder = new Order({
+            tableNumber: totem.name || totem.id.toString(),
+            totemId: totem.id,
+            sessionId: sessionId,
+            items: [],
+            status: 'active'
+        });
+        await newOrder.save();
+
+        const io = req.app.get('io');
+        if (io) io.emit('order-updated', newOrder); // Notify waiters that a table opened
 
         res.json({
             sessionId,
