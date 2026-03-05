@@ -14,7 +14,7 @@ EXPOSE 3000
 
 # Health check
 HEALTHCHECK --interval=15s --timeout=5s --start-period=30s --retries=3 \
-    CMD node -e "const http=require('http');const r=http.get('http://localhost:3000/api/health',s=>{process.exit(s.statusCode===200?0:1)});r.on('error',()=>process.exit(1))"
+    CMD node -e "const http=require('http');const r=http.get('http://127.0.0.1:3000/api/health',s=>{process.exit(s.statusCode===200?0:1)});r.on('error',()=>process.exit(1))"
 
 # Set timezone support for all architectures
 RUN apt-get update && apt-get install -y --no-install-recommends \

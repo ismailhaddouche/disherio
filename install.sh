@@ -263,7 +263,7 @@ echo -e "\n${CYAN}${MSG_INIT}${NC}"
 echo -e "${YELLOW}Waiting for backend to be ready...${NC}"
 MAX_WAIT=120
 WAITED=0
-until $DOCKER_CMD exec backend node -e "const http=require('http');http.get('http://localhost:3000/api/health',r=>{process.exit(r.statusCode===200?0:1)}).on('error',()=>process.exit(1))" 2>/dev/null; do
+until $DOCKER_CMD exec backend node -e "const http=require('http');http.get('http://127.0.0.1:3000/api/health',r=>{process.exit(r.statusCode===200?0:1)}).on('error',()=>process.exit(1))" 2>/dev/null; do
     sleep 5
     WAITED=$((WAITED + 5))
     echo -e "  Backend not ready yet... ${WAITED}s/${MAX_WAIT}s"

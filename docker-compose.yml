@@ -45,7 +45,7 @@ services:
     volumes:
       - uploads-data:/app/public/uploads
     healthcheck:
-      test: [ "CMD", "node", "-e", "const http=require('http');const r=http.get('http://localhost:3000/api/health',s=>{process.exit(s.statusCode===200?0:1)});r.on('error',()=>process.exit(1))" ]
+      test: [ "CMD", "node", "-e", "const http=require('http');const r=http.get('http://127.0.0.1:3000/api/health',s=>{process.exit(s.statusCode===200?0:1)});r.on('error',()=>process.exit(1))" ]
       interval: 15s
       timeout: 5s
       retries: 5
