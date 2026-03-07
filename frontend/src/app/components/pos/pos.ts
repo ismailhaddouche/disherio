@@ -19,158 +19,181 @@ export class FilterOccupiedPipe implements PipeTransform {
   imports: [CommonModule, FormsModule, FilterOccupiedPipe, LucideAngularModule, TranslateModule],
   providers: [POSViewModel],
   template: `
-    <div class="pos-container animate-fade-in">
-      <header class="view-header" style="grid-column: 1 / -1; margin-bottom: 0;">
-        <div>
-          <h1 class="view-title"><lucide-icon name="wallet" [size]="28" class="text-muted"></lucide-icon> {{ 'POS.TITLE' | translate }}</h1>
-          <p class="view-desc">{{ 'POS.SUBTITLE' | translate }}</p>
+    <div class="pos-container">
+      <header class="section-header-md3" style="grid-column: 1 / -1; margin-bottom: 0;">
+        <div class="header-content">
+          <div class="title-with-icon">
+            <div class="icon-box-md3 primary">
+              <lucide-icon name="wallet" [size]="24"></lucide-icon>
+            </div>
+            <div>
+              <h1 class="text-headline-medium">{{ 'POS.TITLE' | translate }}</h1>
+              <p class="text-body-small opacity-60">{{ 'POS.SUBTITLE' | translate }}</p>
+            </div>
+          </div>
         </div>
       </header>
 
       <!-- Left Sidebar: Map of Tables or History -->
-      <aside class="pos-sidebar glass-card">
-        <div class="sidebar-header">
-            <div class="view-toggles">
-                <button [class.active]="vm.viewMode() === 'tables'" (click)="vm.viewMode.set('tables')">{{ 'POS.TABLES' | translate }}</button>
-                <button [class.active]="vm.viewMode() === 'history'" (click)="vm.viewMode.set('history')">{{ 'POS.HISTORY' | translate }}</button>
-            </div>
-          <span class="occupied-count" *ngIf="vm.viewMode() === 'tables'">{{ (vm.tableStates() | filterOccupied).length }} / {{ vm.tables().length }}</span>
-        </div>
-        
-        @if (vm.viewMode() === 'tables') {
-            <div class="tables-grid">
-            @for (table of vm.tableStates(); track table.number) {
-                <div class="table-card" 
-                    [class.occupied]="table.status === 'occupied'"
-                    [class.selected]="vm.selectedTable()?.number === table.number"
-                    (click)="vm.selectTable(table)">
-                <span class="table-num">{{ table.name || ('ROLES.Table' | translate) + ' ' + table.number }}</span>
-                @if (table.status === 'occupied') {
-                    <span class="total-preview">{{ table.order.totalAmount | currency:'EUR' }}</span>
-                }
-                </div>
-            }
-            </div>
-        } @else {
-            <div class="history-list">
-                @for (ticket of vm.tickets(); track ticket._id) {
-                    <div class="history-card glass-card">
-                        <div class="h-top">
-                            <span class="h-id">{{ ticket.customId }}</span>
-                            <span class="h-date">{{ ticket.timestamp | date:'shortTime' }}</span>
-                        </div>
-                        <div class="h-items">
-                            {{ ticket.itemsSummary.length }} {{ 'POS.ITEMS' | translate }}
-                        </div>
-                        <div class="h-bottom">
-                            <div class="h-total">{{ ticket.amount | currency:'EUR' }}</div>
-                            <div class="h-actions">
-                                <button class="btn-icon print" (click)="vm.printTicket(ticket)" [title]="'POS.PRINT_TITLE' | translate"><lucide-icon name="printer" [size]="16"></lucide-icon></button>
-                                <button class="btn-icon delete" (click)="vm.deleteTicket(ticket._id)" [title]="'POS.DELETE_TITLE' | translate"><lucide-icon name="trash-2" [size]="16"></lucide-icon></button>
-                            </div>
-                        </div>
-                    </div>
-                }
-            </div>
-        }
-
-        <div class="sidebar-footer" style="margin-top: auto; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.05);">
-            <button class="btn-closure" (click)="vm.closeShift()">
-                <lucide-icon name="lock" [size]="16" class="inline-icon"></lucide-icon> {{ 'POS.CLOSE_SHIFT' | translate }}
+      <aside class="pos-sidebar-md3">
+        <div class="sidebar-header-md3">
+          <div class="view-toggles-md3">
+            <button [class.active]="vm.viewMode() === 'tables'" (click)="vm.viewMode.set('tables')" class="text-label-large">
+              {{ 'POS.TABLES' | translate }}
+              <div class="active-indicator"></div>
             </button>
+            <button [class.active]="vm.viewMode() === 'history'" (click)="vm.viewMode.set('history')" class="text-label-large">
+              {{ 'POS.HISTORY' | translate }}
+              <div class="active-indicator"></div>
+            </button>
+          </div>
+          <span class="text-label-small opacity-60" *ngIf="vm.viewMode() === 'tables'">
+            {{ (vm.tableStates() | filterOccupied).length }} / {{ vm.tables().length }}
+          </span>
+        </div>
+
+        <div class="sidebar-content-md3">
+          @if (vm.viewMode() === 'tables') {
+            <div class="tables-grid-md3">
+              @for (table of vm.tableStates(); track table.number) {
+                <div class="table-item-md3"
+                     [class.occupied]="table.status === 'occupied'"
+                     [class.selected]="vm.selectedTable()?.number === table.number"
+                     (click)="vm.selectTable(table)">
+                  <span class="text-title-medium">{{ table.name || ('ROLES.Table' | translate) + ' ' + table.number }}</span>
+                  @if (table.status === 'occupied') {
+                    <span class="text-label-medium table-total-md3">{{ table.order.totalAmount | currency:'EUR' }}</span>
+                  }
+                </div>
+              }
+            </div>
+          } @else {
+            <div class="history-list-md3">
+              @for (ticket of vm.tickets(); track ticket._id) {
+                <div class="ticket-card-md3">
+                  <div class="ticket-meta-md3">
+                    <span class="text-label-small opacity-60">#{{ ticket.customId }}</span>
+                    <span class="text-label-small opacity-60">{{ ticket.timestamp | date:'shortTime' }}</span>
+                  </div>
+                  <div class="ticket-body-md3">
+                    <span class="text-body-medium">{{ ticket.itemsSummary.length }} {{ 'POS.ITEMS' | translate }}</span>
+                    <span class="text-title-large color-primary">{{ ticket.amount | currency:'EUR' }}</span>
+                  </div>
+                  <div class="ticket-actions-md3">
+                    <button class="icon-btn-md3 tonal-sm" (click)="vm.printTicket(ticket)" [title]="'POS.PRINT_TITLE' | translate">
+                      <lucide-icon name="printer" [size]="18"></lucide-icon>
+                    </button>
+                    <button class="icon-btn-md3 error-tonal-sm" (click)="vm.deleteTicket(ticket._id)" [title]="'POS.DELETE_TITLE' | translate">
+                      <lucide-icon name="trash-2" [size]="18"></lucide-icon>
+                    </button>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+        </div>
+
+        <div class="sidebar-footer-md3">
+          <button class="btn-error btn-full" (click)="vm.closeShift()">
+            <lucide-icon name="lock" [size]="18"></lucide-icon>
+            <span>{{ 'POS.CLOSE_SHIFT' | translate }}</span>
+          </button>
         </div>
       </aside>
 
       <!-- Main Content: Ticket & Billing Detail -->
-      <main class="pos-main">
+      <main class="pos-main-md3">
         @if (vm.selectedTable(); as table) {
           @if (table.status === 'occupied') {
-            <div class="ticket-view glass-card">
-              <div class="ticket-header">
-                <div class="table-title">
-                  <span class="order-id">#{{ table.order.customId || table.order._id.slice(-6) }}</span>
-                  <h1>{{ table.name }}</h1>
+            <div class="ticket-view-md3">
+              <header class="ticket-header-md3">
+                <div class="table-info-md3">
+                  <span class="text-label-small opacity-60">#{{ table.order.customId || table.order._id.slice(-6) }}</span>
+                  <h1 class="text-headline-small">{{ table.name }}</h1>
                   @if (vm.editMode()) {
-                     <div class="edit-hint gradient-text" style="font-size: 0.7rem; font-weight: 800; text-transform: uppercase;">{{ 'POS.EDIT_MODE' | translate }}</div>
+                    <div class="md-badge-warning animate-pulse">{{ 'POS.EDIT_MODE' | translate }}</div>
                   }
                 </div>
-                
-                <div class="checkout-actions">
-                  <button class="btn-edit" (click)="vm.toggleEditMode()">
-                    <lucide-icon *ngIf="!vm.editMode()" name="pen-line" [size]="14" class="inline-icon"></lucide-icon>
-                    <lucide-icon *ngIf="vm.editMode()" name="check" [size]="14" class="inline-icon"></lucide-icon>
-                    {{ (vm.editMode() ? 'POS.FINISH_EDIT' : 'POS.EDIT_ORDER') | translate }}
+
+                <div class="header-actions-md3">
+                  <button class="btn-tonal" (click)="vm.toggleEditMode()">
+                    <lucide-icon [name]="vm.editMode() ? 'check' : 'pen-line'" [size]="18"></lucide-icon>
+                    <span>{{ (vm.editMode() ? 'POS.FINISH_EDIT' : 'POS.EDIT_ORDER') | translate }}</span>
                   </button>
-                  <button class="btn-split" (click)="vm.openSplitModal()">
-                    <lucide-icon name="columns" [size]="14" class="inline-icon"></lucide-icon> {{ 'POS.PAY_SPLIT' | translate }}
+                  <button class="btn-tonal" (click)="vm.openSplitModal()">
+                    <lucide-icon name="columns" [size]="18"></lucide-icon>
+                    <span>{{ 'POS.PAY_SPLIT' | translate }}</span>
                   </button>
-                  <button class="btn-primary" (click)="vm.processPayment()" style="padding: 12px 24px; font-weight: 900;">
-                    <lucide-icon name="credit-card" [size]="16" class="inline-icon"></lucide-icon> {{ 'POS.PAY_TOTAL' | translate }}
+                  <button class="btn-primary" (click)="vm.processPayment()">
+                    <lucide-icon name="credit-card" [size]="18"></lucide-icon>
+                    <span>{{ 'POS.PAY_TOTAL' | translate }}</span>
                   </button>
                 </div>
-              </div>
+              </header>
 
-              <div class="ticket-content" style="flex: 1; display: flex; flex-direction: column; min-height: 0;">
-                <section class="comensales-breakdown" style="flex: 1; display: flex; flex-direction: column; min-height: 0;">
-                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                    <h3 style="margin:0">{{ 'POS.BREAKDOWN' | translate }}</h3>
-                    <div style="display: flex; gap: 8px;">
-                        @if (vm.editMode()) {
-                            <button class="btn-add-item" (click)="vm.showAddItemModal.set(true)">+ {{ 'POS.ADD_ITEM' | translate }}</button>
-                            <button class="btn-add-custom" (click)="vm.showCustomLineModal.set(true)">+ {{ 'POS.CUSTOM' | translate }}</button>
-                        }
+              <div class="ticket-content-md3">
+                <section class="items-section-md3">
+                  <div class="section-title-row">
+                    <h3 class="text-title-medium">{{ 'POS.BREAKDOWN' | translate }}</h3>
+                    <div class="edit-tools" *ngIf="vm.editMode()">
+                      <button class="btn-tonal-sm" (click)="vm.showAddItemModal.set(true)">
+                        <lucide-icon name="plus" [size]="14"></lucide-icon>
+                        {{ 'POS.ADD_ITEM' | translate }}
+                      </button>
+                      <button class="btn-tonal-sm" (click)="vm.showCustomLineModal.set(true)">
+                        <lucide-icon name="edit-3" [size]="14"></lucide-icon>
+                        {{ 'POS.CUSTOM' | translate }}
+                      </button>
                     </div>
                   </div>
 
-                  <div class="comensales-list" style="overflow-y: auto; flex: 1; min-height: 0; padding-right: 8px;">
+                  <div class="guest-list-md3">
                     @for (user of vm.getComensales(table.order); track user.id) {
-                      <div class="user-strip glass-card" [class.orphan-warning]="user.id === 'orphan' || user.id === 'staff' || user.id === 'pos'">
-                        <div class="user-info">
-                          <span class="user-name">
-                             <lucide-icon name="user" [size]="14" class="inline-icon"></lucide-icon> {{ user.name }}
-                             @if (user.id === 'orphan' || user.id === 'staff' || user.id === 'pos') {
-                                <span class="badge-warning" style="margin-left:8px; font-size:0.6rem;">{{ 'POS.ASSIGN_NAME' | translate }}</span>
-                             }
-                          </span>
-                          <span class="user-total">{{ user.total | currency:'EUR' }}</span>
-                          @if (!vm.editMode()) {
-                            <button class="btn-pay-single" (click)="vm.payByUser(user.id)" [title]="'POS.CHARGE_USER' | translate">
-                                <lucide-icon name="credit-card" [size]="14"></lucide-icon>
-                            </button>
-                          }
-                        </div>
-                        <div class="user-items">
+                      <div class="guest-group-md3" [class.special-user]="user.id === 'orphan' || user.id === 'staff' || user.id === 'pos'">
+                        <header class="guest-header-md3">
+                          <div class="guest-name-md3">
+                            <div class="guest-avatar">
+                              <lucide-icon name="user" [size]="14"></lucide-icon>
+                            </div>
+                            <span class="text-title-small">{{ user.name }}</span>
+                            @if (user.id === 'orphan' || user.id === 'staff' || user.id === 'pos') {
+                              <span class="md-badge-error-sm">{{ 'POS.ASSIGN_NAME' | translate }}</span>
+                            }
+                          </div>
+                          <div class="guest-total-actions">
+                            <span class="text-title-medium color-primary">{{ user.total | currency:'EUR' }}</span>
+                            @if (!vm.editMode()) {
+                              <button class="icon-btn-md3 success-tonal-sm" (click)="vm.payByUser(user.id)" title="Cobrar este usuario">
+                                <lucide-icon name="credit-card" [size]="16"></lucide-icon>
+                              </button>
+                            }
+                          </div>
+                        </header>
+
+                        <div class="guest-items-md3">
                           @for (item of user.items; track item._originalIndex) {
-                            <div class="pos-item-row" [class.editing-row]="vm.editMode()">
-                              <div class="status-dot" [class.ready]="item.status === 'ready'"></div>
-                              
-                              <div class="item-id-column">
+                            <div class="item-row-md3" [class.editing]="vm.editMode()">
+                              <div class="item-status-dot" [class.ready]="item.status === 'ready'"></div>
+                              <div class="item-details-md3">
                                 @if (vm.editMode()) {
-                                    <div class="edit-fields">
-                                        <input type="text" class="edit-name-input" [value]="item.name" (blur)="$any($event.target).value !== item.name && vm.updateItemName(table.order._id, item._originalIndex, $any($event.target).value)">
-                                    </div>
+                                  <input type="text" class="md-borderless-input text-body-medium" [value]="item.name" (blur)="$any($event.target).value !== item.name && vm.updateItemName(table.order._id, item._originalIndex, $any($event.target).value)">
                                 } @else {
-                                    <span class="name">
-                                        {{ item.quantity }}x {{ item.name }}
-                                        @if (item.isCustom) { <small style="opacity: 0.6"> ({{ 'POS.CUSTOM_ITEM' | translate }})</small> }
-                                    </span>
+                                  <span class="text-body-medium">{{ item.quantity }}x {{ item.name }}</span>
+                                  @if (item.isCustom) { <small class="text-label-small opacity-60">({{ 'POS.CUSTOM_ITEM' | translate }})</small> }
                                 }
                               </div>
-
-                              <div style="display: flex; align-items: center; gap: 8px; justify-content: flex-end;">
+                              <div class="item-pricing-md3">
                                 @if (vm.editMode()) {
-                                    <div class="edit-fields-extended">
-                                        <div class="input-with-currency">
-                                            <input type="number" class="edit-price-input" [value]="item.price" (change)="vm.updateItemPrice(table.order._id, item._originalIndex, +$any($event.target).value)">
-                                            <span>€</span>
-                                        </div>
-                                        <input type="text" class="edit-user-input" [placeholder]="'POS.GUEST_NAME' | translate" [value]="item.orderedBy.name" (blur)="$any($event.target).value !== item.orderedBy.name && vm.reassignItem(table.order._id, item._originalIndex, $any($event.target).value)">
-                                        <button class="btn-delete-item" (click)="vm.removeItemFromOrder(table.order._id, item._originalIndex)">
-                                            <lucide-icon name="trash-2" [size]="12"></lucide-icon>
-                                        </button>
-                                    </div>
+                                  <div class="price-input-group">
+                                    <input type="number" class="md-borderless-input text-label-large align-right" [value]="item.price" (change)="vm.updateItemPrice(table.order._id, item._originalIndex, +$any($event.target).value)">
+                                    <span class="currency-symbol text-label-small">€</span>
+                                  </div>
+                                  <input type="text" class="md-borderless-input text-label-small guest-reassign" [placeholder]="'POS.GUEST_NAME' | translate" [value]="item.orderedBy?.name" (blur)="$any($event.target).value !== item.orderedBy?.name && vm.reassignItem(table.order._id, item._originalIndex, $any($event.target).value)">
+                                  <button class="icon-btn-md3 error-tonal-sm" (click)="vm.removeItemFromOrder(table.order._id, item._originalIndex)">
+                                    <lucide-icon name="trash-2" [size]="14"></lucide-icon>
+                                  </button>
                                 } @else {
-                                    <span class="price-bubble">{{ (item.price * item.quantity) | currency:'EUR' }}</span>
+                                  <span class="text-label-large item-price-badge">{{ (item.price * item.quantity) | currency:'EUR' }}</span>
                                 }
                               </div>
                             </div>
@@ -181,565 +204,465 @@ export class FilterOccupiedPipe implements PipeTransform {
                   </div>
                 </section>
 
-                <section class="pos-total-section">
-                  <div class="total-row">
-                    <span>{{ 'POS.SUBTOTAL' | translate }}</span>
-                    <span>{{ table.order.totalAmount | currency:'EUR' }}</span>
-                  </div>
-                  @if (vm.calculateBilling(table.order.totalAmount); as billing) {
-                    @if (billing) {
-                      <div class="total-row subtotal-highlight">
-                        <span>{{ 'POS.TOTAL_SIMPLE' | translate }}</span>
-                        <span class="gradient-text">{{ billing.subtotal | currency:'EUR' }}</span>
+                <section class="checkout-footer-md3">
+                  <div class="summary-rows">
+                    <div class="summary-row">
+                      <span class="text-body-medium opacity-60">{{ 'POS.SUBTOTAL' | translate }}</span>
+                      <span class="text-body-medium">{{ table.order.totalAmount | currency:'EUR' }}</span>
+                    </div>
+
+                    @if (vm.calculateBilling(table.order.totalAmount); as billing) {
+                      <div class="summary-row tip-row">
+                        <div class="tip-info">
+                          <span class="text-body-medium">{{ 'POS.TOTAL_TIP' | translate }}</span>
+                          <span class="text-label-small opacity-60">{{ billing.tipDescription }}</span>
+                        </div>
+                        <div class="tip-selector-md3">
+                          @for (p of [0, 5, 10, 15]; track p) {
+                            <button [class.active]="vm.activeTipPercentage() === p"
+                                    (click)="vm.activeTipPercentage.set(p)"
+                                    class="tip-chip-md3">{{ p }}%</button>
+                          }
+                        </div>
                       </div>
-                      <div class="total-row grand-total">
-                        <div style="display: flex; flex-direction: column;">
-                           <span>{{ 'POS.TOTAL_TIP' | translate }}</span>
-                           <small style="opacity: 0.5; font-size: 0.7rem; font-weight: 500;">{{ billing.tipDescription }}</small>
-                        </div>
-                        <div style="display: flex; align-items: center; gap: 12px;">
-                           <div class="tip-pills" style="display: flex; gap: 4px;">
-                              @for (p of [0, 5, 10, 15]; track p) {
-                                <button [class.active]="vm.activeTipPercentage() === p"
-                                        (click)="vm.activeTipPercentage.set(p)"
-                                        class="tip-pill">{{ p }}%</button>
-                              }
-                           </div>
-                           <span class="grand-value">{{ billing.grandTotal | currency:'EUR' }}</span>
-                        </div>
+
+                      <div class="summary-row grand-total-row-md3">
+                        <span class="text-title-large">{{ 'POS.TOTAL_SIMPLE' | translate }}</span>
+                        <span class="text-headline-large color-primary">{{ billing.grandTotal | currency:'EUR' }}</span>
+                      </div>
+                    } @else {
+                      <div class="md-alert-warning">
+                        <lucide-icon name="alert-circle" [size]="18"></lucide-icon>
+                        <span class="text-label-medium">{{ 'POS.VAT_WARNING' | translate }}</span>
+                      </div>
+                      <div class="summary-row grand-total-row-md3">
+                        <span class="text-title-large">{{ 'POS.TOTAL_SIMPLE' | translate }}</span>
+                        <span class="text-headline-large">{{ table.order.totalAmount | currency:'EUR' }}</span>
                       </div>
                     }
-                  } @else {
-                    <div class="total-row warning">
-                      <span>{{ 'POS.VAT_WARNING' | translate }}</span>
-                      <span>{{ table.order.totalAmount | currency:'EUR' }}</span>
-                    </div>
-                    <div class="hint-message">
-                      <small>{{ 'POS.VAT_HINT' | translate }}</small>
-                    </div>
-                  }
+                  </div>
                 </section>
               </div>
             </div>
           } @else {
-            <div class="empty-detail glass-card">
-              <div class="icon"><lucide-icon name="layout-dashboard" [size]="64" color="var(--text-muted)"></lucide-icon></div>
-              <h2>{{ 'POS.EMPTY_TITLE' | translate }}</h2>
-              <p>{{ table.name }} {{ 'POS.EMPTY_DESC' | translate }}</p>
-              <div class="empty-actions" style="display: flex; gap: 12px; margin-top: 12px;">
-                <button class="btn-primary" (click)="vm.openTable(table)">{{ 'POS.OPEN_TABLE' | translate }}</button>
+            <div class="pos-empty-state-md3">
+              <div class="empty-icon-box">
+                <lucide-icon name="layout-dashboard" [size]="64"></lucide-icon>
+              </div>
+              <h2 class="text-headline-small">{{ 'POS.EMPTY_TITLE' | translate }}</h2>
+              <p class="text-body-medium opacity-60">{{ table.name }} {{ 'POS.EMPTY_DESC' | translate }}</p>
+              <div class="empty-actions-md3">
+                <button class="btn-primary" (click)="vm.openTable(table)">
+                  <lucide-icon name="plus-circle" [size]="20"></lucide-icon>
+                  <span>{{ 'POS.OPEN_TABLE' | translate }}</span>
+                </button>
                 @if (table.isVirtual) {
-                  <button class="btn-delete-item" style="padding: 12px 16px; border-radius: 12px;" (click)="vm.deleteVirtualTable(table.id)">
-                    <lucide-icon name="trash-2" [size]="14" class="inline-icon"></lucide-icon> {{ 'COMMON.DELETE' | translate }}
+                  <button class="btn-error-tonal" (click)="vm.deleteVirtualTable(table.id)">
+                    <lucide-icon name="trash-2" [size]="18"></lucide-icon>
+                    <span>{{ 'COMMON.DELETE' | translate }}</span>
                   </button>
                 }
               </div>
             </div>
           }
         } @else {
-          <div class="no-selection glass-card">
-            <h2>{{ 'POS.NO_SELECTION_TITLE' | translate }}</h2>
-            <p>{{ 'POS.NO_SELECTION_DESC' | translate }}</p>
+          <div class="pos-no-selection-md3">
+            <div class="empty-icon-box">
+              <lucide-icon name="wallet" [size]="64"></lucide-icon>
+            </div>
+            <h2 class="text-headline-small">{{ 'POS.NO_SELECTION_TITLE' | translate }}</h2>
+            <p class="text-body-medium opacity-60">{{ 'POS.NO_SELECTION_DESC' | translate }}</p>
           </div>
         }
       </main>
 
-      <!-- Modal: Add Menu Item -->
-      @if (vm.showAddItemModal()) {
-        <div class="modal-overlay" (click)="vm.showAddItemModal.set(false)">
-          <div class="modal-content glass-card" (click)="$event.stopPropagation()">
-            <h2>{{ 'POS.ADD_MENU_ITEM' | translate }}</h2>
-            <div class="menu-items-list">
-              @for (item of vm.menuItems(); track item._id) {
-                <div class="menu-item-option" (click)="vm.addMenuItemToOrder(vm.selectedTable()?.order._id!, item)">
-                  <span>{{ item.emoji }} {{ item.name }}</span>
-                  <span class="price">{{ item.price | currency:'EUR' }}</span>
-                </div>
-              }
+      <!-- Modals -->
+      <div class="md-modals-overlay" *ngIf="vm.showAddItemModal() || vm.showCustomLineModal() || vm.showSplitDetailedModal()">
+        
+        <!-- Modal: Add Menu Item -->
+        @if (vm.showAddItemModal()) {
+          <div class="md-modal-bottom-sheet" (click)="$event.stopPropagation()">
+            <header class="modal-header-md3">
+              <h2 class="text-title-large">{{ 'POS.ADD_MENU_ITEM' | translate }}</h2>
+              <button class="icon-btn-md3" (click)="vm.showAddItemModal.set(false)"><lucide-icon name="x" [size]="24"></lucide-icon></button>
+            </header>
+            <div class="modal-body-md3">
+              <div class="menu-options-grid-md3">
+                @for (item of vm.menuItems(); track item._id) {
+                  <div class="menu-option-md3" (click)="vm.addMenuItemToOrder(vm.selectedTable()?.order?._id!, item)">
+                    <div class="option-header-md3">
+                      <span class="text-title-medium">{{ item.emoji }} {{ item.name }}</span>
+                      <span class="text-title-medium color-primary">{{ item.price | currency:'EUR' }}</span>
+                    </div>
+                    <span class="text-label-small opacity-60">{{ item.category }}</span>
+                  </div>
+                }
+              </div>
             </div>
-            <button class="btn-secondary" (click)="vm.showAddItemModal.set(false)">{{ 'POS.CANCEL' | translate }}</button>
           </div>
-        </div>
-      }
+        }
 
-      <!-- Modal: Add Custom Line -->
-      @if (vm.showCustomLineModal()) {
-        <div class="modal-overlay" (click)="vm.showCustomLineModal.set(false)">
-          <div class="modal-content glass-card" (click)="$event.stopPropagation()">
-            <h2>{{ 'POS.ADD_CUSTOM_LINE' | translate }}</h2>
-            <form #customForm="ngForm" (ngSubmit)="vm.addCustomLineToOrder(vm.selectedTable()?.order._id!, customName.value, +customPrice.value); customForm.reset()">
-              <div class="form-group">
-                <label>{{ 'POS.CUSTOM_NAME' | translate }}</label>
-                <input type="text" class="glass-input" #customName required [placeholder]="'POS.CUSTOM_NAME_PH' | translate">
-              </div>
-              <div class="form-group">
-                <label>{{ 'POS.PRICE' | translate }}</label>
-                <input type="number" class="glass-input" #customPrice required step="0.01" min="0" placeholder="0.00">
-              </div>
-              <div class="modal-actions">
-                <button type="button" class="btn-secondary" (click)="vm.showCustomLineModal.set(false)">{{ 'POS.CANCEL' | translate }}</button>
-                <button type="submit" class="btn-primary">{{ 'POS.ADD' | translate }}</button>
-              </div>
-            </form>
+        <!-- Modal: Add Custom Line -->
+        @if (vm.showCustomLineModal()) {
+          <div class="md-modal-dialog" (click)="$event.stopPropagation()">
+            <header class="modal-header-md3">
+              <h2 class="text-title-large">{{ 'POS.ADD_CUSTOM_LINE' | translate }}</h2>
+              <button class="icon-btn-md3" (click)="vm.showCustomLineModal.set(false)"><lucide-icon name="x" [size]="24"></lucide-icon></button>
+            </header>
+            <div class="modal-body-md3">
+              <form #customForm="ngForm" class="md-form" (ngSubmit)="vm.addCustomLineToOrder(vm.selectedTable()?.order?._id!, customName.value, +customPrice.value); customName.value=''; customPrice.value=''; vm.showCustomLineModal.set(false)">
+                <div class="md-field">
+                  <label class="text-label-medium">{{ 'POS.CUSTOM_NAME' | translate }}</label>
+                  <input type="text" class="md-input" #customName required [placeholder]="'POS.CUSTOM_NAME_PH' | translate">
+                </div>
+                <div class="md-field">
+                  <label class="text-label-medium">{{ 'POS.PRICE' | translate }}</label>
+                  <div class="input-with-icon-md3">
+                    <input type="number" class="md-input" #customPrice required step="0.01" min="0" placeholder="0.00">
+                    <span class="input-suffix">€</span>
+                  </div>
+                </div>
+                <div class="modal-actions-md3">
+                  <button type="button" class="btn-text" (click)="vm.showCustomLineModal.set(false)">{{ 'POS.CANCEL' | translate }}</button>
+                  <button type="submit" class="btn-primary">{{ 'POS.ADD' | translate }}</button>
+                </div>
+              </form>
+            </div>
           </div>
-        </div>
-      }
+        }
 
-      <!-- Modal: Split Options -->
-      @if (vm.showSplitDetailedModal()) {
-        <div class="modal-overlay" (click)="vm.showSplitDetailedModal.set(false)">
-           <div class="modal-content glass-card" (click)="$event.stopPropagation()">
-              <header class="modal-header">
-                <h2>{{ 'POS.SPLIT_PAYMENT' | translate }}</h2>
-                <p class="text-muted">{{ 'POS.SPLIT_DESC' | translate }}</p>
-              </header>
+        <!-- Modal: Split Options -->
+        @if (vm.showSplitDetailedModal()) {
+          <div class="md-modal-dialog" (click)="$event.stopPropagation()">
+            <header class="modal-header-md3">
+              <div>
+                <h2 class="text-title-large">{{ 'POS.SPLIT_PAYMENT' | translate }}</h2>
+                <p class="text-label-small opacity-60">{{ 'POS.SPLIT_DESC' | translate }}</p>
+              </div>
+              <button class="icon-btn-md3" (click)="vm.showSplitDetailedModal.set(false)"><lucide-icon name="x" [size]="24"></lucide-icon></button>
+            </header>
 
-              <div class="split-options-grid">
-                <button class="split-option-card single" (click)="vm.processPayment(); vm.showSplitDetailedModal.set(false)">
-                    <div class="option-icon"><lucide-icon name="receipt" [size]="24"></lucide-icon></div>
-                    <div class="option-info">
-                        <strong>{{ 'POS.FULL_BILL' | translate }}</strong>
-                        <span>{{ 'POS.PAY_ALL_DESC' | translate }}</span>
-                    </div>
-                    <div class="option-amount">{{ vm.selectedTable()?.order?.totalAmount | currency:'EUR' }}</div>
+            <div class="modal-body-md3">
+              <div class="split-strategies-md3">
+                <button class="strategy-card-md3" (click)="vm.processPayment(); vm.showSplitDetailedModal.set(false)">
+                  <div class="strategy-icon primary"><lucide-icon name="receipt" [size]="24"></lucide-icon></div>
+                  <div class="strategy-info">
+                    <span class="text-title-medium">{{ 'POS.FULL_BILL' | translate }}</span>
+                    <span class="text-label-small opacity-60">{{ 'POS.PAY_ALL_DESC' | translate }}</span>
+                  </div>
+                  <span class="text-title-large color-primary">{{ vm.selectedTable()?.order?.totalAmount | currency:'EUR' }}</span>
                 </button>
 
-                <button class="split-option-card by-user" (click)="vm.showSplitDetailedModal.set(false)">
-                    <div class="option-icon"><lucide-icon name="users" [size]="24"></lucide-icon></div>
-                    <div class="option-info">
-                        <strong>{{ 'POS.BY_CUSTOMER' | translate }}</strong>
-                        <span>{{ 'POS.PAY_INDIVIDUAL_DESC' | translate }}</span>
-                    </div>
+                <button class="strategy-card-md3" (click)="vm.showSplitDetailedModal.set(false)">
+                  <div class="strategy-icon secondary"><lucide-icon name="users" [size]="24"></lucide-icon></div>
+                  <div class="strategy-info">
+                    <span class="text-title-medium">{{ 'POS.BY_CUSTOMER' | translate }}</span>
+                    <span class="text-label-small opacity-60">{{ 'POS.PAY_INDIVIDUAL_DESC' | translate }}</span>
+                  </div>
                 </button>
 
-                <div class="split-option-card equal">
-                    <div class="option-icon"><lucide-icon name="grid" [size]="24"></lucide-icon></div>
-                    <div class="option-info">
-                        <strong>{{ 'POS.EQUAL_PARTS' | translate }}</strong>
-                        <span>{{ 'POS.SPLIT_N_DESC' | translate }}</span>
-                        <div class="equal-parts-selector" style="display: flex; gap: 8px; margin-top: 12px;">
-                           @for (n of [2, 3, 4, 5]; track n) {
-                              <button class="btn-part" (click)="vm.processPayment(undefined, 'equal', n); vm.showSplitDetailedModal.set(false)">{{ n }}</button>
-                           }
-                           <input type="number" #customN class="glass-input tiny" placeholder="X" style="width: 50px;" (keyup.enter)="vm.processPayment(undefined, 'equal', +customN.value); vm.showSplitDetailedModal.set(false)">
-                        </div>
+                <div class="strategy-card-md3 interactive">
+                  <div class="strategy-icon accent"><lucide-icon name="grid" [size]="24"></lucide-icon></div>
+                  <div class="strategy-info">
+                    <span class="text-title-medium">{{ 'POS.EQUAL_PARTS' | translate }}</span>
+                    <span class="text-label-small opacity-60">{{ 'POS.SPLIT_N_DESC' | translate }}</span>
+                    <div class="parts-selector-md3">
+                      @for (n of [2, 3, 4]; track n) {
+                        <button class="part-btn-md3" (click)="vm.processPayment(undefined, 'equal', n); vm.showSplitDetailedModal.set(false)">{{ n }}</button>
+                      }
+                      <input type="number" #customN class="part-input-md3" placeholder="X" (keyup.enter)="vm.processPayment(undefined, 'equal', +customN.value); vm.showSplitDetailedModal.set(false)">
                     </div>
+                  </div>
                 </div>
               </div>
-
-              <div class="modal-footer" style="padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.05);">
-                <button class="btn-secondary w-full" (click)="vm.showSplitDetailedModal.set(false)">{{ 'POS.CLOSE' | translate }}</button>
-              </div>
-           </div>
-        </div>
-      }
+            </div>
+          </div>
+        }
+      </div>
     </div>
   `,
   styles: [`
     .pos-container {
       display: grid;
-      grid-template-columns: 350px 1fr;
+      grid-template-columns: 360px 1fr;
       grid-template-rows: auto 1fr;
       height: 100vh;
-      background: transparent;
-      gap: 16px;
-      padding: 0;
+      background: var(--md-sys-color-surface-container-low);
+      gap: 1px;
       overflow: hidden;
     }
 
-    @media (max-width: 768px) {
-      .pos-container {
-        grid-template-columns: 1fr;
-        height: auto;
-        overflow: visible;
-        padding-bottom: 24px;
-      }
-      .pos-sidebar {
-        max-height: 45vh;
-        overflow-y: auto;
-      }
-      .pos-main {
-        overflow: visible;
-      }
-      .ticket-view {
-        padding: 20px;
-        gap: 20px;
-      }
-      .ticket-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 16px;
-      }
-      .checkout-actions {
-        width: 100%;
-        flex-direction: column;
-      }
-      .checkout-actions button {
-        width: 100%;
-        justify-content: center;
-      }
-      .table-title h1 {
-        font-size: 1.4rem;
-      }
-    }
-
-    @media (max-width: 480px) {
-      .pos-sidebar { max-height: 35vh; }
-      .tables-grid { grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); }
-    }
-
-    .pos-sidebar {
+    .pos-sidebar-md3 {
+      grid-row: 2;
+      background: var(--md-sys-color-surface-1);
       display: flex;
       flex-direction: column;
-      gap: 20px;
-      padding: 24px;
-      overflow-y: auto;
+      border-right: 1px solid var(--md-sys-color-outline-variant);
     }
 
-    .sidebar-header {
+    .sidebar-header-md3 {
+      padding: 16px 24px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 8px;
+      border-bottom: 1px solid var(--md-sys-color-outline-variant);
     }
 
-    .view-toggles { display: flex; gap: 8px; }
-    .view-toggles button {
-      background: none; border: none; color: var(--text-base); opacity: 0.5; font-weight: bold; cursor: pointer; padding-bottom: 4px;
-      border-bottom: 2px solid transparent;
+    .view-toggles-md3 { display: flex; gap: 24px; }
+    .view-toggles-md3 button {
+      background: none; border: none; padding: 12px 0;
+      color: var(--md-sys-color-on-surface-variant);
+      cursor: pointer; position: relative;
     }
-    .view-toggles button.active { opacity: 1; border-color: var(--accent-primary); color: var(--accent-primary); }
+    .view-toggles-md3 button.active { color: var(--md-sys-color-primary); font-weight: 700; }
+    .active-indicator {
+      position: absolute; bottom: 0; left: 0; right: 0; height: 3px;
+      background: var(--md-sys-color-primary);
+      border-radius: 3px 3px 0 0;
+      transform: scaleX(0); transition: transform 0.2s;
+    }
+    button.active .active-indicator { transform: scaleX(1); }
 
-    .occupied-count { font-size: 0.8rem; color: var(--text-muted); }
+    .sidebar-content-md3 { flex: 1; overflow-y: auto; padding: 16px; }
 
-    .tables-grid {
+    .tables-grid-md3 {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
       gap: 12px;
     }
 
-    .history-list { display: flex; flex-direction: column; gap: 12px; }
-    .history-card { padding: 16px; border: 1px solid rgba(255,255,255,0.05); cursor: default; }
-    .h-top { display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 8px; }
-    .h-id { font-family: monospace; color: var(--text-muted); }
-    .h-date { color: var(--text-muted); opacity: 0.8; }
-    .h-total { font-size: 1.3rem; font-weight: bold; color: var(--highlight); }
+    .table-item-md3 {
+      aspect-ratio: 1;
+      background: var(--md-sys-color-surface-container-high);
+      border-radius: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 2px solid transparent;
+      text-align: center;
+      padding: 8px;
+    }
+    .table-item-md3:hover { background: var(--md-sys-color-surface-container-highest); }
+    .table-item-md3.selected { border-color: var(--md-sys-color-primary); background: var(--md-sys-color-surface-container-highest); }
+    .table-item-md3.occupied { background: var(--md-sys-color-primary-container); color: var(--md-sys-color-on-primary-container); }
     
-    .h-bottom { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; }
-    .h-actions { display: flex; gap: 12px; }
-    .btn-icon {
-      background: none; border: 1px solid rgba(255,255,255,0.2);
-      border-radius: 8px; padding: 10px 14px; cursor: pointer; color: var(--text-base);
-      opacity: 0.8; transition: all 0.2s; font-size: 1.2rem;
+    .table-total-md3 { margin-top: 4px; font-weight: 800; opacity: 0.8; }
+
+    .history-list-md3 { display: flex; flex-direction: column; gap: 12px; }
+    .ticket-card-md3 {
+      padding: 16px;
+      background: var(--md-sys-color-surface-2);
+      border-radius: 16px;
+      border: 1px solid var(--md-sys-color-outline-variant);
+    }
+    .ticket-meta-md3 { display: flex; justify-content: space-between; margin-bottom: 8px; }
+    .ticket-body-md3 { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
+    .ticket-actions-md3 { display: flex; gap: 8px; justify-content: flex-end; }
+
+    .sidebar-footer-md3 { padding: 16px 24px; border-top: 1px solid var(--md-sys-color-outline-variant); }
+
+    .pos-main-md3 { grid-row: 2; overflow: hidden; position: relative; }
+
+    .ticket-view-md3 {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      background: var(--md-sys-color-surface-container-low);
+    }
+
+    .ticket-header-md3 {
+      padding: 24px 32px;
+      background: var(--md-sys-color-surface-1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: var(--md-sys-elevation-1);
+      z-index: 10;
+    }
+
+    .header-actions-md3 { display: flex; gap: 12px; }
+
+    .ticket-content-md3 {
+      flex: 1;
+      overflow-y: auto;
+      padding: 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 32px;
+    }
+
+    .items-section-md3 { flex: 1; display: flex; flex-direction: column; gap: 20px; }
+    .section-title-row { display: flex; justify-content: space-between; align-items: center; }
+    .edit-tools { display: flex; gap: 8px; }
+
+    .guest-list-md3 { display: flex; flex-direction: column; gap: 16px; }
+    .guest-group-md3 {
+      background: var(--md-sys-color-surface-1);
+      border-radius: 20px;
+      padding: 20px;
+      border: 1px solid var(--md-sys-color-outline-variant);
+    }
+    .guest-group-md3.special-user { border-left: 4px solid var(--md-sys-color-tertiary); }
+
+    .guest-header-md3 {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--md-sys-color-outline-variant);
+    }
+    .guest-name-md3 { display: flex; align-items: center; gap: 12px; }
+    .guest-avatar {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: var(--md-sys-color-surface-variant);
       display: flex; align-items: center; justify-content: center;
     }
-    .btn-icon:hover { opacity: 1; background: rgba(255,255,255,0.1); }
-    .btn-icon.print { border-color: var(--highlight); color: var(--highlight); }
-    .btn-icon.delete { border-color: #ef4444; color: #ef4444; }
 
-    .btn-closure {
-      width: 100%;
-      background: rgba(239, 68, 68, 0.1);
-      color: #f87171;
-      border: 1px solid rgba(239, 68, 68, 0.2);
-      padding: 12px;
-      border-radius: 12px;
-      font-weight: bold;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      transition: all 0.2s;
-    }
-    .btn-closure:hover {
-      background: #ef4444;
-      color: white;
-    }
+    .guest-total-actions { display: flex; align-items: center; gap: 16px; }
 
-    .table-card {
-      aspect-ratio: 1;
-      background: rgba(255,255,255,0.03);
-      border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 12px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    .table-card:hover { transform: translateY(-4px); background: rgba(255,255,255,0.08); }
-    .table-card.selected { border-color: var(--accent-primary); box-shadow: 0 0 20px rgba(79, 70, 229, 0.1); }
-    .table-card.occupied { border-color: var(--highlight); background: rgba(34, 197, 94, 0.05); }
-
-    .table-num { font-size: 0.9rem; font-weight: bold; word-break: break-word; }
-    .total-preview { font-size: 0.7rem; color: var(--accent-primary); margin-top: 4px; }
-
-    .pos-main { overflow: hidden; display: flex; flex-direction: column; }
-
-    .ticket-view {
-      margin: 0;
-      padding: 32px;
-      height: 100%;
-      box-sizing: border-box;
-      display: flex;
-      flex-direction: column;
-      gap: 24px;
-    }
-
-    .ticket-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 20px;
-      border-bottom: 1px solid rgba(255,255,255,0.1);
-      padding-bottom: 20px;
-      flex-shrink: 0;
-    }
-
-    .checkout-actions { display: flex; gap: 12px; }
-
-    .btn-edit {
-      background: rgba(59, 130, 246, 0.2);
-      color: #60a5fa;
-      border: 1px solid rgba(59, 130, 246, 0.4);
-      padding: 12px 18px;
-      border-radius: 12px;
-      font-weight: bold;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .btn-edit:hover { background: #3b82f6; color: white; }
-
-    .btn-split {
-        background: rgba(255,255,255,0.05); color: white; border: 1px solid rgba(255,255,255,0.1);
-        padding: 12px 18px; border-radius: 12px; font-weight: bold; cursor: pointer;
-    }
-
-    .btn-pay-single {
-        background: var(--highlight); color: var(--bg-dark); border: none;
-        width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center;
-        cursor: pointer;
-    }
-
-    .user-strip {
-      padding: 16px;
-      background: rgba(255,255,255,0.02);
-      border: 1px solid rgba(255,255,255,0.05);
-      border-radius: 16px;
-      margin-bottom: 16px;
-    }
-
-    .user-info {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-weight: 800;
-      margin-bottom: 12px;
-      padding-bottom: 8px;
-      border-bottom: 1px solid rgba(255,255,255,0.05);
-      color: var(--text-base);
-    }
-
-    .user-total { font-family: monospace; color: var(--highlight); }
-
-    .badge-warning { background: #f59e0b; color: #000; padding: 2px 6px; border-radius: 4px; font-weight: 900; }
-
-    .pos-item-row {
+    .guest-items-md3 { display: flex; flex-direction: column; gap: 2px; }
+    .item-row-md3 {
       display: grid;
-      grid-template-columns: 12px 1fr auto;
+      grid-template-columns: 8px 1fr auto;
       align-items: center;
-      gap: 12px;
-      font-size: 0.9rem;
-      padding: 6px 0;
-      border-bottom: 1px solid rgba(255,255,255,0.02);
+      gap: 16px;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--md-sys-color-surface-variant);
     }
-
-    .pos-item-row.editing-row { grid-template-columns: 12px 1fr auto; }
-
-    .edit-fields { display: flex; flex: 1; }
-    .edit-name-input { 
-        background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); 
-        color: white; border-radius: 6px; padding: 4px 8px; width: 100%; 
-    }
-
-    .edit-fields-extended { display: flex; align-items: center; gap: 8px; }
     
-    .input-with-currency { position: relative; width: 80px; }
-    .input-with-currency input { width: 100%; padding: 4px 20px 4px 8px; text-align: right; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; border-radius: 6px; }
-    .input-with-currency span { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); opacity: 0.5; font-size: 0.7rem; }
+    .item-status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--md-sys-color-outline); }
+    .item-status-dot.ready { background: #34d399; box-shadow: 0 0 8px #34d399; }
 
-    .edit-price-input, .edit-user-input {
-        background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); 
-        color: white; border-radius: 6px; padding: 4px 8px; 
-    }
-    .edit-user-input { width: 120px; }
-
-    .price-bubble { background: rgba(255,255,255,0.05); padding: 4px 10px; border-radius: 100px; font-family: monospace; font-size: 0.8rem; }
-
-    .pos-total-section {
-      flex-shrink: 0;
-      padding-top: 24px;
-      border-top: 2px solid rgba(255,255,255,0.1);
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
+    .item-pricing-md3 { display: flex; align-items: center; gap: 12px; }
+    .item-price-badge {
+      background: var(--md-sys-color-surface-container-high);
+      padding: 4px 12px; border-radius: 100px;
     }
 
-    .total-row { display: flex; justify-content: space-between; font-size: 0.9rem; opacity: 0.7; }
-    .subtotal-highlight {
-      opacity: 1;
-      font-size: 1.6rem;
-      font-weight: 900;
-      color: var(--highlight);
+    .price-input-group { position: relative; width: 80px; }
+    .align-right { text-align: right; padding-right: 20px; }
+    .currency-symbol { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); opacity: 0.6; }
+
+    .checkout-footer-md3 {
+      padding: 24px;
+      background: var(--md-sys-color-surface-2);
+      border-radius: 24px;
+      box-shadow: var(--md-sys-elevation-2);
     }
 
-    .grand-total { 
-        opacity: 1; font-weight: 900; font-size: 1.4rem; padding-top: 8px; margin-top: 8px; 
-        border-top: 1px dashed rgba(255,255,255,0.2); align-items: center; 
+    .summary-rows { display: flex; flex-direction: column; gap: 12px; }
+    .summary-row { display: flex; justify-content: space-between; align-items: center; }
+    .tip-row { padding: 12px 0; border-top: 1px dashed var(--md-sys-color-outline-variant); }
+    .tip-info { display: flex; flex-direction: column; }
+    .tip-selector-md3 { display: flex; gap: 6px; }
+    .tip-chip-md3 {
+      background: var(--md-sys-color-surface-variant);
+      border: none; padding: 6px 12px; border-radius: 100px;
+      font-size: 0.75rem; font-weight: 700; cursor: pointer;
     }
-    .grand-value { color: var(--highlight); text-shadow: 0 0 20px rgba(34, 197, 94, 0.3); }
+    .tip-chip-md3.active { background: var(--md-sys-color-primary); color: var(--md-sys-color-on-primary); }
 
-    .tip-pills { display: flex; gap: 4px; }
-    .tip-pill {
-        background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
-        color: white; font-size: 0.7rem; padding: 4px 8px; border-radius: 100px; cursor: pointer;
+    .grand-total-row-md3 {
+      padding-top: 16px;
+      border-top: 2px solid var(--md-sys-color-outline-variant);
     }
-    .tip-pill.active { background: var(--highlight); color: black; border-color: var(--highlight); }
 
-    /* Modal Styles */
-    .modal-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      background: rgba(0, 0, 0, 0.8);
-      display: flex;
-      align-items: flex-end;
-      justify-content: center;
+    .md-modals-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0, 0, 0, 0.5);
       z-index: 1000;
-      backdrop-filter: blur(8px);
+      backdrop-filter: blur(4px);
+      display: flex; align-items: center; justify-content: center;
+      animation: fadeIn 0.2s;
     }
-    .modal-content {
-      width: 100%;
-      max-width: 600px;
-      max-height: 90vh;
-      overflow-y: auto;
+
+    .md-modal-dialog {
+      background: var(--md-sys-color-surface-1);
+      border-radius: 28px;
+      width: 90%; max-width: 500px;
       padding: 32px;
-      display: flex;
-      flex-direction: column;
-      gap: 24px;
-      border-radius: 24px 24px 0 0;
-      background: #111;
-      border: 1px solid rgba(255,255,255,0.1);
-      animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      box-shadow: var(--md-sys-elevation-3);
+      display: flex; flex-direction: column; gap: 24px;
+      animation: zoomIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
 
-    @media (min-width: 768px) {
-      .modal-overlay { align-items: center; }
-      .modal-content { border-radius: 24px; margin: 20px; }
+    .md-modal-bottom-sheet {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      background: var(--md-sys-color-surface-1);
+      border-radius: 28px 28px 0 0;
+      padding: 32px;
+      max-height: 80vh; overflow-y: auto;
+      animation: slideUp 0.3s cubic-bezier(0, 0, 0.2, 1);
     }
 
-    @keyframes slideUp {
-      from { transform: translateY(100%); opacity: 0; }
-      to { transform: translateY(0); opacity: 1; }
-    }
+    .modal-header-md3 { display: flex; justify-content: space-between; align-items: flex-start; }
+    .modal-body-md3 { display: flex; flex-direction: column; gap: 20px; }
 
-    .split-options-grid { display: flex; flex-direction: column; gap: 12px; }
-    .split-option-card {
-        background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05);
-        border-radius: 16px; padding: 20px; display: flex; align-items: center; gap: 20px;
-        text-align: left; cursor: pointer; transition: all 0.2s; color: white;
-    }
-    .split-option-card:hover { background: rgba(255,255,255,0.08); border-color: var(--accent-primary); }
-    
-    .option-icon { width: 48px; height: 48px; border-radius: 12px; background: rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: center; }
-    .option-info { flex: 1; display: flex; flex-direction: column; }
-    .option-info strong { font-size: 1.1rem; }
-    .option-info span { font-size: 0.8rem; opacity: 0.6; }
-    .option-amount { font-size: 1.2rem; font-weight: 900; font-family: monospace; color: var(--highlight); }
-
-    .btn-part { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.1); color: white; padding: 6px 12px; border-radius: 8px; cursor: pointer; }
-    .btn-part:hover { background: var(--accent-primary); color: black; }
-
-    .btn-add-item, .btn-add-custom {
-      background: rgba(16, 185, 129, 0.1); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.2);
-      padding: 8px 12px; border-radius: 8px; font-size: 0.75rem; font-weight: bold; cursor: pointer;
-    }
-
-    .btn-delete-item {
-      background: rgba(239, 68, 68, 0.1);
-      color: #f87171;
-      border: 1px solid rgba(239, 68, 68, 0.2);
-      padding: 4px 10px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 0.75rem;
-      font-weight: bold;
-      transition: all 0.2s;
-    }
-    .btn-delete-item:hover { background: var(--danger); color: white; }
-
-    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #ccc; }
-    .status-dot.ready { background: var(--highlight); box-shadow: 0 0 8px var(--highlight); }
-
-    .w-full { width: 100%; }
-    
-    .menu-items-list {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      max-height: 400px;
-      overflow-y: auto;
-    }
-    .menu-item-option {
-      display: flex;
-      justify-content: space-between;
-      padding: 12px 16px;
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 8px;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-    .menu-item-option:hover {
-      background: rgba(255, 255, 255, 0.1);
-      transform: translateX(4px);
-    }
-    .form-group {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      margin-bottom: 16px;
-    }
-    .form-group label {
-      font-size: 0.9rem;
-      font-weight: bold;
-      opacity: 0.8;
-    }
-    .modal-actions {
-      display: flex;
-      flex-direction: column;
+    .menu-options-grid-md3 {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
       gap: 12px;
     }
-    
-    @media (min-width: 480px) {
-        .modal-actions {
-            flex-direction: row;
-            justify-content: flex-end;
-        }
+    .menu-option-md3 {
+      padding: 16px; background: var(--md-sys-color-surface-container-low);
+      border-radius: 16px; border: 1px solid var(--md-sys-color-outline-variant);
+      cursor: pointer; transition: background 0.2s;
     }
-    
-    .modal-actions button { width: 100%; }
-    @media (min-width: 480px) {
-        .modal-actions button { width: auto; }
+    .menu-option-md3:hover { background: var(--md-sys-color-surface-container-high); }
+    .option-header-md3 { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+
+    .split-strategies-md3 { display: flex; flex-direction: column; gap: 12px; }
+    .strategy-card-md3 {
+      display: flex; align-items: center; gap: 20px; border: none;
+      padding: 20px; background: var(--md-sys-color-surface-container-low);
+      border-radius: 20px; cursor: pointer; text-align: left;
     }
+    .strategy-card-md3:hover { background: var(--md-sys-color-surface-container-high); }
+    .strategy-icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; }
+    .strategy-icon.primary { background: var(--md-sys-color-primary); }
+    .strategy-icon.secondary { background: var(--md-sys-color-secondary); }
+    .strategy-icon.accent { background: var(--md-sys-color-tertiary); }
+    .strategy-info { flex: 1; display: flex; flex-direction: column; }
+
+    .parts-selector-md3 { display: flex; gap: 8px; margin-top: 12px; }
+    .part-btn-md3 {
+      width: 40px; height: 40px; border-radius: 10px; border: none;
+      background: var(--md-sys-color-surface-variant); cursor: pointer;
+    }
+    .part-btn-md3:hover { background: var(--md-sys-color-primary-container); }
+    .part-input-md3 { width: 50px; text-align: center; border-radius: 10px; border: 1px solid var(--md-sys-color-outline-variant); background: transparent; }
+
+    .pos-empty-state-md3, .pos-no-selection-md3 {
+      height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 16px; padding: 40px; text-align: center;
+    }
+    .empty-icon-box {
+      width: 120px; height: 120px; border-radius: 50%;
+      background: var(--md-sys-color-surface-container-high);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--md-sys-color-on-surface-variant);
+    }
+    .empty-actions-md3 { display: flex; gap: 12px; margin-top: 24px; }
+
+    .input-suffix { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); opacity: 0.6; }
+    .modal-actions-md3 { display: flex; justify-content: flex-end; gap: 12px; margin-top: 12px; }
+
+    @media (max-width: 1024px) {
+      .pos-container { grid-template-columns: 1fr; }
+      .pos-sidebar-md3 { grid-row: 2; height: 350px; }
+      .pos-main-md3 { grid-row: 3; height: calc(100vh - 350px - 70px); }
+    }
+
+    .color-primary { color: var(--md-sys-color-primary); }
+    .opacity-60 { opacity: 0.6; }
+    .animate-pulse { animation: mdPulse 2s infinite; }
+    @keyframes mdPulse { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
+    @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+    @keyframes zoomIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
   `]
 })
 export class POSComponent {

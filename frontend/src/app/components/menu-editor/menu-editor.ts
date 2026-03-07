@@ -12,411 +12,462 @@ import { TranslateModule } from '@ngx-translate/core';
   providers: [MenuEditorViewModel],
   template: `
     <div class="editor-container animate-fade-in">
-      <header class="view-header" style="grid-column: 1 / -1; margin-bottom: 0;">
-        <div>
-          <h1 class="view-title"><lucide-icon name="utensils" [size]="28" class="text-muted"></lucide-icon> {{ 'MENU_EDITOR.TITLE' | translate }}</h1>
-          <p class="view-desc">{{ 'MENU_EDITOR.DESC' | translate }}</p>
+      <header class="section-header-md3">
+        <div class="header-text">
+          <h1 class="text-headline-medium">
+            <lucide-icon name="menu" [size]="28"></lucide-icon>
+            {{ 'MENU_EDITOR.TITLE' | translate }}
+          </h1>
+          <p class="text-body-large opacity-60">{{ 'MENU_EDITOR.DESC' | translate }}</p>
         </div>
-        <button class="btn-primary" (click)="vm.selectItem(null)"><lucide-icon name="plus" [size]="16" class="inline-icon mr-2"></lucide-icon>{{ 'MENU_EDITOR.NEW_ITEM' | translate }}</button>
+        <button class="btn-primary" (click)="vm.selectItem(null)">
+            <lucide-icon name="plus" [size]="18"></lucide-icon>
+            {{ 'MENU_EDITOR.NEW_ITEM' | translate }}
+        </button>
       </header>
 
-      <aside class="menu-structure glass-card">
-        <div class="categories-list">
-          @for (cat of vm.categories(); track cat.name) {
-            <div class="category-group">
-              <h3 class="category-title">{{ cat.name }}</h3>
-              <div class="items-grid">
-                @for (item of cat.items; track item._id) {
-                  <div class="menu-item-card glass-card" 
-                       [class.selected]="vm.selectedItem()?._id === item._id"
-                       (click)="vm.selectItem(item)">
-                    <div class="item-meta">
-                      <span class="price-badge">{{ item.basePrice }}€</span>
+      <div class="editor-main-layout">
+        <aside class="menu-structure">
+          <div class="categories-column">
+            @for (cat of vm.categories(); track cat.name) {
+              <div class="category-group">
+                <h3 class="text-label-large color-secondary">{{ cat.name }}</h3>
+                <div class="items-stack">
+                  @for (item of cat.items; track item._id) {
+                    <div class="md-card menu-item-row" 
+                         [class.is-selected]="vm.selectedItem()?._id === item._id"
+                         (click)="vm.selectItem(item)">
+                      <div class="item-visual">
+                        <lucide-icon [name]="item.isMenu ? 'layers' : 'utensils-crossomer'" [size]="18"></lucide-icon>
+                      </div>
+                      <div class="item-content">
+                        <span class="text-title-small">{{ item.name }}</span>
+                        <span class="text-label-medium color-primary">{{ item.basePrice }}€</span>
+                      </div>
+                      <div class="item-badges">
+                        @if (item.allergens.length > 0) {
+                            <div class="dot-badge error" [title]="item.allergens.join(', ')"></div>
+                        }
+                      </div>
                     </div>
-                    <h4>{{ item.name }}</h4>
-                    <p class="description">{{ item.description }}</p>
-                    <div class="item-footer">
-                      <span class="allergen-count"><lucide-icon name="alert-triangle" [size]="12" class="inline-icon"></lucide-icon> {{ item.allergens.length }}</span>
-                      <span class="variant-count"><lucide-icon name="package" [size]="12" class="inline-icon"></lucide-icon> {{ item.variants.length }} {{ 'MENU_EDITOR.VAR' | translate }}</span>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        </aside>
+
+        <main class="editor-detail">
+          @if (vm.isEditing(); as item) {
+            <div class="md-card detail-form">
+              <header class="form-header-row">
+                <h2 class="text-headline-small">{{ vm.selectedItem()?._id ? ('MENU_EDITOR.EDIT_ITEM' | translate) : ('MENU_EDITOR.NEW_ITEM' | translate) }}</h2>
+                <div class="form-actions-md3">
+                  <button class="btn-outline" (click)="vm.isEditing.set(false)">{{ 'MENU_EDITOR.CANCEL' | translate }}</button>
+                  <button class="btn-primary" (click)="vm.saveItem()">
+                    <lucide-icon name="check" [size]="18"></lucide-icon>
+                    {{ 'MENU_EDITOR.SAVE_CHANGES' | translate }}
+                  </button>
+                </div>
+              </header>
+
+              <div class="form-scrollable">
+                <div class="form-grid-md3">
+                  <!-- Fundamental Data -->
+                  <section class="form-section-md3">
+                    <h3 class="text-title-medium">{{ 'MENU_EDITOR.BASIC_INFO' | translate }}</h3>
+                    <div class="field-row">
+                                            <div class="md-field">
+                        <label class="text-label-large">{{ 'MENU_EDITOR.ITEM_NAME' | translate }}</label>
+                        <input type="text" [(ngModel)]="vm.selectedItem()!.name" class="md-input">
+                      </div>
+                      <div class="md-field">
+                        <label class="text-label-large">{{ 'MENU_EDITOR.CATEGORY' | translate }}</label>
+                        <input type="text" [(ngModel)]="vm.selectedItem()!.category" list="cat-select" class="md-input" [placeholder]="'MENU_EDITOR.CAT_PLACEHOLDER' | translate">
+                        <datalist id="cat-select">
+                          @for (cat of vm.categories(); track cat.name) {
+                              <option [value]="cat.name">
+                          }
+                        </datalist>
+                      </div>
                     </div>
+                    
+                    <div class="field-row">
+                      <div class="md-field">
+                        <label class="text-label-large">{{ 'MENU_EDITOR.BASE_PRICE' | translate }}</label>
+                        <div class="input-with-icon">
+                            <input type="number" [(ngModel)]="vm.selectedItem()!.basePrice" class="md-input" [disabled]="vm.selectedItem()!.variants.length > 0">
+                            <span class="icon-suffix">€</span>
+                        </div>
+                        @if (vm.selectedItem()!.variants.length > 0) {
+                          <span class="text-label-small opacity-60">{{ 'MENU_EDITOR.PRICE_HINT' | translate }}</span>
+                        }
+                      </div>
+                    </div>
+
+                    <div class="md-field">
+                      <label class="text-label-large">{{ 'MENU_EDITOR.DESCRIPTION' | translate }}</label>
+                      <textarea [(ngModel)]="vm.selectedItem()!.description" class="md-input" rows="3"></textarea>
+                    </div>
+                  </section>
+
+                  <!-- Allergens Selection -->
+                  <section class="form-section-md3">
+                    <h3 class="text-title-medium">{{ 'MENU_EDITOR.ALLERGENS_TAGS' | translate }}</h3>
+                    <div class="chip-row">
+                      @for (alg of ['Gluten', 'Lácteos', 'Frutos Secos', 'Huevo', 'Pescado', 'Soja']; track alg) {
+                        <button class="chip" 
+                                [class.is-active]="vm.selectedItem()!.allergens.includes(alg)"
+                                (click)="vm.toggleAllergen(alg)">
+                          <lucide-icon name="alert-circle" [size]="14" *ngIf="vm.selectedItem()!.allergens.includes(alg)"></lucide-icon>
+                          {{ alg }}
+                        </button>
+                      }
+                    </div>
+                  </section>
+
+                  <!-- Switch Component for Menu Type -->
+                  <section class="form-section-md3 full-span">
+                    <div class="md-card-elevated switch-card" (click)="vm.selectedItem()!.isMenu = !vm.selectedItem()!.isMenu; vm.selectedItem.set({...vm.selectedItem()!})">
+                        <div class="switch-text">
+                            <span class="text-title-medium">{{ 'MENU_EDITOR.IS_MENU' | translate }}</span>
+                            <span class="text-body-medium opacity-60">{{ vm.selectedItem()!.isMenu ? ('MENU_EDITOR.YES_MENU' | translate) : ('MENU_EDITOR.NO_MENU' | translate) }}</span>
+                        </div>
+                        <div class="md-switch" [class.is-on]="vm.selectedItem()!.isMenu">
+                            <div class="switch-handle"></div>
+                        </div>
+                    </div>
+                  </section>
+
+                  @if (vm.selectedItem()!.isMenu) {
+                    <section class="form-section-md3 full-span">
+                        <div class="section-title-md3">
+                            <h3 class="text-title-medium">{{ 'MENU_EDITOR.MENU_STRUCT' | translate }}</h3>
+                            <button class="btn-text" (click)="vm.addMenuSection()">
+                                <lucide-icon name="plus" [size]="16"></lucide-icon>
+                                {{ 'MENU_EDITOR.ADD_SEC' | translate }}
+                            </button>
+                        </div>
+                        
+                        <div class="menu-sections-column">
+                            @for (sec of vm.selectedItem()!.menuSections; track $index; let sIdx = $index) {
+                                <div class="md-card section-editor-card">
+                                    <div class="section-header-row">
+                                        <input type="text" [(ngModel)]="sec.name" placeholder="Ej: Primer Plato" class="md-input-transparent text-title-medium">
+                                        <button class="icon-btn error" (click)="vm.removeMenuSection(sIdx)">
+                                            <lucide-icon name="x" [size]="16"></lucide-icon>
+                                        </button>
+                                    </div>
+                                    
+                                    <div class="options-container">
+                                        <span class="text-label-small opacity-40 uppercase">{{ 'MENU_EDITOR.AVAILABLE_OPTS' | translate }}</span>
+                                        @for (opt of sec.options; track $index; let oIdx = $index) {
+                                            <div class="option-field-row">
+                                                <input type="text" [(ngModel)]="sec.options[oIdx]" class="md-input-compact">
+                                                <button class="icon-btn-xs" (click)="vm.removeMenuOption(sIdx, oIdx)">
+                                                    <lucide-icon name="minus" [size]="14"></lucide-icon>
+                                                </button>
+                                            </div>
+                                        }
+                                        <button class="btn-tonal-sm" (click)="vm.addMenuOption(sIdx)">
+                                            <lucide-icon name="plus" [size]="14"></lucide-icon>
+                                            {{ 'MENU_EDITOR.ADD_DISH' | translate }}
+                                        </button>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </section>
+                  }
+
+                  <div class="field-row full-span">
+                    <!-- Complex List Editors (Variants / Addons) -->
+                    <section class="form-section-md3 flex-1">
+                      <div class="section-title-md3">
+                        <h3 class="text-title-medium">{{ 'MENU_EDITOR.VARIANTS' | translate }}</h3>
+                        <button class="btn-icon-add" (click)="vm.addVariant()"><lucide-icon name="plus" [size]="18"></lucide-icon></button>
+                      </div>
+                      <div class="list-stack">
+                        @for (v of vm.selectedItem()!.variants; track $index) {
+                          <div class="list-item-row-md3">
+                            <input type="text" [(ngModel)]="v.name" class="md-input-compact flex-2" [placeholder]="'MENU_EDITOR.VAR_NAME_PH' | translate">
+                            <input type="number" [(ngModel)]="v.price" class="md-input-compact flex-1" placeholder="0.00">
+                            <button class="icon-btn error" (click)="vm.removeVariant($index)"><lucide-icon name="trash-2" [size]="14"></lucide-icon></button>
+                          </div>
+                        }
+                      </div>
+                    </section>
+
+                    <section class="form-section-md3 flex-1">
+                      <div class="section-title-md3">
+                        <h3 class="text-title-medium">{{ 'MENU_EDITOR.ADDONS' | translate }}</h3>
+                        <button class="btn-icon-add" (click)="vm.addAddon()"><lucide-icon name="plus" [size]="18"></lucide-icon></button>
+                      </div>
+                      <div class="list-stack">
+                        @for (a of vm.selectedItem()!.addons; track $index) {
+                          <div class="list-item-row-md3">
+                            <input type="text" [(ngModel)]="a.name" class="md-input-compact flex-2" [placeholder]="'MENU_EDITOR.ADDON_PH' | translate">
+                            <input type="number" [(ngModel)]="a.price" class="md-input-compact flex-1" placeholder="0.00">
+                            <button class="icon-btn error" (click)="vm.removeAddon($index)"><lucide-icon name="trash-2" [size]="14"></lucide-icon></button>
+                          </div>
+                        }
+                      </div>
+                    </section>
+                  </div>
+                </div>
+
+                @if (vm.selectedItem()?._id) {
+                  <div class="danger-section-md3">
+                    <div class="danger-header">
+                        <lucide-icon name="alert-triangle" [size]="20"></lucide-icon>
+                        <span class="text-title-small">ZONA DE PELIGRO</span>
+                    </div>
+                    <p class="text-body-small opacity-60">Una vez borrado el producto, no habrá forma de recuperarlo.</p>
+                    <button class="btn-error" (click)="vm.deleteItem(vm.selectedItem()!._id!)">
+                        {{ 'MENU_EDITOR.DEL_PERMANENTLY' | translate }}
+                    </button>
                   </div>
                 }
               </div>
             </div>
-          }
-        </div>
-      </aside>
-
-      <main class="editor-detail">
-        @if (vm.isEditing(); as item) {
-          <div class="edit-form glass-card">
-            <header class="form-header">
-              <h2 class="gradient-text">{{ vm.selectedItem()?._id ? ('MENU_EDITOR.EDIT_ITEM' | translate) : ('MENU_EDITOR.NEW_ITEM' | translate) }}</h2>
-              <div class="form-actions">
-                <button class="btn-secondary" (click)="vm.isEditing.set(false)">{{ 'MENU_EDITOR.CANCEL' | translate }}</button>
-                <button class="btn-primary" (click)="vm.saveItem()">{{ 'MENU_EDITOR.SAVE_CHANGES' | translate }}</button>
+          } @else {
+            <div class="empty-detail-state">
+              <div class="empty-icon-box">
+                <lucide-icon name="book-open" [size]="64"></lucide-icon>
               </div>
-            </header>
-
-            <div class="form-grid">
-              <!-- Basic Info -->
-              <section class="form-section">
-                <h3>{{ 'MENU_EDITOR.BASIC_INFO' | translate }}</h3>
-                <div class="input-group">
-                  <label>{{ 'MENU_EDITOR.ITEM_NAME' | translate }}</label>
-                  <input type="text" [(ngModel)]="vm.selectedItem()!.name" class="glass-input">
-                </div>
-                <div class="input-group">
-                  <label>{{ 'MENU_EDITOR.CATEGORY' | translate }}</label>
-                  <input type="text" [(ngModel)]="vm.selectedItem()!.category" list="categoryOptions" class="glass-input" [placeholder]="'MENU_EDITOR.CAT_PLACEHOLDER' | translate">
-                  <datalist id="categoryOptions">
-                    @for (cat of vm.categories(); track cat.name) {
-                        <option [value]="cat.name">
-                    }
-                  </datalist>
-                </div>
-                <div class="input-group">
-                  <label>{{ 'MENU_EDITOR.BASE_PRICE' | translate }}</label>
-                  <input type="number" 
-                         [(ngModel)]="vm.selectedItem()!.basePrice" 
-                         class="glass-input"
-                         [disabled]="vm.selectedItem()!.variants.length > 0"
-                         [placeholder]="vm.selectedItem()!.variants.length > 0 ? ('MENU_EDITOR.PRICE_DEF_VAR' | translate) : '0.00'">
-                  @if (vm.selectedItem()!.variants.length > 0) {
-                    <span class="input-hint">{{ 'MENU_EDITOR.PRICE_HINT' | translate }}</span>
-                  }
-                </div>
-                <div class="input-group full">
-                  <label>{{ 'MENU_EDITOR.DESCRIPTION' | translate }}</label>
-                  <textarea [(ngModel)]="vm.selectedItem()!.description" class="glass-input"></textarea>
-                </div>
-              </section>
-
-              <!-- Allergens & Tags -->
-              <section class="form-section">
-                <h3>{{ 'MENU_EDITOR.ALLERGENS_TAGS' | translate }}</h3>
-                <div class="allergens-selector">
-                  @for (alg of ['Gluten', 'Lácteos', 'Frutos Secos', 'Huevo', 'Pescado', 'Soja']; track alg) {
-                    <button class="chip" 
-                            [class.active]="vm.selectedItem()!.allergens.includes(alg)"
-                            (click)="vm.toggleAllergen(alg)">
-                      {{ alg }}
-                    </button>
-                  }
-                </div>
-                <div class="input-group mt-16">
-                  <label>{{ 'MENU_EDITOR.TAGS' | translate }}</label>
-                  <input type="text" [placeholder]="'MENU_EDITOR.TAGS_PLACEHOLDER' | translate" class="glass-input">
-                </div>
-              </section>
-
-              <!-- Type Toggle -->
-              <section class="form-section full">
-                <div class="toggle-container glass-card" (click)="vm.selectedItem()!.isMenu = !vm.selectedItem()!.isMenu; vm.selectedItem.set({...vm.selectedItem()!})">
-                    <div class="toggle-status">
-                        <h4>{{ 'MENU_EDITOR.IS_MENU' | translate }}</h4>
-                        <p>{{ vm.selectedItem()!.isMenu ? ('MENU_EDITOR.YES_MENU' | translate) : ('MENU_EDITOR.NO_MENU' | translate) }}</p>
-                    </div>
-                    <div class="toggle-switch" [class.on]="vm.selectedItem()!.isMenu"></div>
-                </div>
-              </section>
-
-              @if (vm.selectedItem()!.isMenu) {
-                <!-- Menu Structure Editor -->
-                <section class="form-section full">
-                    <div class="section-title-action">
-                        <h3>{{ 'MENU_EDITOR.MENU_STRUCT' | translate }}</h3>
-                        <button class="btn-add" (click)="vm.addMenuSection()">{{ 'MENU_EDITOR.ADD_SEC' | translate }}</button>
-                    </div>
-                    
-                    <div class="menu-sections-grid">
-                        @for (sec of vm.selectedItem()!.menuSections; track $index; let sIdx = $index) {
-                            <div class="menu-section-card glass-card">
-                                <div class="section-head">
-                                    <input type="text" [(ngModel)]="sec.name" placeholder="Ej: Primer Plato" class="glass-input sec-name">
-                                    <button class="btn-del" (click)="vm.removeMenuSection(sIdx)">×</button>
-                                </div>
-                                
-                                <div class="options-list">
-                                    <label>{{ 'MENU_EDITOR.AVAILABLE_OPTS' | translate }}</label>
-                                    @for (opt of sec.options; track $index; let oIdx = $index) {
-                                        <div class="option-row">
-                                            <input type="text" [(ngModel)]="sec.options[oIdx]" [placeholder]="'MENU_EDITOR.OPT_PLACEHOLDER' | translate" class="glass-input">
-                                            <button class="btn-del-mini" (click)="vm.removeMenuOption(sIdx, oIdx)">×</button>
-                                        </div>
-                                    }
-                                    <button class="btn-add-mini" (click)="vm.addMenuOption(sIdx)">{{ 'MENU_EDITOR.ADD_DISH' | translate }}</button>
-                                </div>
-                            </div>
-                        }
-                    </div>
-                </section>
-              }
-
-              <!-- Variants -->
-              <section class="form-section">
-                <div class="section-title-action">
-                  <h3>{{ 'MENU_EDITOR.VARIANTS' | translate }}</h3>
-                  <button class="btn-add" (click)="vm.addVariant()">{{ 'MENU_EDITOR.ADD' | translate }}</button>
-                </div>
-                <div class="list-editor">
-                  @for (v of vm.selectedItem()!.variants; track $index) {
-                    <div class="list-item">
-                      <input type="text" [(ngModel)]="v.name" [placeholder]="'MENU_EDITOR.VAR_NAME_PH' | translate" class="glass-input flex-2">
-                      <input type="number" [(ngModel)]="v.price" [placeholder]="'MENU_EDITOR.TOTAL_PRICE_PH' | translate" class="glass-input flex-1">
-                      <button class="btn-del" (click)="vm.removeVariant($index)">×</button>
-                    </div>
-                  }
-                </div>
-              </section>
-
-              <!-- Addons -->
-              <section class="form-section">
-                <div class="section-title-action">
-                  <h3>{{ 'MENU_EDITOR.ADDONS' | translate }}</h3>
-                  <button class="btn-add" (click)="vm.addAddon()">{{ 'MENU_EDITOR.ADD' | translate }}</button>
-                </div>
-                <div class="list-editor">
-                  @for (a of vm.selectedItem()!.addons; track $index) {
-                    <div class="list-item">
-                      <input type="text" [(ngModel)]="a.name" [placeholder]="'MENU_EDITOR.ADDON_PH' | translate" class="glass-input flex-2">
-                      <input type="number" [(ngModel)]="a.price" [placeholder]="'MENU_EDITOR.PRICE_PH' | translate" class="glass-input flex-1">
-                      <button class="btn-del" (click)="vm.removeAddon($index)">×</button>
-                    </div>
-                  }
-                </div>
-              </section>
+              <h2 class="text-headline-small">{{ 'MENU_EDITOR.PRO_MANAGER' | translate }}</h2>
+              <p class="text-body-large opacity-40">{{ 'MENU_EDITOR.SELECT_HINT' | translate }}</p>
             </div>
-
-            @if (vm.selectedItem()?._id) {
-              <div class="danger-zone">
-                <button class="btn-danger" (click)="vm.deleteItem(vm.selectedItem()!._id!)">{{ 'MENU_EDITOR.DEL_PERMANENTLY' | translate }}</button>
-              </div>
-            }
-          </div>
-        } @else {
-          <div class="no-selection-empty glass-card">
-            <div class="icon"><lucide-icon name="book-open" [size]="64" color="var(--text-muted)"></lucide-icon></div>
-            <h2>{{ 'MENU_EDITOR.PRO_MANAGER' | translate }}</h2>
-            <p>{{ 'MENU_EDITOR.SELECT_HINT' | translate }}</p>
-          </div>
-        }
-      </main>
+          }
+        </main>
+      </div>
     </div>
   `,
   styles: [`
     .editor-container {
       display: flex;
       flex-direction: column;
-      gap: 24px;
-      min-height: 100vh;
-      background: transparent;
-      max-width: 1000px;
-      margin: 0 auto;
-      padding-bottom: 40px;
-    }
-
-
-    @media (max-width: 768px) {
-      .items-grid { grid-template-columns: 1fr; }
-      .form-grid { grid-template-columns: 1fr; gap: 24px; }
-      .form-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 16px;
-      }
-      .form-actions { width: 100%; display: flex; gap: 12px; }
-      .form-actions button { flex: 1; justify-content: center; }
-      .edit-form { padding: 24px; }
-      .menu-sections-grid { grid-template-columns: 1fr; }
-    }
-    @media (max-width: 480px) {
-      .menu-structure { max-height: 35vh; }
-      .list-item {
-        flex-wrap: wrap;
-      }
-      .list-item .flex-2,
-      .list-item .flex-1 { flex: 1 1 100%; }
-      .list-item .btn-del { flex: 0 0 auto; align-self: center; }
-      .toggle-container { flex-direction: column; align-items: flex-start; gap: 12px; }
-      .edit-form { padding: 14px; }
-    }
-
-    .menu-structure {
-      display: flex;
-      flex-direction: column;
-      gap: 24px;
-    }
-
-    .categories-list {
-      display: flex;
-      flex-direction: column;
       gap: 32px;
+      height: calc(100vh - 120px);
     }
 
-    .category-title {
-      font-size: 0.8rem;
-      text-transform: uppercase;
-      letter-spacing: 2px;
-      opacity: 0.5;
-      margin-bottom: 16px;
-      border-bottom: 1px solid rgba(255,255,255,0.1);
-      padding-bottom: 8px;
-    }
-
-    .items-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-      gap: 16px;
-    }
-
-    .menu-item-card {
-      padding: 16px;
-      cursor: pointer;
-      border: 1px solid transparent;
-      transition: all 0.3s ease;
-    }
-
-    .menu-item-card:hover { background: rgba(255,255,255,0.05); }
-    .menu-item-card.selected { 
-      border-color: var(--accent-primary); 
-      background: rgba(56, 189, 248, 0.05);
-      box-shadow: 0 0 20px rgba(56, 189, 248, 0.1);
-    }
-
-    .item-meta { display: flex; justify-content: flex-end; }
-    .price-badge { font-size: 0.8rem; font-weight: bold; color: var(--accent-primary); }
-    .menu-item-card h4 { margin: 4px 0; font-size: 1.1rem; }
-    .menu-item-card .description { font-size: 0.8rem; opacity: 0.5; height: 2.4em; overflow: hidden; }
-    
-    .item-footer { 
-      margin-top: 12px; 
-      display: flex; 
-      gap: 12px; 
-      font-size: 0.7rem; 
-      opacity: 0.6;
-    }
-    
-    .inline-icon { display: inline-block; vertical-align: text-bottom; margin-right: 4px; }
-    .mr-2 { margin-right: 8px; }
-
-    .editor-detail { width: 100%; }
-
-    .edit-form { padding: 40px; display: flex; flex-direction: column; gap: 32px; }
-
-    .form-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border-bottom: 1px solid rgba(255,255,255,0.1);
-      padding-bottom: 24px;
-    }
-
-    .form-actions { display: flex; gap: 12px; }
-
-    .form-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 32px;
-    }
-
-    .form-section { display: flex; flex-direction: column; gap: 16px; }
-    .form-section h3 { font-size: 0.9rem; opacity: 0.8; margin-bottom: 8px; color: var(--accent-secondary); }
-
-    .input-group { display: flex; flex-direction: column; gap: 6px; }
-    .input-group.full { grid-column: 1 / -1; }
-    .input-group label { font-size: 0.75rem; opacity: 0.5; }
-
-    /* glass-input now defined globally */
-    .glass-input:focus { border-color: var(--accent-primary); }
-    .input-hint { font-size: 0.65rem; color: var(--accent-secondary); margin-top: 4px; }
-
-    .allergens-selector { display: flex; flex-wrap: wrap; gap: 8px; }
-    .chip {
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.1);
-      color: white;
-      padding: 6px 14px;
-      border-radius: 20px;
-      font-size: 0.75rem;
-      cursor: pointer;
-    }
-    .chip.active { background: #ef4444; border-color: #ef4444; color: white; }
-
-    .section-title-action { display: flex; justify-content: space-between; align-items: center; }
-    .btn-add { background: none; border: 1px dashed var(--accent-secondary); color: var(--accent-secondary); padding: 4px 10px; border-radius: 6px; cursor: pointer; font-size: 0.7rem; }
-
-    .list-editor { display: flex; flex-direction: column; gap: 8px; }
-    .list-item { display: flex; gap: 8px; }
-    .flex-2 { flex: 2; }
-    .flex-1 { flex: 1; }
-    .btn-del { background: rgba(239, 68, 68, 0.1); color: #ef4444; border: none; width: 32px; border-radius: 8px; cursor: pointer; }
-
-    .danger-zone { margin-top: 40px; border-top: 1px solid rgba(239, 68, 68, 0.2); padding-top: 24px; text-align: right; }
-
-    .no-selection-empty {
-      height: 100%;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-      opacity: 0.5;
-    }
-    .no-selection-empty .icon { font-size: 5rem; margin-bottom: 24px; }
-
-    .mt-16 { margin-top: 16px; }
-
-    .toggle-container {
+    .section-header-md3 {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 20px 24px;
-        cursor: pointer;
-        border: 1px solid rgba(255,255,255,0.1);
-        transition: all 0.3s ease;
+        gap: 24px;
     }
-    .toggle-container:hover { border-color: var(--accent-primary); }
-    .toggle-status h4 { margin: 0; font-size: 1rem; }
-    .toggle-status p { margin: 4px 0 0 0; font-size: 0.8rem; opacity: 0.5; }
 
-    .toggle-switch {
-        width: 48px; height: 24px; background: rgba(255,255,255,0.1);
-        border-radius: 12px; position: relative; transition: 0.3s;
-    }
-    .toggle-switch::after {
-        content: ''; position: absolute; left: 4px; top: 4px;
-        width: 16px; height: 16px; background: white; border-radius: 50%;
-        transition: 0.3s;
-    }
-    .toggle-switch.on { background: var(--accent-primary); }
-    .toggle-switch.on::after { left: 28px; }
-
-    .menu-sections-grid {
+    .editor-main-layout {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        grid-template-columns: 320px 1fr;
+        gap: 32px;
+        flex: 1;
+        min-height: 0; /* Important for scroll */
+    }
+
+    @media (max-width: 1024px) {
+        .editor-main-layout { grid-template-columns: 1fr; }
+        .menu-structure { max-height: 300px; overflow-y: auto; }
+    }
+
+    .categories-column {
+        display: flex;
+        flex-direction: column;
+        gap: 32px;
+    }
+
+    .category-group { display: flex; flex-direction: column; gap: 12px; }
+    
+    .items-stack { display: flex; flex-direction: column; gap: 8px; }
+
+    .menu-item-row {
+        display: flex;
+        align-items: center;
         gap: 16px;
-        margin-top: 16px;
+        padding: 12px 16px;
+        background: var(--md-sys-color-surface-1);
+        cursor: pointer;
+        transition: all 0.2s;
+        border-radius: 16px;
     }
 
-    .menu-section-card { padding: 20px; display: flex; flex-direction: column; gap: 16px; }
-    .section-head { display: flex; gap: 12px; }
-    .sec-name { font-weight: bold; flex: 1; border-color: var(--accent-secondary); }
-
-    .options-list { display: flex; flex-direction: column; gap: 8px; }
-    .options-list label { font-size: 0.7rem; opacity: 0.5; margin-bottom: 4px; }
-
-    .option-row { display: flex; gap: 8px; }
-    .btn-del-mini { background: none; border: none; color: #ef4444; opacity: 0.5; cursor: pointer; padding: 0 4px; }
-    .btn-del-mini:hover { opacity: 1; }
-
-    .btn-add-mini {
-        background: rgba(255,255,255,0.03); border: 1px dashed rgba(255,255,255,0.2);
-        color: white; padding: 8px; border-radius: 8px; font-size: 0.75rem; cursor: pointer;
-        transition: 0.3s;
+    .menu-item-row:hover { background: var(--md-sys-color-surface-variant); }
+    .menu-item-row.is-selected {
+        background: var(--md-sys-color-secondary-container);
+        color: var(--md-sys-color-on-secondary-container);
     }
-    .btn-add-mini:hover { border-color: var(--accent-primary); color: var(--accent-primary); }
+
+    .item-visual {
+        width: 40px; height: 40px; border-radius: 12px;
+        background: var(--md-sys-color-surface-3);
+        display: flex; align-items: center; justify-content: center;
+        opacity: 0.6;
+    }
+    .is-selected .item-visual { background: var(--md-sys-color-on-secondary-container); color: var(--md-sys-color-secondary-container); opacity: 1; }
+
+    .item-content { flex: 1; display: flex; flex-direction: column; }
+    
+    .dot-badge {
+        width: 8px; height: 8px; border-radius: 50%;
+        background: var(--md-sys-color-primary);
+    }
+    .dot-badge.error { background: var(--md-sys-color-error); }
+
+    .editor-detail { 
+        height: 100%;
+        min-height: 0;
+    }
+
+    .detail-form {
+        height: 100%;
+        background: var(--md-sys-color-surface-1);
+        display: flex;
+        flex-direction: column;
+        padding: 0;
+        overflow: hidden;
+    }
+
+    .form-header-row {
+        padding: 24px 32px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid var(--md-sys-color-outline-variant);
+        background: var(--md-sys-color-surface-1);
+        z-index: 10;
+    }
+
+    .form-actions-md3 { display: flex; gap: 12px; }
+
+    .form-scrollable {
+        flex: 1;
+        overflow-y: auto;
+        padding: 32px;
+        display: flex;
+        flex-direction: column;
+        gap: 32px;
+    }
+
+    .form-grid-md3 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 32px;
+    }
+
+    .full-span { grid-column: 1 / -1; }
+
+    .form-section-md3 { display: flex; flex-direction: column; gap: 20px; }
+    
+    .field-row { display: flex; gap: 20px; }
+    .field-row .md-field { flex: 1; }
+
+    .md-field { display: flex; flex-direction: column; gap: 6px; }
+    
+    .md-input {
+        background: var(--md-sys-color-surface-variant);
+        border: none; border-radius: 8px; padding: 12px 16px;
+        color: var(--md-sys-color-on-surface); font-family: inherit;
+        transition: box-shadow 0.2s;
+    }
+    .md-input:focus { box-shadow: 0 0 0 2px var(--md-sys-color-primary); outline: none; }
+
+    .input-with-icon { position: relative; }
+    .icon-suffix { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); opacity: 0.4; }
+
+    .chip-row { display: flex; flex-wrap: wrap; gap: 8px; }
+    .chip {
+        display: flex; align-items: center; gap: 8px;
+        padding: 8px 16px; border-radius: 20px; border: 1px solid var(--md-sys-color-outline);
+        background: transparent; color: var(--md-sys-color-on-surface);
+        cursor: pointer; transition: 0.2s; font-size: 0.85rem;
+    }
+    .chip.is-active {
+        background: var(--md-sys-color-primary-container);
+        border-color: var(--md-sys-color-primary-container);
+        color: var(--md-sys-color-on-primary-container);
+        font-weight: 600;
+    }
+
+    .switch-card {
+        padding: 20px 24px;
+        display: flex; justify-content: space-between; align-items: center;
+        background: var(--md-sys-color-surface-2);
+        cursor: pointer;
+    }
+
+    .switch-text { display: flex; flex-direction: column; }
+
+    .md-switch {
+        width: 52px; height: 32px; border-radius: 16px;
+        background: var(--md-sys-color-surface-variant);
+        position: relative; transition: background 0.2s;
+    }
+    .md-switch.is-on { background: var(--md-sys-color-primary); }
+    
+    .switch-handle {
+        width: 24px; height: 24px; border-radius: 50%;
+        background: var(--md-sys-color-on-surface-variant);
+        position: absolute; left: 4px; top: 4px;
+        transition: transform 0.2s, background 0.2s;
+    }
+    .md-switch.is-on .switch-handle {
+        transform: translateX(20px);
+        background: var(--md-sys-color-on-primary);
+    }
+
+    .section-title-md3 { display: flex; justify-content: space-between; align-items: center; }
+
+    .section-editor-card { padding: 16px; background: var(--md-sys-color-surface-2); }
+    .section-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    
+    .md-input-transparent {
+        background: transparent; border: none; border-bottom: 2px solid var(--md-sys-color-outline-variant);
+        padding: 8px 0; color: var(--md-sys-color-on-surface); width: 100%;
+    }
+    .md-input-transparent:focus { border-color: var(--md-sys-color-primary); outline: none; }
+
+    .options-container { display: flex; flex-direction: column; gap: 12px; }
+    .option-field-row { display: flex; gap: 8px; }
+    .md-input-compact {
+        background: var(--md-sys-color-surface-3); border: none; border-radius: 6px;
+        padding: 8px 12px; color: var(--md-sys-color-on-surface); font-size: 0.9rem;
+    }
+
+    .list-stack { display: flex; flex-direction: column; gap: 8px; }
+    .list-item-row-md3 { display: flex; gap: 8px; }
+
+    .btn-icon-add {
+        width: 32px; height: 32px; border-radius: 50%; border: none;
+        background: var(--md-sys-color-primary-container);
+        color: var(--md-sys-color-on-primary-container);
+        display: flex; align-items: center; justify-content: center; cursor: pointer;
+    }
+
+    .danger-section-md3 {
+        margin-top: 32px; padding: 24px;
+        border: 1px solid var(--md-sys-color-error-container);
+        background: color-mix(in srgb, var(--md-sys-color-error) 4%, transparent);
+        border-radius: 16px;
+        display: flex; flex-direction: column; gap: 12px;
+    }
+    .danger-header { display: flex; align-items: center; gap: 12px; color: var(--md-sys-color-error); }
+    
+    .empty-detail-state {
+        height: 100%; display: flex; flex-direction: column;
+        align-items: center; justify-content: center; text-align: center;
+        opacity: 0.2;
+    }
+    .empty-icon-box { margin-bottom: 24px; }
+
+    .uppercase { text-transform: uppercase; letter-spacing: 1px; }
+    .mt-16 { margin-top: 16px; }
+    .opacity-60 { opacity: 0.6; }
+    .opacity-40 { opacity: 0.4; }
+    .flex-1 { flex: 1; }
+    .flex-2 { flex: 2; }
   `]
+
 })
 export class MenuEditorComponent {
   public vm = inject(MenuEditorViewModel);

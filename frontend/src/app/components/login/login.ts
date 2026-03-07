@@ -10,26 +10,30 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
   imports: [CommonModule, FormsModule, TranslateModule],
   template: `
     <div class="login-container">
-      <div class="glass-card login-card">
-        <header>
-          <img src="logo.svg" alt="Disher.io Logo" class="login-logo">
-          <h1 class="gradient-text">DISHER.IO</h1>
-          <p>{{ 'LOGIN.ACCESS_TERMINAL' | translate }}</p>
+      <div class="md-card-elevated login-card">
+        <header class="login-header">
+          <div class="logo-box">
+            <img src="logo.svg" alt="Disher.io Logo" class="login-logo">
+          </div>
+          <h1 class="text-headline-large color-primary">DISHER.IO</h1>
+          <p class="text-label-large opacity-60">{{ 'LOGIN.ACCESS_TERMINAL' | translate }}</p>
         </header>
 
-        <form (submit)="onSubmit($event)">
-          <div class="input-group">
-            <label>{{ 'LOGIN.USER' | translate }}</label>
-            <input type="text" [(ngModel)]="username" name="username" class="glass-input" [placeholder]="'LOGIN.USER_PLACEHOLDER' | translate" required>
+        <form (submit)="onSubmit($event)" class="login-form">
+          <div class="md-field">
+            <label class="text-label-large">{{ 'LOGIN.USER' | translate }}</label>
+            <input type="text" [(ngModel)]="username" name="username" class="md-input" [placeholder]="'LOGIN.USER_PLACEHOLDER' | translate" required>
           </div>
 
-          <div class="input-group">
-            <label>{{ 'LOGIN.PASSWORD' | translate }}</label>
-            <input type="password" [(ngModel)]="password" name="password" class="glass-input" placeholder="••••" required>
+          <div class="md-field">
+            <label class="text-label-large">{{ 'LOGIN.PASSWORD' | translate }}</label>
+            <input type="password" [(ngModel)]="password" name="password" class="md-input" placeholder="••••" required>
           </div>
 
           @if (errorMessage()) {
-            <p class="error-msg">{{ errorMessage() }}</p>
+            <div class="error-banner">
+              <span class="text-body-small">{{ errorMessage() }}</span>
+            </div>
           }
 
           <button type="submit" class="btn-primary login-btn" [disabled]="loading()">
@@ -37,72 +41,84 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
           </button>
         </form>
 
+        <footer class="login-footer">
+          <p class="text-label-small opacity-40">© 2024 DISHER.IO ENGINE</p>
+        </footer>
       </div>
     </div>
   `,
   styles: [`
     .login-container {
-      height: 90vh;
+      height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
-      background: radial-gradient(circle at center, rgba(56, 189, 248, 0.05) 0%, transparent 70%);
+      background: var(--md-sys-color-surface-container-low);
     }
 
     .login-card {
       width: 100%;
-      max-width: 400px;
+      max-width: 440px;
       padding: 48px;
       display: flex;
       flex-direction: column;
-      gap: 32px;
-      animation: zoomIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+      gap: 40px;
+      background: var(--md-sys-color-surface-1);
+      border-radius: 28px;
     }
 
-    header { text-align: center; }
-    .login-logo { height: 64px; margin-bottom: 16px; border-radius: 12px; }
-    header h1 { font-size: 2.5rem; font-weight: 900; margin-bottom: 8px; }
-    header p { opacity: 0.6; font-size: 0.9rem; letter-spacing: 1px; }
-
-    form { display: flex; flex-direction: column; gap: 24px; }
-    .input-group { display: flex; flex-direction: column; gap: 8px; }
-    label { font-size: 0.8rem; font-weight: bold; opacity: 0.8; margin-left: 4px; }
-
-    /* glass-input styles now defined globally */
-    .glass-input:focus {
-      border-color: var(--accent-primary);
-      background: rgba(56, 189, 248, 0.05);
+    .login-header { text-align: center; }
+    
+    .logo-box {
+        width: 80px; height: 80px; margin: 0 auto 24px;
+        background: var(--md-sys-color-surface-2);
+        border-radius: 20px;
+        display: flex; align-items: center; justify-content: center;
     }
+    .login-logo { height: 48px; }
+    
+    .color-primary { color: var(--md-sys-color-primary); }
+
+    .login-form { display: flex; flex-direction: column; gap: 24px; }
+    
+    .md-field { display: flex; flex-direction: column; gap: 8px; }
+    
+    .md-input {
+        background: var(--md-sys-color-surface-variant);
+        border: none; border-radius: 12px; padding: 16px;
+        color: var(--md-sys-color-on-surface); font-family: inherit;
+        transition: box-shadow 0.2s;
+    }
+    .md-input:focus { box-shadow: 0 0 0 2px var(--md-sys-color-primary); outline: none; }
 
     .login-btn {
-      padding: 18px;
-      font-weight: 900;
-      letter-spacing: 1px;
+      padding: 16px;
+      border-radius: 12px;
       margin-top: 8px;
+      font-size: 1rem;
     }
 
-    .error-msg {
-      color: #ef4444;
-      font-size: 0.8rem;
+    .error-banner {
+      background: var(--md-sys-color-error-container);
+      color: var(--md-sys-color-on-error-container);
+      padding: 12px 16px;
+      border-radius: 12px;
       text-align: center;
-      background: rgba(239, 68, 68, 0.1);
-      padding: 8px;
-      border-radius: 8px;
     }
 
-    .hint {
-      text-align: center;
-      font-size: 0.75rem;
-      opacity: 0.4;
+    .login-footer {
+        text-align: center;
+        margin-top: 8px;
     }
-
-    /* zoomIn animation now in global styles.css */
 
     @media (max-width: 480px) {
-      .login-card { padding: 32px 24px; }
-      header h1 { font-size: 2rem; }
+      .login-card { padding: 32px 24px; border-radius: 0; height: 100%; justify-content: center; }
     }
+
+    .opacity-60 { opacity: 0.6; }
+    .opacity-40 { opacity: 0.4; }
   `]
+
 })
 export class LoginComponent {
   private auth = inject(AuthService);

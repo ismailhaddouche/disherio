@@ -62,7 +62,7 @@ io.on('connection', (socket) => {
 });
 
 const startServer = async () => {
-    await startDB();
+    startDB();
     server.listen(PORT, '0.0.0.0', () => {
         console.log(`✅ Backend de Disher.io en puerto ${PORT} (${NODE_ENV})`);
     });

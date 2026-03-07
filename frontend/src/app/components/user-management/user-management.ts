@@ -12,234 +12,355 @@ import { TranslateModule } from '@ngx-translate/core';
   imports: [CommonModule, FormsModule, LucideAngularModule, TranslateModule],
   providers: [UserManagementViewModel],
   template: `
-    <div class="user-management-container animate-fade-in">
+    <div class="user-management-container">
       @if (vm.editingUser(); as editUser) {
         <!-- Edit View -->
-        <header class="view-header">
-          <div>
-              <h1 class="view-title">
-                  <lucide-icon name="pen-line" [size]="28" class="text-muted"></lucide-icon> 
-                  {{ 'USER_MGMT.EDITING' | translate }} {{ editUser.username }}
-              </h1>
-              <div style="margin-top: 8px; display: flex; align-items: center; gap: 8px;">
-                  <span class="text-muted" style="font-size: 0.9rem;">{{ 'USER_MGMT.SYSTEM_ROLE' | translate }}</span>
-                  <div class="role-badge" [class]="editUser.role">{{ 'ROLES.' + editUser.role | translate }}</div>
+        <header class="section-header-md3">
+          <div class="header-content">
+            <div class="title-with-icon">
+              <div class="icon-box-md3 primary">
+                <lucide-icon name="pen-line" [size]="24"></lucide-icon>
               </div>
+              <div>
+                <h2 class="text-headline-medium">{{ 'USER_MGMT.EDITING' | translate }} {{ editUser.username }}</h2>
+                <div class="subtitle-badge-row">
+                  <span class="text-body-small opacity-60">{{ 'USER_MGMT.SYSTEM_ROLE' | translate }}</span>
+                  <div class="md-badge-tonal-sm" [class]="editUser.role">{{ 'ROLES.' + editUser.role | translate }}</div>
+                </div>
+              </div>
+            </div>
+            <button class="btn-tonal" (click)="vm.closeEditModal()">
+              <lucide-icon name="chevron-left" [size]="18"></lucide-icon>
+              <span>{{ 'USER_MGMT.GO_BACK' | translate }}</span>
+            </button>
           </div>
-          <button class="btn-secondary" (click)="vm.closeEditModal()" style="padding: 10px 16px; border-radius: 8px; display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.05); color: var(--text-base); border: 1px solid var(--glass-border); cursor: pointer;">
-            <lucide-icon name="chevron-left" [size]="18"></lucide-icon> {{ 'USER_MGMT.GO_BACK' | translate }}
-          </button>
         </header>
 
-        <main class="card-section glass-card" style="max-width: 600px; margin: 0 auto;">
-          <h2 class="card-title">{{ 'USER_MGMT.ACCESS_DATA' | translate }}</h2>
-          <div class="form-row">
-            <div class="form-group">
-                <label>{{ 'USER_MGMT.USERNAME' | translate }}</label>
-                <input type="text" [(ngModel)]="editUser.username" class="glass-input">
+        <main class="edit-main-md3">
+          <div class="edit-card-md3 animate-fade-in">
+            <h3 class="text-title-large mb-24">{{ 'USER_MGMT.ACCESS_DATA' | translate }}</h3>
+            
+            <div class="md-form-grid">
+              <div class="md-field">
+                <label class="text-label-medium">{{ 'USER_MGMT.USERNAME' | translate }}</label>
+                <input type="text" [(ngModel)]="editUser.username" class="md-input" [placeholder]="'USER_MGMT.USERNAME' | translate">
+              </div>
+
+              <div class="md-field">
+                <label class="text-label-medium">{{ 'USER_MGMT.NEW_PASS' | translate }} <small class="opacity-60">({{ 'USER_MGMT.OPTIONAL' | translate }})</small></label>
+                <input type="password" [(ngModel)]="editUser.password" class="md-input" placeholder="********">
+              </div>
             </div>
 
-            <div class="form-group">
-                <label>{{ 'USER_MGMT.NEW_PASS' | translate }} <small>{{ 'USER_MGMT.OPTIONAL' | translate }}</small></label>
-                <input type="password" [(ngModel)]="editUser.password" class="glass-input" placeholder="********">
-            </div>
-          </div>
+            <div class="divider-md3 mt-32 mb-32"></div>
 
-          <h2 class="card-title" style="margin-top: 24px;">{{ 'USER_MGMT.PRINT_CONFIG' | translate }}</h2>
+            <h3 class="text-title-large mb-24">{{ 'USER_MGMT.PRINT_CONFIG' | translate }}</h3>
 
-          <div class="form-group">
-              <label>{{ 'USER_MGMT.DEF_PRINTER' | translate }}</label>
-              <select [(ngModel)]="editUser.printerId" class="glass-input">
-                  <option [ngValue]="null">{{ 'USER_MGMT.NO_PRINTER_T' | translate }}</option>
-                  @for (printer of vm.printers(); track printer.id) {
-                      <option [value]="printer.id">{{ printer.name }} ({{ printer.type }})</option>
-                  }
+            <div class="md-field mb-24">
+              <label class="text-label-medium">{{ 'USER_MGMT.DEF_PRINTER' | translate }}</label>
+              <select [(ngModel)]="editUser.printerId" class="md-select">
+                <option [ngValue]="null">{{ 'USER_MGMT.NO_PRINTER_T' | translate }}</option>
+                @for (printer of vm.printers(); track printer.id) {
+                  <option [value]="printer.id">{{ printer.name }} ({{ printer.type }})</option>
+                }
               </select>
-          </div>
-
-          <div class="form-row">
-            <div class="form-group">
-                <label>{{ 'USER_MGMT.HEADER_MSG' | translate }}</label>
-                <input type="text" [(ngModel)]="editUser.printTemplate.header" class="glass-input" [placeholder]="'USER_MGMT.HEADER_PH' | translate">
             </div>
 
-            <div class="form-group">
-                <label>{{ 'USER_MGMT.FOOTER_MSG' | translate }}</label>
-                <input type="text" [(ngModel)]="editUser.printTemplate.footer" class="glass-input" [placeholder]="'USER_MGMT.FOOTER_PH' | translate">
-            </div>
-          </div>
+            <div class="md-form-grid">
+              <div class="md-field">
+                <label class="text-label-medium">{{ 'USER_MGMT.HEADER_MSG' | translate }}</label>
+                <input type="text" [(ngModel)]="editUser.printTemplate.header" class="md-input" [placeholder]="'USER_MGMT.HEADER_PH' | translate">
+              </div>
 
-          <div class="form-actions" style="margin-top: 32px; display: flex; justify-content: flex-end;">
-            <button class="btn-primary" (click)="vm.saveUser()">{{ 'USER_MGMT.SAVE' | translate }}</button>
+              <div class="md-field">
+                <label class="text-label-medium">{{ 'USER_MGMT.FOOTER_MSG' | translate }}</label>
+                <input type="text" [(ngModel)]="editUser.printTemplate.footer" class="md-input" [placeholder]="'USER_MGMT.FOOTER_PH' | translate">
+              </div>
+            </div>
+
+            <div class="edit-actions-md3">
+              <button class="btn-primary" (click)="vm.saveUser()">
+                <lucide-icon name="save" [size]="20"></lucide-icon>
+                <span>{{ 'USER_MGMT.SAVE' | translate }}</span>
+              </button>
+            </div>
           </div>
         </main>
       } @else {
         <!-- List View -->
-        <header class="view-header">
-          <div>
-              <h1 class="view-title"><lucide-icon name="users" [size]="28" class="text-muted"></lucide-icon> {{ 'ROLES.Admin' | translate }} - Usuarios</h1>
-              <p class="view-desc">{{ 'USER_MGMT.SUBTITLE' | translate }}</p>
-          </div>
-          
-          <div class="user-add-controls">
-              <input type="text" #usernameInput [placeholder]="'USER_MGMT.NEW_USER_PH' | translate" class="glass-input">
-              <select #roleInput class="glass-input">
-                  <option value="waiter">{{ 'ROLES.waiter' | translate }}</option>
-                  <option value="kitchen">{{ 'ROLES.kitchen' | translate }}</option>
-                  <option value="pos">{{ 'ROLES.pos' | translate }}</option>
-                  <option value="admin">{{ 'ROLES.admin' | translate }}</option>
+        <header class="section-header-md3">
+          <div class="header-content">
+            <div class="title-with-icon">
+              <div class="icon-box-md3 primary">
+                <lucide-icon name="users" [size]="24"></lucide-icon>
+              </div>
+              <div>
+                <h1 class="text-headline-medium">{{ 'ROLES.Admin' | translate }} - Usuarios</h1>
+                <p class="text-body-small opacity-60">{{ 'USER_MGMT.SUBTITLE' | translate }}</p>
+              </div>
+            </div>
+            
+            <div class="user-add-controls-md3">
+              <input type="text" #usernameInput [placeholder]="'USER_MGMT.NEW_USER_PH' | translate" class="md-input-sm">
+              <select #roleInput class="md-select-sm">
+                <option value="waiter">{{ 'ROLES.waiter' | translate }}</option>
+                <option value="kitchen">{{ 'ROLES.kitchen' | translate }}</option>
+                <option value="pos">{{ 'ROLES.pos' | translate }}</option>
+                <option value="admin">{{ 'ROLES.admin' | translate }}</option>
               </select>
-              <button class="btn-primary" (click)="vm.addUser(usernameInput.value, roleInput.value); usernameInput.value=''">
-                  {{ 'USER_MGMT.CREATE_USER' | translate }}
+              <button class="btn-primary btn-sm" (click)="vm.addUser(usernameInput.value, roleInput.value); usernameInput.value=''">
+                <lucide-icon name="plus" [size]="18"></lucide-icon>
+                <span>{{ 'USER_MGMT.CREATE_USER' | translate }}</span>
               </button>
+            </div>
           </div>
         </header>
           
-        @if (vm.loading()) {
-            <p style="opacity:0.5; margin-top:20px; text-align: center;">{{ 'USER_MGMT.LOADING' | translate }}</p>
-        }
+        <main class="users-main-md3">
+          @if (vm.loading()) {
+            <div class="md-loading-state">
+              <div class="spinner"></div>
+              <p class="text-body-medium opacity-60">{{ 'USER_MGMT.LOADING' | translate }}</p>
+            </div>
+          }
 
-        @if (vm.error()) {
-            <div class="alert-error glass-card">{{ vm.error() }}</div>
-        }
-        
-        <div class="users-grid">
-              @for (user of vm.users(); track user._id) {
-                <div class="user-card glass-card">
-                    <div class="user-info">
-                        <span class="u-name">{{ user.username }}</span>
-                        <div class="role-badge" [class]="user.role">{{ 'ROLES.' + user.role | translate }}</div>
-                    </div>
-                    <div class="u-created">
-                      @if (user.printerId) {
-                          <span>{{ 'USER_MGMT.PRINTER_ASSIGNED' | translate }}</span>
-                      } @else {
-                          <span>{{ 'USER_MGMT.NO_PRINTER' | translate }}</span>
-                      }
-                    </div>
-                    
-                    <div class="user-actions">
-                      <button class="btn-edit" (click)="vm.openEditModal(user)">
-                        <lucide-icon name="pen-line" [size]="14" class="inline-icon"></lucide-icon> {{ 'USER_MGMT.EDIT' | translate }}
-                      </button>
-                      @if (user.username !== 'admin') {
-                          <button class="btn-del" (click)="vm.deleteUser(user._id)">
-                            <lucide-icon name="trash-2" [size]="14" class="inline-icon"></lucide-icon>
-                          </button>
-                      } @else {
-                          <span class="admin-lock"><lucide-icon name="lock" [size]="12" class="inline-icon"></lucide-icon> {{ 'USER_MGMT.SYSTEM' | translate }}</span>
-                      }
-                    </div>
+          @if (vm.error()) {
+            <div class="md-alert-error mb-24">
+              <lucide-icon name="alert-circle" [size]="20"></lucide-icon>
+              <span>{{ vm.error() }}</span>
+            </div>
+          }
+          
+          <div class="users-grid-md3">
+            @for (user of vm.users(); track user._id) {
+              <div class="user-card-md3 animate-fade-in">
+                <div class="card-top-md3">
+                  <div class="user-avatar-md3" [class]="user.role">
+                    <lucide-icon name="user" [size]="24"></lucide-icon>
+                  </div>
+                  <div class="user-meta-md3">
+                    <span class="text-title-large">{{ user.username }}</span>
+                    <div class="md-badge-tonal-sm" [class]="user.role">{{ 'ROLES.' + user.role | translate }}</div>
+                  </div>
                 </div>
-              }
-        </div>
+
+                <div class="card-details-md3">
+                  <div class="detail-item-md3">
+                    <lucide-icon name="printer" [size]="16" class="opacity-60"></lucide-icon>
+                    <span class="text-body-small">
+                      {{ user.printerId ? ('USER_MGMT.PRINTER_ASSIGNED' | translate) : ('USER_MGMT.NO_PRINTER' | translate) }}
+                    </span>
+                  </div>
+                </div>
+                
+                <div class="card-actions-md3">
+                  <button class="btn-tonal btn-sm flex-1" (click)="vm.openEditModal(user)">
+                    <lucide-icon name="pen-line" [size]="16"></lucide-icon>
+                    <span>{{ 'USER_MGMT.EDIT' | translate }}</span>
+                  </button>
+                  
+                  @if (user.username !== 'admin') {
+                    <button class="icon-btn-md3 error-tonal" (click)="vm.deleteUser(user._id)" [title]="'COMMON.DELETE' | translate">
+                      <lucide-icon name="trash-2" [size]="18"></lucide-icon>
+                    </button>
+                  } @else {
+                    <div class="system-lock-md3" [title]="'USER_MGMT.SYSTEM' | translate">
+                      <lucide-icon name="lock" [size]="16"></lucide-icon>
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        </main>
       }
     </div>
   `,
   styles: [`
+    :host {
+      display: block;
+      height: 100%;
+    }
+
     .user-management-container {
-        padding: 0;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      background: var(--md-sys-color-surface-container-low);
     }
 
-    .user-add-controls { display: flex; gap: 12px; }
-    
-    .alert-error {
-      color: var(--danger);
-      padding: 16px;
-      margin-bottom: 24px;
-      border: 1px solid rgba(244, 63, 94, 0.3);
-      background: rgba(244, 63, 94, 0.05);
+    .subtitle-badge-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: 4px;
     }
 
-    .users-grid {
+    /* List View Layout */
+    .users-main-md3 {
+      flex: 1;
+      padding: 24px 32px;
+      overflow-y: auto;
+    }
+
+    .user-add-controls-md3 {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .users-grid-md3 {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-      gap: 24px;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 20px;
     }
 
-    @media (max-width: 768px) {
-      .user-add-controls {
-        flex-direction: column;
-        width: 100%;
-      }
-      .user-add-controls .glass-input,
-      .user-add-controls .btn-primary {
-        width: 100%;
-      }
-      .users-grid { grid-template-columns: 1fr; }
-      .view-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 16px;
-      }
-      .view-header > button {
-        width: 100%;
-        justify-content: center;
-      }
-      .view-title { font-size: 1.2rem; word-break: break-word; }
-    }
-
-    @media (max-width: 480px) {
-      .user-card { padding: 16px; }
-      .u-name { font-size: 1rem; }
-    }
-
-    .user-card {
+    /* User Card MD3 */
+    .user-card-md3 {
+      background: var(--md-sys-color-surface-container-high);
+      border-radius: 24px;
       padding: 24px;
       display: flex;
       flex-direction: column;
+      gap: 20px;
+      transition: all 0.2s;
+      border: 1px solid var(--md-sys-color-outline-variant);
+    }
+    .user-card-md3:hover {
+      background: var(--md-sys-color-surface-container-highest);
+      transform: translateY(-2px);
+      box-shadow: var(--md-sys-elevation-1);
+    }
+
+    .card-top-md3 {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .user-avatar-md3 {
+      width: 56px;
+      height: 56px;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--md-sys-color-secondary-container);
+      color: var(--md-sys-color-on-secondary-container);
+    }
+    .user-avatar-md3.admin { background: var(--md-sys-color-tertiary-container); color: var(--md-sys-color-on-tertiary-container); }
+    .user-avatar-md3.kitchen { background: #fef3c7; color: #92400e; }
+    .user-avatar-md3.waiter { background: #d1fae5; color: #065f46; }
+
+    .user-meta-md3 {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .card-details-md3 {
+      padding: 12px 16px;
+      background: var(--md-sys-color-surface-container-low);
+      border-radius: 12px;
+    }
+
+    .detail-item-md3 {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .card-actions-md3 {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-top: auto;
+    }
+
+    .system-lock-md3 {
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--md-sys-color-on-surface-variant);
+      opacity: 0.5;
+    }
+
+    /* Edit View Layout */
+    .edit-main-md3 {
+      flex: 1;
+      padding: 32px;
+      overflow-y: auto;
+      display: flex;
+      justify-content: center;
+    }
+
+    .edit-card-md3 {
+      width: 100%;
+      max-width: 800px;
+      background: var(--md-sys-color-surface-container-low);
+      border-radius: 28px;
+      padding: 32px;
+      border: 1px solid var(--md-sys-color-outline-variant);
+    }
+
+    .md-form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    .edit-actions-md3 {
+      margin-top: 40px;
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    .mb-24 { margin-bottom: 24px; }
+    .mb-32 { margin-bottom: 32px; }
+    .mt-32 { margin-top: 32px; }
+    .opacity-60 { opacity: 0.6; }
+    .flex-1 { flex: 1; }
+
+    .md-loading-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 60px;
       gap: 16px;
     }
 
-    .user-info { display: flex; justify-content: space-between; align-items: center; }
-    .u-name { font-weight: bold; font-size: 1.2rem; color: white; }
-    
-    .role-badge { 
-        font-size: 0.7rem; 
-        text-transform: uppercase; 
-        padding: 4px 8px; 
-        border-radius: 6px; 
-        font-weight: bold;
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid var(--md-sys-color-secondary-container);
+      border-top-color: var(--md-sys-color-primary);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
     }
-    .role-badge.admin { background: rgba(168, 85, 247, 0.2); color: var(--accent-secondary); }
-    .role-badge.kitchen { background: rgba(245, 158, 11, 0.2); color: var(--warning); }
-    .role-badge.pos { background: rgba(99, 102, 241, 0.2); color: var(--accent-primary); }
-    .role-badge.waiter { background: rgba(16, 185, 129, 0.2); color: var(--highlight); }
 
-    .u-created { font-size: 0.8rem; opacity: 0.5; font-style: italic; }
-
-    .user-actions { display: flex; gap: 8px; margin-top: auto; align-items: center; }
-
-    .btn-edit {
-      flex: 1;
-      background: rgba(255,255,255,0.05);
-      color: var(--text-base);
-      border: 1px solid rgba(255,255,255,0.2);
-      padding: 8px 12px;
-      border-radius: 8px;
-      font-size: 0.85rem;
-      font-weight: bold;
-      cursor: pointer;
-      transition: all 0.2s;
-      display: flex; align-items: center; justify-content: center; gap: 6px;
+    @keyframes spin {
+      to { transform: rotate(360deg); }
     }
-    .btn-edit:hover { background: rgba(255,255,255,0.1); }
 
-    .btn-del {
-      background: rgba(239, 68, 68, 0.05);
-      color: var(--danger); 
-      border: 1px solid rgba(239, 68, 68, 0.2);
-      padding: 8px 12px; 
-      border-radius: 8px; 
-      cursor: pointer;
-      transition: all 0.2s;
-      display: flex; align-items: center; justify-content: center;
+    @media (max-width: 768px) {
+      .user-add-controls-md3 {
+        flex-direction: column;
+        width: 100%;
+        gap: 12px;
+      }
+      .user-add-controls-md3 .md-input-sm,
+      .user-add-controls-md3 .md-select-sm,
+      .user-add-controls-md3 .btn-sm {
+        width: 100%;
+      }
+      .users-grid-md3 { grid-template-columns: 1fr; }
+      .md-form-grid { grid-template-columns: 1fr; }
+      .edit-main-md3 { padding: 16px; }
+      .edit-card-md3 { padding: 20px; }
     }
-    .btn-del:hover { background: var(--danger); color: white; }
-
-    .admin-lock { font-size: 0.8rem; opacity: 0.5; flex: 1; text-align: right; }
-    .inline-icon { display: inline-block; vertical-align: text-bottom; }
-    .text-muted { color: var(--text-muted); opacity: 0.8; }
   `]
 })
 export class UserManagementComponent {

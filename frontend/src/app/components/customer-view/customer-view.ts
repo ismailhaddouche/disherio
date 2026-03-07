@@ -11,101 +11,126 @@ import { TranslateModule } from '@ngx-translate/core';
   imports: [CommonModule, RouterLink, LucideAngularModule, TranslateModule],
   providers: [CustomerViewModel],
   template: `
-    <div class="customer-container">
+    <div class="customer-container animate-fade-in">
       @if (vm.loading()) {
         <div class="loading-screen">
           <div class="loader-ripple"><div></div><div></div></div>
-          <p class="gradient-text">{{ 'CUSTOMER.CONNECTING' | translate }}</p>
+          <p class="text-title-medium">{{ 'CUSTOMER.CONNECTING' | translate }}</p>
         </div>
       } @else if (!vm.session()?.sessionId || !vm.comms.userName() || vm.comms.userName() === 'Comensal') {
-        <div class="name-selection glass-card">
+        <div class="name-selection md-card-elevated">
           @if (vm.isStaff()) {
-            <h2 class="gradient-text">{{ 'WAITER.NEW_ORDER_FOR' | translate }}</h2>
-            <p>{{ 'WAITER.SELECT_NAME_OR_SKIP' | translate }}</p>
+            <h2 class="text-headline-medium">{{ 'WAITER.NEW_ORDER_FOR' | translate }}</h2>
+            <p class="text-body-large">{{ 'WAITER.SELECT_NAME_OR_SKIP' | translate }}</p>
 
             @if (vm.existingNames().length > 0) {
               <div class="existing-names">
                 @for (name of vm.existingNames(); track name) {
-                  <button class="btn-name" (click)="vm.registerNameAndStartSession(name)">{{ name }}</button>
+                  <button class="chip" (click)="vm.registerNameAndStartSession(name)">
+                    <lucide-icon name="user" [size]="14"></lucide-icon>
+                    {{ name }}
+                  </button>
                 }
               </div>
             }
             
-            <input type="text" #nameInput [placeholder]="'WAITER.NEW_NAME_OPTIONAL' | translate" class="glass-input" (keyup.enter)="vm.registerNameAndStartSession(nameInput.value || 'Camarero')" [value]="vm.comms.userName() !== 'Comensal' ? vm.comms.userName() : ''">
+            <div class="md-input-field">
+              <input type="text" #nameInput [placeholder]="'WAITER.NEW_NAME_OPTIONAL' | translate" (keyup.enter)="vm.registerNameAndStartSession(nameInput.value || 'Camarero')" [value]="vm.comms.userName() !== 'Comensal' ? vm.comms.userName() : ''">
+            </div>
+            
             <button class="btn-primary" (click)="vm.registerNameAndStartSession(nameInput.value || 'Camarero')">
+              <lucide-icon name="play" [size]="18"></lucide-icon>
               {{ 'WAITER.START_ORDERING' | translate }}
             </button>
           } @else {
-            <h2 class="gradient-text">{{ 'CUSTOMER.HELLO' | translate }}</h2>
-            <p>{{ 'CUSTOMER.HOW_TO_CALL' | translate }}</p>
-            <input type="text" #nameInput [placeholder]="'CUSTOMER.YOUR_NAME' | translate" class="glass-input" (keyup.enter)="vm.registerNameAndStartSession(nameInput.value)" [value]="vm.comms.userName() !== 'Comensal' ? vm.comms.userName() : ''">
+            <h2 class="text-headline-medium">{{ 'CUSTOMER.HELLO' | translate }}</h2>
+            <p class="text-body-large">{{ 'CUSTOMER.HOW_TO_CALL' | translate }}</p>
+            
+            <div class="md-input-field">
+              <input type="text" #nameInput [placeholder]="'CUSTOMER.YOUR_NAME' | translate" (keyup.enter)="vm.registerNameAndStartSession(nameInput.value)" [value]="vm.comms.userName() !== 'Comensal' ? vm.comms.userName() : ''">
+            </div>
+            
             <button class="btn-primary" (click)="vm.registerNameAndStartSession(nameInput.value)">
+              <lucide-icon name="chef-hat" [size]="18"></lucide-icon>
               {{ 'CUSTOMER.START_ORDERING' | translate }}
             </button>
           }
         </div>
       } @else {
-        <header class="glass-card table-header">
+        <header class="md-card table-header">
           <div class="restaurant-info">
-            <span class="restaurant-name gradient-text">{{ vm.restaurantName() }}</span>
-            <span class="table-badge">{{ 'CUSTOMER.TOTEM_ASSIGNED' | translate }} <b>#{{ vm.session()?.tableNumber }}</b></span>
+            <span class="restaurant-name text-title-large">{{ vm.restaurantName() }}</span>
+            <span class="table-badge text-label-large">
+                <lucide-icon name="hash" [size]="12" class="inline-icon"></lucide-icon>
+                {{ vm.session()?.tableNumber }}
+            </span>
           </div>
           <div class="header-actions">
             @if (vm.session()?.activeOrder) {
-                <span class="status-pulse">{{ 'CUSTOMER.IN_SESSION' | translate }}</span>
+                <span class="status-chip">{{ 'CUSTOMER.IN_SESSION' | translate }}</span>
             }
-            <button routerLink="checkout" class="btn-checkout">{{ 'CUSTOMER.MY_ACCOUNT' | translate }}</button>
+            <button routerLink="checkout" class="btn-secondary btn-sm">
+                <lucide-icon name="receipt" [size]="16"></lucide-icon>
+                {{ 'CUSTOMER.MY_ACCOUNT' | translate }}
+            </button>
           </div>
         </header>
 
         <main class="menu-content">
-          <section class="welcome-hero" style="text-align: center;">
-            <div style="display: flex; justify-content: center; margin-bottom: 20px;">
-              <img src="logo.svg" alt="Disher.io Logo" style="height: 64px; border-radius: 12px;">
+          <section class="welcome-hero">
+            <div class="restaurant-logo-wrapper">
+              <img src="logo.svg" alt="Disher.io Logo" class="restaurant-logo">
             </div>
-            <h1>{{ 'CUSTOMER.TIME_TO_EAT' | translate }}</h1>
-            <p [innerHTML]="'CUSTOMER.ADD_TO_CART_INFO' | translate"></p>
+            <h1 class="text-headline-large">{{ 'CUSTOMER.TIME_TO_EAT' | translate }}</h1>
+            <p class="text-body-medium" [innerHTML]="'CUSTOMER.ADD_TO_CART_INFO' | translate"></p>
           </section>
 
           <!-- Menu Section -->
           <div class="menu-grid">
             @for (item of vm.menu(); track item._id) {
-              <div class="glass-card menu-item" 
+              <div class="md-card menu-item clickable-card" 
                    [class.unavailable]="!item.available"
                    (click)="vm.handleItemClick(item)">
-                <div class="item-visual">
-                  <lucide-icon *ngIf="item.category === 'Bebidas'" name="glass-water" [size]="28"></lucide-icon>
-                  <lucide-icon *ngIf="item.category !== 'Bebidas'" name="utensils" [size]="28"></lucide-icon>
+                <div class="item-visual" [style.background]="item.category === 'Bebidas' ? 'var(--md-sys-color-tertiary-container)' : 'var(--md-sys-color-secondary-container)'">
+                  <lucide-icon *ngIf="item.category === 'Bebidas'" name="glass-water" [size]="24" [color]="item.category === 'Bebidas' ? 'var(--md-sys-color-on-tertiary-container)' : 'var(--md-sys-color-on-secondary-container)'"></lucide-icon>
+                  <lucide-icon *ngIf="item.category !== 'Bebidas'" name="utensils" [size]="24" color="var(--md-sys-color-on-secondary-container)"></lucide-icon>
                 </div>
                 <div class="item-details">
-                  <h3>{{ item.name }}</h3>
-                  <p>{{ item.description }}</p>
-                  <span class="price">
-                    @if (item.variants?.length > 0) {
-                        {{ 'CUSTOMER.FROM' | translate }} {{ item.variants[0].price }}€
-                    } @else {
-                        {{ item.basePrice }}€
+                  <h3 class="text-title-medium">{{ item.name }}</h3>
+                  <p class="text-body-medium">{{ item.description }}</p>
+                  <div class="item-footer">
+                    <span class="price text-title-large">
+                      @if (item.variants?.length > 0) {
+                          {{ item.variants[0].price }}€
+                      } @else {
+                          {{ item.basePrice }}€
+                      }
+                    </span>
+                    @if (item.variants?.length > 0 || item.addons?.length > 0) {
+                        <span class="text-label-large" style="opacity: 0.6;">+ {{ 'CUSTOMER.CUSTOMIZE' | translate }}</span>
                     }
-                  </span>
+                  </div>
                 </div>
                 
                 @if (item.available) {
-                  <button class="add-btn">{{ item.variants?.length > 0 || item.addons?.length > 0 ? '⚙️' : '+' }}</button>
+                  <button class="add-fab">
+                    <lucide-icon name="plus" [size]="20"></lucide-icon>
+                  </button>
                 } @else {
-                  <span class="sold-out-tag">{{ 'CUSTOMER.SOLD_OUT' | translate }}</span>
+                  <span class="sold-out-badge">{{ 'CUSTOMER.SOLD_OUT' | translate }}</span>
                 }
               </div>
             }
           </div>
 
-          <!-- Configuration Modal (Sheet) -->
+          <!-- Configuration Modal (Bottom Sheet MD3) -->
           @if (vm.selectedForConfig(); as item) {
             <div class="modal-overlay" (click)="vm.selectedForConfig.set(null)">
-                <div class="config-sheet glass-card" (click)="$event.stopPropagation()">
-                    <div class="sheet-handle"></div>
+                <div class="md-bottom-sheet" (click)="$event.stopPropagation()">
+                    <div class="sheet-drag-handle"></div>
                     <header class="config-header">
-                        <h2>{{ 'CUSTOMER.CUSTOMIZE_ORDER' | translate }}</h2>
-                        <h3 class="gradient-text">{{ item.name }}</h3>
+                        <span class="text-label-large">{{ 'CUSTOMER.CUSTOMIZE_ORDER' | translate }}</span>
+                        <h2 class="text-headline-small">{{ item.name }}</h2>
                     </header>
 
                     <div class="config-content">
@@ -113,14 +138,14 @@ import { TranslateModule } from '@ngx-translate/core';
                         @if (item.isMenu) {
                             @for (sec of item.menuSections; track sec.name) {
                                 <section class="config-section">
-                                    <h4>{{ sec.name }}</h4>
-                                    <div class="options-grid">
+                                    <h4 class="text-title-medium">{{ sec.name }}</h4>
+                                    <div class="options-row">
                                         @for (opt of sec.options; track opt) {
-                                            <div class="option-card" 
+                                            <button class="chip" 
                                                  [class.selected]="vm.selectedMenuChoices()[sec.name] === opt"
                                                  (click)="vm.selectMenuChoice(sec.name, opt)">
-                                                <span class="name">{{ opt }}</span>
-                                            </div>
+                                                {{ opt }}
+                                            </button>
                                         }
                                     </div>
                                 </section>
@@ -130,15 +155,14 @@ import { TranslateModule } from '@ngx-translate/core';
                         <!-- Variants -->
                         @if (!item.isMenu && item.variants?.length > 0) {
                             <section class="config-section">
-                                <h4>{{ 'CUSTOMER.SELECT_OPTION' | translate }}</h4>
-                                <div class="options-grid">
+                                <h4 class="text-title-medium">{{ 'CUSTOMER.SELECT_OPTION' | translate }}</h4>
+                                <div class="options-row">
                                     @for (v of item.variants; track v.name) {
-                                        <div class="option-card" 
+                                        <button class="chip" 
                                              [class.selected]="vm.selectedVariant()?.name === v.name"
                                              (click)="vm.selectedVariant.set(v)">
-                                            <span class="name">{{ v.name }}</span>
-                                            <span class="price-val">{{ v.price }}€</span>
-                                        </div>
+                                            {{ v.name }} • {{ v.price }}€
+                                        </button>
                                     }
                                 </div>
                             </section>
@@ -147,20 +171,17 @@ import { TranslateModule } from '@ngx-translate/core';
                         <!-- Addons -->
                          @if (item.addons?.length > 0) {
                             <section class="config-section">
-                                <h4>{{ 'CUSTOMER.EXTRAS_OPTIONAL' | translate }}</h4>
+                                <h4 class="text-title-medium">{{ 'CUSTOMER.EXTRAS_OPTIONAL' | translate }}</h4>
                                 <div class="addons-list">
                                     @for (a of item.addons; track a.name) {
-                                        <div class="addon-row" 
-                                             [class.selected]="vm.selectedAddons().includes(a)"
+                                        <div class="addon-item list-item" 
+                                             [class.active]="vm.selectedAddons().includes(a)"
                                              (click)="vm.toggleAddon(a)">
                                             <div class="addon-info">
-                                                <span class="checkbox">
-                                                  <lucide-icon *ngIf="vm.selectedAddons().includes(a)" name="check-circle-2" [size]="16" color="var(--highlight)"></lucide-icon>
-                                                  <lucide-icon *ngIf="!vm.selectedAddons().includes(a)" name="circle" [size]="16" color="var(--text-muted)"></lucide-icon>
-                                                </span>
-                                                <span class="name">{{ a.name }}</span>
+                                                <lucide-icon [name]="vm.selectedAddons().includes(a) ? 'check-circle-2' : 'plus-circle'" [size]="20"></lucide-icon>
+                                                <span class="text-body-large">{{ a.name }}</span>
                                             </div>
-                                            <span class="price">+{{ a.price }}€</span>
+                                            <span class="price text-label-large">+{{ a.price }}€</span>
                                         </div>
                                     }
                                 </div>
@@ -169,7 +190,8 @@ import { TranslateModule } from '@ngx-translate/core';
                     </div>
 
                     <footer class="config-footer">
-                        <button class="btn-primary" (click)="vm.addToCartFromConfig()">
+                        <button class="btn-primary full-width" (click)="vm.addToCartFromConfig()">
+                            <lucide-icon name="shopping-cart" [size]="18"></lucide-icon>
                             {{ 'CUSTOMER.ADD_TO_CART' | translate }}
                         </button>
                     </footer>
@@ -177,30 +199,34 @@ import { TranslateModule } from '@ngx-translate/core';
             </div>
           }
 
-          <!-- ACTIVE ORDER HISTORY (PERSISTENCE) -->
+          <!-- ACTIVE ORDER HISTORY -->
           @if (vm.session()?.activeOrder; as order) {
-            <div class="order-history glass-card mt-32">
-              <div class="history-header">
-                <h3>{{ 'CUSTOMER.YOUR_ORDER' | translate }}</h3>
-                <span class="live-pulse">{{ 'CUSTOMER.IN_KITCHEN' | translate }}</span>
+            <div class="order-section mt-32">
+              <div class="section-header">
+                <h3 class="text-title-large">{{ 'CUSTOMER.YOUR_ORDER' | translate }}</h3>
+                <span class="status-badge connected">{{ 'CUSTOMER.IN_KITCHEN' | translate }}</span>
               </div>
-              <div class="history-list">
+              
+              <div class="history-grid">
                 @for (item of order.items; track $index) {
-                  <div class="history-item">
+                  <div class="md-card history-item">
                     <div class="item-main">
                       <span class="qty">{{ item.quantity }}x</span>
-                      <span class="name">{{ item.name }}</span>
+                      <span class="name text-title-medium">{{ item.name }}</span>
                     </div>
                     @if (item.menuChoices) {
-                        <div class="item-choices">
+                        <div class="choices-row">
                             @for (choice of item.menuChoices | keyvalue; track choice.key) {
-                                <span class="choice-tag">{{ choice.value }}</span>
+                                <span class="choice-chip">{{ choice.value }}</span>
                             }
                         </div>
                     }
-                    <div class="item-status-info">
-                      <span class="who"><lucide-icon name="user" [size]="12" class="inline-icon"></lucide-icon> {{ item.orderedBy?.name || ('ROLES.Table' | translate) }}</span>
-                        <span class="status-badge" [class]="item.status">
+                    <div class="item-meta">
+                      <div class="ordered-by">
+                        <lucide-icon name="user" [size]="14"></lucide-icon>
+                        {{ item.orderedBy?.name || ('ROLES.Table' | translate) }}
+                      </div>
+                      <span class="item-status" [class]="item.status">
                         {{ item.status === 'pending' ? ('CUSTOMER.RECEIVED' | translate) : 
                            item.status === 'preparing' ? ('CUSTOMER.ON_FIRE' | translate) : 
                            item.status === 'ready' ? ('CUSTOMER.SERVED' | translate) : ('CUSTOMER.COMPLETED' | translate) }}
@@ -209,32 +235,36 @@ import { TranslateModule } from '@ngx-translate/core';
                   </div>
                 }
               </div>
-              <div class="history-total">
-                <span>{{ 'CUSTOMER.TOTAL_ACCUMULATED' | translate }}</span>
-                <span class="val">{{ order.totalAmount | currency:'EUR' }}</span>
+              
+              <div class="md-card total-card mt-16">
+                <span class="text-body-large">{{ 'CUSTOMER.TOTAL_ACCUMULATED' | translate }}</span>
+                <span class="text-headline-small">{{ order.totalAmount | currency:'EUR' }}</span>
               </div>
             </div>
           }
 
-          <!-- SHOPPING CART (PENSONAL ITEMS) -->
+          <!-- SHOPPING CART -->
           @if (vm.cart().length > 0) {
-            <div class="cart-preview glass-card mt-32">
-              <h3 class="gradient-text">{{ 'CUSTOMER.NEW_CHOICES' | translate }}</h3>
-              <p class="cart-subtitle">{{ 'CUSTOMER.CART_SUBTITLE' | translate }}</p>
-              <div class="cart-items">
+            <div class="cart-section mt-32 animate-fade-in">
+              <h3 class="text-title-large">{{ 'CUSTOMER.NEW_CHOICES' | translate }}</h3>
+              <p class="text-body-medium opacity-60">{{ 'CUSTOMER.CART_SUBTITLE' | translate }}</p>
+              
+              <div class="cart-list mt-16">
                 @for (item of vm.cart(); track item.addedAt) {
-                  <div class="cart-item-row-complex">
-                    <div class="item-header">
-                        <div class="item-name">
-                            <span class="qty">1x</span>
-                            <span>{{ item.name }}</span>
+                  <div class="md-card cart-item">
+                    <div class="cart-item-header">
+                        <div class="cart-item-name">
+                            <span class="qty text-primary-color">1x</span>
+                            <span class="text-title-medium">{{ item.name }}</span>
                         </div>
-                        <span class="user-badge is-me">{{ 'CUSTOMER.YOU' | translate }}</span>
+                        <button class="btn-sm" style="padding: 4px; border-radius: 50%; width: 32px; height: 32px; background: var(--md-sys-color-surface-variant);" (click)="vm.cart.set(vm.cart().filter(i => i !== item))">
+                            <lucide-icon name="x" [size]="14"></lucide-icon>
+                        </button>
                     </div>
                     @if (item.menuChoices) {
-                        <div class="item-choices">
+                        <div class="choices-row">
                             @for (choice of item.menuChoices | keyvalue; track choice.key) {
-                                <span class="choice-tag">{{ choice.value }}</span>
+                                <span class="choice-chip">{{ choice.value }}</span>
                             }
                         </div>
                     }
@@ -246,14 +276,16 @@ import { TranslateModule } from '@ngx-translate/core';
         </main>
 
         @if (vm.cart().length > 0) {
-          <footer class="cart-footer glass-card">
-            <div class="cart-summary">
-              <span class="count">{{ vm.cart().length }} {{ 'CUSTOMER.DISHES' | translate }}</span>
-              <span class="total">{{ vm.cart().length > 0 ? ('CUSTOMER.TOTAL' | translate) : '' }}</span>
+          <footer class="cart-sticky-footer animate-fade-in">
+            <div class="cart-fab-container">
+                <div class="cart-info">
+                  <span class="text-label-large">{{ vm.cart().length }} {{ 'CUSTOMER.DISHES' | translate }}</span>
+                </div>
+                <button class="btn-primary checkout-fab" (click)="vm.placeOrder()">
+                  <lucide-icon name="send" [size]="20"></lucide-icon>
+                  {{ 'CUSTOMER.ORDER_NOW' | translate }}
+                </button>
             </div>
-            <button class="btn-primary checkout-btn" (click)="vm.placeOrder()">
-              {{ 'CUSTOMER.ORDER_NOW' | translate }}
-            </button>
           </footer>
         }
       }
@@ -261,80 +293,77 @@ import { TranslateModule } from '@ngx-translate/core';
   `,
   styles: [`
     .customer-container {
+      max-width: 600px;
+      margin: 0 auto;
       min-height: 100vh;
-      padding: 16px;
       display: flex;
       flex-direction: column;
-      gap: 20px;
-      padding-bottom: 100px;
-      animation: slideUp 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+      gap: 24px;
+      padding: 16px 16px 120px 16px;
     }
 
     .loading-screen {
-      height: 80vh;
+      height: 70vh;
       display: flex;
       flex-direction: column;
       justify-content: center;
       align-items: center;
-      gap: 20px;
+      gap: 24px;
+    }
+
+    .name-selection {
+      margin-top: 15vh;
+      padding: 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      text-align: center;
+    }
+
+    .existing-names {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: center;
     }
 
     .table-header {
-      padding: 16px 20px;
       display: flex;
       justify-content: space-between;
       align-items: center;
+      padding: 12px 20px;
       position: sticky;
       top: 16px;
       z-index: 100;
     }
 
-    .restaurant-name {
-      font-weight: 800;
-      text-transform: uppercase;
-      font-size: 1.1rem;
-      display: block;
-    }
+    .restaurant-info { display: flex; flex-direction: column; }
+    .table-badge { opacity: 0.7; display: flex; align-items: center; gap: 4px; }
+    .header-actions { display: flex; align-items: center; gap: 12px; }
 
-    .table-badge {
-      font-size: 0.8rem;
-      opacity: 0.7;
-    }
-    
-    .inline-icon { display: inline-block; vertical-align: text-bottom; margin-right: 4px; }
-
-    .btn-checkout {
-      background: rgba(255,255,255,0.05);
-      border: 1px solid var(--accent-secondary);
-      color: var(--accent-secondary);
-      padding: 6px 12px;
-      border-radius: 12px;
-      font-size: 0.8rem;
-      font-weight: bold;
-      cursor: pointer;
-      transition: all 0.3s ease;
-    }
-
-    .btn-checkout:hover {
-      background: var(--accent-secondary);
-      color: var(--bg-dark);
-    }
-
-    .status-indicator {
-      font-size: 0.7rem;
-      font-weight: bold;
-      color: var(--highlight);
-      border: 1px solid var(--highlight);
-      padding: 2px 8px;
-      border-radius: 12px;
+    .status-chip {
+        background: var(--md-sys-color-secondary-container);
+        color: var(--md-sys-color-on-secondary-container);
+        font-size: 0.75rem;
+        padding: 4px 12px;
+        border-radius: var(--radius-full);
+        font-weight: 600;
     }
 
     .welcome-hero {
-      margin: 20px 0 32px 0;
+      padding: 24px 0;
+      text-align: center;
     }
 
-    .welcome-hero h1 { font-size: 2.2rem; margin-bottom: 8px; }
-    .welcome-hero p { opacity: 0.7; line-height: 1.5; }
+    .restaurant-logo-wrapper {
+        width: 80px;
+        height: 80px;
+        margin: 0 auto 16px;
+        background: var(--md-sys-color-surface-variant);
+        border-radius: 24px;
+        padding: 12px;
+    }
+    .restaurant-logo { width: 100%; height: 100%; object-fit: contain; }
 
     .menu-grid {
       display: flex;
@@ -346,341 +375,199 @@ import { TranslateModule } from '@ngx-translate/core';
       display: flex;
       gap: 16px;
       padding: 16px;
-      align-items: center;
+      align-items: flex-start;
       position: relative;
     }
 
     .item-visual {
-      font-size: 2.5rem;
-      background: rgba(255,255,255,0.05);
-      width: 60px;
-      height: 60px;
+      width: 56px;
+      height: 56px;
+      border-radius: 16px;
       display: flex;
       align-items: center;
       justify-content: center;
-      border-radius: 15px;
+      flex-shrink: 0;
     }
 
-    .item-details { flex: 1; }
-    .item-details h3 { font-size: 1.1rem; margin-bottom: 4px; }
-    .item-details p { font-size: 0.85rem; opacity: 0.6; margin-bottom: 8px; }
-    .item-details .price { font-weight: bold; color: var(--accent-primary); }
-
-    .menu-item.unavailable {
-      opacity: 0.5;
-      filter: grayscale(1);
-      cursor: not-allowed;
-    }
-
-    .sold-out-tag {
-      font-size: 0.75rem;
-      font-weight: 900;
-      color: #ef4444;
-      border: 1px solid #ef4444;
-      padding: 4px 10px;
-      border-radius: 8px;
-    }
-
-    .add-btn {
-      background: var(--accent-primary);
-      border: none;
-      color: var(--bg-dark);
-      width: 32px;
-      height: 32px;
-      border-radius: 10px;
-      font-weight: bold;
-      font-size: 1.2rem;
-      cursor: pointer;
-    }
-
-    .cart-footer {
-      position: fixed;
-      bottom: 16px;
-      left: 16px;
-      right: 16px;
-      padding: 20px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      z-index: 200;
-      animation: slideInBottom 0.4s ease-out;
-    }
-
-    .checkout-btn {
-      width: 60%;
-      box-shadow: 0 10px 20px rgba(56, 189, 248, 0.3);
-    }
-
-    .name-selection {
-      padding: 40px;
-      text-align: center;
-      margin-top: 20vh;
-      display: flex;
-      flex-direction: column;
-      gap: 24px;
-    }
-
-    /* glass-input now defined globally */
-    .name-selection .glass-input {
-      text-align: center;
-      font-size: 1rem;
-      padding: 16px;
-    }
-
-    .existing-names {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-      justify-content: center;
-      margin-bottom: 8px;
-    }
-
-    .btn-name {
-      background: rgba(255,255,255,0.05);
-      border: 1px solid var(--accent-secondary);
-      color: white;
-      padding: 10px 16px;
-      border-radius: 12px;
-      cursor: pointer;
-      font-weight: bold;
-      transition: all 0.2s;
-    }
-
-    .btn-name:hover {
-      background: var(--accent-secondary);
-      color: var(--bg-dark);
-    }
-
-    .cart-preview {
-      margin-top: 40px;
-      padding: 24px;
-    }
-
-    .cart-items {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-
-    .cart-item-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 0.9rem;
-    }
-
-    .user-badge {
-      font-size: 0.7rem;
-      background: rgba(255,255,255,0.1);
-      padding: 4px 10px;
-      border-radius: 20px;
-      opacity: 0.8;
-    }
-
-    .user-badge.is-me {
-      background: rgba(192, 132, 252, 0.2);
-      color: var(--accent-secondary);
-      border: 1px solid var(--accent-secondary);
-    }
-
-    .mt-32 { margin-top: 32px; }
-
-    .order-history {
-      padding: 24px;
-      background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(34, 197, 94, 0.05) 100%);
-      border: 1px solid rgba(34, 197, 94, 0.2);
-    }
-
-    .history-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 20px;
-    }
-
-    .live-pulse {
-      font-size: 0.7rem;
-      color: var(--highlight);
-      font-weight: bold;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .live-pulse::before {
-      content: '';
-      width: 8px;
-      height: 8px;
-      background: var(--highlight);
-      border-radius: 50%;
-      animation: pulse-ring 1.5s infinite;
-    }
-
-    .history-list { display: flex; flex-direction: column; gap: 16px; }
+    .item-details { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+    .item-details p { opacity: 0.6; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
     
-    .history-item {
-      padding-bottom: 12px;
-      border-bottom: 1px solid rgba(255,255,255,0.05);
+    .item-footer {
+        display: flex;
+        align-items: baseline;
+        gap: 12px;
+        margin-top: 4px;
     }
+    .price { color: var(--md-sys-color-primary); font-weight: 600; }
 
-    .item-main { display: flex; gap: 8px; font-weight: 600; font-size: 1rem; }
-    .item-main .qty { color: var(--accent-primary); }
-
-    .item-status-info {
+    .add-fab {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      background: var(--md-sys-color-primary-container);
+      color: var(--md-sys-color-on-primary-container);
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      margin-top: 6px;
+      justify-content: center;
+      border: none;
+      align-self: flex-end;
     }
 
-    .item-status-info .who { font-size: 0.75rem; opacity: 0.5; }
-
-    .status-badge {
-      font-size: 0.65rem;
-      padding: 2px 8px;
-      border-radius: 4px;
-      background: rgba(255,255,255,0.05);
-      font-weight: bold;
-      text-transform: uppercase;
+    .sold-out-badge {
+        font-size: 0.75rem;
+        background: var(--md-sys-color-error-container);
+        color: var(--md-sys-color-on-error-container);
+        padding: 4px 12px;
+        border-radius: 8px;
+        font-weight: bold;
     }
 
-    .status-badge.preparing { color: var(--accent-secondary); border: 1px solid var(--accent-secondary); }
-    .status-badge.ready { color: var(--highlight); border: 1px solid var(--highlight); }
-
-    .history-total {
-      margin-top: 20px;
-      padding-top: 16px;
-      border-top: 1px solid rgba(255,255,255,0.1);
-      display: flex;
-      justify-content: space-between;
-      font-weight: bold;
+    /* Bottom Sheet Refined */
+    .md-bottom-sheet {
+        width: 100%;
+        max-width: 600px;
+        background: var(--md-sys-color-surface-1);
+        border-radius: 28px 28px 0 0;
+        padding: 16px 24px 32px;
+        animation: slideInUp 0.3s cubic-bezier(0.2, 0, 0, 1);
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+        box-shadow: 0 -8px 32px rgba(0,0,0,0.4);
     }
 
-    .cart-subtitle { font-size: 0.8rem; opacity: 0.6; margin: 4px 0 16px 0; }
-    .item-name { display: flex; gap: 8px; }
-
-    @keyframes pulse-ring {
-      0% { transform: scale(0.8); opacity: 0.5; }
-      50% { transform: scale(1.2); opacity: 1; }
-      100% { transform: scale(0.8); opacity: 0.5; }
-    }
-
-    /* slideUp, slideInBottom, loader-ripple now in global styles.css */
-
-    /* Modal & Config Sheet */
     .modal-overlay {
         position: fixed;
-        top: 0; left: 0; right: 0; bottom: 0;
-        background: rgba(0,0,0,0.8);
-        backdrop-filter: blur(8px);
+        inset: 0;
+        background: rgba(0,0,0,0.6);
         z-index: 1000;
         display: flex;
         align-items: flex-end;
+        justify-content: center;
     }
 
-    .config-sheet {
-        width: 100%;
-        background: var(--bg-dark);
-        border-radius: 30px 30px 0 0;
-        padding: 24px;
-        animation: slideInBottom 0.3s ease-out;
-        max-height: 90vh;
-        overflow-y: auto;
+    .sheet-drag-handle {
+        width: 32px; height: 4px; background: var(--md-sys-color-outline);
+        opacity: 0.4; border-radius: 2px; margin: 0 auto;
     }
 
-    .sheet-handle {
-        width: 40px; height: 4px; background: rgba(255,255,255,0.1);
-        border-radius: 2px; margin: 0 auto 20px;
+    .options-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
     }
 
-    .config-header h2 { font-size: 0.9rem; opacity: 0.5; margin: 0; }
-    .config-header h3 { font-size: 1.8rem; margin: 4px 0 24px; }
+    .addon-item { border-radius: 16px; width: 100%; justify-content: space-between; }
+    .addon-info { display: flex; align-items: center; gap: 12px; }
 
-    .config-section { margin-bottom: 32px; }
-    .config-section h4 { font-size: 0.9rem; margin-bottom: 16px; opacity: 0.7; }
+    .full-width { width: 100%; padding: 16px; }
 
-    .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .option-card {
-        padding: 16px; border-radius: 16px; background: rgba(255,255,255,0.03);
-        border: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; gap: 4px;
-        transition: all 0.3s ease;
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
     }
-    .option-card.selected { border-color: var(--accent-primary); background: rgba(56,189,248,0.1); }
-    .option-card .name { font-weight: bold; }
-    .option-card .price-val { font-size: 0.8rem; color: var(--accent-primary); }
 
-    .addons-list { display: flex; flex-direction: column; gap: 8px; }
-    .addon-row {
-        display: flex; justify-content: space-between; align-items: center;
-        padding: 12px 16px; background: rgba(255,255,255,0.02); border-radius: 12px;
-        border: 1px solid transparent;
-    }
-    .addon-row.selected { border-color: var(--accent-secondary); background: rgba(192,132,252,0.05); }
-    .addon-info { display: flex; gap: 12px; }
-    .addon-row .price { font-size: 0.8rem; opacity: 0.6; }
-
-    .config-footer { margin-top: 20px; }
-    .config-footer .btn-primary { width: 100%; padding: 16px; font-size: 1.1rem; }
-
-    .item-choices {
+    .history-grid { display: grid; gap: 12px; }
+    .history-item { padding: 16px; border: 1px solid var(--md-sys-color-outline); background: transparent; }
+    
+    .choices-row {
         display: flex;
         flex-wrap: wrap;
         gap: 6px;
-        margin: 8px 0;
+        margin-top: 8px;
     }
-
-    .choice-tag {
-        font-size: 0.7rem;
-        background: rgba(56, 189, 248, 0.1);
-        color: var(--accent-primary);
+    .choice-chip {
+        font-size: 0.75rem;
+        background: var(--md-sys-color-surface-variant);
         padding: 4px 10px;
         border-radius: 8px;
-        border: 1px solid rgba(56, 189, 248, 0.2);
+        opacity: 0.8;
     }
 
-    .cart-item-row-complex {
+    .item-meta {
         display: flex;
-        flex-direction: column;
-        gap: 4px;
-        padding-bottom: 12px;
-        border-bottom: 1px solid rgba(255,255,255,0.05);
+        justify-content: space-between;
+        margin-top: 12px;
+        font-size: 0.8rem;
     }
+    .ordered-by { display: flex; align-items: center; gap: 6px; opacity: 0.6; }
+    .item-status { font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+    .item-status.preparing { color: var(--md-sys-color-primary); }
+    .item-status.ready { color: #b0ffc6; }
 
-    .item-header {
+    .total-card {
+        padding: 16px 24px;
         display: flex;
         justify-content: space-between;
         align-items: center;
+        background: var(--md-sys-color-primary-container);
+        color: var(--md-sys-color-on-primary-container);
     }
 
-    .header-actions {
+    .cart-item { display: flex; flex-direction: column; gap: 8px; border: 1px dashed var(--md-sys-color-outline); }
+    .cart-item-header { display: flex; justify-content: space-between; align-items: center; }
+    .cart-item-name { display: flex; gap: 8px; }
+
+    .cart-sticky-footer {
+        position: fixed;
+        bottom: 24px;
+        left: 24px;
+        right: 24px;
+        z-index: 500;
+        display: flex;
+        justify-content: center;
+    }
+
+    .cart-fab-container {
+        background: var(--md-sys-color-surface-2);
+        padding: 12px 12px 12px 24px;
+        border-radius: var(--radius-full);
         display: flex;
         align-items: center;
-        gap: 12px;
+        gap: 24px;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+        border: 1px solid var(--md-sys-color-outline);
     }
 
-    .status-pulse {
-        font-size: 0.65rem;
-        background: rgba(34, 197, 94, 0.1);
-        color: var(--highlight);
-        padding: 4px 10px;
-        border-radius: 20px;
-        border: 1px solid rgba(34, 197, 94, 0.3);
+    .checkout-fab {
+        padding: 12px 24px;
+        height: 56px;
+    }
+
+    .opacity-60 { opacity: 0.6; }
+    .mt-16 { margin-top: 16px; }
+
+    @keyframes slideInUp {
+        from { transform: translateY(100%); }
+        to { transform: translateY(0); }
+    }
+
+    .md-input-field input {
+        background: var(--md-sys-color-surface-variant);
+        border: none;
+        border-radius: 12px;
+        padding: 16px 20px;
+        color: var(--md-sys-color-on-surface);
+        font-family: inherit;
+        width: 100%;
+        font-size: 1rem;
+        text-align: center;
+    }
+    
+    .text-primary-color { color: var(--md-sys-color-primary); }
+
+    .status-badge.connected {
+        background: #2e7d32;
+        color: white;
+        padding: 2px 10px;
+        border-radius: 4px;
+        font-size: 0.7rem;
         font-weight: bold;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-    }
-    .status-pulse::before {
-        content: ''; width: 6px; height: 6px; background: var(--highlight);
-        border-radius: 50%; animation: disher-pulse 1.5s infinite;
-    }
-
-    @keyframes disher-pulse {
-        0% { transform: scale(0.9); opacity: 0.5; }
-        50% { transform: scale(1.2); opacity: 1; }
-        100% { transform: scale(0.9); opacity: 0.5; }
     }
   `]
+
 })
 export class CustomerViewComponent {
   public vm = inject(CustomerViewModel);

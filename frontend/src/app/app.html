@@ -17,23 +17,25 @@
   <main class="main-content">
     
     <!-- Top Bar (Contextual Info) -->
-    <header class="top-bar glass-card" *ngIf="auth.isAuthenticated()">
-      <div class="breadcrumb">
-        <button class="mobile-menu-toggle" (click)="sidebarCollapsed.set(!sidebarCollapsed())">
-          <lucide-icon name="menu" [size]="20"></lucide-icon>
+    <header class="top-bar-md3" *ngIf="auth.isAuthenticated()">
+      <div class="top-bar-start">
+        <button class="icon-btn-md3 mobile-only" (click)="sidebarCollapsed.set(!sidebarCollapsed())">
+          <lucide-icon name="menu" [size]="24"></lucide-icon>
         </button>
-        <span class="restaurant-name gradient-text">{{ 'APP.RESTAURANT_NAME' | translate }}</span>
+        <span class="restaurant-name-md3 text-title-large">{{ 'APP.RESTAURANT_NAME' | translate }}</span>
       </div>
 
-      <div class="status-indicators">
-        <div class="socket-badge" [class]="comms.connectionStatus()">
-          <span class="status-dot" [class.online]="comms.isOnline()"></span>
-          {{ comms.isOnline() ? ('APP.ONLINE' | translate) : ('APP.OFFLINE' | translate) }}
+      <div class="top-bar-end">
+        <div class="status-chip-md3" [class]="comms.connectionStatus()">
+          <span class="status-dot-md3" [class.online]="comms.isOnline()"></span>
+          <span class="text-label-medium">{{ comms.isOnline() ? ('APP.ONLINE' | translate) : ('APP.OFFLINE' | translate) }}</span>
         </div>
         
-        <div class="user-pill glass-card">
-          <span class="role-icon"><lucide-icon name="user" [size]="14"></lucide-icon></span>
-          <span class="username">{{ auth.currentUser()?.username }}</span>
+        <div class="user-profile-md3 md-card-elevated">
+          <div class="avatar-circle">
+            <lucide-icon name="user" [size]="16"></lucide-icon>
+          </div>
+          <span class="text-label-large">{{ auth.currentUser()?.username }}</span>
         </div>
       </div>
     </header>
@@ -50,7 +52,7 @@
   .app-layout {
     display: flex;
     min-height: 100vh;
-    background: transparent;
+    background: var(--md-sys-color-surface-container-low);
   }
 
   .main-content {
@@ -59,108 +61,134 @@
     flex-direction: column;
     min-width: 0;
     position: relative;
+    height: 100vh;
+    overflow: hidden;
   }
 
-  .top-bar {
-    height: 70px;
-    margin: 16px 24px;
+  .top-bar-md3 {
+    height: 64px;
+    margin: 16px 24px 0 24px;
     padding: 0 24px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-radius: 16px;
+    background: var(--md-sys-color-surface-2);
+    border-radius: 20px;
     z-index: 50;
+    box-shadow: var(--md-sys-elevation-1);
+    flex-shrink: 0;
   }
 
-  .restaurant-name {
-    font-weight: 800;
-    font-size: 1.1rem;
-    letter-spacing: -0.02em;
-  }
-
-  .status-indicators {
+  .top-bar-start, .top-bar-end {
     display: flex;
     align-items: center;
     gap: 16px;
   }
 
-  .socket-badge {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 6px 12px;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    border-radius: 100px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: var(--text-muted);
+  .restaurant-name-md3 {
+    color: var(--md-sys-color-primary);
+    font-weight: 700;
   }
 
-  .socket-badge.connected {
-    color: var(--accent-primary);
-    border-color: rgba(56, 189, 248, 0.2);
-  }
-
-  .status-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: var(--danger);
-  }
-
-  .status-dot.online {
-    background: var(--highlight);
-    box-shadow: 0 0 10px var(--highlight);
-  }
-
-  .user-pill {
+  .status-chip-md3 {
     display: flex;
     align-items: center;
     gap: 10px;
     padding: 6px 14px;
-    border-radius: 100px;
-    font-size: 0.85rem;
-    font-weight: 600;
+    background: var(--md-sys-color-surface-container-high);
+    border-radius: 20px;
+    color: var(--md-sys-color-on-surface-variant);
   }
 
-  .role-icon { font-size: 1rem; }
+  .status-chip-md3.connected {
+    background: var(--md-sys-color-primary-container);
+    color: var(--md-sys-color-on-primary-container);
+  }
+
+  .status-dot-md3 {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--md-sys-color-error);
+  }
+
+  .status-dot-md3.online {
+    background: #34d399; /* Success green from MD3 if available, or just keeping it bright */
+    box-shadow: 0 0 8px color-mix(in srgb, #34d399 40%, transparent);
+  }
+
+  .user-profile-md3 {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 4px 16px 4px 6px;
+    border-radius:  100px;
+    background: var(--md-sys-color-surface-3);
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .user-profile-md3:hover { background: var(--md-sys-color-surface-4); }
+
+  .avatar-circle {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--md-sys-color-primary);
+    color: var(--md-sys-color-on-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
 
   .content-wrapper {
     flex: 1;
-    padding: 0 24px 24px 24px;
+    padding: 24px;
     overflow-y: auto;
+    position: relative;
   }
 
   .sidebar-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0,0,0,0.5);
-    backdrop-filter: blur(4px);
+    background: rgba(0,0,0,0.4);
+    backdrop-filter: blur(8px);
     z-index: 90;
-    display: none;
+    animation: fadeIn 0.2s ease-out;
   }
 
-  .mobile-menu-toggle {
-    display: none;
+  .icon-btn-md3 {
     background: transparent;
     border: none;
-    color: var(--text-base);
+    color: var(--md-sys-color-on-surface);
     cursor: pointer;
     padding: 8px;
-    border-radius: 8px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+  }
+  .icon-btn-md3:hover { background: var(--md-sys-color-surface-variant); }
+
+  .mobile-only { display: none; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
   }
 
   /* Responsive Adjustments */
   @media (max-width: 768px) {
-    .sidebar-overlay { display: block; }
-    .mobile-menu-toggle { display: flex; align-items: center; justify-content: center; }
-
-    .top-bar {
-      margin: 12px;
-      padding: 0 16px;
+    .mobile-only { display: flex; }
+    .top-bar-md3 {
+      margin: 12px 12px 0 12px;
+      padding: 0 12px;
+      border-radius: 12px;
     }
-    .restaurant-name { display: none; }
-    .content-wrapper { padding: 12px; }
+    .restaurant-name-md3 { display: none; }
+    .content-wrapper { padding: 16px; }
+    .top-bar-end { gap: 8px; }
+    .status-chip-md3 span:not(.status-dot-md3) { display: none; }
   }
 </style>
+

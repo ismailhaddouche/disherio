@@ -11,19 +11,19 @@ import { TranslateModule } from '@ngx-translate/core';
   imports: [CommonModule, LucideAngularModule, TranslateModule],
   providers: [DashboardViewModel],
   template: `
-    <div class="dashboard-container">
+    <div class="dashboard-container animate-fade-in">
       <!-- Error Display -->
       @if (vm.error()) {
-        <div class="error-banner glass-card">
+        <div class="error-banner md-card">
           <div class="error-icon">
-            <lucide-icon name="bell" [size]="32" color="#ef4444"></lucide-icon>
+            <lucide-icon name="alert-triangle" [size]="28" color="var(--md-sys-color-error)"></lucide-icon>
           </div>
           <div class="error-content">
-            <h4>{{ 'DASHBOARD.UPS' | translate }}</h4>
-            <p>{{ vm.error() }}</p>
+            <h4 class="text-title-medium">{{ 'DASHBOARD.UPS' | translate }}</h4>
+            <p class="text-body-medium">{{ vm.error() }}</p>
           </div>
-          <button class="btn-retry" (click)="loadAgain()">
-            <lucide-icon name="refresh-cw" [size]="16" class="mr-2"></lucide-icon>
+          <button class="btn-outline" (click)="loadAgain()">
+            <lucide-icon name="refresh-cw" [size]="16"></lucide-icon>
             {{ 'DASHBOARD.RETRY' | translate }}
           </button>
         </div>
@@ -31,41 +31,44 @@ import { TranslateModule } from '@ngx-translate/core';
 
       <!-- Stats Header -->
       <div class="stats-grid">
-        <div class="glass-card stat-card">
-          <lucide-icon name="clock" class="stat-icon primary"></lucide-icon>
-          <span class="stat-label">{{ 'DASHBOARD.ACTIVE_ORDERS' | translate }}</span>
-          <h2 class="stat-value gradient-text">{{ vm.activeOrdersCount() }}</h2>
-          <div class="stat-glow primary"></div>
+        <div class="md-card-elevated stat-card primary-tonal">
+          <div class="stat-header">
+            <lucide-icon name="clock" [size]="20"></lucide-icon>
+            <span class="text-label-large">{{ 'DASHBOARD.ACTIVE_ORDERS' | translate }}</span>
+          </div>
+          <h2 class="text-headline-large">{{ vm.activeOrdersCount() }}</h2>
         </div>
         
-        <div class="glass-card stat-card">
-          <lucide-icon name="wallet" class="stat-icon secondary"></lucide-icon>
-          <span class="stat-label">{{ 'DASHBOARD.DAILY_REVENUE' | translate }}</span>
-          <h2 class="stat-value gradient-text">{{ vm.dailyRevenue() | currency:'EUR' }}</h2>
-          <div class="stat-glow secondary"></div>
+        <div class="md-card-elevated stat-card secondary-tonal">
+          <div class="stat-header">
+            <lucide-icon name="wallet" [size]="20"></lucide-icon>
+            <span class="text-label-large">{{ 'DASHBOARD.DAILY_REVENUE' | translate }}</span>
+          </div>
+          <h2 class="text-headline-large">{{ vm.dailyRevenue() | currency:'EUR' }}</h2>
         </div>
 
-        <div class="glass-card stat-card">
-          <lucide-icon name="layout-dashboard" class="stat-icon success"></lucide-icon>
-          <span class="stat-label">{{ 'DASHBOARD.SYS_STATUS' | translate }}</span>
-          <h2 class="stat-value" [class.text-online]="!vm.error()">
+        <div class="md-card-elevated stat-card surface-tonal">
+          <div class="stat-header">
+            <lucide-icon name="activity" [size]="20"></lucide-icon>
+            <span class="text-label-large">{{ 'DASHBOARD.SYS_STATUS' | translate }}</span>
+          </div>
+          <h2 class="text-title-large" [class.text-success]="!vm.error()">
             {{ vm.error() ? ('DASHBOARD.ERROR_CONN' | translate) : ('DASHBOARD.OPERATIONAL' | translate) }}
           </h2>
-          <div class="stat-glow success"></div>
         </div>
       </div>
 
       <!-- Totem Management -->
-      <div class="glass-card qr-section">
-        <div class="view-header">
-            <div>
-                <h3 class="view-title">{{ 'DASHBOARD.TOTEM_MGT' | translate }}</h3>
-                <p class="view-desc">{{ 'DASHBOARD.TOTEM_DESC' | translate }}</p>
+      <div class="md-card qr-section">
+        <div class="view-header-row">
+            <div class="header-text">
+                <h3 class="text-headline-small">{{ 'DASHBOARD.TOTEM_MGT' | translate }}</h3>
+                <p class="text-body-medium opacity-60">{{ 'DASHBOARD.TOTEM_DESC' | translate }}</p>
             </div>
             <div class="totem-add-controls">
-                <input type="text" #totemName [placeholder]="'DASHBOARD.TOTEM_NAME' | translate" class="glass-input">
+                <input type="text" #totemName [placeholder]="'DASHBOARD.TOTEM_NAME' | translate" class="md-input">
                 <button class="btn-primary" (click)="vm.addTotem(totemName.value); totemName.value=''">
-                    <lucide-icon name="plus" [size]="18" class="mr-2"></lucide-icon>
+                    <lucide-icon name="plus" [size]="18"></lucide-icon>
                     {{ 'DASHBOARD.ADD_TOTEM' | translate }}
                 </button>
             </div>
@@ -73,85 +76,95 @@ import { TranslateModule } from '@ngx-translate/core';
 
         <div class="totem-grid">
             @for (totem of vm.totems(); track totem.id) {
-                <div class="totem-card glass-card">
-                    <div class="totem-id">#{{ totem.id }}</div>
-                    <div class="totem-name">{{ totem.name }}</div>
+                <div class="totem-card md-card-elevated">
+                    <div class="totem-avatar">#{{ totem.id }}</div>
+                    <div class="totem-info">
+                        <span class="text-title-medium">{{ totem.name }}</span>
+                    </div>
                     
                     <div class="totem-actions">
-                        <button class="btn-qr-action" (click)="openQR(totem.id)" [title]="'DASHBOARD.VIEW_QR' | translate">
-                            <lucide-icon name="printer" [size]="14"></lucide-icon>
+                        <button class="icon-btn" (click)="openQR(totem.id)" [title]="'DASHBOARD.VIEW_QR' | translate">
+                            <lucide-icon name="printer" [size]="18"></lucide-icon>
                         </button>
-                        <button class="btn-qr-action" (click)="vm.editingTotem.set(totem)" [title]="'DASHBOARD.EDIT' | translate">
-                            <lucide-icon name="pen-line" [size]="14"></lucide-icon>
+                        <button class="icon-btn" (click)="vm.editingTotem.set(totem)" [title]="'DASHBOARD.EDIT' | translate">
+                            <lucide-icon name="pen" [size]="18"></lucide-icon>
                         </button>
-                        <button class="btn-qr-action btn-danger-icon" (click)="vm.deleteTotem(totem.id)" [title]="'DASHBOARD.DELETE' | translate">
-                            <lucide-icon name="trash-2" [size]="14"></lucide-icon>
+                        <button class="icon-btn error" (click)="vm.deleteTotem(totem.id)" [title]="'DASHBOARD.DELETE' | translate">
+                            <lucide-icon name="trash-2" [size]="18"></lucide-icon>
                         </button>
                     </div>
                 </div>
             } @empty {
-                <div class="empty-state">{{ 'DASHBOARD.NO_TOTEMS' | translate }}</div>
+                <div class="empty-state text-body-large">{{ 'DASHBOARD.NO_TOTEMS' | translate }}</div>
             }
         </div>
       </div>
 
-      <!-- Edit Totem Modal -->
+      <!-- Edit Totem Modal (Bottom Sheet-like for mobile, dialog for desktop) -->
       @if (vm.editingTotem(); as totem) {
         <div class="modal-overlay" (click)="vm.editingTotem.set(null)">
-          <div class="modal-content glass-card" (click)="$event.stopPropagation()">
-            <h2 class="card-title">{{ 'DASHBOARD.EDIT_TOTEM' | translate }} #{{ totem.id }}</h2>
+          <div class="modal-dialog md-card-elevated" (click)="$event.stopPropagation()">
+            <h2 class="text-headline-small">{{ 'DASHBOARD.EDIT_TOTEM' | translate }} #{{ totem.id }}</h2>
             
-            <div class="form-group">
-                <label>{{ 'DASHBOARD.TOTEM_NAME' | translate }}</label>
-                <input type="text" #editName [value]="totem.name" class="glass-input" (keyup.enter)="vm.updateTotem(totem.id, editName.value)">
+            <div class="form-field">
+                <label class="text-label-large">{{ 'DASHBOARD.TOTEM_NAME' | translate }}</label>
+                <input type="text" #editName [value]="totem.name" class="md-input" (keyup.enter)="vm.updateTotem(totem.id, editName.value)">
             </div>
 
-            <div class="modal-actions" style="margin-top: 24px;">
-              <button class="btn-secondary" style="padding: 10px 16px; border-radius: 8px;" (click)="vm.editingTotem.set(null)">{{ 'DASHBOARD.CANCEL' | translate }}</button>
+            <div class="modal-actions">
+              <button class="btn-outline" (click)="vm.editingTotem.set(null)">{{ 'DASHBOARD.CANCEL' | translate }}</button>
               <button class="btn-primary" (click)="vm.updateTotem(totem.id, editName.value)">{{ 'DASHBOARD.SAVE' | translate }}</button>
             </div>
           </div>
         </div>
       }
 
-      <!-- Main Content -->
-      <div class="dashboard-content">
-        <div class="glass-card orders-section">
-          <div class="view-header" style="margin-bottom: 24px;">
-            <h3 class="view-title">{{ 'DASHBOARD.REALTIME' | translate }}</h3>
-            <span class="live-indicator">{{ 'DASHBOARD.LIVE' | translate }}</span>
+      <!-- Main Content Grid -->
+      <div class="dashboard-main-grid">
+        <div class="md-card orders-section">
+          <div class="section-header">
+            <h3 class="text-title-large">{{ 'DASHBOARD.REALTIME' | translate }}</h3>
+            <span class="status-chip active-pulse">{{ 'DASHBOARD.LIVE' | translate }}</span>
           </div>
 
           @if (vm.loading()) {
             <div class="loader-container">
                 <div class="loader-ripple"><div></div><div></div></div>
-                <p>{{ 'DASHBOARD.SYNCING' | translate }}</p>
+                <p class="text-body-medium">{{ 'DASHBOARD.SYNCING' | translate }}</p>
             </div>
           } @else {
-            <div class="orders-list">
+            <div class="orders-column">
               @for (order of vm.orders(); track order._id) {
-                <div class="order-item glass-card" [class.active-border]="order.status === 'active'">
-                  <div class="order-info">
-                    <span class="table-tag">{{ 'DASHBOARD.TOTEM' | translate }} #{{ order.totemId }}</span>
-                    <span class="order-time">
-                        <lucide-icon name="clock" [size]="12" class="inline-icon"></lucide-icon>
+                <div class="md-card order-item-md3" [class.active]="order.status === 'active'">
+                  <div class="order-header-md3">
+                    <div class="table-info">
+                        <span class="text-label-large opacity-60">{{ 'DASHBOARD.TOTEM' | translate }}</span>
+                        <span class="text-title-large">#{{ order.totemId }}</span>
+                    </div>
+                    <div class="time-info text-body-medium opacity-60">
+                        <lucide-icon name="clock" [size]="14"></lucide-icon>
                         {{ order.createdAt | date:'HH:mm' }}
-                    </span>
+                    </div>
                   </div>
                   
-                  <div class="order-items">
+                  <div class="order-items-list">
                     @for (item of order.items; track $index) {
-                      <div class="item-row">
-                        <span>{{ item.quantity }}x {{ item.name }}</span>
-                        <span class="item-status" [class]="item.status">{{ item.status }}</span>
+                      <div class="item-row-md3">
+                        <span class="qty text-label-large">{{ item.quantity }}x</span>
+                        <span class="name text-body-large">{{ item.name }}</span>
+                        <span class="status-tag" [class]="item.status">{{ item.status }}</span>
                       </div>
                     }
                   </div>
 
-                  <div class="order-footer">
-                    <span class="total">{{ order.totalAmount | currency:'EUR' }}</span>
+                  <div class="order-footer-md3">
+                    <div class="price-container">
+                        <span class="text-label-large opacity-60">{{ 'CUSTOMER.TOTAL' | translate }}</span>
+                        <span class="text-title-large">{{ order.totalAmount | currency:'EUR' }}</span>
+                    </div>
                     @if (order.status === 'active') {
                       <button class="btn-primary btn-sm" (click)="vm.completeOrder(order._id)">
+                        <lucide-icon name="check" [size]="16"></lucide-icon>
                         {{ 'DASHBOARD.COMPLETE' | translate }}
                       </button>
                     }
@@ -159,29 +172,32 @@ import { TranslateModule } from '@ngx-translate/core';
                 </div>
               } @empty {
                 <div class="empty-state">
-                  <lucide-icon name="utensils" [size]="48" class="mb-4 opacity-20"></lucide-icon>
-                  <p>{{ 'DASHBOARD.NO_ORDERS' | translate }}</p>
+                  <lucide-icon name="clipboard-list" [size]="48" class="opacity-20"></lucide-icon>
+                  <p class="text-body-large">{{ 'DASHBOARD.NO_ORDERS' | translate }}</p>
                 </div>
               }
             </div>
           }
         </div>
 
-        <div class="glass-card activity-section">
-          <div class="view-header" style="margin-bottom: 24px;">
-            <h3 class="view-title">{{ 'DASHBOARD.ACTIVITY_LOG' | translate }}</h3>
-            <lucide-icon name="bell" [size]="20" class="text-muted"></lucide-icon>
+        <div class="md-card activity-section">
+          <div class="section-header">
+            <h3 class="text-title-large">{{ 'DASHBOARD.ACTIVITY_LOG' | translate }}</h3>
+            <lucide-icon name="history" [size]="20" class="opacity-40"></lucide-icon>
           </div>
 
-          <div class="log-list">
+          <div class="log-entries-column">
             @for (log of vm.logs(); track log._id) {
-              <div class="log-entry">
-                <div class="log-meta">
-                  <span class="log-user">{{ log.username }} ({{ 'ROLES.' + log.role | translate }})</span>
-                  <span class="log-time">{{ log.timestamp | date:'HH:mm:ss' }}</span>
+              <div class="log-item-md3">
+                <div class="log-icon-wrapper">
+                    <lucide-icon [name]="log.action.includes('LOGIN') ? 'user-check' : 'edit-2'" [size]="14"></lucide-icon>
                 </div>
-                <div class="log-action">
-                  <span class="action-badge" [class]="log.action">{{ log.action }}</span>
+                <div class="log-content">
+                  <div class="log-top">
+                    <span class="text-label-large">{{ log.username }}</span>
+                    <span class="text-label-small opacity-40">{{ log.timestamp | date:'HH:mm:ss' }}</span>
+                  </div>
+                  <span class="action-chip" [class]="log.action">{{ log.action }}</span>
                 </div>
               </div>
             } @empty {
@@ -197,362 +213,204 @@ import { TranslateModule } from '@ngx-translate/core';
       display: flex;
       flex-direction: column;
       gap: 32px;
-      animation: fadeIn 0.5s ease-out;
-    }
-
-    .mr-2 { margin-right: 8px; }
-    .mb-4 { margin-bottom: 16px; }
-    .inline-icon { display: inline-block; vertical-align: middle; margin-right: 4px; }
-
-    .totem-add-controls { display: flex; gap: 12px; }
-
-    .totem-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-        gap: 16px;
-        margin-top: 24px;
-    }
-
-    .totem-card {
-        padding: 20px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        text-align: center;
-        position: relative;
-    }
-
-    .totem-id {
-        font-size: 1.5rem;
-        font-weight: 900;
-        color: var(--accent-primary);
-        margin-bottom: 4px;
-    }
-
-    .totem-name {
-        font-size: 0.9rem;
-        color: var(--text-muted);
-        margin-bottom: 16px;
-    }
-
-    .totem-actions {
-        display: flex;
-        gap: 8px;
-        width: 100%;
-        margin-top: 12px;
-        justify-content: center;
-        align-items: stretch;
-    }
-
-    .btn-qr-action {
-        flex: 1;
-        background: rgba(255,255,255,0.05);
-        border: 1px solid var(--glass-border);
-        color: white;
-        padding: 8px;
-        border-radius: 8px;
-        cursor: pointer;
-        transition: all 0.3s;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        min-width: 0;
-    }
-
-    .btn-qr-action:hover {
-        background: var(--accent-primary);
-        color: var(--bg-dark);
-    }
-
-    .btn-qr-action.btn-danger-icon:hover {
-        background: var(--danger);
-        color: white;
-    }
-
-
-    .modal-overlay {
-      position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-      background: rgba(0, 0, 0, 0.8); 
-      display: flex; 
-      align-items: flex-end;
-      justify-content: center;
-      z-index: 1000; backdrop-filter: blur(8px);
-    }
-    .modal-content {
-      width: 100%;
-      max-width: 500px;
-      padding: 32px; 
-      display: flex; 
-      flex-direction: column; 
-      gap: 20px;
-      border-radius: 24px 24px 0 0;
-      animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-
-    @media (min-width: 768px) {
-      .modal-overlay { align-items: center; }
-      .modal-content { border-radius: 24px; margin: 20px; }
-    }
-
-    .modal-actions { 
-        display: flex; 
-        flex-direction: column;
-        gap: 12px; 
-    }
-
-    @media (min-width: 480px) {
-        .modal-actions {
-            flex-direction: row;
-            justify-content: flex-end;
-        }
-    }
-
-    .modal-actions button { width: 100%; }
-    @media (min-width: 480px) {
-        .modal-actions button { width: auto; }
-    }
-
-    @keyframes slideUp {
-      from { transform: translateY(100%); opacity: 0; }
-      to { transform: translateY(0); opacity: 1; }
     }
 
     .error-banner {
       display: flex;
       align-items: center;
       gap: 20px;
-      padding: 20px;
-      border: 1px solid rgba(239, 68, 68, 0.3);
-      background: rgba(239, 68, 68, 0.05);
-    }
-
-    .error-content h4 { color: #ef4444; margin: 0 0 4px 0; }
-    .error-content p { font-size: 0.9rem; opacity: 0.8; margin: 0; }
-    .btn-retry {
-      margin-left: auto;
-      background: rgba(239, 68, 68, 0.2);
-      color: #ef4444;
-      border: 1px solid #ef4444;
-      padding: 8px 16px;
-      border-radius: 8px;
-      font-weight: bold;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
+      background: var(--md-sys-color-error-container);
+      color: var(--md-sys-color-on-error-container);
+      padding: 16px 24px;
     }
 
     .stats-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
       gap: 24px;
     }
 
     .stat-card {
-      position: relative;
       padding: 24px;
-      overflow: hidden;
       display: flex;
       flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      text-align: center;
+      gap: 12px;
     }
 
-    .stat-icon {
-        width: 24px;
-        height: 24px;
-        margin-bottom: 12px;
-        opacity: 0.8;
+    .stat-header { display: flex; align-items: center; gap: 12px; opacity: 0.8; }
+    
+    .primary-tonal { 
+        background: var(--md-sys-color-primary-container); 
+        color: var(--md-sys-color-on-primary-container); 
     }
-    .stat-icon.primary { color: var(--accent-primary); }
-    .stat-icon.secondary { color: var(--accent-secondary); }
-    .stat-icon.success { color: var(--highlight); }
-
-    .stat-label {
-      font-size: 0.9rem;
-      color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: 1px;
+    .secondary-tonal { 
+        background: var(--md-sys-color-secondary-container); 
+        color: var(--md-sys-color-on-secondary-container); 
+    }
+    .surface-tonal { 
+        background: var(--md-sys-color-surface-2); 
     }
 
-    .stat-value {
-      font-size: 2.5rem;
-      margin: 8px 0 0 0;
+    .text-success { color: var(--highlight); }
+
+    .qr-section { padding: 32px; }
+    
+    .view-header-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 32px;
+        gap: 24px;
     }
 
-    .stat-glow {
-      position: absolute;
-      bottom: -20px;
-      width: 100px;
-      height: 40px;
-      filter: blur(30px);
-      opacity: 0.3;
+    .totem-add-controls { display: flex; gap: 12px; align-items: center; }
+    
+    .md-input {
+        background: var(--md-sys-color-surface-variant);
+        border: none;
+        border-radius: var(--radius-sm);
+        padding: 12px 16px;
+        color: var(--md-sys-color-on-surface);
+        font-family: inherit;
+        min-width: 200px;
     }
 
-    .stat-glow.primary { background: var(--accent-primary); }
-    .stat-glow.secondary { background: var(--accent-secondary); }
-    .stat-glow.success { background: var(--highlight); }
-
-    .text-online { color: var(--highlight); }
-
-    .live-indicator {
-      background: rgba(34, 197, 94, 0.1);
-      color: var(--highlight);
-      padding: 4px 12px;
-      border-radius: 20px;
-      font-size: 0.7rem;
-      font-weight: bold;
-      border: 1px solid var(--highlight);
-      animation: pulse 2s infinite;
+    .totem-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        gap: 20px;
     }
 
-    .dashboard-content {
-      display: grid;
-      grid-template-columns: 2fr 1fr;
-      gap: 24px;
+    .totem-card {
+        padding: 16px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        background: var(--md-sys-color-surface-1);
+    }
+
+    .totem-avatar {
+        width: 48px; height: 48px; 
+        background: var(--md-sys-color-secondary-container);
+        border-radius: 12px;
+        display: flex; align-items: center; justify-content: center;
+        font-weight: 700; color: var(--md-sys-color-on-secondary-container);
+    }
+
+    .totem-info { flex: 1; }
+    
+    .totem-actions { display: flex; gap: 4px; }
+    .icon-btn {
+        width: 36px; height: 36px; border-radius: 50%; border: none;
+        background: transparent; color: var(--md-sys-color-on-surface-variant);
+        cursor: pointer; display: flex; align-items: center; justify-content: center;
+        transition: background 0.2s;
+    }
+    .icon-btn:hover { background: var(--md-sys-color-surface-variant); }
+    .icon-btn.error:hover { color: var(--md-sys-color-error); }
+
+    .dashboard-main-grid {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 24px;
     }
 
     @media (max-width: 1024px) {
-      .dashboard-content { grid-template-columns: 1fr; }
-      .stats-grid { grid-template-columns: 1fr 1fr; }
+        .dashboard-main-grid { grid-template-columns: 1fr; }
+        .view-header-row { flex-direction: column; align-items: flex-start; }
+        .totem-add-controls { width: 100%; }
+        .totem-add-controls .md-input { flex: 1; }
     }
 
-    @media (max-width: 768px) {
-      .totem-add-controls {
-        flex-direction: column;
-        width: 100%;
-      }
-      .totem-add-controls .glass-input {
-        width: 100%;
-      }
-      .totem-add-controls .btn-primary {
-        width: 100%;
-        justify-content: center;
-      }
-      .stats-grid { grid-template-columns: 1fr; }
-      .stat-value { font-size: 1.8rem; }
-      .orders-section, .activity-section, .qr-section { padding: 16px; }
-      .view-title { font-size: 1.2rem; }
-      .error-banner { flex-direction: column; align-items: flex-start; gap: 12px; }
-      .btn-retry { margin-left: 0; width: 100%; }
-      .totem-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
+    .orders-section, .activity-section { padding: 24px; }
+    .section-header { 
+        display: flex; justify-content: space-between; align-items: center; 
+        margin-bottom: 24px; 
     }
 
-    @media (max-width: 480px) {
-      .totem-grid { grid-template-columns: repeat(2, 1fr); }
-      .stat-value { font-size: 1.5rem; }
+    .status-chip {
+        padding: 4px 12px; border-radius: var(--radius-full);
+        font-size: 0.75rem; font-weight: 600;
+        background: var(--md-sys-color-secondary-container);
     }
 
-    .orders-section { padding: 32px; }
+    .active-pulse {
+        background: color-mix(in srgb, var(--md-sys-color-primary) 15%, transparent);
+        color: var(--md-sys-color-primary);
+        position: relative;
+    }
 
-    .loader-container {
+    .orders-column { display: grid; gap: 16px; }
+    
+    .order-item-md3 {
+        padding: 20px;
+        background: var(--md-sys-color-surface-2);
         display: flex;
         flex-direction: column;
-        align-items: center;
         gap: 16px;
-        padding: 40px;
+    }
+    .order-item-md3.active {
+        border-right: 4px solid var(--md-sys-color-primary);
+    }
+
+    .order-header-md3 { display: flex; justify-content: space-between; align-items: flex-start; }
+    .table-info { display: flex; flex-direction: column; }
+    .time-info { display: flex; align-items: center; gap: 6px; }
+
+    .order-items-list { display: grid; gap: 8px; }
+    .item-row-md3 { 
+        display: flex; align-items: center; gap: 12px; 
+        background: var(--md-sys-color-surface-1);
+        padding: 8px 12px; border-radius: 12px;
+    }
+    .item-row-md3 .name { flex: 1; }
+    .status-tag { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.6; }
+
+    .order-footer-md3 {
+        display: flex; justify-content: space-between; align-items: center;
+        padding-top: 16px; border-top: 1px solid var(--md-sys-color-outline);
+        opacity: 0.8;
+    }
+    .price-container { display: flex; flex-direction: column; }
+
+    .log-entries-column { display: flex; flex-direction: column; gap: 12px; }
+    .log-item-md3 {
+        display: flex; gap: 16px; padding: 12px;
+        border-radius: 16px; background: var(--md-sys-color-surface-1);
+    }
+    .log-icon-wrapper {
+        width: 32px; height: 32px; border-radius: 10px;
+        background: var(--md-sys-color-surface-variant);
+        display: flex; align-items: center; justify-content: center;
         opacity: 0.6;
     }
-
-    .activity-section {
-      padding: 32px;
-      height: fit-content;
+    .log-content { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+    .log-top { display: flex; justify-content: space-between; }
+    .action-chip {
+        font-size: 0.65rem; padding: 2px 8px; border-radius: 4px;
+        background: var(--md-sys-color-primary-container);
+        color: var(--md-sys-color-on-primary-container);
+        width: fit-content;
+        text-transform: uppercase;
+        font-weight: 700;
     }
 
-    .log-list {
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-      margin-top: 16px;
+    .modal-overlay {
+        position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+        display: flex; align-items: center; justify-content: center; z-index: 1000;
     }
-
-    .log-entry {
-      padding-bottom: 12px;
-      border-bottom: 1px solid rgba(255,255,255,0.05);
+    .modal-dialog {
+        width: 100%; max-width: 400px; padding: 24px;
+        display: flex; flex-direction: column; gap: 24px;
     }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 12px; }
 
-    .log-meta {
-      display: flex;
-      justify-content: space-between;
-      font-size: 0.75rem;
-      margin-bottom: 4px;
-    }
-
-    .log-user { font-weight: bold; color: var(--accent-primary); }
-    .log-time { color: var(--text-muted); }
-
-    .log-action { display: flex; align-items: center; gap: 8px; }
-    .action-badge {
-      font-size: 0.65rem;
-      padding: 2px 6px;
-      border-radius: 4px;
-      background: rgba(255,255,255,0.1);
-      font-weight: bold;
-    }
-
-    .action-badge.LOGIN_SUCCESS { color: var(--highlight); border: 1px solid var(--highlight); }
-
-    .qr-section {
-      padding: 32px;
-      border-radius: var(--radius-lg);
-      background: linear-gradient(135deg, rgba(255,255,255,0.02) 0%, rgba(99, 102, 241, 0.05) 100%);
-    }
-
-    .orders-list {
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
-    }
-
-    .order-item {
-      padding: 20px;
-      background: rgba(255, 255, 255, 0.03);
-    }
-
-    .active-border { border-left: 4px solid var(--accent-primary); }
-
-    .order-info {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 16px;
-    }
-
-    .table-tag { font-weight: bold; color: var(--accent-primary); }
-    .order-time { opacity: 0.5; font-size: 0.8rem; display: flex; align-items: center; gap: 4px; }
-
-    .item-row {
-      display: flex;
-      justify-content: space-between;
-      font-size: 0.9rem;
-      margin-bottom: 8px;
-    }
-
-    .item-status {
-      font-size: 0.7rem;
-      padding: 2px 8px;
-      border-radius: 4px;
-      text-transform: uppercase;
-    }
-
-    .item-status.pending { background: rgba(255,255,255,0.1); }
-
-    .order-footer {
-      margin-top: 20px;
-      padding-top: 16px;
-      border-top: 1px solid rgba(255,255,255,0.05);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .total { font-weight: bold; font-size: 1.1rem; }
-
-    .empty-state {
-        text-align: center;
-        padding: 40px;
-        opacity: 0.5;
-    }
+    .opacity-60 { opacity: 0.6; }
+    .opacity-40 { opacity: 0.4; }
+    .opacity-20 { opacity: 0.2; }
+    .mt-16 { margin-top: 16px; }
   `]
+
 })
 export class DashboardComponent {
   public vm = inject(DashboardViewModel);

@@ -13,48 +13,64 @@ import { TranslateModule } from '@ngx-translate/core';
     <aside class="sidebar" [class.collapsed]="isCollapsed">
       <div class="sidebar-header">
         <div class="logo-container">
-          <div class="logo-box">D</div>
-          <span class="logo-text" *ngIf="!isCollapsed">Disher<span class="dot">.</span>io</span>
+          <div class="logo-box">
+            <lucide-icon name="chef-hat" [size]="20" color="white"></lucide-icon>
+          </div>
+          <span class="text-title-large" *ngIf="!isCollapsed">Disher<span class="dot">.</span>io</span>
         </div>
-        <button class="toggle-btn" (click)="toggleSidebar()">
-          <lucide-icon [name]="isCollapsed ? 'chevron-right' : 'chevron-left'" [size]="18"></lucide-icon>
+        <button class="md-icon-button" (click)="toggleSidebar()">
+          <lucide-icon [name]="isCollapsed ? 'chevrons-right' : 'chevrons-left'" [size]="20"></lucide-icon>
         </button>
       </div>
 
       <nav class="sidebar-nav">
         <div class="nav-group">
-          <label *ngIf="!isCollapsed">{{ 'SIDEBAR.MAIN' | translate }}</label>
+          <label class="text-label-medium" *ngIf="!isCollapsed">{{ 'SIDEBAR.MAIN' | translate }}</label>
+          
           <a *ngIf="auth.hasRole('admin')" routerLink="/admin/dashboard" routerLinkActive="active" class="nav-item">
+            <div class="active-indicator"></div>
             <lucide-icon name="layout-dashboard" class="icon"></lucide-icon>
-            <span class="label" *ngIf="!isCollapsed">{{ 'NAV.DASHBOARD' | translate }}</span>
+            <span class="label text-body-medium" *ngIf="!isCollapsed">{{ 'NAV.DASHBOARD' | translate }}</span>
           </a>
+
           <a *ngIf="auth.hasRole('admin')" routerLink="/admin/menu" routerLinkActive="active" class="nav-item">
-            <lucide-icon name="utensils" class="icon"></lucide-icon>
-            <span class="label" *ngIf="!isCollapsed">{{ 'NAV.MENU' | translate }}</span>
+            <div class="active-indicator"></div>
+            <lucide-icon name="book-open" class="icon"></lucide-icon>
+            <span class="label text-body-medium" *ngIf="!isCollapsed">{{ 'NAV.MENU' | translate }}</span>
           </a>
+
           <a *ngIf="auth.hasRole('admin')" routerLink="/admin/users" routerLinkActive="active" class="nav-item">
+            <div class="active-indicator"></div>
             <lucide-icon name="users" class="icon"></lucide-icon>
-            <span class="label" *ngIf="!isCollapsed">{{ 'NAV.USERS' | translate }}</span>
+            <span class="label text-body-medium" *ngIf="!isCollapsed">{{ 'NAV.USERS' | translate }}</span>
           </a>
+
           <a *ngIf="auth.hasRole('admin')" routerLink="/admin/config" routerLinkActive="active" class="nav-item">
+            <div class="active-indicator"></div>
             <lucide-icon name="settings" class="icon"></lucide-icon>
-            <span class="label" *ngIf="!isCollapsed">{{ 'NAV.SETTINGS' | translate }}</span>
+            <span class="label text-body-medium" *ngIf="!isCollapsed">{{ 'NAV.SETTINGS' | translate }}</span>
           </a>
         </div>
 
         <div class="nav-group">
-          <label *ngIf="!isCollapsed">{{ 'SIDEBAR.OPERATIONS' | translate }}</label>
+          <label class="text-label-medium" *ngIf="!isCollapsed">{{ 'SIDEBAR.OPERATIONS' | translate }}</label>
+          
           <a *ngIf="auth.hasRole('kitchen')" routerLink="/admin/kds" routerLinkActive="active" class="nav-item">
-            <lucide-icon name="chef-hat" class="icon"></lucide-icon>
-            <span class="label" *ngIf="!isCollapsed">{{ 'NAV.KDS' | translate }}</span>
+            <div class="active-indicator"></div>
+            <lucide-icon name="flame" class="icon"></lucide-icon>
+            <span class="label text-body-medium" *ngIf="!isCollapsed">{{ 'NAV.KDS' | translate }}</span>
           </a>
+
           <a *ngIf="auth.hasRole('pos')" routerLink="/admin/pos" routerLinkActive="active" class="nav-item">
+            <div class="active-indicator"></div>
             <lucide-icon name="wallet" class="icon"></lucide-icon>
-            <span class="label" *ngIf="!isCollapsed">{{ 'NAV.POS' | translate }}</span>
+            <span class="label text-body-medium" *ngIf="!isCollapsed">{{ 'NAV.POS' | translate }}</span>
           </a>
+
           <a *ngIf="auth.hasRole('waiter')" routerLink="/admin/waiter" routerLinkActive="active" class="nav-item">
+            <div class="active-indicator"></div>
             <lucide-icon name="hand-platter" class="icon"></lucide-icon>
-            <span class="label" *ngIf="!isCollapsed">{{ 'SIDEBAR.WAITER' | translate }}</span>
+            <span class="label text-body-medium" *ngIf="!isCollapsed">{{ 'SIDEBAR.WAITER' | translate }}</span>
           </a>
         </div>
       </nav>
@@ -62,7 +78,7 @@ import { TranslateModule } from '@ngx-translate/core';
       <div class="sidebar-footer">
         <button class="logout-btn" (click)="auth.logout()">
           <lucide-icon name="log-out" class="icon"></lucide-icon>
-          <span class="label" *ngIf="!isCollapsed">{{ 'NAV.LOGOUT' | translate }}</span>
+          <span class="label text-label-large" *ngIf="!isCollapsed">{{ 'NAV.LOGOUT' | translate }}</span>
         </button>
       </div>
     </aside>
@@ -71,12 +87,11 @@ import { TranslateModule } from '@ngx-translate/core';
     .sidebar {
       width: var(--sidebar-width);
       height: 100vh;
-      background: var(--glass-bg);
-      backdrop-filter: var(--glass-blur);
-      border-right: 1px solid var(--glass-border);
+      background: var(--md-sys-color-surface-2);
+      border-right: 1px solid var(--md-sys-color-outline-variant);
       display: flex;
       flex-direction: column;
-      transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      transition: all 0.3s cubic-bezier(0.2, 0, 0, 1);
       position: sticky;
       top: 0;
       z-index: 100;
@@ -87,114 +102,132 @@ import { TranslateModule } from '@ngx-translate/core';
     }
 
     .sidebar-header {
-      padding: 32px 24px;
+      padding: 24px 16px;
       display: flex;
       align-items: center;
       justify-content: space-between;
+      min-height: 80px;
     }
 
     .logo-container {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 16px;
       overflow: hidden;
     }
 
     .logo-box {
-      width: 32px;
-      height: 32px;
-      background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
-      border-radius: 8px;
+      width: 40px;
+      height: 40px;
+      background: var(--md-sys-color-primary);
+      border-radius: 12px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-weight: 800;
-      color: white; /* Keep logo letter white regardless of theme */
       flex-shrink: 0;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     }
 
     .logo-text {
-      font-family: 'Space Grotesk', sans-serif;
-      font-size: 1.25rem;
-      font-weight: 700;
       white-space: nowrap;
-      color: var(--text-base);
+      font-weight: 700;
+      letter-spacing: -0.5px;
     }
 
-    .logo-text .dot { color: var(--accent-primary); }
+    .logo-text .dot { color: var(--md-sys-color-primary); }
 
-    .toggle-btn {
+    .md-icon-button {
       background: transparent;
-      border: 1px solid var(--glass-border);
-      color: var(--text-base);
-      width: 28px;
-      height: 28px;
-      border-radius: 6px;
+      border: none;
+      color: var(--md-sys-color-on-surface-variant);
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
-      transition: all 0.3s;
+      transition: background 0.2s;
     }
 
-    .toggle-btn:hover { background: var(--glass-border); }
+    .md-icon-button:hover { background: var(--md-sys-color-surface-variant); }
 
     .sidebar-nav {
       flex: 1;
-      padding: 0 16px;
+      padding: 8px 12px;
       display: flex;
       flex-direction: column;
-      gap: 32px;
+      gap: 24px;
     }
 
     .nav-group {
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 4px;
     }
 
     .nav-group label {
-      font-size: 0.7rem;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: var(--text-muted);
-      padding-left: 12px;
+      padding: 0 16px;
       margin-bottom: 8px;
+      opacity: 0.6;
+      color: var(--md-sys-color-on-surface);
     }
 
     .nav-item {
+      position: relative;
       display: flex;
       align-items: center;
       gap: 12px;
-      padding: 12px;
-      border-radius: 12px;
-      color: var(--text-muted);
+      padding: 0 16px;
+      height: 56px;
+      border-radius: 28px;
+      color: var(--md-sys-color-on-surface-variant);
       text-decoration: none;
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      white-space: nowrap;
+      transition: all 0.2s ease-in-out;
+      overflow: hidden;
     }
 
-    .nav-item:hover {
-      background: var(--glass-border);
-      color: var(--text-base);
+    .active-indicator {
+      position: absolute;
+      left: 12px;
+      right: 12px;
+      height: 32px;
+      background: var(--md-sys-color-secondary-container);
+      border-radius: 16px;
+      transform: scaleX(0);
+      transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1);
+      z-index: 0;
+    }
+
+    .nav-item.active .active-indicator {
+      transform: scaleX(1);
     }
 
     .nav-item.active {
-      background: rgba(56, 189, 248, 0.08); /* fallback */
-      background: color-mix(in srgb, var(--accent-primary) 10%, transparent);
-      color: var(--accent-primary);
-      box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-primary) 20%, transparent);
+      color: var(--md-sys-color-on-secondary-container);
+      font-weight: 600;
     }
 
     .icon {
-      width: 20px;
-      height: 20px;
-      opacity: 0.8;
+      width: 24px;
+      height: 24px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .label {
+      position: relative;
+      z-index: 1;
+      white-space: nowrap;
+    }
+
+    .nav-item:hover:not(.active) {
+      background: rgba(0,0,0,0.04);
     }
 
     .sidebar-footer {
-      padding: 24px 16px;
-      border-top: 1px solid var(--glass-border);
+      padding: 16px 12px;
+      border-top: 1px solid var(--md-sys-color-outline-variant);
     }
 
     .logout-btn {
@@ -202,41 +235,33 @@ import { TranslateModule } from '@ngx-translate/core';
       display: flex;
       align-items: center;
       gap: 12px;
-      padding: 12px;
-      border-radius: 12px;
+      padding: 16px;
+      border-radius: 28px;
       background: transparent;
       border: none;
-      color: var(--danger);
+      color: var(--md-sys-color-error);
       cursor: pointer;
-      transition: all 0.3s;
-      font-family: inherit;
-      font-size: 0.9rem;
+      transition: background 0.2s;
     }
 
     .logout-btn:hover {
-      background: color-mix(in srgb, var(--danger) 10%, transparent);
+      background: var(--md-sys-color-error-container);
+      color: var(--md-sys-color-on-error-container);
     }
 
     @media (max-width: 768px) {
         .sidebar {
             position: fixed;
-            left: -280px;
-            box-shadow: 20px 0 50px rgba(0,0,0,0.5);
+            left: -320px;
+            box-shadow: var(--shadow-3);
         }
         .sidebar.collapsed {
             left: 0;
             width: var(--sidebar-width) !important;
         }
-        .sidebar.collapsed .logo-text,
-        .sidebar.collapsed .label,
-        .sidebar.collapsed label {
-            display: block !important;
-        }
-        .toggle-btn {
-            display: none;
-        }
     }
   `]
+
 })
 export class SidebarComponent {
   @Input() isCollapsed = false;
