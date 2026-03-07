@@ -175,9 +175,9 @@ button,
 /* Small Buttons */
 .btn-sm,
 .btn-tonal-sm {
-    padding: 6px 16px;
-    font-size: 0.75rem;
-    height: 32px;
+    padding: 8px 24px;
+    font-size: 0.8rem;
+    height: 38px;
 }
 
 .btn-tonal-sm {
@@ -325,73 +325,69 @@ input:focus {
     font-weight: 500;
 }
 
-/* Layout Utilities */
-.app-container {
-    display: grid;
-    grid-template-columns: auto 1fr;
+/* Layout & Shell */
+.app-layout {
+    display: flex;
     min-height: 100vh;
-}
-
-.main-content {
     background: var(--md-sys-color-background);
-    padding: var(--space-lg);
+}
+
+.main-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+    position: relative;
+    padding-left: 0;
+}
+
+.content-wrapper {
+    flex: 1;
     overflow-y: auto;
+    padding: var(--space-lg);
+    position: relative;
 }
 
-/* Chips */
-.chip {
-    padding: 6px 16px;
-    border-radius: var(--radius-md);
-    background: transparent;
-    border: 1px solid var(--md-sys-color-outline);
-    font-size: 0.8125rem;
-    font-weight: 500;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    color: var(--md-sys-color-on-surface);
-}
-
-.chip.selected {
-    background: var(--md-sys-color-secondary-container);
-    border-color: transparent;
-    color: var(--md-sys-color-on-secondary-container);
-}
-
-/* Badges */
-.badge {
-    background: var(--md-sys-color-error);
-    color: var(--md-sys-color-on-error);
-    font-size: 0.625rem;
-    padding: 2px 6px;
-    border-radius: 10px;
-    font-weight: 700;
-}
-
-/* Mesh Background Replacement (Subtle MD3 Glow) */
-.mesh-background {
+/* Sidebar Overlay (Mobile Only) */
+.sidebar-overlay {
+    display: none;
     position: fixed;
     inset: 0;
-    z-index: -1;
-    background: radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--md-sys-color-primary) 10%, transparent), transparent 40%),
-        radial-gradient(circle at 100% 100%, color-mix(in srgb, var(--md-sys-color-tertiary) 8%, transparent), transparent 40%);
-    background-color: var(--md-sys-color-background);
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 99;
+    backdrop-filter: blur(2px);
+    transition: opacity 0.3s;
 }
 
-/* Animations */
-@keyframes md-ripple {
-    to {
-        transform: scale(4);
-        opacity: 0;
+@media (max-width: 768px) {
+    .sidebar-overlay {
+        display: block;
+    }
+
+    .main-container {
+        width: 100%;
     }
 }
 
-.ripple-effect {
-    position: relative;
-    overflow: hidden;
+/* Animations */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
-/* Typography styles */
+.animate-fade-in {
+    animation: fadeIn 0.4s cubic-bezier(0.2, 0, 0, 1) forwards;
+}
+
+/* Typography */
 .text-headline-large {
     font-size: 2rem;
     font-weight: 400;
@@ -404,6 +400,12 @@ input:focus {
     line-height: 2.25rem;
 }
 
+.text-headline-small {
+    font-size: 1.5rem;
+    font-weight: 400;
+    line-height: 2rem;
+}
+
 .text-title-large {
     font-size: 1.375rem;
     font-weight: 400;
@@ -411,10 +413,17 @@ input:focus {
 }
 
 .text-title-medium {
-    font-size: 1rem;
+    font-size: 1.15rem;
     font-weight: 500;
     line-height: 1.5rem;
     letter-spacing: 0.15px;
+}
+
+.text-title-small {
+    font-size: 0.9rem;
+    font-weight: 500;
+    line-height: 1.25rem;
+    letter-spacing: 0.1px;
 }
 
 .text-body-large {
@@ -438,9 +447,17 @@ input:focus {
     letter-spacing: 0.1px;
 }
 
-/* Custom Scrollbar MD3 */
+.text-label-medium {
+    font-size: 0.75rem;
+    font-weight: 500;
+    line-height: 1rem;
+    letter-spacing: 0.5px;
+}
+
+/* Scrollbar */
 ::-webkit-scrollbar {
     width: 8px;
+    height: 8px;
 }
 
 ::-webkit-scrollbar-track {
@@ -454,4 +471,58 @@ input:focus {
 
 ::-webkit-scrollbar-thumb:hover {
     background: var(--md-sys-color-outline);
+}
+
+/* Buttons & Utils */
+.icon-btn {
+    background: transparent;
+    border: none;
+    padding: 8px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: inherit;
+    transition: background 0.2s;
+}
+
+.icon-btn:hover {
+    background: rgba(0, 0, 0, 0.06);
+}
+
+.icon-btn.error {
+    color: var(--md-sys-color-error);
+}
+
+.full-width {
+    width: 100%;
+}
+
+.flex-1 {
+    flex: 1;
+}
+
+.flex-2 {
+    flex: 2;
+}
+
+.opacity-60 {
+    opacity: 0.6;
+}
+
+.opacity-40 {
+    opacity: 0.4;
+}
+
+.color-primary {
+    color: var(--md-sys-color-primary);
+}
+
+.color-secondary {
+    color: var(--md-sys-color-secondary);
+}
+
+.color-error {
+    color: var(--md-sys-color-error);
 }

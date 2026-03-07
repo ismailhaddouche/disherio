@@ -1,6 +1,7 @@
 import { Injectable, signal, inject } from '@angular/core';
 import { Router } from '@angular/router';
-
+import { HttpClient } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
 import { environment } from '../../environments/environment';
 
 export type UserRole = 'admin' | 'kitchen' | 'pos' | 'customer' | 'waiter';
@@ -23,42 +24,42 @@ export interface UserSession {
 })
 export class AuthService {
     private router = inject(Router);
+    private http = inject(HttpClient);
 
     public currentUser = signal<UserSession | null>(this.loadSession());
 
     private loadSession(): UserSession | null {
-        const saved = localStorage.getItem('disher_session');
-        return saved ? JSON.parse(saved) : null;
+        try {
+            const saved = localStorage.getItem('disher_session');
+            return saved ? JSON.parse(saved) : null;
+        } catch (e) {
+            return null;
+        }
     }
 
     public async login(username: string, password: string): Promise<boolean> {
         try {
-            const res = await fetch(`${environment.apiUrl}/api/auth/login`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include', // Send and receive httpOnly cookies
-                body: JSON.stringify({ username, password })
-            });
+            const session = await firstValueFrom(
+                this.http.post<UserSession>(`${environment.apiUrl}/api/auth/login`,
+                    { username, password },
+                    { withCredentials: true })
+            );
 
-            if (!res.ok) {
-                const err = await res.json();
-                throw new Error(err.error || 'Invalid credentials');
+            if (session) {
+                this.currentUser.set(session);
+                // Store only non-sensitive session info (username + role) — token is in httpOnly cookie
+                localStorage.setItem('disher_session', JSON.stringify(session));
+                this.logActivity('LOGIN_SUCCESS', { username });
+
+                const redirect = session.role === 'admin' ? '/admin/dashboard' :
+                    session.role === 'kitchen' ? '/admin/kds' :
+                        session.role === 'pos' ? '/admin/pos' :
+                            session.role === 'waiter' ? '/admin/waiter' : '/';
+
+                this.router.navigate([redirect]);
+                return true;
             }
-
-            const session: UserSession = await res.json();
-
-            this.currentUser.set(session);
-            // Store only non-sensitive session info (username + role) — token is in httpOnly cookie
-            localStorage.setItem('disher_session', JSON.stringify(session));
-            this.logActivity('LOGIN_SUCCESS', { username });
-
-            const redirect = session.role === 'admin' ? '/admin/dashboard' :
-                session.role === 'kitchen' ? '/admin/kds' :
-                    session.role === 'pos' ? '/admin/pos' :
-                        session.role === 'waiter' ? '/admin/waiter' : '/';
-
-            this.router.navigate([redirect]);
-            return true;
+            return false;
         } catch (error: any) {
             console.error('Login error', error);
             return false;
@@ -67,10 +68,9 @@ export class AuthService {
 
     public async logout() {
         try {
-            await fetch(`${environment.apiUrl}/api/auth/logout`, {
-                method: 'POST',
-                credentials: 'include' // Clears the httpOnly cookie on the server
-            });
+            await firstValueFrom(
+                this.http.post(`${environment.apiUrl}/api/auth/logout`, {}, { withCredentials: true })
+            );
         } catch (e) {
             console.warn('Logout request failed', e);
         }
@@ -92,19 +92,18 @@ export class AuthService {
         };
 
         try {
-            await fetch(`${environment.apiUrl}/api/logs`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify(logData)
-            });
+            await firstValueFrom(
+                this.http.post(`${environment.apiUrl}/api/logs`, logData, { withCredentials: true })
+            );
         } catch (e) {
-            console.warn('Logging failed', e);
+            // Silently fail logging if backend is unreachable
         }
     }
 
     public hasRole(role: UserRole): boolean {
-        return this.currentUser()?.role === role || this.currentUser()?.role === 'admin';
+        const user = this.currentUser();
+        if (!user) return false;
+        return user.role === role || user.role === 'admin';
     }
 
     public isAuthenticated(): boolean {

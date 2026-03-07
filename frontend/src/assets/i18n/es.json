@@ -234,6 +234,7 @@
     },
     "STORE_CONFIG": {
         "TITLE": "Configuración de Tienda",
+        "SUBTITLE": "Gestiona la identidad visual y parámetros operativos de tu local.",
         "SAVING": "Guardando...",
         "SAVE": "GUARDAR CAMBIOS",
         "LOADING": "Cargando configuración...",

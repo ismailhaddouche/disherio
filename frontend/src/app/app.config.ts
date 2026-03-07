@@ -5,7 +5,7 @@ import { provideAnimations } from '@angular/platform-browser/animations';
 import { TranslateModule } from '@ngx-translate/core';
 import { provideTranslateHttpLoader } from '@ngx-translate/http-loader';
 import { authInterceptor } from './services/auth.interceptor';
-import { LucideAngularModule, LayoutDashboard, Utensils, Users, ChefHat, Wallet, Settings, LogOut, ChevronLeft, ChevronRight, Bell, Clock, RefreshCw, Plus, Camera, Facebook, Globe, CreditCard, Printer, User, Lock, PenLine, Package, CheckCircle2, Trash2, AlertTriangle, BookOpen, GlassWater, Circle, HandPlatter, Flame } from 'lucide-angular';
+import { LucideAngularModule, LayoutDashboard, Utensils, Users, ChefHat, Wallet, Settings, LogOut, ChevronLeft, ChevronRight, Bell, Clock, RefreshCw, Plus, Camera, Facebook, Globe, CreditCard, Printer, User, Lock, PenLine, Package, CheckCircle2, Trash2, AlertTriangle, BookOpen, GlassWater, Circle, HandPlatter, Flame, QrCode, ClipboardList, Armchair, LayoutGrid, Loader2, CheckCircle, CheckCheck, BellRing, MessageSquare, AlertCircle, Monitor } from 'lucide-angular';
 
 import { routes } from './app.routes';
 
@@ -22,7 +22,8 @@ export const appConfig: ApplicationConfig = {
     provideTranslateHttpLoader({ prefix: './assets/i18n/', suffix: '.json' }),
     importProvidersFrom(LucideAngularModule.pick({
       LayoutDashboard, Utensils, Users, ChefHat, Wallet, Settings, LogOut,
-      ChevronLeft, ChevronRight, Bell, Clock, RefreshCw, Plus, Camera, Facebook, Globe, CreditCard, Printer, User, Lock, PenLine, Package, CheckCircle2, Trash2, AlertTriangle, BookOpen, GlassWater, Circle, HandPlatter, Flame
+      ChevronLeft, ChevronRight, Bell, Clock, RefreshCw, Plus, Camera, Facebook, Globe, CreditCard, Printer, User, Lock, PenLine, Package, CheckCircle2, Trash2, AlertTriangle, BookOpen, GlassWater, Circle, HandPlatter, Flame,
+      QrCode, ClipboardList, Armchair, LayoutGrid, Loader2, CheckCircle, CheckCheck, BellRing, MessageSquare, AlertCircle, Monitor
     }))
   ]
 };

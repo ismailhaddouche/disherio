@@ -65,7 +65,7 @@ interface TotemWithStatus {
               <div class="item-header-row">
                 <div class="status-indicators">
                   @if (totem.isVirtual) {
-                    <span class="chip chip-outline primary">VIRTUAL</span>
+                    <span class="chip chip-outline primary">{{ 'WAITER.VIRTUAL_TAG' | translate }}</span>
                   }
                   <span class="chip-active" [class.free]="!totem.order">
                     {{ totem.order ? 'ACTIVA' : 'LIBRE' }}
@@ -316,6 +316,7 @@ interface TotemWithStatus {
 })
 export class WaiterViewComponent implements OnInit, OnDestroy {
   private router = inject(Router);
+  private auth = inject(AuthService);
   private comms = inject(CommunicationService);
   private http = inject(HttpClient);
 
@@ -330,12 +331,25 @@ export class WaiterViewComponent implements OnInit, OnDestroy {
   // Combine totems + live orders into enriched table data
   public enrichedTotems = computed<TotemWithStatus[]>(() => {
     const activeOrders = this.orders().filter(o => o.status === 'active');
-    return this.totems().map(t => ({
-      ...t,
-      order: activeOrders.find(o =>
-        o.totemId === t.id || String(o.tableNumber) === String(t.id)
-      ) || null
-    }));
+    const user = this.auth.currentUser();
+    const currentUsername = user?.username;
+    const isAdmin = user?.role === 'admin';
+
+    return this.totems()
+      .filter(t => {
+        // Physical tables are shown to everyone
+        if (!t.isVirtual) return true;
+        // Admins see all virtual tables
+        if (isAdmin) return true;
+        // Waiters only see virtual tables they created
+        return t.createdBy === currentUsername;
+      })
+      .map(t => ({
+        ...t,
+        order: activeOrders.find(o =>
+          o.totemId === t.id || String(o.tableNumber) === String(t.id)
+        ) || null
+      }));
   });
 
   public occupiedCount = computed(() =>

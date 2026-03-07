@@ -234,6 +234,7 @@
     },
     "STORE_CONFIG": {
         "TITLE": "Store Configuration",
+        "SUBTITLE": "Manage the visual identity and operational parameters of your establishment.",
         "SAVING": "Saving...",
         "SAVE": "SAVE CHANGES",
         "LOADING": "Loading configuration...",

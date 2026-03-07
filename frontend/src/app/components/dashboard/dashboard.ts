@@ -80,6 +80,9 @@ import { TranslateModule } from '@ngx-translate/core';
                     <div class="totem-avatar">#{{ totem.id }}</div>
                     <div class="totem-info">
                         <span class="text-title-medium">{{ totem.name }}</span>
+                        @if (totem.isVirtual) {
+                            <span class="text-label-small color-primary"> ({{ 'WAITER.VIRTUAL_TAG' | translate }})</span>
+                        }
                     </div>
                     
                     <div class="totem-actions">

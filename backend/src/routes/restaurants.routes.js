@@ -260,7 +260,8 @@ router.post('/totems',
                 id: restaurant.nextTotemId,
                 name: name,
                 active: true,
-                isVirtual: isVirtual === true
+                isVirtual: isVirtual === true,
+                createdBy: req.user.username
             };
 
             restaurant.totems.push(newTotem);

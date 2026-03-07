@@ -6,6 +6,7 @@ const TotemSchema = new mongoose.Schema({
     qrUrl: String,
     active: { type: Boolean, default: true },
     isVirtual: { type: Boolean, default: false },
+    createdBy: String, // Username of the creator (for waiter filtering)
     currentSessionId: String
 });
 

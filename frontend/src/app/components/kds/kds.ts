@@ -460,6 +460,12 @@ import { TranslateModule } from '@ngx-translate/core';
 
     .color-primary { color: var(--md-sys-color-primary); }
     .opacity-60 { opacity: 0.6; }
+
+    .header-actions {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+    }
   `]
 })
 export class KDSComponent {

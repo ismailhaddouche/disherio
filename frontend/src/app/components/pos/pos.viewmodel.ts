@@ -1,4 +1,6 @@
 import { Injectable, signal, computed, inject } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
 import { CommunicationService } from '../../services/communication.service';
 import { AuthService } from '../../services/auth.service';
 import { environment } from '../../../environments/environment';
@@ -15,6 +17,7 @@ export interface POSTable {
 
 @Injectable()
 export class POSViewModel {
+    private http = inject(HttpClient);
     private comms = inject(CommunicationService);
     private auth = inject(AuthService);
     private translate = inject(TranslateService);
@@ -32,7 +35,7 @@ export class POSViewModel {
     public showAddItemModal = signal<boolean>(false);
     public showCustomLineModal = signal<boolean>(false);
     public showSplitDetailedModal = signal<boolean>(false);
-    public localConfig = signal<any>(null);
+    public localPrinterId = signal<string | null>(localStorage.getItem('disher_local_printer'));
     public globalPrinters = signal<any[]>([]);
     public activeTipPercentage = signal<number>(0);
 
@@ -60,16 +63,6 @@ export class POSViewModel {
     constructor() {
         this.initPOS();
         this.setupRealTime();
-        this.loadLocalConfig();
-    }
-
-    private loadLocalConfig() {
-        const saved = localStorage.getItem('disher_local_config');
-        if (saved) {
-            try {
-                this.localConfig.set(JSON.parse(saved));
-            } catch (e) { console.error('Error loading local config', e); }
-        }
     }
 
     private async initPOS() {
@@ -77,13 +70,13 @@ export class POSViewModel {
         try {
             const [orders, totems, tickets, restaurant, menu] = await Promise.all([
                 this.comms.syncOrders(),
-                fetch(`${environment.apiUrl}/api/totems`).then(res => res.json()),
-                fetch(`${environment.apiUrl}/api/history`).then(res => res.json()),
-                fetch(`${environment.apiUrl}/api/restaurant`).then(res => res.json()),
-                fetch(`${environment.apiUrl}/api/menu`).then(res => res.json())
-            ]) as [any[], any[], any[], any, any[]];
+                firstValueFrom(this.http.get<any[]>(`${environment.apiUrl}/api/totems`)),
+                firstValueFrom(this.http.get<any[]>(`${environment.apiUrl}/api/history`)),
+                firstValueFrom(this.http.get<any>(`${environment.apiUrl}/api/restaurant`)),
+                firstValueFrom(this.http.get<any[]>(`${environment.apiUrl}/api/menu`))
+            ]);
 
-            if (orders) this.orders.set(orders);
+            if (orders) this.orders.set(orders as any[]);
             if (totems) this.tables.set(totems);
             if (tickets) this.tickets.set(tickets);
             if (restaurant?.billing) this.billingConfig.set(restaurant.billing);
@@ -122,7 +115,7 @@ export class POSViewModel {
 
     public async loadHistory() {
         try {
-            const tickets = await fetch(`${environment.apiUrl}/api/history`).then(res => res.json()) as any[];
+            const tickets = await firstValueFrom(this.http.get<any[]>(`${environment.apiUrl}/api/history`));
             this.tickets.set(tickets);
         } catch (e) { console.error('Error loading history', e); }
     }
@@ -211,32 +204,17 @@ export class POSViewModel {
         if (!confirm(confirmMsg)) return;
 
         try {
-            const res = await fetch(`${environment.apiUrl}/api/orders/${targetOrderId}/checkout`, {
-                method: 'POST',
-                headers: this.auth.getHeaders(),
-                body: JSON.stringify({
-                    splitType,
-                    parts,
-                    userId,
-                    method: 'cash',
-                    billingConfig: config
-                })
-            });
+            const resData: any = await firstValueFrom(this.http.post(`${environment.apiUrl}/api/orders/${targetOrderId}/checkout`, {
+                splitType,
+                parts,
+                userId,
+                method: 'cash',
+                billingConfig: config
+            }, { withCredentials: true }));
 
-            if (!res.ok) {
-                const err = await res.json();
-                if (err.code === 'ORPHANS_EXIST') {
-                    alert(this.translate.instant('POS.ORPHANS_WARNING'));
-                } else {
-                    alert(this.translate.instant('POS.PAY_ERROR') + ': ' + (err.error || ''));
-                }
-                return;
-            }
-
-            const result = await res.json();
             this.auth.logActivity('ORDER_PAID', { orderId: targetOrderId, type: splitType, userId });
 
-            if (result.orderStatus === 'completed' || splitType === 'single') {
+            if (resData.orderStatus === 'completed' || splitType === 'single') {
                 this.selectedTable.set(null);
                 this.viewMode.set('history');
             }
@@ -245,12 +223,18 @@ export class POSViewModel {
             const updatedOrders = await this.comms.syncOrders();
             if (updatedOrders) this.orders.set(updatedOrders as any[]);
 
-            if (this.localConfig()?.printer?.autoPrint && result.tickets?.[0]) {
-                result.tickets.forEach((t: any) => this.printTicket(t));
+            // Auto-print if enabled for this device
+            const autoPrint = localStorage.getItem('disher_local_autoprint') === 'true';
+            if (autoPrint && resData.tickets?.[0]) {
+                resData.tickets.forEach((t: any) => this.printTicket(t));
             }
 
-        } catch (e) {
-            alert(this.translate.instant('POS.PAY_ERROR'));
+        } catch (e: any) {
+            if (e.error?.code === 'ORPHANS_EXIST') {
+                alert(this.translate.instant('POS.ORPHANS_WARNING'));
+            } else {
+                alert(this.translate.instant('POS.PAY_ERROR') + ': ' + (e.error?.error || e.message || ''));
+            }
         }
     }
 
@@ -266,12 +250,7 @@ export class POSViewModel {
         if (!confirm(this.translate.instant('POS.DELETE_TICKET_CONFIRM'))) return;
 
         try {
-            const res = await fetch(`${environment.apiUrl}/api/tickets/${ticketId}`, {
-                method: 'DELETE',
-                headers: this.auth.getHeaders()
-            });
-
-            if (!res.ok) throw new Error('Error deleting ticket');
+            await firstValueFrom(this.http.delete(`${environment.apiUrl}/api/tickets/${ticketId}`, { withCredentials: true }));
 
             this.auth.logActivity('TICKET_DELETED', { ticketId });
             this.loadHistory();
@@ -293,20 +272,22 @@ export class POSViewModel {
 
         // 2. Fallback to local device config
         if (!p) {
-            p = this.localConfig()?.printer;
+            const localId = localStorage.getItem('disher_local_printer');
+            if (localId) p = this.globalPrinters().find(pr => pr.id === localId);
         }
 
         if (!p) {
             alert(this.translate.instant('POS.NO_PRINTER_CONFIGURED'));
+            return;
         }
 
-        if (p?.type === 'thermal' || p?.type === 'network') {
+        if (p.type === 'thermal' || p.type === 'network') {
             const ip = p.address || p.ip;
             console.log(`Printing to thermal/network ${ip}:${p.port || p.connection}...`);
-            alert(`🖨️ (${this.translate.instant('POS.PRINT_THERMAL')} ${ip}) ${this.translate.instant('POS.PRINT_MSG')} ${ticket.customId}\\nTotal: ${ticket.amount}€\\n\\n${currentUser?.printTemplate?.header || ''}`);
+            alert(`🖨️ (${this.translate.instant('POS.PRINT_THERMAL')} ${ip}) ${this.translate.instant('POS.PRINT_MSG')} ${ticket.customId}\nTotal: ${ticket.amount}€\n\n${currentUser?.printTemplate?.header || ''}`);
         } else {
             console.log('Printing to system printer...');
-            alert(`🖨️ (${this.translate.instant('POS.PRINT_SYSTEM')}) ${this.translate.instant('POS.PRINT_MSG')} ${ticket.customId}\\nTotal: ${ticket.amount}€`);
+            alert(`🖨️ (${this.translate.instant('POS.PRINT_SYSTEM')}) ${this.translate.instant('POS.PRINT_MSG')} ${ticket.customId}\nTotal: ${ticket.amount}€`);
             window.print();
         }
     }
@@ -325,11 +306,7 @@ export class POSViewModel {
 
             const newTotal = updatedItems.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0);
 
-            await fetch(`${environment.apiUrl}/api/orders/${orderId}`, {
-                method: 'PATCH',
-                headers: this.auth.getHeaders(),
-                body: JSON.stringify({ items: updatedItems, totalAmount: newTotal })
-            });
+            await firstValueFrom(this.http.patch(`${environment.apiUrl}/api/orders/${orderId}`, { items: updatedItems, totalAmount: newTotal }, { withCredentials: true }));
 
         } catch (e) { console.error('Error updating price', e); }
     }
@@ -342,11 +319,7 @@ export class POSViewModel {
             const updatedItems = [...order.items];
             updatedItems[itemIndex].name = newName;
 
-            await fetch(`${environment.apiUrl}/api/orders/${orderId}`, {
-                method: 'PATCH',
-                headers: this.auth.getHeaders(),
-                body: JSON.stringify({ items: updatedItems })
-            });
+            await firstValueFrom(this.http.patch(`${environment.apiUrl}/api/orders/${orderId}`, { items: updatedItems }, { withCredentials: true }));
 
         } catch (e) { console.error('Error updating name', e); }
     }
@@ -357,15 +330,10 @@ export class POSViewModel {
             if (!order) return;
 
             const updatedItems = [...order.items];
-            // If name is new, we can generate a simple id from it or keep it as guest
             const guestId = guestName.toLowerCase().replace(/\s+/g, '-');
             updatedItems[itemIndex].orderedBy = { id: guestId, name: guestName };
 
-            await fetch(`${environment.apiUrl}/api/orders/${orderId}`, {
-                method: 'PATCH',
-                headers: this.auth.getHeaders(),
-                body: JSON.stringify({ items: updatedItems })
-            });
+            await firstValueFrom(this.http.patch(`${environment.apiUrl}/api/orders/${orderId}`, { items: updatedItems }, { withCredentials: true }));
 
         } catch (e) { console.error('Error reassigning item', e); }
     }
@@ -378,13 +346,7 @@ export class POSViewModel {
             const updatedItems = order.items.filter((_: any, idx: number) => idx !== itemIndex);
             const newTotal = updatedItems.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0);
 
-            const res = await fetch(`${environment.apiUrl}/api/orders/${orderId}`, {
-                method: 'PATCH',
-                headers: this.auth.getHeaders(),
-                body: JSON.stringify({ items: updatedItems, totalAmount: newTotal })
-            });
-
-            if (!res.ok) throw new Error('Error updating order');
+            await firstValueFrom(this.http.patch(`${environment.apiUrl}/api/orders/${orderId}`, { items: updatedItems, totalAmount: newTotal }, { withCredentials: true }));
 
             this.auth.logActivity('ORDER_ITEM_REMOVED', { orderId, itemIndex });
 
@@ -396,15 +358,7 @@ export class POSViewModel {
 
     public async associateOrphanItem(orderId: string, itemId: string, userId: string, userName: string) {
         try {
-            const res = await fetch(`${environment.apiUrl}/api/orders/${orderId}/items/${itemId}/associate`, {
-                method: 'PATCH',
-                headers: this.auth.getHeaders(),
-                body: JSON.stringify({ userId, userName })
-            });
-
-            if (!res.ok) throw new Error('Error associating item');
-
-            const updatedOrder = await res.json();
+            const updatedOrder: any = await firstValueFrom(this.http.patch(`${environment.apiUrl}/api/orders/${orderId}/items/${itemId}/associate`, { userId, userName }, { withCredentials: true }));
             this.orders.update(prev => prev.map(o => o._id === orderId ? updatedOrder : o));
 
         } catch (e) {
@@ -430,13 +384,7 @@ export class POSViewModel {
             const updatedItems = [...order.items, newItem];
             const newTotal = updatedItems.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0);
 
-            const res = await fetch(`${environment.apiUrl}/api/orders/${orderId}`, {
-                method: 'PATCH',
-                headers: this.auth.getHeaders(),
-                body: JSON.stringify({ items: updatedItems, totalAmount: newTotal })
-            });
-
-            if (!res.ok) throw new Error('Error updating order');
+            await firstValueFrom(this.http.patch(`${environment.apiUrl}/api/orders/${orderId}`, { items: updatedItems, totalAmount: newTotal }, { withCredentials: true }));
 
             this.auth.logActivity('ORDER_ITEM_ADDED', { orderId, itemName: menuItem.name });
             this.showAddItemModal.set(false);
@@ -470,13 +418,7 @@ export class POSViewModel {
             const updatedItems = [...order.items, newItem];
             const newTotal = updatedItems.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0);
 
-            const res = await fetch(`${environment.apiUrl}/api/orders/${orderId}`, {
-                method: 'PATCH',
-                headers: this.auth.getHeaders(),
-                body: JSON.stringify({ items: updatedItems, totalAmount: newTotal })
-            });
-
-            if (!res.ok) throw new Error('Error updating order');
+            await firstValueFrom(this.http.patch(`${environment.apiUrl}/api/orders/${orderId}`, { items: updatedItems, totalAmount: newTotal }, { withCredentials: true }));
 
             this.auth.logActivity('CUSTOM_LINE_ADDED', { orderId, customName, customPrice });
             this.showCustomLineModal.set(false);
@@ -489,17 +431,11 @@ export class POSViewModel {
 
     public async openTable(table: POSTable) {
         try {
-            const res = await fetch(`${environment.apiUrl}/api/orders`, {
-                method: 'POST',
-                headers: this.auth.getHeaders(),
-                body: JSON.stringify({
-                    tableNumber: table.number,
-                    totemId: table.id,
-                    items: []
-                })
-            });
-
-            if (!res.ok) throw new Error('Error opening table');
+            await firstValueFrom(this.http.post(`${environment.apiUrl}/api/orders`, {
+                tableNumber: table.number,
+                totemId: table.id,
+                items: []
+            }, { withCredentials: true }));
 
             this.auth.logActivity('TABLE_OPENED_MANUALLY', { tableNumber: table.number });
 
@@ -517,16 +453,9 @@ export class POSViewModel {
         if (!confirm(this.translate.instant('POS.DELETE_VIRTUAL_CONFIRM'))) return;
 
         try {
-            const res = await fetch(`${environment.apiUrl}/api/totems/${tableId}`, {
-                method: 'DELETE',
-                headers: this.auth.getHeaders(),
-                credentials: 'include'
-            });
+            await firstValueFrom(this.http.delete(`${environment.apiUrl}/api/totems/${tableId}`, { withCredentials: true }));
 
-            if (!res.ok) throw new Error('Error deleting virtual table');
-
-            // Refresh totems
-            const totems = await fetch(`${environment.apiUrl}/api/totems`).then(r => r.json());
+            const totems: any[] = await firstValueFrom(this.http.get<any[]>(`${environment.apiUrl}/api/totems`));
             this.tables.set(totems);
             if (this.selectedTable()?.id === tableId) {
                 this.selectedTable.set(null);
@@ -541,17 +470,9 @@ export class POSViewModel {
         if (!confirm(this.translate.instant('POS.CONFIRM_CLOSE_SHIFT'))) return;
 
         try {
-            const res = await fetch(`${environment.apiUrl}/api/close-shift`, {
-                method: 'POST',
-                headers: this.auth.getHeaders()
-            });
-
-            if (!res.ok) throw new Error('Error closing shift');
-
-            const result = await res.json();
+            const result: any = await firstValueFrom(this.http.post(`${environment.apiUrl}/api/close-shift`, {}, { withCredentials: true }));
             alert(result.message);
 
-            // Reload EVERYTHING
             this.initPOS();
             this.selectedTable.set(null);
         } catch (e) {

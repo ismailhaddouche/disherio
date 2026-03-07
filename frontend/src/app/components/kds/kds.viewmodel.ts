@@ -1,4 +1,6 @@
 import { Injectable, signal, computed, inject } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
 import { CommunicationService } from '../../services/communication.service';
 import { AuthService } from '../../services/auth.service';
 import { environment } from '../../../environments/environment';
@@ -16,6 +18,7 @@ export interface KDSOrder {
 
 @Injectable()
 export class KDSViewModel {
+    private http = inject(HttpClient);
     private comms = inject(CommunicationService);
     private auth = inject(AuthService);
     private translate = inject(TranslateService);
@@ -23,20 +26,18 @@ export class KDSViewModel {
     // State
     public orders = signal<KDSOrder[]>([]);
     public productList = signal<any[]>([]);
-    public totems = signal<any[]>([]); // Totem names
+    public totems = signal<any[]>([]);
     public loading = signal<boolean>(true);
-    public error = signal<string | null>(null); // PM FIX: Added error state
+    public error = signal<string | null>(null);
     public showStockManager = signal<boolean>(false);
     public currentFilter = signal<'pending' | 'preparing' | 'ready'>('pending');
-    public localConfig = signal<any>(null); // Local printer settings
+    public localConfig = signal<any>(null);
 
-    // Computed: Filtered orders for the kitchen
     public filteredOrders = computed(() => {
         return this.orders()
-            .filter(order => order.status === 'active') // Only active sessions
+            .filter(order => order.status === 'active')
             .map(order => ({
                 ...order,
-                // Filter items that belong to the kitchen and are not fully served
                 kitchenItems: order.items.filter(item =>
                     item.status !== 'served' &&
                     item.status !== 'completed' &&
@@ -52,7 +53,6 @@ export class KDSViewModel {
         this.setupRealTime();
         this.loadLocalConfig();
 
-        // Timer to update "time elapsed" ogni minuto
         setInterval(() => {
             this.orders.update(orders => [...orders]);
         }, 60000);
@@ -72,13 +72,13 @@ export class KDSViewModel {
         this.error.set(null);
 
         try {
-            const [orders, products, totems]: any = await Promise.all([
+            const [orders, products, totems] = await Promise.all([
                 this.comms.syncOrders(),
-                fetch(`${environment.apiUrl}/api/menu`).then(res => res.json()),
-                fetch(`${environment.apiUrl}/api/totems`).then(res => res.json())
+                firstValueFrom(this.http.get<any[]>(`${environment.apiUrl}/api/menu`)),
+                firstValueFrom(this.http.get<any[]>(`${environment.apiUrl}/api/totems`))
             ]);
 
-            if (orders) this.orders.set(orders);
+            if (orders) this.orders.set(orders as any[]);
             if (products) this.productList.set(products);
             if (totems) this.totems.set(totems);
         } catch (e: any) {
@@ -116,13 +116,9 @@ export class KDSViewModel {
 
     public async updateItemStatus(orderId: string, itemId: string, nextStatus: string, print: boolean = false) {
         try {
-            const res = await fetch(`${environment.apiUrl}/api/orders/${orderId}/items/${itemId}`, {
-                method: 'PATCH',
-                headers: this.auth.getHeaders(),
-                body: JSON.stringify({ status: nextStatus })
-            });
+            await firstValueFrom(this.http.patch(`${environment.apiUrl}/api/orders/${orderId}/items/${itemId}`, { status: nextStatus }, { withCredentials: true }));
 
-            if (res.ok && print && nextStatus === 'ready') {
+            if (print && nextStatus === 'ready') {
                 const order = this.orders().find(o => o._id === orderId);
                 const item = order?.items.find((i: any) => (i._id || i.id) === itemId);
                 if (order && item) {
@@ -139,11 +135,7 @@ export class KDSViewModel {
 
     public async bulkUpdateItemsStatus(orderId: string, status: string) {
         try {
-            await fetch(`${environment.apiUrl}/api/orders/${orderId}/items/bulk-status`, {
-                method: 'PATCH',
-                headers: this.auth.getHeaders(),
-                body: JSON.stringify({ status })
-            });
+            await firstValueFrom(this.http.patch(`${environment.apiUrl}/api/orders/${orderId}/items/bulk-status`, { status }, { withCredentials: true }));
             this.auth.logActivity('ORDER_ITEMS_BULK_UPDATE', { orderId, status });
         } catch (e) { console.error('Error bulk updating', e); }
     }
@@ -154,21 +146,21 @@ export class KDSViewModel {
         const tableName = totem?.name || `${this.translate.instant('ROLES.Table')} ${order.tableNumber}`;
 
         let details = '';
-        if (item.selectedVariant) details += `\\n - ${item.selectedVariant.name}`;
+        if (item.selectedVariant) details += `\n - ${item.selectedVariant.name}`;
         if (item.selectedAddons?.length) {
-            item.selectedAddons.forEach((a: any) => details += `\\n + ${a.name}`);
+            item.selectedAddons.forEach((a: any) => details += `\n + ${a.name}`);
         }
 
-        const msg = `🖨️ (${this.translate.instant('KDS.TICKET_TITLE')})\\n----------------------\\n${this.translate.instant('KDS.ITEM_LABEL')}: ${item.name}${details}\\n${this.translate.instant('KDS.QTY_LABEL')}: ${item.quantity}\\n${this.translate.instant('KDS.ORIGIN_LABEL')}: ${tableName}\\n----------------------`;
+        const msg = `🖨️ (${this.translate.instant('KDS.TICKET_TITLE')})\n----------------------\n${this.translate.instant('KDS.ITEM_LABEL')}: ${item.name}${details}\n${this.translate.instant('KDS.QTY_LABEL')}: ${item.quantity}\n${this.translate.instant('KDS.ORIGIN_LABEL')}: ${tableName}\n----------------------`;
 
         if (!p) {
             alert(this.translate.instant('KDS.NO_PRINTER_CONFIGURED'));
         }
 
         if (p?.type === 'thermal') {
-            alert(`🖨️ (${this.translate.instant('KDS.PRINTER_THERMAL')} ${p.ip})\\n${msg}`);
+            alert(`🖨️ (${this.translate.instant('KDS.PRINTER_THERMAL')} ${p.ip})\n${msg}`);
         } else {
-            alert(`🖨️ (${this.translate.instant('KDS.PRINTER_SYSTEM')})\\n${msg}`);
+            alert(`🖨️ (${this.translate.instant('KDS.PRINTER_SYSTEM')})\n${msg}`);
         }
     }
 
@@ -176,12 +168,7 @@ export class KDSViewModel {
         if (!confirm(this.translate.instant('KDS.CANCEL_CONFIRM'))) return;
 
         try {
-            await fetch(`${environment.apiUrl}/api/orders/${orderId}/items/${itemId}`, {
-                method: 'PATCH',
-                headers: this.auth.getHeaders(),
-                body: JSON.stringify({ status: 'cancelled' })
-            });
-
+            await firstValueFrom(this.http.patch(`${environment.apiUrl}/api/orders/${orderId}/items/${itemId}`, { status: 'cancelled' }, { withCredentials: true }));
             this.auth.logActivity('ITEM_CANCELLED', { orderId, itemId });
         } catch (e) {
             console.error('Error cancelling item', e);
@@ -191,11 +178,7 @@ export class KDSViewModel {
 
     public async toggleProduct(productId: string) {
         try {
-            const res = await fetch(`${environment.apiUrl}/api/menu/${productId}/toggle`, {
-                method: 'POST',
-                headers: this.auth.getHeaders()
-            });
-            const updated = await res.json();
+            const updated: any = await firstValueFrom(this.http.post(`${environment.apiUrl}/api/menu/${productId}/toggle`, {}, { withCredentials: true }));
 
             this.productList.update(list =>
                 list.map(p => p._id === productId ? updated : p)

@@ -2,20 +2,19 @@
 
 <!-- App Layout -->
 <div class="app-layout" [class.with-sidebar]="auth.isAuthenticated()">
-  
+
   <!-- Sidebar (Only for authenticated staff) -->
-  <app-sidebar 
-    *ngIf="auth.isAuthenticated()"
-    [isCollapsed]="sidebarCollapsed()"
+  <app-sidebar *ngIf="auth.isAuthenticated()" [isCollapsed]="sidebarCollapsed()"
     (collapsedChange)="sidebarCollapsed.set($event)">
   </app-sidebar>
 
   <!-- Mobile Overlay -->
-  <div class="sidebar-overlay" *ngIf="auth.isAuthenticated() && sidebarCollapsed()" (click)="sidebarCollapsed.set(false)"></div>
+  <div class="sidebar-overlay" *ngIf="auth.isAuthenticated() && sidebarCollapsed()"
+    (click)="sidebarCollapsed.set(false)"></div>
 
   <!-- Main Content Area -->
   <main class="main-content">
-    
+
     <!-- Top Bar (Contextual Info) -->
     <header class="top-bar-md3" *ngIf="auth.isAuthenticated()">
       <div class="top-bar-start">
@@ -28,9 +27,10 @@
       <div class="top-bar-end">
         <div class="status-chip-md3" [class]="comms.connectionStatus()">
           <span class="status-dot-md3" [class.online]="comms.isOnline()"></span>
-          <span class="text-label-medium">{{ comms.isOnline() ? ('APP.ONLINE' | translate) : ('APP.OFFLINE' | translate) }}</span>
+          <span class="text-label-medium">{{ comms.isOnline() ? ('APP.ONLINE' | translate) : ('APP.OFFLINE' | translate)
+            }}</span>
         </div>
-        
+
         <div class="user-profile-md3 md-card-elevated">
           <div class="avatar-circle">
             <lucide-icon name="user" [size]="16"></lucide-icon>
@@ -40,8 +40,8 @@
       </div>
     </header>
 
-    <!-- Router Content with Animations -->
-    <div class="content-wrapper" [@routeAnimations]="getRouteAnimationData()">
+    <!-- Router Content -->
+    <div class="content-wrapper">
       <router-outlet></router-outlet>
     </div>
 
@@ -79,7 +79,8 @@
     flex-shrink: 0;
   }
 
-  .top-bar-start, .top-bar-end {
+  .top-bar-start,
+  .top-bar-end {
     display: flex;
     align-items: center;
     gap: 16px;
@@ -113,7 +114,8 @@
   }
 
   .status-dot-md3.online {
-    background: #34d399; /* Success green from MD3 if available, or just keeping it bright */
+    background: #34d399;
+    /* Success green from MD3 if available, or just keeping it bright */
     box-shadow: 0 0 8px color-mix(in srgb, #34d399 40%, transparent);
   }
 
@@ -122,12 +124,15 @@
     align-items: center;
     gap: 12px;
     padding: 4px 16px 4px 6px;
-    border-radius:  100px;
+    border-radius: 100px;
     background: var(--md-sys-color-surface-3);
     cursor: pointer;
     transition: background 0.2s;
   }
-  .user-profile-md3:hover { background: var(--md-sys-color-surface-4); }
+
+  .user-profile-md3:hover {
+    background: var(--md-sys-color-surface-4);
+  }
 
   .avatar-circle {
     width: 32px;
@@ -150,7 +155,7 @@
   .sidebar-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0,0,0,0.4);
+    background: rgba(0, 0, 0, 0.4);
     backdrop-filter: blur(8px);
     z-index: 90;
     animation: fadeIn 0.2s ease-out;
@@ -168,27 +173,51 @@
     justify-content: center;
     transition: background 0.2s;
   }
-  .icon-btn-md3:hover { background: var(--md-sys-color-surface-variant); }
 
-  .mobile-only { display: none; }
+  .icon-btn-md3:hover {
+    background: var(--md-sys-color-surface-variant);
+  }
+
+  .mobile-only {
+    display: none;
+  }
 
   @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from {
+      opacity: 0;
+    }
+
+    to {
+      opacity: 1;
+    }
   }
 
   /* Responsive Adjustments */
   @media (max-width: 768px) {
-    .mobile-only { display: flex; }
+    .mobile-only {
+      display: flex;
+    }
+
     .top-bar-md3 {
       margin: 12px 12px 0 12px;
       padding: 0 12px;
       border-radius: 12px;
     }
-    .restaurant-name-md3 { display: none; }
-    .content-wrapper { padding: 16px; }
-    .top-bar-end { gap: 8px; }
-    .status-chip-md3 span:not(.status-dot-md3) { display: none; }
+
+    .restaurant-name-md3 {
+      display: none;
+    }
+
+    .content-wrapper {
+      padding: 16px;
+    }
+
+    .top-bar-end {
+      gap: 8px;
+    }
+
+    .status-chip-md3 span:not(.status-dot-md3) {
+      display: none;
+    }
   }
 </style>
-

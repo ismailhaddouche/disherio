@@ -205,7 +205,7 @@ import { TranslateModule } from '@ngx-translate/core';
 
     .user-add-controls-md3 {
       display: flex;
-      gap: 12px;
+      gap: 16px;
       align-items: center;
     }
 

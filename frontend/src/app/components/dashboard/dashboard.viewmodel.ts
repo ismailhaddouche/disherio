@@ -1,4 +1,6 @@
 import { Injectable, signal, computed, inject } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
 import { CommunicationService } from '../../services/communication.service';
 import { AuthService } from '../../services/auth.service';
 import { environment } from '../../../environments/environment';
@@ -17,6 +19,7 @@ export interface Order {
 export class DashboardViewModel {
     private comms = inject(CommunicationService);
     private auth = inject(AuthService);
+    private http = inject(HttpClient);
 
     // State using Signals
     public orders = signal<Order[]>([]);
@@ -51,8 +54,8 @@ export class DashboardViewModel {
         try {
             const [orders, logs, totems]: any[] = await Promise.all([
                 this.comms.syncOrders(),
-                fetch(`${environment.apiUrl}/api/logs`).then(res => res.json()),
-                fetch(`${environment.apiUrl}/api/totems`).then(res => res.json())
+                firstValueFrom(this.http.get<any[]>(`${environment.apiUrl}/api/logs`)),
+                firstValueFrom(this.http.get<any[]>(`${environment.apiUrl}/api/totems`))
             ]);
 
             if (orders) this.orders.set(orders);
@@ -85,63 +88,44 @@ export class DashboardViewModel {
     public async addTotem(name: string) {
         if (!name) return;
         try {
-            const res = await fetch(`${environment.apiUrl}/api/totems`, {
-                method: 'POST',
-                headers: this.auth.getHeaders(),
-                body: JSON.stringify({ name })
-            });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || 'Error adding totem');
+            const data = await firstValueFrom(this.http.post<any>(`${environment.apiUrl}/api/totems`, { name }, { withCredentials: true }));
 
             this.totems.update(curr => [...curr, data]);
             this.auth.logActivity('TOTEM_ADDED', { totemId: data.id, name });
         } catch (e: any) {
-            alert(e.message);
+            alert(e.error?.error || e.message);
         }
     }
 
     public async updateTotem(id: number, newName: string) {
         if (!newName) return;
         try {
-            const res = await fetch(`${environment.apiUrl}/api/totems/${id}`, {
-                method: 'PATCH',
-                headers: this.auth.getHeaders(),
-                body: JSON.stringify({ name: newName })
-            });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || 'Error updating totem');
+            const data = await firstValueFrom(this.http.patch<any>(`${environment.apiUrl}/api/totems/${id}`, { name: newName }, { withCredentials: true }));
 
             this.totems.update(curr => curr.map(t => t.id === id ? data : t));
             this.auth.logActivity('TOTEM_UPDATED', { totemId: id, name: newName });
             this.editingTotem.set(null);
         } catch (e: any) {
-            alert(e.message);
+            alert(e.error?.error || e.message);
         }
     }
 
     public async deleteTotem(id: number) {
         if (!confirm('¿Estás seguro de eliminar este tótem? Se perderá el acceso por QR actual.')) return;
         try {
-            const res = await fetch(`${environment.apiUrl}/api/totems/${id}`, {
-                method: 'DELETE',
-                headers: this.auth.getHeaders()
-            });
-            if (!res.ok) throw new Error('Error deleting totem');
+            await firstValueFrom(this.http.delete(`${environment.apiUrl}/api/totems/${id}`, { withCredentials: true }));
 
             this.totems.update(curr => curr.filter(t => t.id !== id));
             this.auth.logActivity('TOTEM_DELETED', { totemId: id });
         } catch (e: any) {
-            alert(e.message);
+            alert(e.error?.error || e.message);
         }
     }
 
     public async completeOrder(orderId: string) {
         try {
             this.auth.logActivity('ORDER_COMPLETED', { orderId });
-            await fetch(`${environment.apiUrl}/api/orders/${orderId}/complete`, {
-                method: 'POST',
-                headers: this.auth.getHeaders()
-            });
+            await firstValueFrom(this.http.post(`${environment.apiUrl}/api/orders/${orderId}/complete`, {}, { withCredentials: true }));
             // The real-time listener will update the list
         } catch (e) {
             this.error.set('No se pudo completar el pedido.');

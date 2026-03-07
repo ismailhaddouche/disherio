@@ -24,7 +24,7 @@ router.post('/login',
                 return res.status(401).json({ error: req.t('ERRORS.INVALID_CREDENTIALS') });
             }
 
-            const token = generateToken({ userId: user._id, role: user.role });
+            const token = generateToken({ userId: user._id, username: user.username, role: user.role });
 
             // Set token as httpOnly cookie — inaccessible to JavaScript
             res.cookie(COOKIE_NAME, token, getCookieOptions());
@@ -54,7 +54,7 @@ router.post('/customer-session',
 
         try {
             const { restaurantSlug, totemId, name } = req.body;
-            
+
             // Create a temporary JWT for the customer
             const token = generateToken({
                 userId: `guest-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
