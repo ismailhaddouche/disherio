@@ -33,9 +33,28 @@ sudo ./install.sh
 El script realizará las siguientes acciones de forma automática:
 1.  **Verificación del Sistema:** Comprobará que Docker, Docker Compose y la RAM mínima están disponibles.
 2.  **Configuración de Seguridad:** Generará secretos (`JWT_SECRET`) y credenciales seguras para la base de datos.
-3.  **Selección del Modo de Acceso:** Te preguntará cómo deseas acceder a la plataforma (dominio local, IP o dominio público con HTTPS).
-4.  **Despliegue de Servicios:** Levantará y configurará todos los contenedores.
-5.  **Configuración Inicial de la Tienda:** Creará el restaurante por defecto y generará **contraseñas aleatorias y seguras** para los usuarios `admin` y `waiter`.
+3.  **Selección del Modo de Acceso:** Te preguntará cómo deseas acceder a la plataforma. Dependiendo de tu infraestructura, deberás elegir entre una de estas cuatro modalidades:
+
+### 1.1 Variantes de Configuración de Red
+
+Durante la instalación, el script adaptará el comportamiento del Proxy y la seguridad SSL basándose en el entorno que elijas. Conoce las opciones antes de ejecutar el instalador:
+
+- **Dominio Público (Online):** 
+  - *Ejemplo:* `app.mirestaurante.com`
+  - *Uso:* Para instalaciones en servidores cloud (VPS). Permite a los clientes acceder a la aplicación desde cualquier parte del mundo.
+  - *Requisitos:* Un dominio real apuntando a la IP de tu servidor. El sistema generará e instalará automáticamente **certificados SSL (HTTPS)**.
+- **Dominio Local (mDNS / LAN):** 
+  - *Ejemplo:* `disher.local`
+  - *Uso:* Instalaciones alojadas físicamente en el local (ej. una caja registradora o mini-PC) sin depender de que exista conexión a internet hacia fuera.
+  - *Requisitos:* Todos los dispositivos (smartphones de clientes y camareros) deben conectarse a la misma red WiFi del local. No se generan certificados HTTPS.
+- **IP Pública (Online):** 
+  - *Ejemplo:* `203.0.113.50`
+  - *Uso:* Instalación en un proveedor Cloud o VPS público, pero sin un dominio contratado. Se accede utilizando números brutos.
+  - *Requisitos:* No genera SSL (viaja por HTTP plano). Todos deben usar la IP para entrar.
+- **IP Local (LAN):** 
+  - *Ejemplo:* `192.168.1.100`
+  - *Uso:* Instalación local on-premise en tu restaurante mediante la IP asiganda por el router.
+  - *Requisitos:* Depende en exclusiva de la red WiFi del restaurante. Es esencial configurar esta IP como **estática** en tu router para que los códigos QR no dejen de funcionar si el router reinicia. No genera SSL.
 
 ---
 
