@@ -24,6 +24,7 @@ Tokens expire after **24 hours**. Call `POST /api/auth/logout` to invalidate the
 
 **Role levels:**
 - `admin` — Full access to all endpoints
+- `waiter` — Access to orders and tables (Waiter View)
 - `kitchen` — Access to orders (KDS)
 - `pos` — Access to orders and checkout (POS)
 - `customer` — No authenticated access (uses public endpoints)
