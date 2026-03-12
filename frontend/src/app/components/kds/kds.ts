@@ -80,6 +80,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
                   <div class="items-list-md3">
                     @for (item of order.kitchenItems; track $index) {
                       <div class="kds-item-md3" [class]="item.status">
+                        <div class="item-thumb-md3" *ngIf="item.image" [style.backgroundImage]="'url(' + item.image + ')'"></div>
                         <div class="item-main-md3">
                           <div class="item-name-row">
                               <span class="text-title-medium item-qty">{{ item.quantity }}x</span>
@@ -302,6 +303,13 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
       text-decoration: line-through;
       border: 1px dashed var(--md-sys-color-error);
       background: transparent;
+    }
+
+    .item-thumb-md3 {
+      width: 48px; height: 48px; border-radius: 12px;
+      background-size: cover; background-position: center;
+      background-color: var(--md-sys-color-surface-variant);
+      flex-shrink: 0;
     }
 
     .item-main-md3 { flex: 1; display: flex; flex-direction: column; gap: 6px; }

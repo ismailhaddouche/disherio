@@ -3,6 +3,25 @@ const router = express.Router();
 import MenuItem from '../models/MenuItem.js';
 import { verifyToken } from '../middleware/auth.middleware.js';
 import { validate, menuItemSchema } from '../middleware/validation.middleware.js';
+import multer from 'multer';
+import sharp from 'sharp';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Configure multer storage (memory storage for sharp processing)
+const storage = multer.memoryStorage();
+const upload = multer({
+    storage,
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+    fileFilter: (req, file, cb) => {
+        if (file.mimetype.startsWith('image/')) cb(null, true);
+        else cb(new Error('Solo se permiten imágenes'));
+    }
+});
 
 // Middleware to restrict certain actions to admin OR kitchen (for specific categories)
 const authorizeKitchenAction = async (req, res, next) => {
@@ -23,6 +42,26 @@ const authorizeKitchenAction = async (req, res, next) => {
 router.get('/', async (req, res) => {
     const items = await MenuItem.find().sort({ category: 1, order: 1, name: 1 });
     res.success(items);
+});
+
+// POST /upload-image - Upload and optimize menu item image
+router.post('/upload-image', verifyToken, authorizeKitchenAction, upload.single('image'), async (req, res) => {
+    if (!req.file) return res.error('No se proporcionó ninguna imagen', 400);
+
+    const uploadDir = path.join(__dirname, '../../public/uploads/menu');
+    if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+
+    const filename = `item-${Date.now()}-${Math.round(Math.random() * 1000)}.webp`;
+    const filepath = path.join(uploadDir, filename);
+
+    // Optimize image with sharp: Max 500px, WebP format
+    await sharp(req.file.buffer)
+        .resize(500, 500, { fit: 'inside', withoutEnlargement: true })
+        .webp({ quality: 80 })
+        .toFile(filepath);
+
+    const fileUrl = `/uploads/menu/${filename}`;
+    res.success({ url: fileUrl });
 });
 
 // POST / - Create or update a menu item

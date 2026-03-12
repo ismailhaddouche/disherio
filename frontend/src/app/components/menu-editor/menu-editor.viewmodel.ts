@@ -13,7 +13,7 @@ export interface MenuItem {
     image?: string;
     allergens: string[];
     tags: string[];
-    variants: { name: string; price: number }[];
+    variants: { name: string; price: number; image?: string }[];
     addons: { name: string; price: number }[];
     available: boolean;
     order: number;
@@ -187,6 +187,19 @@ export class MenuEditorViewModel {
         if (item) {
             item.menuSections[sectionIndex].options.splice(optionIndex, 1);
             this.selectedItem.set({ ...item });
+        }
+    }
+
+    public async uploadImage(file: File): Promise<string | null> {
+        try {
+            const formData = new FormData();
+            formData.append('image', file);
+            const res: any = await lastValueFrom(this.http.post(`${environment.apiUrl}/api/menu/upload-image`, formData));
+            return res.url;
+        } catch (e) {
+            console.error('Error uploading image', e);
+            alert('Error al subir la imagen. Verifica que sea un archivo menor a 5MB.');
+            return null;
         }
     }
 }

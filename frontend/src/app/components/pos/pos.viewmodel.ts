@@ -353,6 +353,7 @@ export class POSViewModel {
             const newItem = {
                 name: menuItem.name,
                 price: menuItem.price,
+                image: menuItem.image,
                 quantity: 1,
                 status: 'pending',
                 orderedBy: { id: 'pos', name: this.translate.instant('POS.CASHIER_LABEL') },

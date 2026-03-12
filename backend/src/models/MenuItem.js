@@ -12,7 +12,8 @@ const MenuItemSchema = new mongoose.Schema({
     // Different versions or sizes
     variants: [{
         name: { type: String, required: true },
-        price: { type: Number, required: true, min: 0 }
+        price: { type: Number, required: true, min: 0 },
+        image: String
     }],
 
     // Complements that can be added

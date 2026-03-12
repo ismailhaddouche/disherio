@@ -289,12 +289,15 @@ export class FilterOccupiedPipe implements PipeTransform {
             <div class="modal-body-md3">
               <div class="menu-options-grid-md3">
                 @for (item of vm.menuItems(); track item._id) {
-                  <div class="menu-option-md3" (click)="vm.addMenuItemToOrder(vm.selectedTable()?.order?._id!, item)">
-                    <div class="option-header-md3">
-                      <span class="text-title-medium">{{ item.emoji }} {{ item.name }}</span>
-                      <span class="text-title-medium color-primary">{{ item.price | currency:'EUR' }}</span>
+                  <div class="menu-option-md3" [class.has-image]="!!item.image" (click)="vm.addMenuItemToOrder(vm.selectedTable()?.order?._id!, item)">
+                    <div class="option-image-md3" *ngIf="item.image" [style.backgroundImage]="'url(' + item.image + ')'"></div>
+                    <div class="option-info-md3">
+                      <div class="option-header-md3">
+                        <span class="text-title-medium">{{ item.name }}</span>
+                        <span class="text-title-medium color-primary">{{ item.basePrice || item.price | currency:'EUR' }}</span>
+                      </div>
+                      <span class="text-label-small opacity-60">{{ item.category }}</span>
                     </div>
-                    <span class="text-label-small opacity-60">{{ item.category }}</span>
                   </div>
                 }
               </div>
@@ -604,15 +607,27 @@ export class FilterOccupiedPipe implements PipeTransform {
 
     .menu-options-grid-md3 {
       display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-      gap: 12px;
+      gap: 16px;
     }
     .menu-option-md3 {
-      padding: 16px; background: var(--md-sys-color-surface-container-low);
+      background: var(--md-sys-color-surface-container-low);
       border-radius: 16px; border: 1px solid var(--md-sys-color-outline-variant);
-      cursor: pointer; transition: background 0.2s;
+      cursor: pointer; transition: transform 0.2s, background 0.2s;
+      display: flex; flex-direction: column; overflow: hidden;
     }
-    .menu-option-md3:hover { background: var(--md-sys-color-surface-container-high); }
-    .option-header-md3 { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+    .menu-option-md3.has-image { padding: 0; }
+    .menu-option-md3:not(.has-image) { padding: 16px; }
+    .menu-option-md3:hover { background: var(--md-sys-color-surface-container-high); transform: translateY(-2px); }
+    .option-image-md3 {
+      height: 120px; width: 100%;
+      background-size: cover; background-position: center;
+      background-color: var(--md-sys-color-surface-variant);
+    }
+    .option-info-md3 {
+      padding: 12px 16px; display: flex; flex-direction: column; gap: 4px;
+    }
+    .menu-option-md3:not(.has-image) .option-info-md3 { padding: 0; }
+    .option-header-md3 { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 0; }
 
     .split-strategies-md3 { display: flex; flex-direction: column; gap: 12px; }
     .strategy-card-md3 {

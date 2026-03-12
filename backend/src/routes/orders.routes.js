@@ -13,7 +13,8 @@ const addItemsSchema = Joi.object({
     items: Joi.array().items(Joi.object({
         name: Joi.string().required(),
         price: Joi.number().min(0).required(),
-        quantity: Joi.number().integer().min(1).required()
+        quantity: Joi.number().integer().min(1).required(),
+        image: Joi.string().allow('').optional()
     }).unknown(true)).min(1).required(),
     guestId: Joi.string().allow(''),
     guestName: Joi.string().allow('')

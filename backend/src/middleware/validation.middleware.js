@@ -33,7 +33,8 @@ export const menuItemSchema = Joi.object({
     isMenu: Joi.boolean().default(false),
     variants: Joi.array().items(Joi.object({
         name: Joi.string().required(),
-        price: Joi.number().min(0).required()
+        price: Joi.number().min(0).required(),
+        image: Joi.string().allow('').optional()
     })),
     addons: Joi.array().items(Joi.object({
         name: Joi.string().required(),
@@ -60,6 +61,7 @@ export const orderItemSchema = Joi.object({
         name: Joi.string().required(),
         price: Joi.number().required()
     })).default([]),
+    image: Joi.string().allow('').optional(),
     menuChoices: Joi.object().pattern(Joi.string(), Joi.string()).default({})
 });
 

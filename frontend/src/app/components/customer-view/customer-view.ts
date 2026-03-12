@@ -91,9 +91,14 @@ import { TranslateModule } from '@ngx-translate/core';
               <div class="md-card menu-item clickable-card" 
                    [class.unavailable]="!item.available"
                    (click)="vm.handleItemClick(item)">
-                <div class="item-visual" [style.background]="item.category === 'Bebidas' ? 'var(--md-sys-color-tertiary-container)' : 'var(--md-sys-color-secondary-container)'">
-                  <lucide-icon *ngIf="item.category === 'Bebidas'" name="glass-water" [size]="24" [color]="item.category === 'Bebidas' ? 'var(--md-sys-color-on-tertiary-container)' : 'var(--md-sys-color-on-secondary-container)'"></lucide-icon>
-                  <lucide-icon *ngIf="item.category !== 'Bebidas'" name="utensils" [size]="24" color="var(--md-sys-color-on-secondary-container)"></lucide-icon>
+                <div class="item-visual" [style.background]="item.image ? 'transparent' : (item.category === 'Bebidas' ? 'var(--md-sys-color-tertiary-container)' : 'var(--md-sys-color-secondary-container)')" [style.padding]="item.image ? '0' : 'inherit'">
+                  <ng-container *ngIf="item.image">
+                    <img [src]="item.image" style="width: 100%; height: 100%; object-fit: cover; border-radius: 16px;">
+                  </ng-container>
+                  <ng-container *ngIf="!item.image">
+                    <lucide-icon *ngIf="item.category === 'Bebidas'" name="glass-water" [size]="24" [color]="'var(--md-sys-color-on-tertiary-container)'"></lucide-icon>
+                    <lucide-icon *ngIf="item.category !== 'Bebidas'" name="utensils" [size]="24" color="var(--md-sys-color-on-secondary-container)"></lucide-icon>
+                  </ng-container>
                 </div>
                 <div class="item-details">
                   <h3 class="text-title-medium">{{ item.name }}</h3>
@@ -128,9 +133,12 @@ import { TranslateModule } from '@ngx-translate/core';
             <div class="modal-overlay" (click)="vm.selectedForConfig.set(null)">
                 <div class="md-bottom-sheet" (click)="$event.stopPropagation()">
                     <div class="sheet-drag-handle"></div>
-                    <header class="config-header">
-                        <span class="text-label-large">{{ 'CUSTOMER.CUSTOMIZE_ORDER' | translate }}</span>
-                        <h2 class="text-headline-small">{{ item.name }}</h2>
+                    <header class="config-header" style="display: flex; gap: 16px; align-items: center;">
+                        <img *ngIf="vm.selectedVariant()?.image || item.image" [src]="vm.selectedVariant()?.image || item.image" style="width: 64px; height: 64px; border-radius: 16px; object-fit: cover;">
+                        <div>
+                            <span class="text-label-large">{{ 'CUSTOMER.CUSTOMIZE_ORDER' | translate }}</span>
+                            <h2 class="text-headline-small" style="margin: 0;">{{ item.name }}</h2>
+                        </div>
                     </header>
 
                     <div class="config-content">
@@ -158,10 +166,11 @@ import { TranslateModule } from '@ngx-translate/core';
                                 <h4 class="text-title-medium">{{ 'CUSTOMER.SELECT_OPTION' | translate }}</h4>
                                 <div class="options-row">
                                     @for (v of item.variants; track v.name) {
-                                        <button class="chip" 
+                                        <button class="chip variant-chip" 
                                              [class.selected]="vm.selectedVariant()?.name === v.name"
                                              (click)="vm.selectedVariant.set(v)">
-                                            {{ v.name }} • {{ v.price }}€
+                                            <img *ngIf="v.image" [src]="v.image" class="variant-img">
+                                            <span>{{ v.name }} • {{ v.price }}€</span>
                                         </button>
                                     }
                                 </div>
@@ -456,6 +465,10 @@ import { TranslateModule } from '@ngx-translate/core';
         flex-wrap: wrap;
         gap: 8px;
     }
+
+    .variant-chip { padding: 4px 16px 4px 4px; display: flex; align-items: center; gap: 8px; }
+    .variant-chip:not(:has(img)) { padding-left: 16px; }
+    .variant-img { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; }
 
     .addon-item { border-radius: 16px; width: 100%; justify-content: space-between; }
     .addon-info { display: flex; align-items: center; gap: 12px; }

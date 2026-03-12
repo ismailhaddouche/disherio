@@ -277,6 +277,7 @@ export class CustomerViewModel {
 
         const cartItem = {
             ...item,
+            image: this.selectedVariant()?.image || item.image,
             name: this.selectedVariant()
                 ? `${item.name} (${this.selectedVariant().name})`
                 : item.name,

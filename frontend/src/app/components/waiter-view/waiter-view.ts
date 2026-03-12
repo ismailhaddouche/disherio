@@ -103,13 +103,14 @@ interface TotemWithStatus {
                       <div class="text-title-large color-secondary">{{ totem.order.totalAmount | currency:'EUR' }}</div>
                       
                       <div class="items-list-preview">
-                        @for (item of totem.order.items?.slice(0, 3); track $index) {
-                          <span class="mini-tag" [class]="item.status">
-                            {{ item.quantity }}x {{ item.name | slice:0:10 }}
-                          </span>
+                        @for (item of totem.order.items?.slice(0, 4); track $index) {
+                          <div class="mini-item-box" [title]="item.name">
+                            <img *ngIf="item.image" [src]="item.image" class="mini-item-img">
+                            <span *ngIf="!item.image" class="mini-item-fallback">{{ item.quantity }}x</span>
+                          </div>
                         }
-                        @if ((totem.order.items?.length || 0) > 3) {
-                          <span class="mini-tag more">+{{ totem.order.items.length - 3 }}</span>
+                        @if ((totem.order.items?.length || 0) > 4) {
+                          <span class="mini-tag-more">+{{ totem.order.items.length - 4 }}</span>
                         }
                       </div>
                     </div>
@@ -272,13 +273,15 @@ interface TotemWithStatus {
 
     .summary-top { display: flex; justify-content: space-between; align-items: center; }
 
-    .items-list-preview { display: flex; flex-wrap: wrap; gap: 4px; }
-    .mini-tag {
-        font-size: 0.6rem; padding: 2px 8px; border-radius: 6px;
-        background: var(--md-sys-color-surface-3); opacity: 0.8;
+    .items-list-preview { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+    .mini-item-box { 
+      width: 28px; height: 28px; border-radius: 8px; overflow: hidden;
+      background: var(--md-sys-color-surface-3); display: flex; align-items: center; justify-content: center;
+      border: 1px solid var(--md-sys-color-outline-variant);
     }
-    .mini-tag.ready { background: var(--md-sys-color-secondary-container); color: var(--md-sys-color-on-secondary-container); font-weight: 600; }
-    .mini-tag.preparing { background: var(--md-sys-color-tertiary-container); }
+    .mini-item-img { width: 100%; height: 100%; object-fit: cover; }
+    .mini-item-fallback { font-size: 0.5rem; font-weight: 700; opacity: 0.6; }
+    .mini-tag-more { font-size: 0.6rem; font-weight: 700; opacity: 0.6; padding-top: 8px; }
 
     .action-hint {
         margin-top: 12px; padding: 6px 12px;

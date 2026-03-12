@@ -79,6 +79,20 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
                   <!-- Fundamental Data -->
                   <section class="form-section-md3">
                     <h3 class="text-title-medium">{{ 'MENU_EDITOR.BASIC_INFO' | translate }}</h3>
+                    
+                    <div class="image-upload-row md-card-elevated" style="margin-bottom: 16px; display: flex; align-items: center; gap: 16px; padding: 16px; border-radius: 12px; background: var(--md-sys-color-surface-2);">
+                        <img *ngIf="vm.selectedItem()!.image" [src]="vm.selectedItem()!.image" style="width: 80px; height: 80px; object-fit: cover; border-radius: 8px;">
+                        <div *ngIf="!vm.selectedItem()!.image" style="width: 80px; height: 80px; border-radius: 8px; background: var(--md-sys-color-surface-variant); display: flex; align-items: center; justify-content: center; opacity: 0.5;">
+                            <lucide-icon name="camera" [size]="24"></lucide-icon>
+                        </div>
+                        <div style="flex: 1;">
+                            <span class="text-label-large">Imagen del Plato</span>
+                            <p class="text-body-small opacity-60">Recomendado formato cuadrado.</p>
+                        </div>
+                        <button class="btn-outline" (click)="mainImageInput.click()">Subir WebP</button>
+                        <input #mainImageInput type="file" style="display: none" accept="image/*" (change)="onFileSelected($event, 'main')">
+                    </div>
+
                     <div class="field-row">
                                             <div class="md-field">
                         <label class="text-label-large">{{ 'MENU_EDITOR.ITEM_NAME' | translate }}</label>
@@ -191,11 +205,15 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
                         <button class="btn-icon-add" (click)="vm.addVariant()"><lucide-icon name="plus" [size]="18"></lucide-icon></button>
                       </div>
                       <div class="list-stack">
-                        @for (v of vm.selectedItem()!.variants; track $index) {
-                          <div class="list-item-row-md3">
+                        @for (v of vm.selectedItem()!.variants; track $index; let vIdx = $index) {
+                          <div class="list-item-row-md3" style="align-items: center;">
+                            <img *ngIf="v.image" [src]="v.image" style="width: 32px; height: 32px; object-fit: cover; border-radius: 4px;">
+                            <button class="icon-btn" (click)="variantImageInput.click()" [title]="'Subir imagen de la variante'"><lucide-icon name="camera" [size]="14"></lucide-icon></button>
+                            <input #variantImageInput type="file" style="display: none" accept="image/*" (change)="onFileSelected($event, 'variant', vIdx)">
+
                             <input type="text" [(ngModel)]="v.name" class="md-input-compact flex-2" [placeholder]="'MENU_EDITOR.VAR_NAME_PH' | translate">
                             <input type="number" [(ngModel)]="v.price" class="md-input-compact flex-1" placeholder="0.00">
-                            <button class="icon-btn error" (click)="vm.removeVariant($index)"><lucide-icon name="trash-2" [size]="14"></lucide-icon></button>
+                            <button class="icon-btn error" (click)="vm.removeVariant(vIdx)"><lucide-icon name="trash-2" [size]="14"></lucide-icon></button>
                           </div>
                         }
                       </div>
@@ -487,5 +505,26 @@ export class MenuEditorComponent implements OnInit {
         this.vm.loadMenu();
       }
     });
+  }
+
+  async onFileSelected(event: any, target: 'main' | 'variant', variantIndex?: number) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    this.vm.loading.set(true);
+    const imageUrl = await this.vm.uploadImage(file);
+    if (imageUrl) {
+        const item = this.vm.selectedItem();
+        if (item) {
+            if (target === 'main') {
+                item.image = imageUrl;
+            } else if (target === 'variant' && variantIndex !== undefined) {
+                item.variants[variantIndex].image = imageUrl;
+            }
+            this.vm.selectedItem.set({ ...item });
+        }
+    }
+    this.vm.loading.set(false);
+    event.target.value = ''; // Reset input
   }
 }
