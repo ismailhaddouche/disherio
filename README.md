@@ -174,17 +174,20 @@ docker compose down
 
 ### 6.2 Eliminación Total de Infraestructura (Pérdida de Datos)
 
-Acción destructiva. Obliga la eliminación de contenedores, redes y específicamente borra de forma segura todos los volúmenes adjuntos a la instancia, purgado el historial de transacciones y base de datos completa.
+Acción destructiva. Obliga la eliminación de contenedores, redes, imágenes compiladas y borra de forma segura todos los volúmenes adjuntos a la instancia, purgado el historial de transacciones y base de datos completa.
 
 ```bash
 cd disherio
 
-# 1. Bajar servicios destruyendo volúmenes compartidos
-docker compose down -v
+# 1. Bajar servicios destruyendo volúmenes, imágenes compiladas y contenedores huérfanos
+docker compose down -v --rmi all --remove-orphans
 
-# 2. Eliminación de binarios locales
+# 2. Purga profunda a nivel de sistema Docker (limpia cachés y datos sin uso)
+docker system prune -a --volumes -f
+
+# 3. Eliminación forzada y total del directorio y los recursos locales
 cd ..
-rm -rf disherio
+sudo rm -rf disherio
 ```
 
 ### 6.3 Resolución de Incidencias e Instalación Corrupta
@@ -192,20 +195,20 @@ rm -rf disherio
 En el supuesto diagnóstico de corrupción del estado (ej., fallo originado por apagón crítico, modificación externa manual en los volúmenes, corrupción en el servicio de Docker), ejecutar la siguiente secuencia de reseteo forzado integral:
 
 ```bash
-# Diagnóstico de anomalías en los contenedores
+# Diagnóstico preliminar
 docker ps -a
 docker compose logs backend
 
 # Destrucción exhaustiva de la pila y todos sus rastros asilados
 cd disherio
-docker compose down -v --remove-orphans
+docker compose down -v --rmi all --remove-orphans
+docker system prune -a --volumes -f
 
-# (Opcional) Purga general del daemon de Docker si procede:
-# docker system prune -a -f --volumes
-
-# Eliminación del root path y recombinación pura
+# Eliminación severa del root path y recombinación pura
 cd ..
-rm -rf disherio
+sudo rm -rf disherio
+
+# Reinstalación limpia desde cero
 git clone https://github.com/ismailhaddouche/disherio.git
 cd disherio
 chmod +x install.sh
