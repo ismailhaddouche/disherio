@@ -167,8 +167,8 @@ Returns the list of all configured tables/totems. Public — no authentication r
 **Response `200 OK`:**
 ```json
 [
-  { "id": 1, "name": "Mesa 1", "active": true },
-  { "id": 2, "name": "Terraza 1", "active": true }
+  { "id": 1, "name": "Mesa 1", "active": true, "isVirtual": false, "currentSessionId": "DSH-ABC123-2026-2027" },
+  { "id": 2, "name": "Barra", "active": true, "isVirtual": true, "currentSessionId": null }
 ]
 ```
 
@@ -189,7 +189,54 @@ Creates a new table. The `id` is auto-incremented. The `name` defaults to `Mesa 
 {
   "id": 3,
   "name": "Terraza 2",
-  "active": true
+  "active": true,
+  "isVirtual": false,
+  "createdBy": "admin"
+}
+```
+
+#### Update Totem
+`PATCH /api/totems/:id` — **Requires: Admin**
+
+Updates an existing table's name.
+
+**Request:**
+```json
+{
+  "name": "Terraza VIP"
+}
+```
+
+#### Delete Totem
+`DELETE /api/totems/:id` — **Requires: Admin (Waiters can delete virtual totems)**
+
+Permanently removes a table from the restaurant config. Kills any active sessions on that table.
+
+#### Get Totem Session
+`GET /api/totems/:id/session`
+
+Retrieves the currently active `sessionId` for a specific table. If the session has expired or the table is empty, `sessionId` will be `null`.
+
+**Response `200 OK`:**
+```json
+{
+  "sessionId": "DSH-XYZ789-2026-2027",
+  "totemId": 1,
+  "tableNumber": "Mesa 1"
+}
+```
+
+#### Start Totem Session
+`POST /api/totems/:id/session`
+
+Generates and opens a new session for a table. Required before a customer can place an order via QR or via public session code link. If an active session already exists, it returns the existing one. It also initializes an empty order lock in the backend.
+
+**Response `200 OK`:**
+```json
+{
+  "sessionId": "DSH-NEW123-2026-2027",
+  "totemId": 1,
+  "tableNumber": "Mesa 1"
 }
 ```
 
@@ -303,9 +350,16 @@ Returns all orders with `status: active`, sorted newest first. Used by KDS and P
 Returns the active order for a specific table number. Public — used by the customer checkout view.
 
 **Parameters:**
-- `tableNumber` (string) — The table identifier (matches `totemId`)
+- `tableNumber` (string) — The table identifier (matches `totemId` or `name`)
 
 **Response `200 OK`:** Order object or `null` if no active order.
+
+#### Get Order by Session Code
+`GET /api/orders/session/:sessionId`
+
+Returns the active order linked to a specific alphanumeric session code. Public — used by the customer view when accessed out of local network.
+
+**Response `200 OK`:** Order object or `null` if no active order matches the session.
 
 #### Create New Order
 `POST /api/orders`
@@ -317,6 +371,7 @@ Creates a new order. Public — called when a customer confirms their cart. Send
 {
   "tableNumber": "1",
   "totemId": 1,
+  "sessionId": "DSH-ABC123-2026-2027",
   "items": [
     {
       "name": "Margherita",
