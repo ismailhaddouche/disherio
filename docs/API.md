@@ -82,6 +82,30 @@ Clears the authentication cookie. No request body required.
 { "message": "Logged out successfully" }
 ```
 
+#### Customer Guest Session
+`POST /api/auth/customer-session`
+
+Generates a temporary session token for a customer joining a table. Employs `httpOnly` cookies.
+
+**Request:**
+```json
+{
+  "restaurantSlug": "default",
+  "totemId": 1,
+  "name": "Juan"
+}
+```
+
+**Response `200 OK`:**
+```json
+{
+  "username": "Juan",
+  "role": "customer",
+  "restaurantSlug": "default",
+  "totemId": 1
+}
+```
+
 ---
 
 ### System
@@ -154,6 +178,30 @@ Updates any restaurant field (branding, theme, billing, socials). Sends a `confi
 ```
 
 **Response `200 OK`:** Full updated restaurant object.
+
+#### Upload Logo
+`POST /api/upload-logo` — **Requires: Admin**
+
+Uploads and optimizes the restaurant logo (converts to WebP, forces 500x500px boundaries). Accepts `multipart/form-data` with a `logo` file field.
+
+**Response `200 OK`:**
+```json
+{
+  "url": "/uploads/logo-1708691400000.webp"
+}
+```
+
+#### Close Shift (Cierre de Caja)
+`POST /api/close-shift` — **Requires: Admin**
+
+Terminates all active table sessions globally. Emits `all-sessions-ended` via Socket.io to disconnect all customers. Used typically at the end of the day.
+
+**Response `200 OK`:**
+```json
+{
+  "message": "Cierre de caja realizado. Todas las sesiones de clientes han sido liquidadas."
+}
+```
 
 ---
 
@@ -361,7 +409,7 @@ Returns the active order linked to a specific alphanumeric session code. Public 
 
 **Response `200 OK`:** Order object or `null` if no active order matches the session.
 
-#### Create New Order
+#### Create New Order (Customer)
 `POST /api/orders`
 
 Creates a new order. Public — called when a customer confirms their cart. Sends an `order-update` Socket.io event.
@@ -378,15 +426,31 @@ Creates a new order. Public — called when a customer confirms their cart. Send
       "price": 12.50,
       "quantity": 2,
       "variants": ["Large"],
-      "addons": ["Extra cheese"],
-      "status": "pending"
+      "addons": ["Extra cheese"]
     }
-  ],
-  "totalAmount": 28.50
+  ]
 }
 ```
 
 **Response `201 Created`:** Full order object.
+
+#### Add Items to Order (Waiter)
+`POST /api/orders/table/:tableNumber/add-items` — **Requires: Token (any role)**
+
+Appends items to an existing active order (or creates the order if the table is empty). This is the endpoint used by Waiters in the POS/Waiter interface.
+
+**Request:**
+```json
+{
+  "items": [
+    { "name": "Beer", "price": 4.50, "quantity": 3 }
+  ],
+  "guestId": "guest-timestamp",
+  "guestName": "Carlos"
+}
+```
+
+**Response `200 OK`:** Full order object.
 
 #### Update Order
 `PATCH /api/orders/:orderId` — **Requires: Token (any role)**
@@ -414,6 +478,8 @@ Updates the status of a single item within an order. Used by KDS to mark items a
 | `pending` | Received, not started |
 | `preparing` | Kitchen is working on it |
 | `ready` | Ready to serve |
+| `served` | Delivered to customer |
+| `cancelled`| Cancelled order |
 
 **Request:**
 ```json
@@ -423,6 +489,35 @@ Updates the status of a single item within an order. Used by KDS to mark items a
 ```
 
 **Response `200 OK`:** Full order object with updated item.
+
+#### Associate Item to Customer
+`PATCH /api/orders/:orderId/items/:itemId/associate` — **Requires: Token (any role)**
+
+Changes the `orderedBy` tag of an individual item inside an order to a specific customer's name. Useful for waiters managing split bills.
+
+**Request:**
+```json
+{
+  "userId": "guest-timestamp-123",
+  "userName": "Carlos"
+}
+```
+
+**Response `200 OK`:** Full updated order object.
+
+#### Bulk Status Update
+`PATCH /api/orders/:orderId/items/bulk-status` — **Requires: Token (any role)**
+
+Updates the status of *all* items in the order at once (excluding already `served` or `cancelled` items).
+
+**Request:**
+```json
+{
+  "status": "preparing"
+}
+```
+
+**Response `200 OK`:** Full updated order object.
 
 #### Complete an Order
 `POST /api/orders/:orderId/complete` — **Requires: Token (any role)**
@@ -499,6 +594,19 @@ Returns all user accounts. Password field is excluded.
 ]
 ```
 
+#### Update Own Profile
+`PATCH /api/users/me` — **Requires: Token (any role)**
+
+Allows a logged-in user to change their username or password.
+
+**Request:**
+```json
+{
+  "username": "maria_chef",
+  "password": "newSecurePassword123"
+}
+```
+
 #### Create or Update User
 `POST /api/users` — **Requires: Admin**
 
@@ -528,6 +636,27 @@ Permanently removes a user account.
 ```json
 { "message": "User deleted" }
 ```
+
+#### Update Printer Settings
+`PATCH /api/users/:id/print-settings` — **Requires: Admin**
+
+Updates network printer configuration and receipt template details for a specific POS/Admin user.
+
+**Request:**
+```json
+{
+  "printerId": "192.168.1.100",
+  "printTemplate": {
+    "header": "Gracias por su visita",
+    "showLogo": true
+  }
+}
+```
+
+#### Copy Printer Settings
+`POST /api/users/:id/copy-print-settings/:sourceUserId` — **Requires: Admin**
+
+Copies the printer configuration and template from the `sourceUserId` to the target `:id`. Very useful when setting up multiple POS terminals.
 
 ---
 
