@@ -115,7 +115,7 @@ Todos los servicios están configurados con un **driver de logging `json-file`**
 
 ## Decisiones Clave de Diseño
 
--   **Inquilino Único sobre Multi-inquilino:** Simplifica radicalmente la arquitectura, la seguridad y el mantenimiento, haciéndolo ideal para el auto-alojamiento.
+-   **Inquilino Único (Single-Tenant):** Simplifica radicalmente la arquitectura, la seguridad y el mantenimiento, haciéndolo ideal para el auto-alojamiento.
 -   **MongoDB sobre Base de Datos Relacional:** El esquema flexible de MongoDB es perfecto para la estructura anidada y variable de los menús de restaurante.
 -   **Caddy sobre Nginx (como proxy principal):** La gestión automática de certificados TLS de Caddy es una característica crítica para operadores no técnicos.
 -   **Imágenes Multi-Arquitectura:** El uso de imágenes base compatibles con `amd64` y `arm64` permite que Disher.io se ejecute en una amplia gama de hardware sin cambios en el código.
