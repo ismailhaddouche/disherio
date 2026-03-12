@@ -20,6 +20,11 @@ echo -e "${CYAN}============================================${NC}"
 echo -e "${CYAN}         DISHER.IO - INSTALLER              ${NC}"
 echo -e "${CYAN}============================================${NC}"
 
+echo -e "${YELLOW}[SECURITY WARNING]${NC}"
+echo -e "Never share your .env file or commit it to Git."
+echo -e "If you ever leaked a secret, rotate it immediately using this installer."
+echo -e "--------------------------------------------"
+
 # 1. Language Selection
 echo -e "\nSelecciona el idioma / Select language:"
 echo -e "1) Español"
@@ -58,6 +63,7 @@ if [ "$LANG_OPT" = "2" ]; then
     MSG_PORT_PROMPT="HTTP Port (default 80, use 8080 if 80 is busy): "
     MSG_PORT_BUSY="Port is already in use! Try another port (e.g. 8080):"
     MSG_PORT_OK="Port available"
+    MSG_HTTPS_WARN="[IMPORTANT] You enabled local HTTPS. To avoid browser warnings, download the Caddy root certificate from your gateway and install it on your devices."
 else
     MSG_DOM="[1/6] Configuración de Acceso"
     MSG_DOM_TYPE="Selecciona el tipo de acceso:"
@@ -90,6 +96,7 @@ else
     MSG_PORT_PROMPT="Puerto HTTP (por defecto 80, usa 8080 si el 80 está ocupado): "
     MSG_PORT_BUSY="El puerto está en uso. Prueba otro (ej: 8080):"
     MSG_PORT_OK="Puerto disponible"
+    MSG_HTTPS_WARN="[IMPORTANTE] Has activado HTTPS local. Para evitar advertencias del navegador, descarga el certificado raíz de Caddy e instálalo en tus dispositivos."
 fi
 
 # 2. Domain or IP
@@ -158,7 +165,16 @@ while true; do
                 read -p "Enter IP manually: " CADDY_DOMAIN
             fi
             
-            PROTOCOL="http"
+            echo -e "\n${YELLOW}SECURITY CHOICE:${NC}"
+            echo -e "1) HTTPS (Secure, Recommended - Requires trusting Caddy CA on devices)"
+            echo -e "2) HTTP (Fast, Insecure - Traffic is visible on local network)"
+            read -p "Select protocol [1-2] (default: 1): " SEC_OPT
+            if [ "$SEC_OPT" = "2" ]; then
+                PROTOCOL="http"
+            else
+                PROTOCOL="https"
+                echo -e "${YELLOW}NOTE: You will need to trust the Caddy Local CA on your devices to avoid browser warnings.${NC}"
+            fi
             break 2
         done
     else
@@ -223,31 +239,15 @@ EOF
 
 # 5. Docker Detection
 echo -e "\n${CYAN}${MSG_DOCKER}${NC}"
-if command -v docker-compose &> /dev/null; then
-    DOCKER_CMD="docker-compose"
-elif docker compose version &> /dev/null; then
+if docker compose version &> /dev/null; then
     DOCKER_CMD="docker compose"
+elif command -v docker-compose &> /dev/null; then
+    DOCKER_CMD="docker-compose"
 else
-    echo -e "${YELLOW}${MSG_WARN_DOCK}${NC}"
-    # Intentar instalar Docker usando el script oficial
-    curl -fsSL https://get.docker.com -o get-docker.sh
-    sh get-docker.sh
-    rm get-docker.sh
-    
-    # Intentar instalar el plugin de docker-compose por si acaso (Ubuntu/Debian)
-    if command -v apt-get &> /dev/null; then
-        apt-get update -y && apt-get install -y docker-compose-plugin
-    fi
-    
-    # Re-evaluar si se pudo instalar
-    if docker compose version &> /dev/null; then
-        DOCKER_CMD="docker compose"
-    elif command -v docker-compose &> /dev/null; then
-        DOCKER_CMD="docker-compose"
-    else
-        echo -e "${RED}${MSG_ERR_DOCK}${NC}"
-        exit 1
-    fi
+    echo -e "${RED}[ERROR] Docker or Docker Compose not found.${NC}"
+    echo -e "${YELLOW}Please install Docker and the Docker Compose plugin manually before running this installer.${NC}"
+    echo -e "Refer to the README.md or official documentation: https://docs.docker.com/engine/install/"
+    exit 1
 fi
 echo -e "${GREEN}Using: ${DOCKER_CMD}${NC}"
 
@@ -297,5 +297,9 @@ echo -e "\n${YELLOW}${MSG_CRED}${NC}"
 echo -e "  ${MSG_USRADM}${CYAN}admin${NC}"
 echo -e "  ${MSG_PWDADM}${CYAN}$ADMIN_PASS${NC}"
 echo -e "\n  Acceso: ${CYAN}${ACCESS_URL}${NC}"
+
+if [ "$PROTOCOL" = "https" ]; then
+    echo -e "\n${YELLOW}${MSG_HTTPS_WARN}${NC}"
+fi
 
 echo -e "\n${GREEN}Listo! / Done!${NC}\n"

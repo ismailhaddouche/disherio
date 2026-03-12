@@ -14,6 +14,7 @@ export interface KDSOrder {
     status: string;
     createdAt: string;
     timeElapsed?: number;
+    __v?: number;
 }
 
 @Injectable()
@@ -129,7 +130,13 @@ export class KDSViewModel {
 
     public async updateItemStatus(orderId: string, itemId: string, nextStatus: string, print: boolean = false) {
         try {
-            await firstValueFrom(this.http.patch(`${environment.apiUrl}/api/orders/${orderId}/items/${itemId}`, { status: nextStatus }, { withCredentials: true }));
+            const order = this.orders().find(o => o._id === orderId);
+            const version = order?.__v ?? 0;
+
+            await firstValueFrom(this.http.patch(`${environment.apiUrl}/api/orders/${orderId}/items/${itemId}`, { 
+                status: nextStatus,
+                __v: version
+            }, { withCredentials: true }));
 
             if (print && nextStatus === 'ready') {
                 const order = this.orders().find(o => o._id === orderId);
@@ -148,7 +155,13 @@ export class KDSViewModel {
 
     public async bulkUpdateItemsStatus(orderId: string, status: string) {
         try {
-            await firstValueFrom(this.http.patch(`${environment.apiUrl}/api/orders/${orderId}/items/bulk-status`, { status }, { withCredentials: true }));
+            const order = this.orders().find(o => o._id === orderId);
+            const version = order?.__v ?? 0;
+
+            await firstValueFrom(this.http.patch(`${environment.apiUrl}/api/orders/${orderId}/items/bulk-status`, { 
+                status,
+                __v: version
+            }, { withCredentials: true }));
             this.auth.logActivity('ORDER_ITEMS_BULK_UPDATE', { orderId, status });
         } catch (e) { console.error('Error bulk updating', e); }
     }

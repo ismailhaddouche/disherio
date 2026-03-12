@@ -46,15 +46,23 @@ export class CommunicationService {
 
     private setupSocketListeners() {
         this.socket.on('connect', () => {
+            console.log('[SOCKET] Connected. Syncing state...');
             this.connectionStatus.set('connected');
+            // Al reconectar, forzar una sincronización para no perder estados intermedios
+            this.syncOrders();
         });
 
-        this.socket.on('disconnect', () => {
+        this.socket.on('disconnect', (reason) => {
+            console.log('[SOCKET] Disconnected:', reason);
             this.connectionStatus.set('disconnected');
         });
 
-        this.socket.on('reconnecting', () => {
+        this.socket.on('reconnect_attempt', () => {
             this.connectionStatus.set('reconnecting');
+        });
+
+        this.socket.on('reconnect_failed', () => {
+            console.error('[SOCKET] Reconnection failed. Please check network.');
         });
     }
 
@@ -89,10 +97,18 @@ export class CommunicationService {
     // --- API CALLS ---
 
     public async syncOrders() {
-        if (this.isOnline()) {
-            return lastValueFrom(this.http.get(`${environment.apiUrl}/api/orders`));
-        } else {
-            console.warn('Offline mode: Sync postponed');
+        if (!this.isOnline()) {
+            console.warn('[SYNC] Offline mode: Sync postponed');
+            return null;
+        }
+
+        try {
+            console.log('[SYNC] Starting background order sync...');
+            const orders = await lastValueFrom(this.http.get<any[]>(`${environment.apiUrl}/api/orders`));
+            console.log('[SYNC] Successfully synchronized', orders?.length || 0, 'orders.');
+            return orders;
+        } catch (error) {
+            console.error('[SYNC] Failed to sync orders:', error);
             return null;
         }
     }

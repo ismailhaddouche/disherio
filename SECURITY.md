@@ -59,11 +59,17 @@ Disher.io implements the following security controls:
 - Login endpoint: 10 attempts per 15 minutes per IP (brute-force protection)
 - Request body size: 1 MB limit on all endpoints
 
-### Input Validation
-- All route handlers validate and sanitize input using `express-validator`
-- MongoDB IDs validated as valid ObjectIds before any query
-- Enum fields (role, status, payment method) validated against allowed values
-- Required fields rejected with 400 if missing or empty
+### Input Validation & Integrity
+- All route handlers validate and sanitize input using **Joi** schemas (strict mode).
+- **Optimistic Concurrency Control (OCC)**: Every critical update (Orders, Menu, Users) is protected via versioning (`__v`). This prevents "lost updates" and data corruption during concurrent edits.
+- MongoDB IDs validated as valid ObjectIds before any query.
+- Enum fields (role, status, payment method) validated against allowed values.
+- Required fields rejected with 400 if missing or empty.
+
+### Auditing & Traceability
+- **Server-Side Logs**: Every critical action (price changes, cancellations, role updates) is automatically logged by the backend as a secure `ActivityLog`.
+- **Action Snapshots**: Logs include the previous and new state of the data for suspicious activity investigation and forensic audit.
+- **Immutable User Identity**: Audit records use the identity from the verified JWT, preventing forgery.
 
 ### Container Security
 - Backend and frontend run as non-root user (UID 1001)

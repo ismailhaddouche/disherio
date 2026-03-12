@@ -29,12 +29,16 @@ const OrderItemSchema = new mongoose.Schema({
     image: String,
     isCustom: { type: Boolean, default: false },
     isPaid: { type: Boolean, default: false },
+    statusHistory: [{
+        status: String,
+        timestamp: { type: Date, default: Date.now }
+    }],
     createdAt: { type: Date, default: Date.now }
 });
 
 const OrderSchema = new mongoose.Schema({
     tableNumber: String,
-    totemId: { type: Number, required: true }, // PM FIX: Added identifying totem number
+    totemId: { type: Number, required: true },
     items: [OrderItemSchema],
     totalAmount: { type: Number, default: 0 },
     paymentStatus: {
@@ -47,8 +51,12 @@ const OrderSchema = new mongoose.Schema({
         enum: ['active', 'completed', 'cancelled'],
         default: 'active'
     },
+    statusHistory: [{
+        status: String,
+        timestamp: { type: Date, default: Date.now }
+    }],
     sessionId: { type: String, unique: true, sparse: true }
-}, { timestamps: true });
+}, { timestamps: true, optimisticConcurrency: true });
 
 // Indexes for performance optimization
 OrderSchema.index({ status: 1, createdAt: -1 });

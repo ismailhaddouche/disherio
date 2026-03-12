@@ -8,14 +8,14 @@ Esta guía cubre backups, restauraciones, actualizaciones y seguridad para un de
 
 ### 1. Crear un Backup (Recomendado)
 
-Usa el script `configure.sh` para crear backups seguros y autenticados.
+Usa el script automatizado `backup.sh` incluido en la raíz del proyecto para crear copias de seguridad consistentes y comprimidas.
 
 ```bash
-sudo ./configure.sh
+chmod +x backup.sh
+sudo ./backup.sh
 ```
 
-1.  Selecciona la opción **"5) Crear Backup de Base de Datos"**.
-2.  El script generará un archivo `disher-backup-YYYY-MM-DD_HH-MM-SS.tar.gz`.
+El script generará un archivo `backups/disher_backup_YYYY-MM-DD_HH-MM-SS.tar.gz`. Solo se mantienen las últimas 7 copias para preservar el espacio en disco.
 
 **Guarda este archivo en una ubicación externa y segura.**
 
@@ -72,14 +72,11 @@ docker compose exec -T database mongodump \
 **Paso B: Añade el script al cron**
 
 ```bash
-# Haz el script ejecutable
-sudo chmod +x /opt/disher_backup.sh
-
 # Abre el editor de crontab
-sudo crontab -e
+crontab -e
 
-# Añade esta línea para un backup diario a las 3:00 AM
-0 3 * * * /opt/disher_backup.sh
+# Añade esta línea para un backup diario a las 4:00 AM (ajusta la ruta)
+0 4 * * * cd /home/usuario/disherio && ./backup.sh > /dev/null 2>&1
 ```
 
 ---

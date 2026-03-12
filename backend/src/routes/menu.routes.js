@@ -1,16 +1,11 @@
 import express from 'express';
+import Joi from 'joi';
 const router = express.Router();
 import MenuItem from '../models/MenuItem.js';
 import { verifyToken } from '../middleware/auth.middleware.js';
-import { validate, menuItemSchema } from '../middleware/validation.middleware.js';
+import { validate, menuItemSchema, mongoIdSchema } from '../middleware/validation.middleware.js';
+import MenuService from '../services/menu.service.js';
 import multer from 'multer';
-import sharp from 'sharp';
-import path from 'path';
-import fs from 'fs';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 // Configure multer storage (memory storage for sharp processing)
 const storage = multer.memoryStorage();
@@ -24,7 +19,7 @@ const upload = multer({
 });
 
 // Middleware to restrict certain actions to admin OR kitchen (for specific categories)
-const authorizeKitchenAction = async (req, res, next) => {
+async function authorizeKitchenAction(req, res, next) {
     if (req.user.role === 'admin') return next();
 
     if (req.user.role === 'kitchen') {
@@ -36,32 +31,25 @@ const authorizeKitchenAction = async (req, res, next) => {
     }
 
     res.error('Acceso denegado', 403);
-};
+}
 
 // GET / - List all menu items
-router.get('/', async (req, res) => {
+router.get('/', async function(req, res) {
     const items = await MenuItem.find().sort({ category: 1, order: 1, name: 1 });
     res.success(items);
 });
 
 // POST /upload-image - Upload and optimize menu item image
-router.post('/upload-image', verifyToken, authorizeKitchenAction, upload.single('image'), async (req, res) => {
+router.post('/upload-image', verifyToken, authorizeKitchenAction, upload.single('image'), async function(req, res) {
     if (!req.file) return res.error('No se proporcionó ninguna imagen', 400);
 
-    const uploadDir = path.join(__dirname, '../../public/uploads/menu');
-    if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
-
-    const filename = `item-${Date.now()}-${Math.round(Math.random() * 1000)}.webp`;
-    const filepath = path.join(uploadDir, filename);
-
-    // Optimize image with sharp: Max 500px, WebP format
-    await sharp(req.file.buffer)
-        .resize(500, 500, { fit: 'inside', withoutEnlargement: true })
-        .webp({ quality: 80 })
-        .toFile(filepath);
-
-    const fileUrl = `/uploads/menu/${filename}`;
-    res.success({ url: fileUrl });
+    try {
+        const fileUrl = await MenuService.processImage(req.file.buffer);
+        res.success({ url: fileUrl });
+    } catch (error) {
+        console.error('Error processing image:', error);
+        res.error('Error al procesar la imagen', 500);
+    }
 });
 
 // POST / - Create or update a menu item
@@ -69,7 +57,7 @@ router.post('/',
     verifyToken,
     authorizeKitchenAction,
     validate(menuItemSchema),
-    async (req, res) => {
+    async function(req, res) {
         const { _id, ...data } = req.body;
 
         let item;
@@ -78,13 +66,25 @@ router.post('/',
                 return res.error('La cocina no puede mover platos fuera de "Fuera de Carta"', 403);
             }
 
+            const oldItem = await MenuItem.findById(_id);
             item = await MenuItem.findByIdAndUpdate(_id, data, { new: true });
+            
             if (!item) {
                 return res.error('Menu item not found', 404);
             }
+
+            await AuditService.logChange(req, 'MENU_ITEM_UPDATED', oldItem?.toObject(), item.toObject(), {
+                itemId: item._id,
+                itemName: item.name
+            });
         } else {
             item = new MenuItem(data);
             await item.save();
+            await AuditService.log(req, 'MENU_ITEM_CREATED', {
+                itemId: item._id,
+                itemName: item.name,
+                category: item.category
+            });
         }
 
         const io = req.app.get('io');
@@ -100,11 +100,17 @@ router.post('/',
 router.delete('/:id',
     verifyToken,
     authorizeKitchenAction,
-    async (req, res) => {
+    validate(mongoIdSchema, 'params'),
+    async function(req, res) {
         const item = await MenuItem.findByIdAndDelete(req.params.id);
         if (!item) {
             return res.error('Menu item not found', 404);
         }
+
+        await AuditService.log(req, 'MENU_ITEM_DELETED', {
+            itemId: item._id,
+            itemName: item.name
+        });
 
         const io = req.app.get('io');
         if (io) {
@@ -118,18 +124,27 @@ router.delete('/:id',
 // POST /:productId/toggle - Toggle item availability
 router.post('/:productId/toggle',
     verifyToken,
-    async (req, res, next) => {
+    validate(Joi.object({ productId: Joi.string().hex().length(24).required() }), 'params'),
+    async function(req, res, next) {
         if (['admin', 'kitchen'].includes(req.user.role)) return next();
         res.error('Solo administración o cocina pueden cambiar la disponibilidad', 403);
     },
-    async (req, res) => {
+    async function(req, res) {
         const item = await MenuItem.findById(req.params.productId);
         if (!item) {
             return res.error('Menu item not found', 404);
         }
 
+        const previousStatus = item.available;
         item.available = !item.available;
         await item.save();
+
+        await AuditService.log(req, 'MENU_ITEM_AVAILABILITY_TOGGLED', {
+            itemId: item._id,
+            itemName: item.name,
+            from: previousStatus,
+            to: item.available
+        });
 
         const io = req.app.get('io');
         if (io) {

@@ -1,6 +1,6 @@
 import express from 'express';
 const router = express.Router();
-import { body, param, validationResult } from 'express-validator';
+import Joi from 'joi';
 import QRCode from 'qrcode';
 import multer from 'multer';
 import sharp from 'sharp';
@@ -12,25 +12,18 @@ import Ticket from '../models/Ticket.js';
 import ActivityLog from '../models/ActivityLog.js';
 import Order from '../models/Order.js';
 import { verifyToken } from '../middleware/auth.middleware.js';
+import { validate, mongoIdSchema } from '../middleware/validation.middleware.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const validate = (req, res, next) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-        return res.error(errors.array()[0].msg, 400);
-    }
-    next();
-};
-
 // Middleware to ensure admin role
-const requireAdmin = (req, res, next) => {
+async function requireAdmin(req, res, next) {
     if (!req.user || req.user.role !== 'admin') {
         return res.error(req.t('ERRORS.ACCESS_DENIED_ADMIN'), 403);
     }
     next();
-};
+}
 
 // Configure multer storage (memory storage for sharp processing)
 const storage = multer.memoryStorage();
@@ -43,8 +36,37 @@ const upload = multer({
     }
 });
 
+// ── Joi Schemas ──────────────────────────────────────────────────────────────
+
+const restaurantUpdateSchema = Joi.object({
+    name: Joi.string().max(100).trim(),
+    address: Joi.string().max(200).trim().allow(''),
+    phone: Joi.string().max(20).trim().allow(''),
+    email: Joi.string().email().max(100).trim().allow(''),
+    description: Joi.string().max(500).trim().allow(''),
+    theme: Joi.object().unknown(true),
+    billing: Joi.object().unknown(true),
+    socials: Joi.object().unknown(true),
+    stations: Joi.array().items(Joi.string().max(50)).max(20),
+    defaultLanguage: Joi.string().valid('es', 'en').default('es')
+}).min(1);
+
+const totemSchema = Joi.object({
+    name: Joi.string().required().min(1).max(50).trim(),
+    isVirtual: Joi.boolean().default(false)
+});
+
+const logSchema = Joi.object({
+    action: Joi.string().required().max(100).trim(),
+    userId: Joi.string().required().max(100).trim(),
+    details: Joi.object().unknown(true).optional(),
+    tableNumber: Joi.string().max(20).optional()
+}).unknown(true);
+
+// ── Routes ───────────────────────────────────────────────────────────────────
+
 // GET /restaurant - Get restaurant configuration (single tenant)
-router.get('/restaurant', async (req, res) => {
+router.get('/restaurant', async function(req, res) {
     let restaurant = await Restaurant.findOne();
     if (!restaurant) {
         restaurant = new Restaurant({
@@ -61,50 +83,61 @@ router.get('/restaurant', async (req, res) => {
 });
 
 // PATCH /restaurant - Update restaurant configuration
-const ALLOWED_RESTAURANT_UPDATE_FIELDS = [
-    'name', 'address', 'phone', 'email', 'description',
-    'theme', 'billing', 'socials', 'stations', 'defaultLanguage'
-];
-router.patch('/restaurant', verifyToken, requireAdmin, async (req, res) => {
-    let restaurant = await Restaurant.findOne();
-    if (!restaurant) {
-        restaurant = new Restaurant({ name: 'Mi Restaurante', slug: 'default' });
-    }
-
-    for (const field of ALLOWED_RESTAURANT_UPDATE_FIELDS) {
-        if (req.body[field] !== undefined) {
-            restaurant[field] = req.body[field];
+router.patch('/restaurant',
+    verifyToken,
+    requireAdmin,
+    validate(restaurantUpdateSchema),
+    async function(req, res) {
+        let restaurant = await Restaurant.findOne();
+        if (!restaurant) {
+            restaurant = new Restaurant({ name: 'Mi Restaurante', slug: 'default' });
         }
+
+        const ALLOWED_FIELDS = [
+            'name', 'address', 'phone', 'email', 'description',
+            'theme', 'billing', 'socials', 'stations', 'defaultLanguage'
+        ];
+
+        for (const field of ALLOWED_FIELDS) {
+            if (req.body[field] !== undefined) {
+                restaurant[field] = req.body[field];
+            }
+        }
+
+        await restaurant.save();
+
+        const io = req.app.get('io');
+        if (io) io.emit('config-updated', restaurant);
+
+        res.success(restaurant);
     }
-
-    await restaurant.save();
-
-    const io = req.app.get('io');
-    if (io) io.emit('config-updated', restaurant);
-
-    res.success(restaurant);
-});
+);
 
 // POST /upload-logo - Upload and optimize restaurant logo
-router.post('/upload-logo', verifyToken, requireAdmin, upload.single('logo'), async (req, res) => {
-    if (!req.file) return res.error(req.t('ERRORS.NO_IMAGE_PROVIDED'), 400);
+router.post('/upload-logo',
+    verifyToken,
+    requireAdmin,
+    upload.single('logo'),
+    async function(req, res) {
+        if (!req.file) return res.error(req.t('ERRORS.NO_IMAGE_PROVIDED'), 400);
 
-    const uploadDir = path.join(__dirname, '../../public/uploads');
-    if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+        const uploadDir = path.join(__dirname, '../../public/uploads');
+        if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
-    const filename = `logo-${Date.now()}.webp`;
-    const filepath = path.join(uploadDir, filename);
+        const filename = `logo-${Date.now()}.webp`;
+        const filepath = path.join(uploadDir, filename);
 
-    // Optimize image with sharp: Max 500px, WebP format
-    await sharp(req.file.buffer)
-        .resize(500, 500, { fit: 'inside', withoutEnlargement: true })
-        .webp({ quality: 80 })
-        .toFile(filepath);
+        // Optimize image with sharp: Max 500px, WebP format
+        await sharp(req.file.buffer)
+            .resize(500, 500, { fit: 'inside', withoutEnlargement: true })
+            .webp({ quality: 80 })
+            .toFile(filepath);
 
-    // Return the path so the frontend can save it to the config
-    const fileUrl = `/uploads/${filename}`;
-    res.success({ url: fileUrl });
-});
+        // Return the path so the frontend can save it to the config
+        const fileUrl = `/uploads/${filename}`;
+        res.success({ url: fileUrl });
+    }
+);
 
 // Helper to generate a long alphanumeric session ID
 const generateSessionId = () => {
@@ -118,94 +151,97 @@ const generateSessionId = () => {
 };
 
 // GET /totems/:id/session - Get active session ID for a totem
-router.get('/totems/:id/session', async (req, res) => {
-    const totemId = parseInt(req.params.id);
-    const restaurant = await Restaurant.findOne();
-    if (!restaurant) return res.error('Restaurant not found', 404);
+router.get('/totems/:id/session',
+    validate(Joi.object({ id: Joi.number().integer().required() }), 'params'),
+    async function(req, res) {
+        const totemId = parseInt(req.params.id);
+        const restaurant = await Restaurant.findOne();
+        if (!restaurant) return res.error('Restaurant not found', 404);
 
-    const totem = restaurant.totems.find(t => t.id === totemId);
-    if (!totem) return res.error('Totem not found', 404);
-    if (!totem.active) return res.error('Mesa desactivada', 403);
+        const totem = restaurant.totems.find(t => t.id === totemId);
+        if (!totem) return res.error('Totem not found', 404);
+        if (!totem.active) return res.error('Mesa desactivada', 403);
 
-    let sessionId = totem.currentSessionId;
+        let sessionId = totem.currentSessionId;
 
-    if (sessionId) {
-        const activeOrder = await Order.findOne({ sessionId, status: 'active' });
-        if (!activeOrder) {
-            // Stale session, clear it.
-            sessionId = null;
-            totem.currentSessionId = null;
-            await restaurant.save();
+        if (sessionId) {
+            const activeOrder = await Order.findOne({ sessionId, status: 'active' });
+            if (!activeOrder) {
+                // Stale session, clear it.
+                sessionId = null;
+                totem.currentSessionId = null;
+                await restaurant.save();
+            }
         }
-    }
 
-    res.success({
-        sessionId: sessionId || null,
-        totemId: totem.id,
-        tableNumber: totem.name || totem.id.toString()
-    });
-});
+        res.success({
+            sessionId: sessionId || null,
+            totemId: totem.id,
+            tableNumber: totem.name || totem.id.toString()
+        });
+    }
+);
 
 // POST /totems/:id/session - Generate and start a new session for a totem
-router.post('/totems/:id/session', async (req, res) => {
-    const totemId = parseInt(req.params.id);
-    const restaurant = await Restaurant.findOne();
-    if (!restaurant) return res.error('Restaurant not found', 404);
+router.post('/totems/:id/session',
+    validate(Joi.object({ id: Joi.number().integer().required() }), 'params'),
+    async function(req, res) {
+        const totemId = parseInt(req.params.id);
+        const restaurant = await Restaurant.findOne();
+        if (!restaurant) return res.error('Restaurant not found', 404);
 
-    const totem = restaurant.totems.find(t => t.id === totemId);
-    if (!totem) return res.error('Totem not found', 404);
-    if (!totem.active) return res.error('Mesa desactivada', 403);
+        const totem = restaurant.totems.find(t => t.id === totemId);
+        if (!totem) return res.error('Totem not found', 404);
+        if (!totem.active) return res.error('Mesa desactivada', 403);
 
-    let sessionId = totem.currentSessionId;
+        let sessionId = totem.currentSessionId;
 
-    // Verify if a real active session already exists
-    if (sessionId) {
-        const activeOrder = await Order.findOne({ sessionId, status: 'active' });
-        if (activeOrder) {
-            // Session already started by someone else, return existing
-            return res.success({ sessionId, totemId: totem.id, tableNumber: totem.name || totem.id.toString() });
+        // Verify if a real active session already exists
+        if (sessionId) {
+            const activeOrder = await Order.findOne({ sessionId, status: 'active' });
+            if (activeOrder) {
+                // Session already started by someone else, return existing
+                return res.success({ sessionId, totemId: totem.id, tableNumber: totem.name || totem.id.toString() });
+            }
         }
+
+        // Generate new session since none exists or it was stale
+        sessionId = generateSessionId();
+        totem.currentSessionId = sessionId;
+        await restaurant.save();
+
+        // Initialize an empty active Order to lock the session
+        const newOrder = new Order({
+            tableNumber: totem.name || totem.id.toString(),
+            totemId: totem.id,
+            sessionId: sessionId,
+            items: [],
+            status: 'active'
+        });
+        await newOrder.save();
+
+        const io = req.app.get('io');
+        if (io) io.emit('order-updated', newOrder); // Notify waiters that a table opened
+
+        res.success({
+            sessionId,
+            totemId: totem.id,
+            tableNumber: totem.name || totem.id.toString()
+        });
     }
-
-    // Generate new session since none exists or it was stale
-    sessionId = generateSessionId();
-    totem.currentSessionId = sessionId;
-    await restaurant.save();
-
-    // Initialize an empty active Order to lock the session
-    const newOrder = new Order({
-        tableNumber: totem.name || totem.id.toString(),
-        totemId: totem.id,
-        sessionId: sessionId,
-        items: [],
-        status: 'active'
-    });
-    await newOrder.save();
-
-    const io = req.app.get('io');
-    if (io) io.emit('order-updated', newOrder); // Notify waiters that a table opened
-
-    res.success({
-        sessionId,
-        totemId: totem.id,
-        tableNumber: totem.name || totem.id.toString()
-    });
-});
+);
 
 // GET /totems - List totems
-router.get('/totems', async (req, res) => {
+router.get('/totems', async function(req, res) {
     const restaurant = await Restaurant.findOne();
     res.success(restaurant?.totems || []);
 });
 
 // POST /totems - Add a new totem
 router.post('/totems',
-    [
-        body('name').trim().notEmpty().withMessage('El nombre del tótem es obligatorio')
-    ],
-    validate,
     verifyToken,
-    async (req, res, next) => {
+    validate(totemSchema),
+    async function(req, res, next) {
         // Allow waiters only if isVirtual is true
         if (req.user.role === 'waiter' && req.body.isVirtual !== true) {
             return res.error(req.t('ERRORS.ACCESS_DENIED_ADMIN'), 403);
@@ -215,7 +251,7 @@ router.post('/totems',
         }
         next();
     },
-    async (req, res) => {
+    async function(req, res) {
         const { name, isVirtual } = req.body;
         let restaurant = await Restaurant.findOne();
         if (!restaurant) {
@@ -246,14 +282,11 @@ router.post('/totems',
 
 // PATCH /totems/:id - Edit totem
 router.patch('/totems/:id',
-    [
-        param('id').notEmpty().withMessage('ID is required'),
-        body('name').trim().notEmpty().withMessage('Name is required')
-    ],
-    validate,
     verifyToken,
     requireAdmin,
-    async (req, res) => {
+    validate(Joi.object({ id: Joi.string().required() }), 'params'), // Totem IDs are numbers but passed as strings in URL
+    validate(totemSchema),
+    async function(req, res) {
         const { id } = req.params;
         const { name } = req.body;
         let restaurant = await Restaurant.findOne();
@@ -275,10 +308,9 @@ router.patch('/totems/:id',
 
 // DELETE /totems/:id - Delete totem
 router.delete('/totems/:id',
-    [param('id').notEmpty()],
-    validate,
     verifyToken,
-    async (req, res) => {
+    validate(Joi.object({ id: Joi.string().required() }), 'params'),
+    async function(req, res) {
         const { id } = req.params;
         let restaurant = await Restaurant.findOne();
         if (!restaurant) return res.error(req.t('ERRORS.RESTAURANT_NOT_FOUND'), 404);
@@ -304,9 +336,8 @@ router.delete('/totems/:id',
 
 // GET /qr/:totemId - Generate QR code image
 router.get('/qr/:totemId',
-    param('totemId').notEmpty().withMessage('totemId is required'),
-    validate,
-    async (req, res) => {
+    validate(Joi.object({ totemId: Joi.string().required() }), 'params'),
+    async function(req, res) {
         const { totemId } = req.params;
 
         let baseUrl;
@@ -338,9 +369,11 @@ router.get('/qr/:totemId',
 );
 
 // POST /close-shift - Cierre de caja
-router.post('/close-shift', verifyToken, requireAdmin, async (req, res) => {
+router.post('/close-shift', verifyToken, requireAdmin, async function(req, res) {
     const restaurant = await Restaurant.findOne();
     if (!restaurant) return res.error('Restaurant not found', 404);
+
+    const affectedTables = restaurant.totems.filter(t => t.currentSessionId).map(t => t.name || t.id);
 
     restaurant.totems.forEach(totem => {
         totem.currentSessionId = null;
@@ -348,37 +381,45 @@ router.post('/close-shift', verifyToken, requireAdmin, async (req, res) => {
 
     await restaurant.save();
 
+    await AuditService.log(req, 'SHIFT_CLOSED', {
+        affectedTablesCount: affectedTables.length,
+        affectedTables
+    });
+
     const io = req.app.get('io');
     if (io) io.emit('all-sessions-ended', { reason: 'SHIFT_CLOSED' });
 
     res.success({ message: 'Cierre de caja realizado. Todas las sesiones de clientes han sido liquidadas.' });
 });
 
-// POST /logs - Create activity log
+// POST /logs - Create activity log (Maintained for legacy frontend logs but secured)
 router.post('/logs',
     verifyToken,
-    [
-        body('action').trim().notEmpty().withMessage('Action is required'),
-        body('userId').trim().notEmpty().withMessage('userId is required')
-    ],
-    validate,
-    async (req, res) => {
-        const log = new ActivityLog(req.body);
+    validate(logSchema),
+    async function(req, res) {
+        // Enforce server-side user info for security
+        const auditLog = {
+            ...req.body,
+            userId: req.user.userId,
+            username: req.user.username,
+            role: req.user.role
+        };
+        const log = new ActivityLog(auditLog);
         await log.save();
         res.success(log, 201);
     }
 );
 
 // GET /logs - Get activity logs
-router.get('/logs', verifyToken, async (req, res) => {
+router.get('/logs', verifyToken, requireAdmin, async function(req, res) {
     const logs = await ActivityLog.find()
         .sort({ timestamp: -1 })
-        .limit(100);
+        .limit(200);
     res.success(logs);
 });
 
 // GET /history - Get closed tickets/orders
-router.get('/history', verifyToken, async (req, res) => {
+router.get('/history', verifyToken, async function(req, res) {
     const tickets = await Ticket.find()
         .sort({ timestamp: -1 })
         .limit(200);
@@ -387,12 +428,19 @@ router.get('/history', verifyToken, async (req, res) => {
 
 // DELETE /tickets/:ticketId - Delete a ticket
 router.delete('/tickets/:ticketId',
-    param('ticketId').isMongoId().withMessage('Invalid ticket ID'),
-    validate,
     verifyToken,
-    async (req, res) => {
-        const ticket = await Ticket.findByIdAndDelete(req.params.ticketId);
+    validate(mongoIdSchema.rename('id', 'ticketId'), 'params'),
+    async function(req, res) {
+        const ticket = await Ticket.findById(req.params.ticketId);
         if (!ticket) return res.error(req.t('ERRORS.TICKET_NOT_FOUND'), 404);
+
+        await AuditService.log(req, 'TICKET_DELETED', {
+            ticketId: ticket._id,
+            customId: ticket.customId,
+            amount: ticket.amount
+        });
+
+        await Ticket.findByIdAndDelete(req.params.ticketId);
         res.success({ message: 'Ticket deleted' });
     }
 );

@@ -203,7 +203,8 @@ export class POSViewModel {
 
         try {
             const resData: any = await firstValueFrom(this.http.post(`${environment.apiUrl}/api/orders/${targetOrderId}/checkout`, {
-                splitType, parts, userId, method: 'cash', billingConfig: config
+                splitType, parts, userId, method: 'cash', billingConfig: config,
+                __v: this.selectedTable()?.order?.__v || 0
             }, { withCredentials: true }));
 
             this.auth.logActivity('ORDER_PAID', { orderId: targetOrderId, type: splitType, userId });
@@ -268,9 +269,11 @@ export class POSViewModel {
 
         if (p.type === 'thermal' || p.type === 'network') {
             const ip = p.address || p.ip;
-            this.notify.success(`🖨️ ${this.translate.instant('POS.PRINT_THERMAL')} ${ip} — ${ticket.customId} (${ticket.amount}€)`);
+            const fiscalInfo = ticket.baseAmount ? ` (Base: ${ticket.baseAmount}€ + IVA: ${ticket.vatAmount}€)` : '';
+            this.notify.success(`🖨️ ${this.translate.instant('POS.PRINT_THERMAL')} ${ip} — ${ticket.customId} (${ticket.amount}€)${fiscalInfo}`);
         } else {
-            this.notify.success(`🖨️ ${this.translate.instant('POS.PRINT_SYSTEM')} — ${ticket.customId} (${ticket.amount}€)`);
+            const fiscalInfo = ticket.baseAmount ? ` (Base: ${ticket.baseAmount}€ + IVA: ${ticket.vatAmount}€)` : '';
+            this.notify.success(`🖨️ ${this.translate.instant('POS.PRINT_SYSTEM')} — ${ticket.customId} (${ticket.amount}€)${fiscalInfo}`);
             window.print();
         }
     }
@@ -280,7 +283,14 @@ export class POSViewModel {
     }
 
     private async patchOrder(orderId: string, payload: any) {
-        return firstValueFrom(this.http.patch(`${environment.apiUrl}/api/orders/${orderId}`, payload, { withCredentials: true }));
+        // Find existing order to get the correct version (__v) for OCC
+        const order = this.orders().find(o => o._id === orderId);
+        const version = order?.__v ?? 0;
+        
+        return firstValueFrom(this.http.patch(`${environment.apiUrl}/api/orders/${orderId}`, { 
+            ...payload, 
+            __v: version 
+        }, { withCredentials: true }));
     }
 
     public async updateItemPrice(orderId: string, itemIndex: number, newPrice: number) {

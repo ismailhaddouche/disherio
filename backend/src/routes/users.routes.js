@@ -1,33 +1,52 @@
 import express from 'express';
 const router = express.Router();
-import { body, param, validationResult } from 'express-validator';
+import Joi from 'joi';
 import User from '../models/User.js';
 import { verifyToken } from '../middleware/auth.middleware.js';
+import { validate, mongoIdSchema } from '../middleware/validation.middleware.js';
 
-const validate = (req, res, next) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-        return res.error(errors.array()[0].msg, 400);
-    }
-    next();
-};
+// ── Joi Schemas ──────────────────────────────────────────────────────────────
+
+const userProfileSchema = Joi.object({
+    username: Joi.string().min(3).max(50).trim().optional(),
+    password: Joi.string().min(8).max(100).optional()
+}).min(1);
+
+const userAdminSchema = Joi.object({
+    _id: Joi.string().hex().length(24).optional(),
+    username: Joi.string().required().min(3).max(50).trim(),
+    role: Joi.string().valid('admin', 'kitchen', 'pos', 'customer', 'waiter').required(),
+    password: Joi.string().min(8).max(100).optional(),
+    restaurantSlug: Joi.string().max(100).optional(),
+    printerId: Joi.string().max(100).optional(),
+    printTemplate: Joi.object().optional()
+}).unknown(true);
+
+const printSettingsSchema = Joi.object({
+    printerId: Joi.string().max(100).optional(),
+    printTemplate: Joi.object().optional()
+}).min(1);
+
+// ── Middleware ───────────────────────────────────────────────────────────────
 
 // Middleware to ensure admin role
-const requireAdmin = (req, res, next) => {
+async function requireAdmin(req, res, next) {
     if (!req.user || req.user.role !== 'admin') {
         return res.error(req.t('ERRORS.ACCESS_DENIED_ADMIN'), 403);
     }
     next();
-};
+}
+
+// ── Routes ───────────────────────────────────────────────────────────────────
 
 // GET / - List all users
-router.get('/', verifyToken, requireAdmin, async (req, res) => {
+router.get('/', verifyToken, requireAdmin, async function(req, res) {
     const users = await User.find().select('-password');
     res.success(users);
 });
 
 // GET /restaurant/:slug - Get users for a restaurant
-router.get('/restaurant/:slug', verifyToken, requireAdmin, async (req, res) => {
+router.get('/restaurant/:slug', verifyToken, requireAdmin, async function(req, res) {
     const users = await User.find({ restaurantSlug: req.params.slug }).select('-password');
     res.success(users);
 });
@@ -35,12 +54,8 @@ router.get('/restaurant/:slug', verifyToken, requireAdmin, async (req, res) => {
 // PATCH /me - Update own profile
 router.patch('/me',
     verifyToken,
-    [
-        body('username').optional().trim().notEmpty().withMessage('Username cannot be empty'),
-        body('password').optional().isLength({ min: 8 }).withMessage('Password must be at least 8 characters')
-    ],
-    validate,
-    async (req, res) => {
+    validate(userProfileSchema),
+    async function(req, res) {
         const user = await User.findById(req.user.userId);
         if (!user) return res.error(req.t('ERRORS.USER_NOT_FOUND'), 404);
 
@@ -64,29 +79,31 @@ router.patch('/me',
 router.post('/',
     verifyToken,
     requireAdmin,
-    [
-        body('username').trim().notEmpty().withMessage((value, { req }) => req.t('AUTH.REQ_USERNAME')),
-        body('role')
-            .notEmpty().withMessage('Role is required')
-            .isIn(['admin', 'kitchen', 'pos', 'customer', 'waiter']).withMessage('Invalid role'),
-        body('password')
-            .if(body('_id').not().exists())
-            .notEmpty().withMessage('Password is required for new users')
-            .isLength({ min: 8 }).withMessage('Password must be at least 8 characters')
-    ],
-    validate,
-    async (req, res) => {
+    validate(userAdminSchema),
+    async function(req, res) {
         const { _id, ...data } = req.body;
 
         let user;
         if (_id) {
             user = await User.findById(_id);
             if (!user) return res.error(req.t('ERRORS.USER_NOT_FOUND'), 404);
+            
+            const oldUser = user.toObject(); // Capture old state for audit
             Object.assign(user, data);
             await user.save();
+            
+            await AuditService.logChange(req, 'USER_UPDATED', oldUser, user.toObject(), {
+                targetUserId: user._id,
+                targetUsername: user.username
+            });
         } else {
             user = new User(data);
             await user.save();
+            await AuditService.log(req, 'USER_CREATED', {
+                targetUserId: user._id,
+                targetUsername: user.username,
+                role: user.role
+            });
         }
         const result = user.toObject();
         delete result.password;
@@ -98,11 +115,17 @@ router.post('/',
 router.delete('/:id',
     verifyToken,
     requireAdmin,
-    param('id').isMongoId().withMessage('Invalid user ID'),
-    validate,
-    async (req, res) => {
-        const user = await User.findByIdAndDelete(req.params.id);
+    validate(mongoIdSchema, 'params'),
+    async function(req, res) {
+        const user = await User.findById(req.params.id); // Fetch user before deletion for audit log
         if (!user) return res.error(req.t('ERRORS.USER_NOT_FOUND'), 404);
+
+        await AuditService.log(req, 'USER_DELETED', {
+            targetUserId: user._id,
+            targetUsername: user.username
+        });
+
+        await User.findByIdAndDelete(req.params.id);
         res.success({ message: 'User deleted' });
     }
 );
@@ -111,13 +134,9 @@ router.delete('/:id',
 router.patch('/:id/print-settings',
     verifyToken,
     requireAdmin,
-    param('id').isMongoId().withMessage('Invalid user ID'),
-    [
-        body('printerId').optional().notEmpty().withMessage('printerId cannot be empty'),
-        body('printTemplate').optional().isObject().withMessage('printTemplate must be an object')
-    ],
-    validate,
-    async (req, res) => {
+    validate(mongoIdSchema, 'params'),
+    validate(printSettingsSchema),
+    async function(req, res) {
         const user = await User.findById(req.params.id);
         if (!user) return res.error(req.t('ERRORS.USER_NOT_FOUND'), 404);
 
@@ -135,12 +154,8 @@ router.patch('/:id/print-settings',
 router.post('/:id/copy-print-settings/:sourceUserId',
     verifyToken,
     requireAdmin,
-    [
-        param('id').isMongoId().withMessage('Invalid target user ID'),
-        param('sourceUserId').isMongoId().withMessage('Invalid source user ID')
-    ],
-    validate,
-    async (req, res) => {
+    validate(mongoIdSchema.append({ sourceUserId: Joi.string().hex().length(24).required() }), 'params'),
+    async function(req, res) {
         const sourceUser = await User.findById(req.params.sourceUserId);
         if (!sourceUser) return res.error(req.t('ERRORS.SOURCE_USER_NOT_FOUND'), 404);
 

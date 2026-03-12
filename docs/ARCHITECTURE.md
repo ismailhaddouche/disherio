@@ -64,8 +64,8 @@ El flujo de una petición típica (por ejemplo, un administrador que actualiza e
 2.  **Caddy a Frontend:** Caddy sirve la Single-Page Application (SPA) de Angular.
 3.  **Frontend a Backend (API):** La aplicación Angular realiza una petición HTTP a `/api/*`.
 4.  **Autenticación y Autorización:** El backend valida el token JWT y verifica que el usuario tiene el rol adecuado (ej. `admin`).
-5.  **Lógica de Negocio:** El controlador correspondiente procesa la petición.
-6.  **Interacción con la Base de Datos:** Se realiza la consulta a MongoDB (con autenticación).
+5.  **Lógica de Negocio y Auditoría:** El controlador correspondiente procesa la petición y se apoya en el `AuditService` para registrar la acción de forma segura.
+6.  **Interacción con la Base de Datos (Integridad OCC):** Se realiza la consulta a MongoDB. Si es una actualización crítica, se verifica la versión (`__v`) para garantizar que no haya conflictos de concurrencia.
 7.  **Respuesta y Evento en Tiempo Real:** El backend devuelve una respuesta JSON y emite un evento por Socket.io para notificar a todos los clientes conectados del cambio.
 
 ---
@@ -107,9 +107,11 @@ Todos los servicios están configurados con un **driver de logging `json-file`**
 | **Autenticación (BD)** | MongoDB | El acceso a la base de datos requiere un nombre de usuario y contraseña. |
 | **Autenticación (API)** | JWT en Cookies `HttpOnly` | El token de sesión no es accesible mediante JavaScript en el navegador. |
 | **Autorización** | RBAC | Middleware que verifica los roles de usuario (`admin`, `waiter`, `kitchen`, `pos`) en cada ruta protegida. |
-| **Validación de Entrada** | `express-validator` | Valida y sanea toda la entrada de la API para prevenir ataques de inyección. |
+| **Integridad** | OCC (`__v`) | Control de concurrencia optimista que evita sobrescrituras accidentales en pedidos y menús. |
+| **Validación de Entrada** | `Joi` | Validación estricta de tipos y esquemas en todos los endpoints de la API. |
+| **Trazabilidad** | `AuditService` | Registro automático e inmutable en el servidor de acciones críticas (anulaciones, cambios de precio). |
 | **Contenedores** | Docker | Todos los servicios se ejecutan con **usuarios no-root** para minimizar el impacto de una posible vulnerabilidad. |
-| **Dependencias** | `npm audit` | Se realizan auditorías de seguridad de las dependencias en el pipeline de CI/CD. |
+| **Resiliencia** | `backup.sh` | Sistema de copias de seguridad automáticas con rotación de 7 días. |
 
 ---
 

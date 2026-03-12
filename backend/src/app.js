@@ -45,6 +45,24 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
+// Custom NoSQL Sanitization (to avoid issues with read-only properties in req)
+app.use((req, res, next) => {
+    const sanitize = (obj) => {
+        if (obj && typeof obj === 'object') {
+            Object.keys(obj).forEach(key => {
+                if (key.startsWith('$') || key.includes('.')) {
+                    delete obj[key];
+                } else if (typeof obj[key] === 'object') {
+                    sanitize(obj[key]);
+                }
+            });
+        }
+    };
+    if (req.body) sanitize(req.body);
+    if (req.params) sanitize(req.params);
+    if (req.query) sanitize(req.query);
+    next();
+});
 
 // ── I18n ─────────────────────────────────────────────────────────────────────
 app.use(i18nMiddleware.handle(i18n));
@@ -58,7 +76,7 @@ const apiLimiter = rateLimit({
     max: process.env.NODE_ENV === 'production' ? 2000 : 10000,
     standardHeaders: true,
     legacyHeaders: false,
-    handler: (req, res) => {
+    handler: function(req, res) {
         res.error(req.t?.('errors.too_many_requests') || 'Too many requests', 429);
     }
 });
@@ -77,7 +95,7 @@ app.use((req, res) => {
 
 // ── Global Error Handler ─────────────────────────────────────────────────────
 app.use((err, req, res, _next) => {
-    console.error(`[SERVER ERROR] ${new Date().toISOString()}:`, err.message);
+    console.error(`[SERVER ERROR] ${new Date().toISOString()}:`, err);
 
     if (err.name === 'ValidationError') {
         const messages = Object.values(err.errors).map(val => val.message);
@@ -93,7 +111,11 @@ app.use((err, req, res, _next) => {
         ? (req.t?.('ERRORS.INTERNAL_SERVER_ERROR') || 'Internal server error')
         : err.message;
 
-    res.error(message, statusCode, err);
+    if (typeof res.error === 'function') {
+        res.error(message, statusCode, err);
+    } else {
+        res.status(statusCode).json({ success: false, message, stack: process.env.NODE_ENV === 'development' ? err.stack : undefined });
+    }
 });
 
 export default app;

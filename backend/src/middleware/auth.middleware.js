@@ -1,6 +1,9 @@
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'disher_secret_key_2026';
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+    throw new Error('JWT_SECRET must be defined in environment variables');
+}
 
 export const COOKIE_NAME = 'disher_token';
 
@@ -34,12 +37,13 @@ export function generateToken(payload) {
 
 export function getCookieOptions() {
     // Detect if we should use Secure flag (only for HTTPS)
-    const isHttps = process.env.DOMAIN && process.env.DOMAIN.startsWith('https');
+    const protocol = process.env.PROTOCOL || '';
+    const isHttps = protocol === 'https' || (process.env.DOMAIN && process.env.DOMAIN.startsWith('https'));
 
     return {
         httpOnly: true,
-        secure: isHttps, // ONLY true if domain is https
-        sameSite: 'lax',
+        secure: isHttps,
+        sameSite: isHttps ? 'none' : 'lax', // Use 'none' for cross-site if https, beneficial for some proxy setups
         maxAge: 24 * 60 * 60 * 1000,
         path: '/'
     };

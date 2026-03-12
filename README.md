@@ -80,8 +80,8 @@ La arquitectura sigue el patrón cliente-servidor, haciendo uso intensivo de Web
 
 ### 3.4. Punto de Venta (TPV / POS)
 - Tablero de gestión interactivo presentando el plano de mesas en tiempo real.
-- Finalización de transacciones con cálculos integrados de impuestos (IVA ajustado al momento).
-- Sistema avanzado de división de pagos (equitativo o selección manual por comensal).
+- **Facturación Robusta**: Cálculos exactos de base imponible, IVA y propinas integrados en cada ticket generado.
+- **Reparto Inteligente**: Sistema avanzado de división de pagos (equitativo sobre saldo restante o selección manual por comensal).
 - Registro categorizado según método de pago (Efectivo/Tarjeta).
 
 ### 3.5. Panel de Administración
@@ -89,7 +89,7 @@ La arquitectura sigue el patrón cliente-servidor, haciendo uso intensivo de Web
 - Control de acceso basado en roles (RBAC) para el staff del restaurante (Admin, Waiter, Kitchen, POS).
 - Estructura de marca blanca que permite configurar identidad corporativa (nombre, colores, logotipos).
 - Modulo generador de PDF para la creación dinámica e impresión de tótems con QR asociados a las mesas operativas.
-- Registro completo para auditoría y revisión de la actividad.
+- **Auditoría Profesional**: Registro automático de cada cambio de precio, anulación o modificación de rol, incluyendo historial "antes y después" para máxima trazabilidad.
 
 ---
 
@@ -98,12 +98,51 @@ La arquitectura sigue el patrón cliente-servidor, haciendo uso intensivo de Web
 Para asegurar el rendimiento óptimo del sistema, el servidor host debe cumplir con las siguientes especificaciones técnicas:
 
 | Especificación | Entorno Mínimo | Entorno Recomendado (Producción) |
-|----------------|----------------|----------------------------------|
-| Sistema Operativo | Linux (Ubuntu 20.04+, Debian 11+) | Ubuntu 22.04 LTS o superior |
-| Memoria RAM | 1 GB | 2 GB |
-| Almacenamiento | 5 GB disponibles | 10 GB disponibles |
-| Contenedores | Docker 24.x | Docker (Última versión estable) |
-| Privilegios | Acceso root o sudo | Acceso root o sudo |
+| :--- | :--- | :--- |
+| **CPU** | 1 Core (ARM/x86) | 2+ Cores |
+| **RAM** | 1 GB (RPi 3/4) | 2 GB+ |
+| **Almacenamiento** | 8 GB (SSD/SD Class 10) | 16 GB SSD |
+| **OS** | Debian 11+ / Ubuntu 22+ | Ubuntu Server 22.04 LTS |
+
+### 4.1. Instalación de Dependencias (Crítico)
+Disher.io requiere que **Docker** y el plugin **Docker Compose** estén instalados previamente. Por seguridad, el instalador no gestiona estas dependencias por ti.
+
+#### En Ubuntu / Debian / Raspberry Pi OS (Recomendado)
+```bash
+# 1. Instalar Docker
+curl -fsSL https://get.docker.com -o get-docker.sh
+sudo sh get-docker.sh
+
+# 2. Instalar Plugin de Docker Compose
+sudo apt-get update
+sudo apt-get install -y docker-compose-plugin
+
+# 3. Dar permisos al usuario actual (opcional)
+sudo usermod -aG docker $USER
+```
+
+> [!CAUTION]
+> **Aviso de Seguridad**: Nunca ejecutes scripts descargados directamente de internet con `sudo` sin revisarlos o confiar plenamente en la fuente oficial. Disher.io utiliza Docker para aislar los procesos y mejorar la seguridad general del servidor.
+
+### 4.1. Instalación de Dependencias (Crítico)
+Disher.io requiere que **Docker** y el plugin **Docker Compose** estén instalados previamente. Por seguridad, el instalador no gestiona estas dependencias por ti.
+
+#### En Ubuntu / Debian / Raspberry Pi OS (Recomendado)
+```bash
+# 1. Instalar Docker
+curl -fsSL https://get.docker.com -o get-docker.sh
+sudo sh get-docker.sh
+
+# 2. Instalar Plugin de Docker Compose
+sudo apt-get update
+sudo apt-get install -y docker-compose-plugin
+
+# 3. Dar permisos al usuario actual (opcional)
+sudo usermod -aG docker $USER
+```
+
+> [!CAUTION]
+> **Aviso de Seguridad**: Nunca ejecutes scripts descargados directamente de internet con `sudo` sin revisarlos o confiar plenamente en la fuente oficial. Disher.io utiliza Docker para aislar los procesos y mejorar la seguridad general del servidor.
 
 *Aviso Técnico: La ejecución en dispositivos SBC (como Raspberry Pi) está validada exclusivamente para despliegues intra-red (LAN). Para alojamientos en proveedores en la nube pública (AWS, Google Cloud, Azure) es mandatorio configurar las reglas de entrada en el Firewall del proveedor de red correspondientes a los puertos HTTP/HTTPS.*
 
@@ -217,7 +256,48 @@ sudo ./install.sh
 
 ---
 
-## 7. Mapeo de Accesos Operativos
+## 7. Copias de Seguridad y Recuperación (Crítico)
+
+> [!CAUTION]
+> **SI NO HACES BACKUPS, TUS DATOS DESAPARECERÁN**: Disher.io es un sistema auto-hosteado. Si el hardware falla (ej. corrupción de SD en Raspberry Pi), perderás toda tu configuración, menús e historial de ventas. **Tú eres el único responsable de tus datos.**
+
+### 7.1 Script de Backup Automático
+Hemos incluido una utilidad (`backup.sh`) para simplificar esta tarea. El script realiza un volcado completo de la base de datos, lo comprime y mantiene una rotación de los últimos 7 días para no saturar el disco.
+
+```bash
+# 1. Dar permisos de ejecución
+chmod +x backup.sh
+
+# 2. Ejecutar backup manual
+./backup.sh
+```
+Los archivos se guardarán en la carpeta `./backups/` con el formato `disher_backup_YYYY-MM-DD.tar.gz`.
+
+### 7.2 Programación con Cron (Recomendado)
+Para que el sistema haga copias automáticas cada noche (ej. a las 4:00 AM), añade una línea a tu crontab:
+
+```bash
+# Abrir editor de cron
+crontab -e
+
+# Añadir esta línea al final (ajusta la ruta a tu carpeta disherio)
+0 4 * * * cd /ruta/a/disherio && ./backup.sh > /dev/null 2>&1
+```
+
+### 7.3 Restauración de Datos
+Para restaurar una copia de seguridad en una instalación limpia:
+
+```bash
+# 1. Descomprimir el backup
+tar -xzf backups/disher_backup_fecha.tar.gz
+
+# 2. Restaurar en el contenedor (asegúrate de que los servicios estén corriendo)
+docker exec -i disher-db mongorestore --username root --password tu_password --authenticationDatabase admin --archive < disher_backup_fecha.archive
+```
+
+---
+
+## 8. Mapeo de Accesos Operativos
 
 El sistema impone aislamiento rígido de sus módulos. A continuación se define la matriz de accesos y controladores de ruta requeridos para operar:
 

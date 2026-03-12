@@ -1,12 +1,14 @@
 {
-    # Global options - disable automatic HTTPS so it works with IPs
-    admin off
-    # Do not attempt to get certificates automatically
-    auto_https off
+    # Enable internal CA for local domains/IPs
+    local_certs
 }
 
-# Listen on port 80 - works with both domains and IPs
-:80 {
+# The public domain or local IP/domain from ENV
+{$DOMAIN}:{$HTTP_PORT:80} {
+    # If using local HTTPS, use the internal CA
+    # Caddy automatically manages this if the domain is local or an IP
+    # but we can be explicit if needed.
+    
     # API Backend
     handle /api/* {
         reverse_proxy backend:3000

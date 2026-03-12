@@ -1,21 +1,29 @@
 import express from 'express';
 const router = express.Router();
-import { body, validationResult } from 'express-validator';
+import Joi from 'joi';
 import User from '../models/User.js';
 import { generateToken, getCookieOptions, COOKIE_NAME } from '../middleware/auth.middleware.js';
+import { validate } from '../middleware/validation.middleware.js';
+
+// ── Joi Schemas ──────────────────────────────────────────────────────────────
+
+const loginSchema = Joi.object({
+    username: Joi.string().required().max(50).trim(),
+    password: Joi.string().required().max(100)
+});
+
+const customerSessionSchema = Joi.object({
+    restaurantSlug: Joi.string().required().max(100),
+    totemId: Joi.number().integer().required(),
+    name: Joi.string().required().min(1).max(50).trim()
+});
+
+// ── Routes ───────────────────────────────────────────────────────────────────
 
 // POST /auth/login
 router.post('/login',
-    [
-        body('username').trim().notEmpty().withMessage((value, { req }) => req.t('AUTH.REQ_USERNAME')),
-        body('password').notEmpty().withMessage((value, { req }) => req.t('AUTH.REQ_PASSWORD'))
-    ],
-    async (req, res) => {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.error(errors.array()[0].msg, 400);
-        }
-
+    validate(loginSchema),
+    async function(req, res) {
         const { username, password } = req.body;
         const user = await User.findOne({ username, active: true });
 
@@ -39,15 +47,8 @@ router.post('/login',
 
 // POST /auth/customer-session - Guest joining a table via Totem
 router.post('/customer-session',
-    [
-        body('restaurantSlug').notEmpty().withMessage((value, { req }) => req.t('AUTH.REQ_SLUG')),
-        body('totemId').notEmpty().withMessage((value, { req }) => req.t('AUTH.REQ_TOTEM')),
-        body('name').trim().notEmpty().withMessage((value, { req }) => req.t('AUTH.REQ_GUEST'))
-    ],
-    async (req, res) => {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) return res.error(errors.array()[0].msg, 400);
-
+    validate(customerSessionSchema),
+    async function(req, res) {
         const { restaurantSlug, totemId, name } = req.body;
 
         // Create a temporary JWT for the customer
@@ -65,7 +66,7 @@ router.post('/customer-session',
 );
 
 // POST /auth/logout
-router.post('/logout', (req, res) => {
+router.post('/logout', function(req, res) {
     const options = { ...getCookieOptions() };
     delete options.maxAge; // Remove maxAge for clearing
     res.clearCookie(COOKIE_NAME, { path: options.path || '/' });
