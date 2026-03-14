@@ -39,8 +39,8 @@ describe('Optimistic Concurrency Control (OCC) Integration Tests', () => {
 
         // Perform first update (valid)
         const res1 = await request(app)
-            .post(`/api/orders/table/1/add-items`)
-            .set('Cookie', [`disher_token=${adminToken}`])
+            .post('/api/orders/table/1/add-items')
+            .set('Cookie', ['disher_token=' + adminToken])
             .send({
                 items: [{ name: 'Bread', price: 1, quantity: 1 }],
                 __v: initialVersion
@@ -51,8 +51,8 @@ describe('Optimistic Concurrency Control (OCC) Integration Tests', () => {
 
         // Perform second update using STALE version (initialVersion)
         const res2 = await request(app)
-            .post(`/api/orders/table/1/add-items`)
-            .set('Cookie', [`disher_token=${adminToken}`])
+            .post('/api/orders/table/1/add-items')
+            .set('Cookie', ['disher_token=' + adminToken])
             .send({
                 items: [{ name: 'Wine', price: 15, quantity: 1 }],
                 __v: initialVersion

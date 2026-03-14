@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from '@jest/globals';
 import request from 'supertest';
-import { setupDB, teardownDB, clearDB } from './setup.js';
+import { setupDB, teardownDB } from './setup.js';
 import app from '../app.js';
 import Order from '../models/Order.js';
 import User from '../models/User.js';
