@@ -397,7 +397,10 @@ router.post('/close-shift', verifyToken, requireAdmin, async function(req, res) 
     });
 
     const io = req.app.get('io');
-    if (io) io.emit('all-sessions-ended', { reason: 'SHIFT_CLOSED' });
+    if (io) {
+        // Emitir solo a la sala de clientes (QR/totems), no a admin/POS
+        io.to('customer').emit('all-sessions-ended', { reason: 'SHIFT_CLOSED' });
+    }
 
     res.success({ message: 'Cierre de caja realizado. Todas las sesiones de clientes han sido liquidadas.' });
 });
