@@ -66,7 +66,7 @@ export const orderItemSchema = Joi.object({
     image: Joi.string().max(255).allow('').optional(),
     menuChoices: Joi.object().pattern(Joi.string().max(100), Joi.string().max(100)).max(20).default({}),
     __v: Joi.number().optional()
-}).unknown(false);
+}).unknown(true);
 
 export const orderPlacementSchema = Joi.object({
     items: Joi.array().items(orderItemSchema).min(1).max(50).required(),
@@ -74,7 +74,7 @@ export const orderPlacementSchema = Joi.object({
     totemId: Joi.number().integer().optional(),
     sessionId: Joi.string().max(100).optional(),
     __v: Joi.number().optional()
-}).unknown(false);
+}).unknown(true);
 
 /**
  * Restaurant Configuration Schemas
@@ -107,7 +107,7 @@ export const restaurantUpdateSchema = Joi.object({
         twitter: Joi.string().max(100).allow('').optional()
     }).optional(),
     stations: Joi.array().items(Joi.string().max(50)).max(20)
-}).min(1).unknown(false);
+}).min(1).unknown(true);
 
 /**
  * Common MongoID Schema
