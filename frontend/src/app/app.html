@@ -44,15 +44,7 @@
 
     <!-- Router Content -->
     <div class="content-wrapper">
-      @defer (on timer(100ms)) {
       <router-outlet></router-outlet>
-      } @placeholder {
-      <div class="md3-placeholder-spinner">
-        <div class="spinner-dot"></div>
-      </div>
-      } @loading (after 100ms; minimum 500ms) {
-      <div class="md3-loading-shim"></div>
-      }
     </div>
 
   </main>

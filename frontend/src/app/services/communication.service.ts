@@ -80,20 +80,41 @@ export class CommunicationService {
         this.socket.on('order-updated', callback);
     }
 
+    public unsubscribeFromOrders(callback: (data: any) => void) {
+        this.socket.off('order-update', callback);
+        this.socket.off('order-updated', callback);
+    }
+
     public subscribeToMenu(callback: (data: any) => void) {
         this.socket.on('menu-update', callback);
+    }
+
+    public unsubscribeFromMenu(callback: (data: any) => void) {
+        this.socket.off('menu-update', callback);
     }
 
     public subscribeToConfig(callback: (data: any) => void) {
         this.socket.on('config-updated', callback);
     }
 
+    public unsubscribeFromConfig(callback: (data: any) => void) {
+        this.socket.off('config-updated', callback);
+    }
+
     public subscribeToSessionEnd(callback: (data: any) => void) {
         this.socket.on('session-ended', callback);
     }
 
+    public unsubscribeFromSessionEnd(callback: (data: any) => void) {
+        this.socket.off('session-ended', callback);
+    }
+
     public subscribeToSystemReset(callback: (data: any) => void) {
         this.socket.on('all-sessions-ended', callback);
+    }
+
+    public unsubscribeFromSystemReset(callback: (data: any) => void) {
+        this.socket.off('all-sessions-ended', callback);
     }
 
     // --- API CALLS ---

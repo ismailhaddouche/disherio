@@ -1,4 +1,4 @@
-import { Injectable, signal, computed, inject } from '@angular/core';
+import { Injectable, signal, computed, inject, DestroyRef } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { CommunicationService } from '../../services/communication.service';
@@ -24,6 +24,7 @@ export class DashboardViewModel {
     private http = inject(HttpClient);
     private translate = inject(TranslateService);
     private notify = inject(NotifyService);
+    private destroyRef = inject(DestroyRef);
 
     // State using Signals
     public orders = signal<Order[]>([]);
@@ -46,8 +47,24 @@ export class DashboardViewModel {
             .reduce((acc, current) => acc + (current.totalAmount || 0), 0)
     );
 
+    private ordersCallback = (updatedOrder: Order) => {
+        this.orders.update(prev => {
+            const index = prev.findIndex(o => o._id === updatedOrder._id);
+            if (index !== -1) {
+                const newOrders = [...prev];
+                newOrders[index] = updatedOrder;
+                return newOrders;
+            } else {
+                return [updatedOrder, ...prev];
+            }
+        });
+    };
+
     constructor() {
         this.setupRealTimeListeners();
+        this.destroyRef.onDestroy(() => {
+            this.comms.unsubscribeFromOrders(this.ordersCallback);
+        });
     }
 
     public async loadInitialData() {
@@ -75,18 +92,7 @@ export class DashboardViewModel {
     }
 
     private setupRealTimeListeners() {
-        this.comms.subscribeToOrders((updatedOrder: Order) => {
-            this.orders.update(prev => {
-                const index = prev.findIndex(o => o._id === updatedOrder._id);
-                if (index !== -1) {
-                    const newOrders = [...prev];
-                    newOrders[index] = updatedOrder;
-                    return newOrders;
-                } else {
-                    return [updatedOrder, ...prev];
-                }
-            });
-        });
+        this.comms.subscribeToOrders(this.ordersCallback);
     }
 
     public async addTotem(name: string) {

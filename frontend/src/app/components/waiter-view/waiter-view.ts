@@ -340,6 +340,20 @@ export class WaiterViewComponent implements OnInit, OnDestroy {
 
   private routerSub?: Subscription;
   private orderSub?: Subscription;
+  private ordersCallback = (updatedOrder: any) => {
+    this.orders.update(prev => {
+      const idx = prev.findIndex(o => o._id === updatedOrder._id);
+      if (idx !== -1) {
+        const next = [...prev]; next[idx] = updatedOrder; return next;
+      }
+      return [updatedOrder, ...prev];
+    });
+  };
+  private sessionEndCallback = (data: any) => {
+    this.orders.update(prev =>
+      prev.filter(o => o.sessionId !== data.sessionId && o._id !== data.orderId)
+    );
+  };
 
   // Combine totems + live orders into enriched table data
   public enrichedTotems = computed<TotemWithStatus[]>(() => {
@@ -384,30 +398,16 @@ export class WaiterViewComponent implements OnInit, OnDestroy {
     });
 
     // Subscribe to real-time order updates
-    this.orderSub = new Subscription();
-    this.comms.subscribeToOrders((updatedOrder: any) => {
-      this.orders.update(prev => {
-        const idx = prev.findIndex(o => o._id === updatedOrder._id);
-        if (idx !== -1) {
-          const next = [...prev];
-          next[idx] = updatedOrder;
-          return next;
-        }
-        return [updatedOrder, ...prev];
-      });
-    });
+    this.comms.subscribeToOrders(this.ordersCallback);
 
     // Subscribe to session-ended to remove closed orders from the list
-    this.comms.subscribeToSessionEnd((data: any) => {
-      this.orders.update(prev =>
-        prev.filter(o => o.sessionId !== data.sessionId && o._id !== data.orderId)
-      );
-    });
+    this.comms.subscribeToSessionEnd(this.sessionEndCallback);
   }
 
   ngOnDestroy() {
     this.routerSub?.unsubscribe();
-    this.orderSub?.unsubscribe();
+    this.comms.unsubscribeFromOrders(this.ordersCallback);
+    this.comms.unsubscribeFromSessionEnd(this.sessionEndCallback);
   }
 
   async loadData() {
