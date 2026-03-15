@@ -49,6 +49,8 @@ const totemSchema = Joi.object({
 const logSchema = Joi.object({
     action: Joi.string().required().max(100).trim(),
     userId: Joi.string().required().max(100).trim(),
+    username: Joi.string().max(100).optional().trim(),
+    role: Joi.string().max(50).optional().trim(),
     details: Joi.object().optional(),
     tableNumber: Joi.string().max(20).optional()
 }).unknown(false);
