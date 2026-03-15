@@ -12,22 +12,34 @@ class MenuService {
      * @param {Buffer} buffer - The image buffer from multer
      * @returns {Promise<string>} - The relative URL of the saved image
      */
-    async processImage(buffer) {
+    async processImage(file) {
         const uploadDir = path.join(__dirname, '../../public/uploads/menu');
         if (!fs.existsSync(uploadDir)) {
             fs.mkdirSync(uploadDir, { recursive: true });
         }
 
-        const filename = `item-${Date.now()}-${Math.round(Math.random() * 1000)}.webp`;
-        const filepath = path.join(uploadDir, filename);
+        const buffer = file?.buffer;
+        if (!buffer) {
+            throw new Error('Invalid image payload: missing buffer');
+        }
 
-        // Optimize image with sharp: Max 500px, WebP format
-        await sharp(buffer)
-            .resize(500, 500, { fit: 'inside', withoutEnlargement: true })
-            .webp({ quality: 80 })
-            .toFile(filepath);
+        const webpFilename = `item-${Date.now()}-${Math.round(Math.random() * 1000)}.webp`;
+        const webpFilepath = path.join(uploadDir, webpFilename);
 
-        return `/uploads/menu/${filename}`;
+        try {
+            await sharp(buffer)
+                .resize(500, 500, { fit: 'inside', withoutEnlargement: true })
+                .webp({ quality: 80 })
+                .toFile(webpFilepath);
+
+            return `/uploads/menu/${webpFilename}`;
+        } catch (sharpError) {
+            const extension = (file.originalname && path.extname(file.originalname)) || '.jpg';
+            const fallbackFilename = `item-${Date.now()}-${Math.round(Math.random() * 1000)}${extension.toLowerCase()}`;
+            const fallbackPath = path.join(uploadDir, fallbackFilename);
+            fs.writeFileSync(fallbackPath, buffer);
+            return `/uploads/menu/${fallbackFilename}`;
+        }
     }
 }
 

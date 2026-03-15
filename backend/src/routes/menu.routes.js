@@ -45,7 +45,7 @@ router.post('/upload-image', verifyToken, requireRole('kitchen'), upload.single(
     if (!req.file) return res.error('No se proporcionó ninguna imagen', 400);
 
     try {
-        const fileUrl = await MenuService.processImage(req.file.buffer);
+        const fileUrl = await MenuService.processImage(req.file);
         
         await AuditService.log(req, 'MENU_ITEM_IMAGE_UPLOADED', {
             url: fileUrl,

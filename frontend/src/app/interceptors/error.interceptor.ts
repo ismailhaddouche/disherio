@@ -8,7 +8,7 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
     const notify = inject(NotifyService);
     const translate = inject(TranslateService);
 
-    const silentUrls = ['/api/logs'];
+    const silentUrls = ['/api/logs', '/api/menu/upload-image'];
     const isSilent = silentUrls.some(url => req.url.includes(url));
 
     return next(req).pipe(
