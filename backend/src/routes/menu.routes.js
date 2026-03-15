@@ -2,7 +2,7 @@ import express from 'express';
 import Joi from 'joi';
 const router = express.Router();
 import MenuItem from '../models/MenuItem.js';
-import { verifyToken } from '../middleware/auth.middleware.js';
+import { verifyToken, requireRole } from '../middleware/auth.middleware.js';
 import { validate, menuItemSchema, mongoIdSchema } from '../middleware/validation.middleware.js';
 import MenuService from '../services/menu.service.js';
 import AuditService from '../services/audit.service.js';
@@ -41,7 +41,7 @@ router.get('/', async function(req, res) {
 });
 
 // POST /upload-image - Upload and optimize menu item image
-router.post('/upload-image', verifyToken, authorizeKitchenAction, upload.single('image'), async function(req, res) {
+router.post('/upload-image', verifyToken, requireRole('kitchen'), upload.single('image'), async function(req, res) {
     if (!req.file) return res.error('No se proporcionó ninguna imagen', 400);
 
     try {

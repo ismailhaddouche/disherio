@@ -52,6 +52,17 @@ export class MenuEditorViewModel {
     constructor() {
     }
 
+    public resolveImageUrl(image?: string): string {
+        if (!image) return '';
+        if (image.startsWith('http://') || image.startsWith('https://') || image.startsWith('data:')) {
+            return image;
+        }
+        if (image.startsWith('/')) {
+            return `${environment.apiUrl}${image}`;
+        }
+        return image;
+    }
+
     public async loadMenu() {
         this.loading.set(true);
         this.error.set(null);

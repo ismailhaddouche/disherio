@@ -81,7 +81,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
                     <h3 class="text-title-medium">{{ 'MENU_EDITOR.BASIC_INFO' | translate }}</h3>
                     
                     <div class="image-upload-row md-card-elevated" style="margin-bottom: 16px; display: flex; align-items: center; gap: 16px; padding: 16px; border-radius: 12px; background: var(--md-sys-color-surface-2);">
-                        <img *ngIf="vm.selectedItem()!.image" [src]="vm.selectedItem()!.image" style="width: 80px; height: 80px; object-fit: cover; border-radius: 8px;">
+                        <img *ngIf="vm.selectedItem()!.image" [src]="vm.resolveImageUrl(vm.selectedItem()!.image)" style="width: 80px; height: 80px; object-fit: cover; border-radius: 8px;">
                         <div *ngIf="!vm.selectedItem()!.image" style="width: 80px; height: 80px; border-radius: 8px; background: var(--md-sys-color-surface-variant); display: flex; align-items: center; justify-content: center; opacity: 0.5;">
                             <lucide-icon name="camera" [size]="24"></lucide-icon>
                         </div>
@@ -207,7 +207,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
                       <div class="list-stack">
                         @for (v of vm.selectedItem()!.variants; track $index; let vIdx = $index) {
                           <div class="list-item-row-md3" style="align-items: center;">
-                            <img *ngIf="v.image" [src]="v.image" style="width: 32px; height: 32px; object-fit: cover; border-radius: 4px;">
+                            <img *ngIf="v.image" [src]="vm.resolveImageUrl(v.image)" style="width: 32px; height: 32px; object-fit: cover; border-radius: 4px;">
                             <button class="icon-btn" (click)="variantImageInput.click()" [title]="'Subir imagen de la variante'"><lucide-icon name="camera" [size]="14"></lucide-icon></button>
                             <input #variantImageInput type="file" style="display: none" accept="image/*" (change)="onFileSelected($event, 'variant', vIdx)">
 
