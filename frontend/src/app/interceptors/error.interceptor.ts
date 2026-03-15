@@ -8,20 +8,25 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
     const notify = inject(NotifyService);
     const translate = inject(TranslateService);
 
+    const silentUrls = ['/api/logs'];
+    const isSilent = silentUrls.some(url => req.url.includes(url));
+
     return next(req).pipe(
         catchError((error: HttpErrorResponse) => {
-            let errorMessage = translate.instant('COMMON.UNEXPECTED_ERROR');
+            if (!isSilent) {
+                let errorMessage = translate.instant('COMMON.UNEXPECTED_ERROR');
 
-            if (error.error instanceof ErrorEvent) {
-                // Client-side error
-                errorMessage = error.error.message;
-            } else {
-                // Server-side error
-                // Our backend now uses { message, status } in standardized error responses
-                errorMessage = error.error?.message || error.message || errorMessage;
+                if (error.error instanceof ErrorEvent) {
+                    // Client-side error
+                    errorMessage = error.error.message;
+                } else {
+                    // Server-side error
+                    // Our backend now uses { message, status } in standardized error responses
+                    errorMessage = error.error?.message || error.message || errorMessage;
+                }
+
+                notify.error(errorMessage);
             }
-
-            notify.error(errorMessage);
             return throwError(() => error);
         })
     );
