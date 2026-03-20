@@ -9,7 +9,7 @@ const ActivityLogSchema = new mongoose.Schema({
     role:      { type: String, required: true, enum: VALID_ROLES },
     action:    { type: String, required: true, uppercase: true, trim: true, index: true },
     details:   { type: mongoose.Schema.Types.Mixed, default: {} },
-    timestamp: { type: Date, default: Date.now, index: true }
+    timestamp: { type: Date, default: Date.now }
 }, { timestamps: false }); // custom 'timestamp' field is the creation date
 
 // TTL index: documents are automatically removed after LOG_TTL_DAYS days

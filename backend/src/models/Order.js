@@ -64,6 +64,5 @@ const OrderSchema = new mongoose.Schema({
 OrderSchema.index({ status: 1, createdAt: -1 });
 OrderSchema.index({ totemId: 1, status: 1 });
 OrderSchema.index({ tableNumber: 1, status: 1 });
-OrderSchema.index({ sessionId: 1 });
 
 export default mongoose.model('Order', OrderSchema);

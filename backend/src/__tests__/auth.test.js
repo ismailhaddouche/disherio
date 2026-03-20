@@ -115,8 +115,8 @@ describe('Auth Middleware', () => {
     });
 
     describe('getCookieOptions', () => {
-        it('should return secure=false when DOMAIN is not https', () => {
-            delete process.env.DOMAIN;
+        it('should return secure=false when PROTOCOL is not https', () => {
+            delete process.env.PROTOCOL;
             const opts = getCookieOptions();
             expect(opts.httpOnly).toBe(true);
             expect(opts.secure).toBeFalsy();
@@ -124,11 +124,11 @@ describe('Auth Middleware', () => {
             expect(opts.maxAge).toBe(86400000);
         });
 
-        it('should return secure=true when DOMAIN starts with https', () => {
-            process.env.DOMAIN = 'https://disher.io';
+        it('should return secure=true when PROTOCOL is https', () => {
+            process.env.PROTOCOL = 'https';
             const opts = getCookieOptions();
             expect(opts.secure).toBe(true);
-            delete process.env.DOMAIN;
+            delete process.env.PROTOCOL;
         });
     });
 });
