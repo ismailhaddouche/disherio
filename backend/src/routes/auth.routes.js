@@ -1,9 +1,11 @@
 import express from 'express';
 const router = express.Router();
 import Joi from 'joi';
+import { randomUUID } from 'crypto';
 import User from '../models/User.js';
 import { generateToken, getCookieOptions, COOKIE_NAME } from '../middleware/auth.middleware.js';
 import { validate } from '../middleware/validation.middleware.js';
+import { ROLES } from '../constants.js';
 
 // ── Joi Schemas ──────────────────────────────────────────────────────────────
 
@@ -25,7 +27,9 @@ router.post('/login',
     validate(loginSchema),
     async function(req, res) {
         const { username, password } = req.body;
-        const user = await User.findOne({ username, active: true });
+        // username is stored lowercase; normalise before lookup
+        const user = await User.findOne({ username: username.toLowerCase().trim(), active: true })
+            .select('+password'); // password is select:false by default
 
         if (!user || !(await user.comparePassword(password))) {
             return res.error(req.t('ERRORS.INVALID_CREDENTIALS'), 401);
@@ -53,15 +57,15 @@ router.post('/customer-session',
 
         // Create a temporary JWT for the customer
         const token = generateToken({
-            userId: `guest-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+            userId: `guest-${randomUUID()}`,
             username: name,
-            role: 'customer',
+            role: ROLES.CUSTOMER,
             restaurantSlug,
             totemId
         });
 
         res.cookie(COOKIE_NAME, token, getCookieOptions());
-        res.success({ username: name, role: 'customer', restaurantSlug, totemId });
+        res.success({ username: name, role: ROLES.CUSTOMER, restaurantSlug, totemId });
     }
 );
 

@@ -68,10 +68,10 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
                         </div>
                     </div>
                     <div class="bulk-actions-md3">
-                        <button class="icon-btn-md3 success-tonal" (click)="vm.bulkUpdateItemsStatus(order._id, 'ready')" title="Todo listo">
+                        <button class="icon-btn-md3 success-tonal" (click)="vm.bulkUpdateItemsStatus(order._id, 'ready')" [attr.aria-label]="'KDS.ALL_READY' | translate" [title]="'KDS.ALL_READY' | translate">
                             <lucide-icon name="check-check" [size]="18"></lucide-icon>
                         </button>
-                        <button class="icon-btn-md3 info-tonal" (click)="vm.bulkUpdateItemsStatus(order._id, 'served')" title="Todo servido">
+                        <button class="icon-btn-md3 info-tonal" (click)="vm.bulkUpdateItemsStatus(order._id, 'served')" [attr.aria-label]="'KDS.ALL_SERVED' | translate" [title]="'KDS.ALL_SERVED' | translate">
                             <lucide-icon name="bell-ring" [size]="18"></lucide-icon>
                         </button>
                     </div>
@@ -132,7 +132,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
                                   <div class="status-icon success">
                                     <lucide-icon name="check-circle" [size]="20"></lucide-icon>
                                   </div>
-                                  <button class="icon-btn-md3 tonal-sm" (click)="vm.printItemTicket(order, item)" title="Reimprimir vale">
+                                  <button class="icon-btn-md3 tonal-sm" (click)="vm.printItemTicket(order, item)" [attr.aria-label]="'KDS.REPRINT' | translate" [title]="'KDS.REPRINT' | translate">
                                     <lucide-icon name="printer" [size]="16"></lucide-icon>
                                   </button>
                               </div>
@@ -179,8 +179,9 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
                     </div>
                     <button class="md-toggle-btn" 
                             [class.off]="!item.available"
+                            [attr.aria-pressed]="item.available"
                             (click)="vm.toggleProduct(item._id)">
-                      {{ item.available ? 'ACTIVO' : 'AGOTADO' }}
+                      {{ (item.available ? 'KDS.STOCK_ACTIVE' : 'KDS.STOCK_OUT') | translate }}
                     </button>
                   </div>
                 }
@@ -213,28 +214,24 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
       align-items: start;
     }
 
-    /* Glassmorphic Order Card */
+    /* Solid Order Card — high contrast for kitchen environment */
     .order-card-md3 {
-      background: rgba(var(--md-sys-color-surface-rgb, 255, 255, 255), 0.7);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      border-radius: 28px;
+      background: var(--md-sys-color-surface-container);
+      border-radius: 20px;
       overflow: hidden;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      animation: slideUp 0.5s ease-out;
+      border: 1px solid var(--md-sys-color-outline-variant);
+      box-shadow: var(--md-sys-elevation-1);
+      transition: border-color 0.2s;
+      animation: slideUp 0.4s ease-out;
     }
     
     .order-card-md3:hover { 
-      transform: translateY(-4px);
-      box-shadow: 0 12px 48px rgba(0, 0, 0, 0.12);
-      border-color: rgba(var(--md-sys-color-primary-rgb, 103, 80, 164), 0.3);
+      border-color: rgba(var(--md-sys-color-primary-rgb), 0.4);
     }
     
     .order-card-md3.urgent {
       border: 2px solid var(--md-sys-color-error);
-      background: rgba(var(--md-sys-color-error-container-rgb, 255, 218, 214), 0.4);
+      background: rgba(var(--md-sys-color-error-container-rgb), 0.25);
       animation: urgentPulse 2s infinite;
     }
 
@@ -245,12 +242,12 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
     }
 
     .order-header-md3 {
-      padding: 20px 24px;
-      background: rgba(var(--md-sys-color-surface-variant-rgb), 0.3);
+      padding: 16px 20px;
+      background: var(--md-sys-color-surface-container-high);
       display: flex;
       justify-content: space-between;
       align-items: center;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      border-bottom: 1px solid var(--md-sys-color-outline-variant);
     }
 
     .order-meta { display: flex; flex-direction: column; gap: 4px; }
@@ -273,29 +270,27 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 14px 18px;
-      border-radius: 20px;
-      background: rgba(var(--md-sys-color-surface-container-rgb), 0.4);
-      border: 1px solid rgba(255, 255, 255, 0.05);
-      transition: all 0.25s ease;
+      padding: 12px 16px;
+      border-radius: 12px;
+      background: var(--md-sys-color-surface-container-high);
+      border: 1px solid var(--md-sys-color-outline-variant);
+      transition: background 0.2s;
     }
 
     .kds-item-md3:hover {
-      background: rgba(var(--md-sys-color-surface-container-high-rgb), 0.6);
-      transform: scale(1.02);
+      background: var(--md-sys-color-surface-container-highest);
     }
 
     .kds-item-md3.preparing {
-      background: linear-gradient(135deg, var(--md-sys-color-primary-container), rgba(var(--md-sys-color-primary-container-rgb), 0.6));
+      background: var(--md-sys-color-primary-container);
       color: var(--md-sys-color-on-primary-container);
       border-color: var(--md-sys-color-primary);
     }
     .kds-item-md3.preparing .opacity-60 { color: var(--md-sys-color-on-primary-container); opacity: 0.7; }
 
     .kds-item-md3.ready {
-      opacity: 0.7;
-      background: rgba(var(--md-sys-color-surface-container-highest-rgb), 0.3);
-      filter: grayscale(0.5);
+      opacity: 0.65;
+      background: var(--md-sys-color-surface-container-highest);
     }
 
     .kds-item-md3.cancelled {
@@ -382,14 +377,13 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
       width: 100%;
       max-width: 440px;
       height: 100%;
-      background: rgba(var(--md-sys-color-surface-rgb), 0.9);
-      backdrop-filter: blur(24px);
-      box-shadow: -16px 0 64px rgba(0,0,0,0.2);
-      padding: 40px;
+      background: var(--md-sys-color-surface-container-low);
+      box-shadow: -4px 0 32px rgba(0,0,0,0.4);
+      padding: 32px;
       display: flex;
       flex-direction: column;
-      gap: 32px;
-      animation: slideInRight 0.4s cubic-bezier(0.05, 0.7, 0.1, 1);
+      gap: 28px;
+      animation: slideInRight 0.35s cubic-bezier(0.05, 0.7, 0.1, 1);
     }
 
     .drawer-header-md3 { display: flex; justify-content: space-between; align-items: flex-start; }
@@ -406,13 +400,13 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 20px;
-      background: rgba(var(--md-sys-color-surface-container-low-rgb), 0.5);
-      border-radius: 20px;
-      border: 1px solid rgba(255,255,255,0.05);
-      transition: all 0.2s;
+      padding: 16px;
+      background: var(--md-sys-color-surface-container);
+      border-radius: 14px;
+      border: 1px solid var(--md-sys-color-outline-variant);
+      transition: background 0.15s;
     }
-    .stock-item-row-md3:hover { transform: scale(1.02); background: rgba(var(--md-sys-color-surface-container-rgb), 0.7); }
+    .stock-item-row-md3:hover { background: var(--md-sys-color-surface-container-high); }
 
     .md-toggle-btn {
       padding: 10px 20px;
@@ -437,7 +431,6 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
     .icon-box-md3.primary { 
       background: var(--md-sys-color-primary-container); 
       color: var(--md-sys-color-on-primary-container); 
-      box-shadow: 0 8px 24px rgba(var(--md-sys-color-primary-rgb), 0.2);
     }
     
     .stat-chip-md3 {
@@ -473,14 +466,12 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
       gap: 24px;
     }
     .empty-icon-box {
-      width: 140px; height: 140px;
+      width: 120px; height: 120px;
       border-radius: 50%;
-      background: rgba(var(--md-sys-color-surface-container-high-rgb), 0.5);
-      backdrop-filter: blur(8px);
+      background: var(--md-sys-color-surface-container-high);
       display: flex; align-items: center; justify-content: center;
       color: var(--md-sys-color-on-surface-variant);
       margin-bottom: 12px;
-      box-shadow: inset 0 0 24px rgba(0,0,0,0.05);
     }
 
     .kds-loader {

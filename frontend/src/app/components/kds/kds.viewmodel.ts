@@ -6,6 +6,7 @@ import { AuthService } from '../../services/auth.service';
 import { environment } from '../../../environments/environment';
 import { TranslateService } from '@ngx-translate/core';
 import { NotifyService } from '../../services/notify.service';
+import { ORDER_STATUS, ITEM_STATUS } from '../../core/constants';
 
 export interface KDSOrder {
     _id: string;
@@ -34,7 +35,7 @@ export class KDSViewModel {
     public loading = signal<boolean>(true);
     public error = signal<string | null>(null);
     public showStockManager = signal<boolean>(false);
-    public currentFilter = signal<'pending' | 'preparing' | 'ready'>('pending');
+    public currentFilter = signal<'pending' | 'preparing' | 'ready'>(ITEM_STATUS.PENDING as 'pending');
     public localConfig = signal<any>(null);
     public currentTime = signal<number>(Date.now());
 
@@ -44,12 +45,11 @@ export class KDSViewModel {
         const now = this.currentTime(); // Dependency for auto-refresh
 
         return allOrders
-            .filter(order => order.status === 'active')
+            .filter(order => order.status === ORDER_STATUS.ACTIVE)
             .map(order => {
                 const kitchenItems = order.items.filter(item =>
-                    item.status !== 'served' &&
-                    item.status !== 'completed' &&
-                    item.status !== 'cancelled'
+                    item.status !== ITEM_STATUS.SERVED &&
+                    item.status !== ITEM_STATUS.CANCELLED
                 );
                 return {
                     ...order,
@@ -71,6 +71,7 @@ export class KDSViewModel {
 
         this.destroyRef.onDestroy(() => {
             clearInterval(intervalId);
+            this.comms.unsubscribeFromOrders(this.ordersCallback);
         });
     }
 
@@ -105,18 +106,20 @@ export class KDSViewModel {
         }
     }
 
-    private setupRealTime() {
-        this.comms.subscribeToOrders((updatedOrder: KDSOrder) => {
-            this.orders.update(prev => {
-                const index = prev.findIndex(o => o._id === updatedOrder._id);
-                if (index !== -1) {
-                    const newOrders = [...prev];
-                    newOrders[index] = updatedOrder;
-                    return newOrders;
-                }
-                return [updatedOrder, ...prev];
-            });
+    private ordersCallback = (updatedOrder: KDSOrder) => {
+        this.orders.update(prev => {
+            const index = prev.findIndex(o => o._id === updatedOrder._id);
+            if (index !== -1) {
+                const newOrders = [...prev];
+                newOrders[index] = updatedOrder;
+                return newOrders;
+            }
+            return [updatedOrder, ...prev];
         });
+    };
+
+    private setupRealTime() {
+        this.comms.subscribeToOrders(this.ordersCallback);
     }
 
     public getTimeDiff(createdAt: string, now: number = this.currentTime()): string {
@@ -140,7 +143,7 @@ export class KDSViewModel {
                 __v: version
             }, { withCredentials: true }));
 
-            if (print && nextStatus === 'ready') {
+            if (print && nextStatus === ITEM_STATUS.READY) {
                 const order = this.orders().find(o => o._id === orderId);
                 const item = order?.items.find((i: any) => (i._id || i.id) === itemId);
                 if (order && item) {
@@ -204,7 +207,9 @@ export class KDSViewModel {
         if (!confirm(this.translate.instant('KDS.CANCEL_CONFIRM'))) return;
 
         try {
-            await firstValueFrom(this.http.patch(`${environment.apiUrl}/api/orders/${orderId}/items/${itemId}`, { status: 'cancelled' }, { withCredentials: true }));
+            const order = this.orders().find(o => o._id === orderId);
+            const version = order?.__v ?? 0;
+            await firstValueFrom(this.http.patch(`${environment.apiUrl}/api/orders/${orderId}/items/${itemId}`, { status: ITEM_STATUS.CANCELLED, __v: version }, { withCredentials: true }));
             this.auth.logActivity('ITEM_CANCELLED', { orderId, itemId });
         } catch (e) {
             console.error('Error cancelling item', e);

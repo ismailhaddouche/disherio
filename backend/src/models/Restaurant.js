@@ -12,7 +12,7 @@ const TotemSchema = new mongoose.Schema({
 
 const RestaurantSchema = new mongoose.Schema({
     name: { type: String, required: true },
-    slug: { type: String, default: 'default' },
+    slug: { type: String, default: 'default', unique: true, index: true },
     address: String,
     phone: String,
     email: String,
@@ -27,31 +27,35 @@ const RestaurantSchema = new mongoose.Schema({
     printers: [{
         id: { type: String, required: true },
         name: { type: String, required: true },
-        type: { type: String, enum: ['network', 'usb', 'cloud'], default: 'network' },
+        type: { type: String, enum: ['network', 'usb', 'cloud', 'thermal'], default: 'network' },
         address: String, // IP Address or Device Path
         connection: String // e.g. "9100" for network ports
     }],
 
     // Kitchen stations
     stations: [{
-        name: String, // e.g., 'Kitchen', 'Bar'
+        name: { type: String, required: true, maxlength: 100 }, // e.g., 'Kitchen', 'Bar'
         lastPulse: Date
     }],
 
     // Branding
     theme: {
-        primaryColor: { type: String, default: '#3b82f6' }, // Blue default
-        secondaryColor: { type: String, default: '#10b981' }, // Green default
-        backgroundColor: { type: String, default: '#0f172a' }, // Dark default
-        textColor: { type: String, default: '#ffffff' } // White default
+        primaryColor:     { type: String, default: '#3b82f6' },
+        secondaryColor:   { type: String, default: '#10b981' },
+        backgroundColor:  { type: String, default: '#0f172a' },
+        textColor:        { type: String, default: '#ffffff' },
+        fontFamily:       { type: String, default: '' },
+        borderRadius:     { type: String, default: '' },
+        darkMode:         { type: Boolean, default: true }
     },
 
     // Billing Configuration
     billing: {
-        vatPercentage: { type: Number, default: null }, // IVA % (null = not configured)
-        tipEnabled: { type: Boolean, default: false },
-        tipPercentage: { type: Number, default: 0 },
-        tipDescription: { type: String, default: 'La propina es opcional' }
+        vatPercentage:  { type: Number, default: null },  // IVA % (null = not configured yet)
+        tipEnabled:     { type: Boolean, default: false },
+        tipPercentage:  { type: Number, default: 0, min: 0, max: 100 },
+        tipDescription: { type: String, default: 'La propina es opcional', maxlength: 200 },
+        currency:       { type: String, default: 'EUR', maxlength: 3 }
     },
 
     // Social media

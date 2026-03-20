@@ -8,10 +8,13 @@ import { LucideAngularModule } from 'lucide-angular';
     standalone: true,
     imports: [CommonModule, LucideAngularModule],
     template: `
-    <div class="notification-container">
+    <div class="notification-container" aria-label="Notifications" role="region">
       @for (n of notify.notifications(); track n.id) {
-        <div class="notification-toast animate-slide-in" [class]="n.type">
-          <div class="toast-icon">
+        <div class="notification-toast animate-slide-in" [class]="n.type"
+             [attr.role]="n.type === 'error' ? 'alert' : 'status'"
+             [attr.aria-live]="n.type === 'error' ? 'assertive' : 'polite'"
+             aria-atomic="true">
+          <div class="toast-icon" aria-hidden="true">
              @if (n.type === 'success') { <lucide-icon name="check-circle" [size]="20"></lucide-icon> }
              @if (n.type === 'error') { <lucide-icon name="alert-circle" [size]="20"></lucide-icon> }
              @if (n.type === 'info') { <lucide-icon name="info" [size]="20"></lucide-icon> }

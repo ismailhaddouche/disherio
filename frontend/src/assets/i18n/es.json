@@ -92,7 +92,12 @@
         "ITEM_LABEL": "PLATO",
         "QTY_LABEL": "CANT",
         "ORIGIN_LABEL": "ORIGEN",
-        "PRINT_MESSAGE": " ({{printerLabel}} {{printer}})\n{{title}}\n----------------------\n{{item}} × {{quantity}}\n{{table}}{{details}}\n----------------------"
+        "PRINT_MESSAGE": " ({{printerLabel}} {{printer}})\n{{title}}\n----------------------\n{{item}} × {{quantity}}\n{{table}}{{details}}\n----------------------",
+        "ALL_READY": "Marcar todo listo",
+        "ALL_SERVED": "Marcar todo servido",
+        "REPRINT": "Reimprimir vale",
+        "STOCK_ACTIVE": "ACTIVO",
+        "STOCK_OUT": "AGOTADO"
     },
     "POS": {
         "TITLE": "Caja Registradora",
@@ -160,6 +165,8 @@
         "PRINT_THERMAL": "Térmica",
         "PRINT_SYSTEM": "Sistema",
         "CASHIER_LABEL": "Caja",
+        "CASH": "Efectivo",
+        "CARD": "Tarjeta",
         "REMOVE_ITEM_ERROR": "No se pudo eliminar el artículo",
         "ASSOCIATE_ERROR": "No se pudo asociar el plato",
         "ADD_ITEM_ERROR": "No se pudo añadir el plato",
@@ -189,6 +196,7 @@
         "EQUITATIVE_PARTS": "A partes iguales",
         "EQUITATIVE_HELPER": "Cada persona paga una parte proporcional de la cuenta total.",
         "PROCEED_PAY": "Proceder al Pago",
+        "PAYMENT_REQUESTED": "Solicitud enviada — tu camarero vendrá enseguida.",
         "PERS": "pers.",
         "SUBTITLE": "Selecciona el método de pago"
     },
@@ -236,11 +244,14 @@
     },
     "LOGIN": {
         "ACCESS_TERMINAL": "Acceso a Terminal de Gestión",
+        "SUBTITLE": "Acceso al panel de gestión",
+        "FORM_LABEL": "Formulario de acceso",
         "USER": "Usuario",
         "USER_PLACEHOLDER": "ej: cocina",
         "PASSWORD": "Contraseña",
-        "AUTHENTICATING": "AUTENTICANDO...",
+        "AUTHENTICATING": "Autenticando...",
         "ENTER_SYSTEM": "ENTRAR AL SISTEMA",
+        "SIGN_IN": "Entrar",
         "ERROR_CREDS": "Credenciales incorrectas o red no disponible.",
         "ERROR_SYSTEM": "Error en el sistema. Inténtalo más tarde."
     },
@@ -287,7 +298,11 @@
         "DELETE_CONFIRM": "¿Eliminar este plato?",
         "DELETE_ERROR": "No se pudo eliminar el plato",
         "UPLOAD_ERROR": "No se pudo subir la imagen",
-        "LOAD_ERROR": "Error al cargar el menú"
+        "LOAD_ERROR": "Error al cargar el menú",
+        "UPLOAD_VARIANT_IMAGE": "Subir imagen de la variante",
+        "DISH_IMAGE": "Imagen del Plato",
+        "IMAGE_HINT": "Recomendado formato cuadrado.",
+        "UPLOAD_BTN": "Subir imagen"
     },
     "STORE_CONFIG": {
         "TITLE": "Configuración de Tienda",
@@ -331,6 +346,8 @@
         "ASSIGNED_PRINTER": "Impresora Asignada",
         "NO_PRINTER": "Sin Impresora",
         "AUTO_PRINT": "Impresión Automática",
+        "TIP_ENABLE_DESC": "Permitir a los clientes añadir propina",
+        "AUTO_PRINT_DESC": "Imprimir tickets automáticamente al finalizar",
         "LOAD_ERROR": "No se pudo cargar la configuración",
         "SAVE_SUCCESS": "Configuración guardada. Recargando...",
         "SAVE_ERROR": "No se pudo guardar la configuración",
@@ -382,6 +399,7 @@
         "FOOTER_MSG": "Mensaje de Pie",
         "FOOTER_PH": "Ej: ¡Gracias por su visita!",
         "SAVE": "Guardar Cambios",
+        "TITLE": "Administración de Usuarios",
         "SUBTITLE": "Crea y gestiona cuentas con roles específicos (KDS, POS, Admin).",
         "LOADING": "Cargando usuarios...",
         "NO_PRINTER": "Sin impresora asignada",
@@ -413,7 +431,9 @@
         "CASHIER": "Caja",
         "KITCHEN": "Cocina",
         "MENU": "Menú",
-        "CONFIG": "Configuración"
+        "CONFIG": "Configuración",
+        "EXPAND": "Abrir menú de navegación",
+        "COLLAPSE": "Colapsar menú de navegación"
     },
     "APP": {
         "RESTAURANT_NAME": "Restaurante Digital",

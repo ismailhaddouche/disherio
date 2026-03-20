@@ -8,6 +8,7 @@ import OrderService from '../services/order.service.js';
 import AuditService from '../services/audit.service.js';
 import { verifyToken, requireRole } from '../middleware/auth.middleware.js';
 import { validate, orderPlacementSchema, mongoIdSchema } from '../middleware/validation.middleware.js';
+import { ROLES, ORDER_STATUS, ITEM_STATUS, PAYMENT_STATUS, PAYMENT_METHOD, SPLIT_TYPE, SOCKET_EVENTS } from '../constants.js';
 
 // ── Joi Schemas ──────────────────────────────────────────────────────────────
 
@@ -30,21 +31,21 @@ const associateSchema = Joi.object({
 }).unknown(false);
 
 const orderUpdateSchema = Joi.object({
-    status: Joi.string().valid('active', 'completed', 'cancelled'),
-    paymentStatus: Joi.string().valid('unpaid', 'paid', 'split', 'processing'),
+    status: Joi.string().valid(...Object.values(ORDER_STATUS)),
+    paymentStatus: Joi.string().valid(...Object.values(PAYMENT_STATUS)),
     items: Joi.array(),
     totalAmount: Joi.number(),
     __v: Joi.number().required() // Version for optimistic concurrency
 }).min(2).unknown(false); // At least __v and one other field
 
 const itemStatusSchema = Joi.object({
-    status: Joi.string().valid('pending', 'preparing', 'ready', 'served', 'cancelled').required(),
+    status: Joi.string().valid(...Object.values(ITEM_STATUS)).required(),
     __v: Joi.number().required() // OCC support
 }).unknown(false);
 
 const checkoutSchema = Joi.object({
-    method: Joi.string().valid('cash', 'card').required(),
-    splitType: Joi.string().valid('equal', 'single', 'by-item', 'by-user'),
+    method: Joi.string().valid(...Object.values(PAYMENT_METHOD)).required(),
+    splitType: Joi.string().valid(...Object.values(SPLIT_TYPE)),
     parts: Joi.number().integer().min(1).optional(),
     userId: Joi.string().allow('').optional(),
     itemIds: Joi.array().items(Joi.string()).optional(),
@@ -57,8 +58,8 @@ const checkoutSchema = Joi.object({
 const staffAccess = (...roles) => [verifyToken, requireRole(...roles)];
 
 // GET / - List active orders (Restricted to staff)
-router.get('/', verifyToken, requireRole('admin', 'waiter', 'kitchen', 'pos'), async function(req, res) {
-    const orders = await Order.find({ status: 'active' }).sort({ createdAt: -1 });
+router.get('/', verifyToken, requireRole(ROLES.ADMIN, ROLES.WAITER, ROLES.KITCHEN, ROLES.POS), async function(req, res) {
+    const orders = await Order.find({ status: ORDER_STATUS.ACTIVE }).sort({ createdAt: -1 });
     res.success(orders);
 });
 
@@ -66,7 +67,7 @@ router.get('/', verifyToken, requireRole('admin', 'waiter', 'kitchen', 'pos'), a
 router.get('/table/:tableNumber', async function(req, res) {
     const order = await Order.findOne({
         tableNumber: req.params.tableNumber,
-        status: 'active'
+        status: ORDER_STATUS.ACTIVE
     });
     res.success(order || null);
 });
@@ -75,7 +76,7 @@ router.get('/table/:tableNumber', async function(req, res) {
 router.get('/session/:sessionId', async function(req, res) {
     const order = await Order.findOne({
         sessionId: req.params.sessionId,
-        status: 'active'
+        status: ORDER_STATUS.ACTIVE
     });
     res.success(order || null);
 });
@@ -83,13 +84,13 @@ router.get('/session/:sessionId', async function(req, res) {
 // POST /table/:tableNumber/add-items - Waiter adding items (Restricted)
 router.post('/table/:tableNumber/add-items',
     verifyToken,
-    requireRole('admin', 'waiter', 'pos'),
+    requireRole(ROLES.ADMIN, ROLES.WAITER, ROLES.POS),
     validate(addItemsSchema),
     async function(req, res) {
         const { tableNumber } = req.params;
         const { items, guestId, guestName } = req.body;
 
-        let order = await Order.findOne({ tableNumber, status: 'active' });
+        let order = await Order.findOne({ tableNumber, status: ORDER_STATUS.ACTIVE });
         if (!order) {
             order = new Order({
                 tableNumber,
@@ -101,7 +102,7 @@ router.post('/table/:tableNumber/add-items',
 
         const newItems = items.map(item => ({
             ...item,
-            status: 'pending',
+            status: ITEM_STATUS.PENDING,
             orderedBy: {
                 id: guestId || 'staff',
                 name: guestName || req.user.username || 'Personal'
@@ -125,7 +126,7 @@ router.post('/table/:tableNumber/add-items',
         }
 
         const io = req.app.get('io');
-        if (io) io.emit('order-updated', order);
+        if (io) io.emit(SOCKET_EVENTS.ORDER_UPDATED, order);
 
         res.success(order);
     }
@@ -134,7 +135,7 @@ router.post('/table/:tableNumber/add-items',
 // PATCH /:id/items/:itemId/associate - Restricted to staff
 router.patch('/:id/items/:itemId/associate',
     verifyToken,
-    requireRole('admin', 'waiter', 'pos'),
+    requireRole(ROLES.ADMIN, ROLES.WAITER, ROLES.POS),
     validate(mongoIdSchema, 'params'),
     validate(associateSchema),
     async function(req, res) {
@@ -170,7 +171,7 @@ router.patch('/:id/items/:itemId/associate',
         }
 
         const io = req.app.get('io');
-        if (io) io.emit('order-updated', order);
+        if (io) io.emit(SOCKET_EVENTS.ORDER_UPDATED, order);
 
         res.success(order);
     }
@@ -211,14 +212,14 @@ router.post('/',
 
         const tNumber = tableNumber || String(totem.name || numericTotemId);
 
-        let order = await Order.findOne({ sessionId: sessionId, status: 'active' });
+        let order = await Order.findOne({ sessionId: sessionId, status: ORDER_STATUS.ACTIVE });
         if (!order) {
             order = new Order({ tableNumber: tNumber, totemId: numericTotemId, sessionId: sessionId, items: [], totalAmount: 0 });
         }
 
         const taggedItems = items.map(item => ({
             ...item,
-            status: 'pending',
+            status: ITEM_STATUS.PENDING,
             orderedBy: {
                 id: req.user?.userId || 'guest',
                 name: req.user?.username || 'Invitado'
@@ -238,7 +239,7 @@ router.post('/',
         }
 
         const io = req.app.get('io');
-        if (io) io.emit('order-updated', order);
+        if (io) io.emit(SOCKET_EVENTS.ORDER_UPDATED, order);
 
         res.success(order, undefined, 201);
     }
@@ -247,7 +248,7 @@ router.post('/',
 // PATCH /:id - Update order (Restricted)
 router.patch('/:id',
     verifyToken,
-    requireRole('admin', 'waiter', 'kitchen', 'pos'),
+    requireRole(ROLES.ADMIN, ROLES.WAITER, ROLES.KITCHEN, ROLES.POS),
     validate(mongoIdSchema, 'params'),
     validate(orderUpdateSchema),
     async function(req, res) {
@@ -295,7 +296,7 @@ router.patch('/:id',
         }
 
         const io = req.app.get('io');
-        if (io) io.emit('order-updated', order);
+        if (io) io.emit(SOCKET_EVENTS.ORDER_UPDATED, order);
 
         res.success(order);
     }
@@ -304,7 +305,7 @@ router.patch('/:id',
 // PATCH /:id/items/bulk-status - Bulk status update (Restricted)
 router.patch('/:id/items/bulk-status',
     verifyToken,
-    requireRole('admin', 'kitchen'),
+    requireRole(ROLES.ADMIN, ROLES.KITCHEN),
     validate(mongoIdSchema, 'params'),
     validate(itemStatusSchema),
     async function(req, res) {
@@ -313,7 +314,7 @@ router.patch('/:id/items/bulk-status',
 
         const previousItems = order.items.map(i => ({ id: i._id.toString(), status: i.status }));
         for (const item of order.items) {
-            if (item.status !== 'served' && item.status !== 'cancelled') {
+            if (item.status !== ITEM_STATUS.SERVED && item.status !== ITEM_STATUS.CANCELLED) {
                 item.status = req.body.status;
             }
         }
@@ -339,7 +340,7 @@ router.patch('/:id/items/bulk-status',
         }
 
         const io = req.app.get('io');
-        if (io) io.emit('order-updated', order);
+        if (io) io.emit(SOCKET_EVENTS.ORDER_UPDATED, order);
 
         res.success(order);
     }
@@ -348,7 +349,7 @@ router.patch('/:id/items/bulk-status',
 // PATCH /:id/items/:itemId - Status update (Restricted)
 router.patch('/:id/items/:itemId',
     verifyToken,
-    requireRole('admin', 'kitchen'),
+    requireRole(ROLES.ADMIN, ROLES.KITCHEN),
     validate(mongoIdSchema, 'params'),
     validate(itemStatusSchema),
     async function(req, res) {
@@ -377,7 +378,7 @@ router.patch('/:id/items/:itemId',
         }
 
         const io = req.app.get('io');
-        if (io) io.emit('order-updated', order);
+        if (io) io.emit(SOCKET_EVENTS.ORDER_UPDATED, order);
 
         res.success(order);
     }
@@ -386,7 +387,7 @@ router.patch('/:id/items/:itemId',
 // POST /:id/checkout - Process payment (Restricted)
 router.post('/:id/checkout',
     verifyToken,
-    requireRole('admin', 'pos'),
+    requireRole(ROLES.ADMIN, ROLES.POS),
     validate(mongoIdSchema, 'params'),
     validate(checkoutSchema),
     async function(req, res) {
@@ -417,7 +418,7 @@ router.post('/:id/checkout',
             const ticket = new Ticket({
                 orderId: order._id,
                 customId: `${order._id.toString().slice(-6).toUpperCase()}/${i + 1}-${ticketCount}`,
-                method: method || 'cash',
+                method: method || PAYMENT_METHOD.CASH,
                 amount: finalAmount,
                 baseAmount,
                 vatAmount,
@@ -433,11 +434,11 @@ router.post('/:id/checkout',
             return res.error(req.t('ERRORS.VERSION_CONFLICT') || 'Version conflict detected.', 409);
         }
 
-        order.paymentStatus = totalPaidFlag ? 'paid' : 'split';
+        order.paymentStatus = totalPaidFlag ? PAYMENT_STATUS.PAID : PAYMENT_STATUS.SPLIT;
 
         if (totalPaidFlag) {
             try {
-                OrderService.updateOrderStatus(order, 'completed');
+                OrderService.updateOrderStatus(order, ORDER_STATUS.COMPLETED);
                 await order.save();
             } catch (error) {
                 if (error.name === 'VersionError') {
@@ -470,9 +471,9 @@ router.post('/:id/checkout',
 
         const io = req.app.get('io');
         if (io) {
-            io.emit('order-updated', order);
-            if (order.status === 'completed') {
-                io.emit('session-ended', {
+            io.emit(SOCKET_EVENTS.ORDER_UPDATED, order);
+            if (order.status === ORDER_STATUS.COMPLETED) {
+                io.emit(SOCKET_EVENTS.SESSION_ENDED, {
                     totemId: order.totemId,
                     tableNumber: order.tableNumber,
                     sessionId: order.sessionId || null
@@ -484,7 +485,7 @@ router.post('/:id/checkout',
             orderId: order._id,
             tableNumber: order.tableNumber,
             amount: generatedTickets.reduce((sum, t) => sum + t.amount, 0),
-            method: method || 'cash',
+            method: method || PAYMENT_METHOD.CASH,
             splitType,
             status: order.status
         });

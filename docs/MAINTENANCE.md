@@ -26,7 +26,9 @@ El script generará un archivo `backups/disher_backup_YYYY-MM-DD_HH-MM-SS.tar.gz
 ```bash
 # 1. Carga las variables de entorno desde tu archivo .env
 # ¡Este paso es CRÍTICO para la autenticación!
-export $(cat .env | grep -v '^#' | xargs)
+set -a
+source .env
+set +a
 
 # 2. Detén el servicio del backend para evitar conflictos
 sudo docker compose stop backend
@@ -55,7 +57,9 @@ Para automatizar backups, usa un cron job. Asegúrate de que el script que se ej
 
 # Carga el entorno desde el directorio de Disher.io
 cd /home/user/disherio # <-- Ajusta esta ruta a tu directorio de proyecto
-export $(cat .env | grep -v '^#' | xargs)
+set -a
+source .env
+set +a
 
 # Define el directorio de backups
 BACKUP_DIR="/var/backups/disher"

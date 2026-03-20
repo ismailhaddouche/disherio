@@ -7,6 +7,7 @@ import { validate, menuItemSchema, mongoIdSchema } from '../middleware/validatio
 import MenuService from '../services/menu.service.js';
 import AuditService from '../services/audit.service.js';
 import multer from 'multer';
+import { ROLES, SOCKET_EVENTS } from '../constants.js';
 
 // Configure multer storage (memory storage for sharp processing)
 const storage = multer.memoryStorage();
@@ -21,17 +22,21 @@ const upload = multer({
 
 // Middleware to restrict certain actions to admin OR kitchen (for specific categories)
 async function authorizeKitchenAction(req, res, next) {
-    if (req.user.role === 'admin') return next();
+    if (req.user.role === ROLES.ADMIN) return next();
 
-    if (req.user.role === 'kitchen') {
-        const category = req.body.category || (req.params.id ? (await MenuItem.findById(req.params.id))?.category : null);
-        if (category === 'Fuera de Carta') {
-            return next();
+    if (req.user.role === ROLES.KITCHEN) {
+        try {
+            const category = req.body.category || (req.params.id ? (await MenuItem.findById(req.params.id))?.category : null);
+            if (category === 'Fuera de Carta') {
+                return next();
+            }
+        } catch (err) {
+            return next(err);
         }
-        return res.error('La cocina solo puede gestionar platos "Fuera de Carta"', 403);
+        return res.error(req.t('ERRORS.KITCHEN_CATEGORY_RESTRICTED'), 403);
     }
 
-    res.error('Acceso denegado', 403);
+    res.error(req.t('ERRORS.ACCESS_DENIED_ROLE'), 403);
 }
 
 // GET / - List all menu items
@@ -69,7 +74,7 @@ router.post('/',
 
         let item;
         if (_id) {
-            if (req.user.role === 'kitchen' && data.category !== 'Fuera de Carta') {
+            if (req.user.role === ROLES.KITCHEN && data.category !== 'Fuera de Carta') {
                 return res.error('La cocina no puede mover platos fuera de "Fuera de Carta"', 403);
             }
 
@@ -95,9 +100,7 @@ router.post('/',
         }
 
         const io = req.app.get('io');
-        if (io) {
-            io.emit('menu-update', item);
-        }
+        if (io) io.emit(SOCKET_EVENTS.MENU_UPDATE, item);
 
         res.success(item);
     }
@@ -120,9 +123,7 @@ router.delete('/:id',
         });
 
         const io = req.app.get('io');
-        if (io) {
-            io.emit('menu-update', { deleted: item._id });
-        }
+        if (io) io.emit(SOCKET_EVENTS.MENU_UPDATE, { deleted: item._id });
 
         res.success({ message: 'Menu item deleted' });
     }
@@ -154,9 +155,7 @@ router.post('/:productId/toggle',
         });
 
         const io = req.app.get('io');
-        if (io) {
-            io.emit('menu-update', item);
-        }
+        if (io) io.emit(SOCKET_EVENTS.MENU_UPDATE, item);
 
         res.success(item);
     }

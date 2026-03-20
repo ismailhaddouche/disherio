@@ -1,10 +1,11 @@
 import mongoose from 'mongoose';
 
+const MAX_ITEMS_PER_ORDER = 200;
+
 const OrderItemSchema = new mongoose.Schema({
-    id: String,
-    name: { type: String, required: true },
+    name: { type: String, required: true, trim: true, maxlength: 200 },
     price: { type: Number, required: true, min: 0 }, // Price at the moment of order (base + variants)
-    quantity: { type: Number, required: true, min: 1 },
+    quantity: { type: Number, required: true, min: 1, max: 99 },
     status: {
         type: String,
         enum: ['pending', 'preparing', 'ready', 'served', 'cancelled'],
@@ -12,8 +13,9 @@ const OrderItemSchema = new mongoose.Schema({
     },
     station: { type: String, default: 'Kitchen' },
     orderedBy: {
-        id: String,
-        name: String
+        _id: false, // Subdoc — no need for an extra ObjectId
+        id: { type: String, maxlength: 100 },
+        name: { type: String, maxlength: 100 }
     },
     // Support for complex menu choices
     selectedVariant: {
@@ -39,8 +41,8 @@ const OrderItemSchema = new mongoose.Schema({
 const OrderSchema = new mongoose.Schema({
     tableNumber: String,
     totemId: { type: Number, required: true },
-    items: [OrderItemSchema],
-    totalAmount: { type: Number, default: 0 },
+    items: { type: [OrderItemSchema], validate: { validator: v => v.length <= MAX_ITEMS_PER_ORDER, message: `An order cannot exceed ${MAX_ITEMS_PER_ORDER} items` } },
+    totalAmount: { type: Number, default: 0, min: 0 },
     paymentStatus: {
         type: String,
         enum: ['unpaid', 'paid', 'split', 'processing'],

@@ -1,6 +1,7 @@
 node_modules
-npm-debug.log
+npm-debug.log*
 .env
+.env.*
 .git
 .gitignore
 *.md
@@ -11,3 +12,10 @@ eslint.config.js
 .vscode
 .idea
 *.log
+tests/
+coverage/
+*.test.js
+*.spec.js
+tmp/
+temp/
+public/uploads

@@ -19,7 +19,7 @@ class OrderService {
      * @param {Object} order - Mongoose order document
      * @param {string} newStatus 
      */
-    async updateOrderStatus(order, newStatus) {
+    updateOrderStatus(order, newStatus) {
         if (order.status === newStatus) return order;
         
         order.status = newStatus;
@@ -37,7 +37,7 @@ class OrderService {
      * @param {string} itemId 
      * @param {string} newStatus 
      */
-    async updateItemStatus(order, itemId, newStatus) {
+    updateItemStatus(order, itemId, newStatus) {
         const item = order.items.id(itemId) || order.items.find(i => String(i._id) === itemId);
         if (!item || item.status === newStatus) return order;
 

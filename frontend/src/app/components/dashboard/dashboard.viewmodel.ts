@@ -6,6 +6,7 @@ import { AuthService } from '../../services/auth.service';
 import { environment } from '../../../environments/environment';
 import { TranslateService } from '@ngx-translate/core';
 import { NotifyService } from '../../services/notify.service';
+import { ORDER_STATUS, type OrderStatus } from '../../core/constants';
 
 export interface Order {
     _id: string;
@@ -13,8 +14,9 @@ export interface Order {
     totemId?: number;
     items: any[];
     totalAmount: number;
-    status: 'active' | 'completed' | 'cancelled';
+    status: OrderStatus;
     createdAt: string;
+    __v?: number;
 }
 
 @Injectable()
@@ -30,6 +32,7 @@ export class DashboardViewModel {
     public orders = signal<Order[]>([]);
     public totems = signal<any[]>([]);
     public logs = signal<any[]>([]);
+    public tickets = signal<any[]>([]);
     public loading = signal<boolean>(false);
     public error = signal<string | null>(null);
 
@@ -38,14 +41,16 @@ export class DashboardViewModel {
 
     // Computed values
     public activeOrdersCount = computed(() =>
-        this.orders().filter(o => o.status === 'active').length
+        this.orders().filter(o => o.status === ORDER_STATUS.ACTIVE).length
     );
 
-    public dailyRevenue = computed(() =>
-        this.orders()
-            .filter(o => o.status === 'completed')
-            .reduce((acc, current) => acc + (current.totalAmount || 0), 0)
-    );
+    public dailyRevenue = computed(() => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        return this.tickets()
+            .filter(t => new Date(t.timestamp || t.createdAt) >= today)
+            .reduce((acc, t) => acc + (t.amount || 0), 0);
+    });
 
     private ordersCallback = (updatedOrder: Order) => {
         this.orders.update(prev => {
@@ -73,15 +78,17 @@ export class DashboardViewModel {
         this.error.set(null);
 
         try {
-            const [orders, logs, totems]: any[] = await Promise.all([
+            const [orders, logs, totems, tickets]: any[] = await Promise.all([
                 this.comms.syncOrders(),
                 firstValueFrom(this.http.get<any[]>(`${environment.apiUrl}/api/logs`)),
-                firstValueFrom(this.http.get<any[]>(`${environment.apiUrl}/api/totems`))
+                firstValueFrom(this.http.get<any[]>(`${environment.apiUrl}/api/totems`)),
+                firstValueFrom(this.http.get<any[]>(`${environment.apiUrl}/api/history`))
             ]);
 
             if (orders) this.orders.set(orders);
             if (logs) this.logs.set(logs);
             if (totems) this.totems.set(totems);
+            if (tickets) this.tickets.set(tickets);
 
         } catch (error: any) {
             console.error('Error loading dashboard data', error);
@@ -137,9 +144,13 @@ export class DashboardViewModel {
 
     public async completeOrder(orderId: string) {
         try {
+            const order = this.orders().find(o => o._id === orderId);
+            const version = order?.__v ?? 0;
             this.auth.logActivity('ORDER_COMPLETED', { orderId });
-            await firstValueFrom(this.http.post(`${environment.apiUrl}/api/orders/${orderId}/complete`, {}, { withCredentials: true }));
-            // The real-time listener will update the list
+            await firstValueFrom(this.http.patch(`${environment.apiUrl}/api/orders/${orderId}`, {
+                status: ORDER_STATUS.COMPLETED,
+                __v: version
+            }, { withCredentials: true }));
         } catch (e) {
             console.error('Error completing order', e);
             const message = this.translate.instant('DASHBOARD.COMPLETE_ERROR');

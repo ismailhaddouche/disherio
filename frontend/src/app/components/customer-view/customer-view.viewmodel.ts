@@ -9,6 +9,7 @@ import { firstValueFrom } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { TranslateService } from '@ngx-translate/core';
 import { NotifyService } from '../../services/notify.service';
+import { STORAGE_KEYS, ORDER_STATUS, PAYMENT_STATUS } from '../../core/constants';
 
 export interface TableSession {
     tableNumber: string;
@@ -80,7 +81,7 @@ export class CustomerViewModel {
                 const data = res;
 
                 if (data.sessionId) {
-                    localStorage.setItem('disher_current_session', JSON.stringify({
+                    localStorage.setItem(STORAGE_KEYS.CURRENT_SESSION, JSON.stringify({
                         sessionId: data.sessionId, totemId: data.totemId, tableNumber: data.tableNumber, activeOrder: null
                     }));
                     this.router.navigate(['/s', data.sessionId], { replaceUrl: true });
@@ -103,7 +104,7 @@ export class CustomerViewModel {
         }
 
         if (sessionParam) {
-            const savedSession = localStorage.getItem('disher_current_session');
+            const savedSession = localStorage.getItem(STORAGE_KEYS.CURRENT_SESSION);
             let initialData: TableSession = { tableNumber: '...', sessionId: sessionParam, activeOrder: null };
 
             if (savedSession) {
@@ -120,7 +121,7 @@ export class CustomerViewModel {
                 }));
                 this.menu.set(normalizedMenu);
                 await this.loadTableState();
-                localStorage.setItem('disher_current_session', JSON.stringify(this.session()));
+                localStorage.setItem(STORAGE_KEYS.CURRENT_SESSION, JSON.stringify(this.session()));
             } catch (e) {
                 console.error('Error loading session data', e);
                 this.error.set(this.translate.instant('CUSTOMER.ERROR_LOADING_SESSION'));
@@ -154,8 +155,12 @@ export class CustomerViewModel {
 
     private setupTableListeners() {
         this.comms.subscribeToOrders((order: any) => {
-            if (order.tableNumber === this.session()?.tableNumber) {
-                this.session.update(s => s ? { ...s, activeOrder: order } : s);
+            const s = this.session();
+            if (!s) return;
+            const matchesSession = s.sessionId && order.sessionId === s.sessionId;
+            const matchesTable = !s.sessionId && order.tableNumber === s.tableNumber;
+            if (matchesSession || matchesTable) {
+                this.session.update(prev => prev ? { ...prev, activeOrder: order } : prev);
             }
         });
 
@@ -198,12 +203,12 @@ export class CustomerViewModel {
                 // Clear cart
                 this.cart.set([]);
                 if (current.sessionId) localStorage.removeItem(`disher_cart_${current.sessionId}`);
-                localStorage.removeItem('disher_current_session');
+                localStorage.removeItem(STORAGE_KEYS.CURRENT_SESSION);
 
                 // Clear user name
                 this.auth.logout(); // This clears the session cookie too
                 this.comms.userName.set('Comensal');
-                localStorage.removeItem('disher_user_name');
+                localStorage.removeItem(STORAGE_KEYS.USER_NAME);
 
                 // Clear local active order
                 this.session.update(s => s ? { ...s, activeOrder: null, sessionId: undefined } : s);
@@ -214,8 +219,8 @@ export class CustomerViewModel {
             console.log('[SECURITY] Global system reset (Cierre de Caja). Clearing all sessions.');
             this.auth.logout();
             this.comms.userName.set('Comensal');
-            localStorage.removeItem('disher_user_name');
-            localStorage.removeItem('disher_current_session');
+            localStorage.removeItem(STORAGE_KEYS.USER_NAME);
+            localStorage.removeItem(STORAGE_KEYS.CURRENT_SESSION);
             this.session.set(null);
             this.router.navigate(['/'], { replaceUrl: true });
         });
@@ -230,13 +235,14 @@ export class CustomerViewModel {
             if (restRes?.name) this.restaurantName.set(restRes.name);
 
             const savedCart = localStorage.getItem(`disher_cart_${s.sessionId}`);
+            // Note: cart key uses dynamic sessionId suffix — intentional per-session scoping
             if (savedCart) this.cart.set(JSON.parse(savedCart));
 
             const orderRes: any = await firstValueFrom(this.http.get(`${environment.apiUrl}/api/orders/session/${s.sessionId}`));
             const activeOrder = orderRes;
 
             if (activeOrder) {
-                if (activeOrder.status === 'completed' || activeOrder.paymentStatus === 'paid') {
+                if (activeOrder.status === ORDER_STATUS.COMPLETED || activeOrder.paymentStatus === PAYMENT_STATUS.PAID) {
                     this.session.update(prev => prev ? { ...prev, activeOrder: null } : prev);
                     return;
                 }

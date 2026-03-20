@@ -1,9 +1,9 @@
 import { Injectable, signal } from '@angular/core';
 import { io, Socket } from 'socket.io-client';
 import { HttpClient } from '@angular/common/http';
-import { Subject } from 'rxjs';
+import { Subject, lastValueFrom } from 'rxjs';
 import { environment } from '../../environments/environment';
-import { lastValueFrom } from 'rxjs';
+import { SOCKET_EVENTS, STORAGE_KEYS } from '../core/constants';
 
 @Injectable({
     providedIn: 'root'
@@ -16,20 +16,20 @@ export class CommunicationService {
     public connectionStatus = signal<'connected' | 'disconnected' | 'reconnecting'>('disconnected');
     public conflictDetected$ = new Subject<void>();
     public userId = signal<string>(this.getOrCreateUserId());
-    public userName = signal<string>(localStorage.getItem('disher_user_name') || 'Comensal');
+    public userName = signal<string>(localStorage.getItem(STORAGE_KEYS.USER_NAME) || 'Comensal');
 
     private getOrCreateUserId(): string {
-        let idArr = window.localStorage.getItem('disher_user_id');
-        if (!idArr) {
-            idArr = 'user_' + Math.random().toString(36).substr(2, 9);
-            window.localStorage.setItem('disher_user_id', idArr);
+        let id = window.localStorage.getItem(STORAGE_KEYS.USER_ID);
+        if (!id) {
+            id = 'user_' + crypto.randomUUID();
+            window.localStorage.setItem(STORAGE_KEYS.USER_ID, id);
         }
-        return idArr;
+        return id;
     }
 
     public setUserName(name: string) {
         this.userName.set(name);
-        localStorage.setItem('disher_user_name', name);
+        localStorage.setItem(STORAGE_KEYS.USER_NAME, name);
     }
 
     constructor(private http: HttpClient) {
@@ -76,45 +76,45 @@ export class CommunicationService {
     // --- SUBSCRIPTIONS ---
 
     public subscribeToOrders(callback: (data: any) => void) {
-        this.socket.on('order-update', callback);
-        this.socket.on('order-updated', callback);
+        this.socket.on(SOCKET_EVENTS.ORDER_UPDATE, callback);
+        this.socket.on(SOCKET_EVENTS.ORDER_UPDATED, callback);
     }
 
     public unsubscribeFromOrders(callback: (data: any) => void) {
-        this.socket.off('order-update', callback);
-        this.socket.off('order-updated', callback);
+        this.socket.off(SOCKET_EVENTS.ORDER_UPDATE, callback);
+        this.socket.off(SOCKET_EVENTS.ORDER_UPDATED, callback);
     }
 
     public subscribeToMenu(callback: (data: any) => void) {
-        this.socket.on('menu-update', callback);
+        this.socket.on(SOCKET_EVENTS.MENU_UPDATE, callback);
     }
 
     public unsubscribeFromMenu(callback: (data: any) => void) {
-        this.socket.off('menu-update', callback);
+        this.socket.off(SOCKET_EVENTS.MENU_UPDATE, callback);
     }
 
     public subscribeToConfig(callback: (data: any) => void) {
-        this.socket.on('config-updated', callback);
+        this.socket.on(SOCKET_EVENTS.CONFIG_UPDATED, callback);
     }
 
     public unsubscribeFromConfig(callback: (data: any) => void) {
-        this.socket.off('config-updated', callback);
+        this.socket.off(SOCKET_EVENTS.CONFIG_UPDATED, callback);
     }
 
     public subscribeToSessionEnd(callback: (data: any) => void) {
-        this.socket.on('session-ended', callback);
+        this.socket.on(SOCKET_EVENTS.SESSION_ENDED, callback);
     }
 
     public unsubscribeFromSessionEnd(callback: (data: any) => void) {
-        this.socket.off('session-ended', callback);
+        this.socket.off(SOCKET_EVENTS.SESSION_ENDED, callback);
     }
 
     public subscribeToSystemReset(callback: (data: any) => void) {
-        this.socket.on('all-sessions-ended', callback);
+        this.socket.on(SOCKET_EVENTS.ALL_SESSIONS_ENDED, callback);
     }
 
     public unsubscribeFromSystemReset(callback: (data: any) => void) {
-        this.socket.off('all-sessions-ended', callback);
+        this.socket.off(SOCKET_EVENTS.ALL_SESSIONS_ENDED, callback);
     }
 
     // --- API CALLS ---

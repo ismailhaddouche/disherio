@@ -24,14 +24,14 @@ Internet / Red Local
       │
       ▼
 ┌─────────────────────────────────────────────┐
-│               Caddy (Puertos 80/443)        │
+│               Caddy (Puerto 80; 443 opc.)   │
 │                                             │
 │  Rutas:                                     │
 │    /api/*        → backend:3000             │
 │    /socket.io/*  → backend:3000 (WebSocket) │
 │    /*            → frontend:80 (SPA)        │
 │                                             │
-│  Funcionalidades: Auto-TLS, Compresión      │
+│  Funcionalidades: HTTP Proxy, Compresión    │
 └────────────────────┬────────────────────────┘
                      │
         ┌────────────┴────────────┐
@@ -39,7 +39,7 @@ Internet / Red Local
         ▼                         ▼
 ┌──────────────┐         ┌──────────────────┐
 │   Backend    │         │    Frontend      │
-│  Node.js 20  │         │   Angular 17     │
+│  Node.js 20  │         │   Angular 21     │
 │  Express 5   │         │   Nginx (prod)   │
 │  Puerto 3000 │         │   Puerto 80      │
 └──────┬───────┘         └──────────────────┘
@@ -72,7 +72,7 @@ El flujo de una petición típica (por ejemplo, un administrador que actualiza e
 
 ## Stack de Docker y Contenedores
 
-Disher.io utiliza un único archivo `docker-compose.yml` que define todos los servicios, redes y volúmenes.
+Disher.io utiliza `docker-compose.yml` como base, con variantes para producción (`docker-compose.prod.yml`) y Raspberry Pi (`docker-compose.rpi.yml`).
 
 ### Servicios
 
@@ -103,7 +103,7 @@ Todos los servicios están configurados con un **driver de logging `json-file`**
 
 | Capa | Mecanismo | Descripción |
 |---|---|---|
-| **Transporte** | Caddy | Refuerza HTTPS con HSTS y gestiona automáticamente los certificados TLS. |
+| **Transporte** | Caddy | Proxy HTTP; HSTS aplica cuando se habilita TLS manualmente en `Caddyfile`. |
 | **Autenticación (BD)** | MongoDB | El acceso a la base de datos requiere un nombre de usuario y contraseña. |
 | **Autenticación (API)** | JWT en Cookies `HttpOnly` | El token de sesión no es accesible mediante JavaScript en el navegador. |
 | **Autorización** | RBAC | Middleware que verifica los roles de usuario (`admin`, `waiter`, `kitchen`, `pos`) en cada ruta protegida. |

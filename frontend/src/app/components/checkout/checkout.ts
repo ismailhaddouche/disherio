@@ -15,7 +15,7 @@ import { LucideAngularModule } from 'lucide-angular';
       <header class="section-header-md3">
         <div class="header-content">
           <div class="title-with-icon">
-            <button routerLink="../" class="icon-btn-md3 tonal-sm">
+            <button routerLink="../" class="icon-btn-md3 tonal-sm" [attr.aria-label]="'CHECKOUT.BACK' | translate">
               <lucide-icon name="chevron-left" [size]="20"></lucide-icon>
             </button>
             <div>
@@ -117,10 +117,17 @@ import { LucideAngularModule } from 'lucide-angular';
           </div>
 
           <div class="checkout-footer-md3">
-            <button class="btn-primary btn-full btn-lg" (click)="vm.processPayment()">
-              <lucide-icon name="credit-card" [size]="20"></lucide-icon>
-              <span>{{ 'CHECKOUT.PROCEED_PAY' | translate }}</span>
-            </button>
+            @if (vm.paymentRequested()) {
+              <div class="payment-requested-banner">
+                <lucide-icon name="bell-ring" [size]="20"></lucide-icon>
+                <span>{{ 'CHECKOUT.PAYMENT_REQUESTED' | translate }}</span>
+              </div>
+            } @else {
+              <button class="btn-primary btn-full btn-lg" (click)="vm.processPayment()">
+                <lucide-icon name="credit-card" [size]="20"></lucide-icon>
+                <span>{{ 'CHECKOUT.PROCEED_PAY' | translate }}</span>
+              </button>
+            }
           </div>
         </main>
       }
@@ -256,6 +263,19 @@ import { LucideAngularModule } from 'lucide-angular';
 
     .checkout-footer-md3 {
       padding: 24px 0;
+    }
+
+    .payment-requested-banner {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      padding: 18px 24px;
+      border-radius: 100px;
+      background: var(--md-sys-color-secondary-container);
+      color: var(--md-sys-color-on-secondary-container);
+      font-weight: 600;
+      font-size: 1rem;
     }
 
     .text-center { text-align: center; }

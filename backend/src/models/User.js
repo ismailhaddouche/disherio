@@ -4,12 +4,20 @@ import bcrypt from 'bcrypt';
 const SALT_ROUNDS = 10;
 
 const UserSchema = new mongoose.Schema({
-    username: { type: String, required: true, unique: true },
-    password: { type: String, required: true },
+    username: {
+        type: String,
+        required: true,
+        unique: true,
+        trim: true,
+        lowercase: true,
+        minlength: 3,
+        maxlength: 50
+    },
+    password: { type: String, required: true, select: false, minlength: 8 },
     role: {
         type: String,
         enum: ['admin', 'kitchen', 'pos', 'customer', 'waiter'],
-        default: 'admin'
+        default: 'waiter'  // Least-privilege default; admin must be set explicitly
     },
     restaurantSlug: { type: String, required: true, default: 'default' },
     active: { type: Boolean, default: true },

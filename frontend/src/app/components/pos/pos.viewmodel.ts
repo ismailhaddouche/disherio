@@ -7,6 +7,10 @@ import { AuthService } from '../../services/auth.service';
 import { NotifyService } from '../../services/notify.service';
 import { environment } from '../../../environments/environment';
 import { TranslateService } from '@ngx-translate/core';
+import {
+    STORAGE_KEYS, ORDER_STATUS, ITEM_STATUS, SPLIT_TYPE, SYSTEM_USER_IDS,
+    type PaymentMethod, type SplitType
+} from '../../core/constants';
 
 export interface POSTable {
     number: string;
@@ -39,12 +43,13 @@ export class POSViewModel {
     public showAddItemModal = signal<boolean>(false);
     public showCustomLineModal = signal<boolean>(false);
     public showSplitDetailedModal = signal<boolean>(false);
-    public localPrinterId = signal<string | null>(localStorage.getItem('disher_local_printer'));
+    public localPrinterId = signal<string | null>(localStorage.getItem(STORAGE_KEYS.LOCAL_PRINTER));
     public globalPrinters = signal<any[]>([]);
     public activeTipPercentage = signal<number>(0);
+    public paymentMethod = signal<PaymentMethod>('cash');
 
     public tableStates = computed(() => {
-        const activeOrders = this.orders().filter(o => o.status === 'active');
+        const activeOrders = this.orders().filter(o => o.status === ORDER_STATUS.ACTIVE);
         const activeTotems = this.tables().filter(t => t.active !== false);
 
         return activeTotems.map(totem => {
@@ -67,6 +72,9 @@ export class POSViewModel {
     constructor() {
         this.initPOS();
         this.setupRealTime();
+        this.destroyRef.onDestroy(() => {
+            this.comms.unsubscribeFromOrders(this.ordersCallback);
+        });
     }
 
     public async initPOS() {
@@ -95,24 +103,26 @@ export class POSViewModel {
         }
     }
 
-    private setupRealTime() {
-        this.comms.subscribeToOrders((updatedOrder: any) => {
-            this.orders.update(prev => {
-                const index = prev.findIndex(o => o._id === updatedOrder._id);
+    private ordersCallback = (updatedOrder: any) => {
+        this.orders.update(prev => {
+            const index = prev.findIndex(o => o._id === updatedOrder._id);
 
-                if (updatedOrder.status === 'completed') {
-                    this.loadHistory();
-                    return prev.filter(o => o._id !== updatedOrder._id);
-                }
+            if (updatedOrder.status === ORDER_STATUS.COMPLETED) {
+                this.loadHistory();
+                return prev.filter(o => o._id !== updatedOrder._id);
+            }
 
-                if (index !== -1) {
-                    const newOrders = [...prev];
-                    newOrders[index] = updatedOrder;
-                    return newOrders;
-                }
-                return [updatedOrder, ...prev];
-            });
+            if (index !== -1) {
+                const newOrders = [...prev];
+                newOrders[index] = updatedOrder;
+                return newOrders;
+            }
+            return [updatedOrder, ...prev];
         });
+    };
+
+    private setupRealTime() {
+        this.comms.subscribeToOrders(this.ordersCallback);
     }
 
     public async loadHistory() {
@@ -134,8 +144,8 @@ export class POSViewModel {
         const usersMap = new Map();
         order.items.forEach((item: any, originalIndex: number) => {
             if (item.isPaid) return;
-            const user = item.orderedBy;
-            const userId = user.id || 'orphan';
+            const user = item.orderedBy || { id: SYSTEM_USER_IDS.ORPHAN, name: this.translate.instant('POS.ORPHAN') };
+            const userId = user.id || SYSTEM_USER_IDS.ORPHAN;
             if (!usersMap.has(userId)) {
                 usersMap.set(userId, {
                     id: userId,
@@ -182,7 +192,7 @@ export class POSViewModel {
         };
     }
 
-    public async processPayment(orderId?: string, splitType: 'single' | 'equal' | 'by-user' = 'single', parts: number = 1, userId?: string) {
+    public async processPayment(orderId?: string, splitType: SplitType = SPLIT_TYPE.SINGLE, parts: number = 1, userId?: string) {
         const targetOrderId = orderId || this.selectedTable()?.order?._id;
         if (!targetOrderId) {
             this.notify.warningKey('POS.PAY_ERROR_NO_SELECTION');
@@ -196,20 +206,20 @@ export class POSViewModel {
         }
 
         let confirmMsg = this.translate.instant('POS.CONFIRM_TOTAL');
-        if (splitType === 'equal') confirmMsg = this.translate.instant('POS.CONFIRM_SPLIT', { parts });
-        if (splitType === 'by-user') confirmMsg = this.translate.instant('POS.CONFIRM_USER');
+        if (splitType === SPLIT_TYPE.EQUAL) confirmMsg = this.translate.instant('POS.CONFIRM_SPLIT', { parts });
+        if (splitType === SPLIT_TYPE.BY_USER) confirmMsg = this.translate.instant('POS.CONFIRM_USER');
 
         if (!confirm(confirmMsg)) return;
 
         try {
             const resData: any = await firstValueFrom(this.http.post(`${environment.apiUrl}/api/orders/${targetOrderId}/checkout`, {
-                splitType, parts, userId, method: 'cash', billingConfig: config,
+                splitType, parts, userId, method: this.paymentMethod(), billingConfig: config,
                 __v: this.selectedTable()?.order?.__v || 0
             }, { withCredentials: true }));
 
             this.auth.logActivity('ORDER_PAID', { orderId: targetOrderId, type: splitType, userId });
 
-            if (resData.orderStatus === 'completed' || splitType === 'single') {
+            if (resData.orderStatus === ORDER_STATUS.COMPLETED || splitType === SPLIT_TYPE.SINGLE) {
                 this.selectedTable.set(null);
                 this.viewMode.set('history');
             }
@@ -218,7 +228,7 @@ export class POSViewModel {
             const updatedOrders = await this.comms.syncOrders();
             if (updatedOrders) this.orders.set(updatedOrders as any[]);
 
-            if (localStorage.getItem('disher_local_autoprint') === 'true' && resData.tickets?.[0]) {
+            if (localStorage.getItem(STORAGE_KEYS.LOCAL_AUTOPRINT) === 'true' && resData.tickets?.[0]) {
                 resData.tickets.forEach((t: any) => this.printTicket(t));
             }
 
@@ -233,11 +243,11 @@ export class POSViewModel {
     }
 
     public async payByUser(userId: string) {
-        if (userId === 'orphan') {
+        if (userId === SYSTEM_USER_IDS.ORPHAN) {
             this.notify.warningKey('POS.PAY_ERROR_ORPHAN');
             return;
         }
-        await this.processPayment(undefined, 'by-user', 1, userId);
+        await this.processPayment(undefined, SPLIT_TYPE.BY_USER, 1, userId);
     }
 
     public async deleteTicket(ticketId: string) {
@@ -260,7 +270,7 @@ export class POSViewModel {
             p = this.globalPrinters().find(pr => pr.id === currentUser.printerId);
         }
         if (!p) {
-            const localId = localStorage.getItem('disher_local_printer');
+            const localId = localStorage.getItem(STORAGE_KEYS.LOCAL_PRINTER);
             if (localId) p = this.globalPrinters().find(pr => pr.id === localId);
         }
 
@@ -315,7 +325,7 @@ export class POSViewModel {
             const order = this.orders().find(o => o._id === orderId);
             if (!order) return;
 
-            const updatedItems = [...order.items];
+            const updatedItems = order.items.map((item: any) => ({ ...item })); // deep-copy to avoid mutating signal
             updatedItems[itemIndex].price = newPrice;
             const newTotal = updatedItems.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0);
 
@@ -328,7 +338,7 @@ export class POSViewModel {
             const order = this.orders().find(o => o._id === orderId);
             if (!order) return;
 
-            const updatedItems = [...order.items];
+            const updatedItems = order.items.map((item: any) => ({ ...item })); // deep-copy
             updatedItems[itemIndex].name = newName;
             await this.patchOrder(orderId, { items: updatedItems });
         } catch (e) { console.error('Error updating name', e); }
@@ -339,7 +349,7 @@ export class POSViewModel {
             const order = this.orders().find(o => o._id === orderId);
             if (!order) return;
 
-            const updatedItems = [...order.items];
+            const updatedItems = order.items.map((item: any) => ({ ...item })); // deep-copy
             const guestId = guestName.toLowerCase().replace(/\s+/g, '-');
             updatedItems[itemIndex].orderedBy = { id: guestId, name: guestName };
             await this.patchOrder(orderId, { items: updatedItems });
@@ -392,11 +402,11 @@ export class POSViewModel {
 
             const newItem = {
                 name: menuItem.name,
-                price: menuItem.price,
+                price: menuItem.basePrice ?? menuItem.price ?? 0,
                 image: menuItem.image,
                 quantity: 1,
-                status: 'pending',
-                orderedBy: { id: 'pos', name: this.translate.instant('POS.CASHIER_LABEL') },
+                status: ITEM_STATUS.PENDING,
+                orderedBy: { id: SYSTEM_USER_IDS.POS, name: this.translate.instant('POS.CASHIER_LABEL') },
                 emoji: menuItem.emoji || '🍽️'
             };
 
@@ -426,8 +436,8 @@ export class POSViewModel {
                 name: customName,
                 price: customPrice,
                 quantity: 1,
-                status: 'pending',
-                orderedBy: { id: 'pos', name: this.translate.instant('POS.CASHIER_LABEL') },
+                status: ITEM_STATUS.PENDING,
+                orderedBy: { id: SYSTEM_USER_IDS.POS, name: this.translate.instant('POS.CASHIER_LABEL') },
                 emoji: '📝',
                 isCustom: true
             };
@@ -446,12 +456,10 @@ export class POSViewModel {
 
     public async openTable(table: POSTable) {
         try {
-            await firstValueFrom(this.http.post(`${environment.apiUrl}/api/orders`, {
-                tableNumber: table.number,
-                totemId: table.id,
-                items: []
-            }, { withCredentials: true }));
+            await firstValueFrom(this.http.post(`${environment.apiUrl}/api/totems/${table.id}/session`, {}, { withCredentials: true }));
             this.auth.logActivity('TABLE_OPENED_MANUALLY', { tableNumber: table.number });
+            const orders = await this.comms.syncOrders();
+            if (orders) this.orders.set(orders as any[]);
         } catch (e) {
             console.error('Error opening table', e);
             this.notify.errorKey('POS.OPEN_TABLE_ERROR');

@@ -21,7 +21,10 @@ log() {
 
 # 2. Load DB Credentials
 if [ -f .env ]; then
-    export $(grep -v '^#' .env | xargs)
+    set -a
+    # shellcheck source=.env
+    source .env
+    set +a
 else
     log "ERROR: .env file not found in $SCRIPT_DIR"
     exit 1

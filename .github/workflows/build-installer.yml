@@ -64,6 +64,9 @@ jobs:
               image: mongo:7
               container_name: disher-db
               restart: always
+              environment:
+                - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
+                - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
               volumes:
                 - mongo-data:/data/db
               networks:
@@ -80,7 +83,9 @@ jobs:
               container_name: disher-backend
               restart: always
               environment:
-                - MONGODB_URI=mongodb://database:27017/disher
+                - MONGODB_URI=${MONGODB_URI}
+                - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
+                - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
                 - PORT=3000
                 - NODE_ENV=production
                 - DOMAIN=${DOMAIN}
@@ -91,6 +96,8 @@ jobs:
                   condition: service_healthy
               networks:
                 - disher-network
+              volumes:
+                - uploads-data:/app/public/uploads
               healthcheck:
                 test: ["CMD", "node", "-e", "const http=require('http');const r=http.get('http://localhost:3000/api/health',s=>{process.exit(s.statusCode===200?0:1)});r.on('error',()=>process.exit(1))"]
                 interval: 15s
@@ -135,6 +142,7 @@ jobs:
             mongo-data:
             caddy-data:
             caddy-config:
+            uploads-data:
           ENDOFCOMPOSE
 
       - name: Copy Scripts and Configs
@@ -152,6 +160,8 @@ jobs:
           echo "--- Validating syntax ---"
           cd disher-installer
           DOMAIN=test.example.com INSTALL_MODE=cloud JWT_SECRET=test123 \
+            MONGO_INITDB_ROOT_USERNAME=admin MONGO_INITDB_ROOT_PASSWORD=testpass \
+            MONGODB_URI=mongodb://admin:testpass@database:27017/disher?authSource=admin \
             docker compose config > /dev/null
           echo "docker-compose.yml is valid"
 

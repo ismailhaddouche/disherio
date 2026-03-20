@@ -3,8 +3,12 @@ import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../environments/environment';
+import {
+    STORAGE_KEYS, AUTH_RETRY, ROLE_REDIRECTS, DEFAULT_REDIRECT
+} from '../core/constants';
+import type { UserRole } from '../core/constants';
 
-export type UserRole = 'admin' | 'kitchen' | 'pos' | 'customer' | 'waiter';
+export type { UserRole };
 
 export interface UserSession {
     username: string;
@@ -30,14 +34,17 @@ export class AuthService {
 
     private loadSession(): UserSession | null {
         try {
-            const saved = localStorage.getItem('disher_session');
+            const saved = localStorage.getItem(STORAGE_KEYS.SESSION);
             return saved ? JSON.parse(saved) : null;
-        } catch (e) {
+        } catch {
             return null;
         }
     }
 
-    private async waitForAuthenticatedBackend(maxRetries = 3, delayMs = 150): Promise<void> {
+    private async waitForAuthenticatedBackend(
+        maxRetries = AUTH_RETRY.MAX_RETRIES,
+        delayMs = AUTH_RETRY.DELAY_MS
+    ): Promise<void> {
         for (let attempt = 0; attempt < maxRetries; attempt++) {
             try {
                 await firstValueFrom(this.http.get(`${environment.apiUrl}/api/orders`, { withCredentials: true }));
@@ -60,18 +67,14 @@ export class AuthService {
             if (session) {
                 this.currentUser.set(session);
                 // Store only non-sensitive session info (username + role) — token is in httpOnly cookie
-                localStorage.setItem('disher_session', JSON.stringify(session));
+                localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(session));
                 this.logActivity('LOGIN_SUCCESS', { username });
 
                 // Ensure protected endpoints are reachable before first route render.
                 // This avoids intermittent first-load blank states right after login.
                 await this.waitForAuthenticatedBackend();
 
-                const redirect = session.role === 'admin' ? '/admin/dashboard' :
-                    session.role === 'kitchen' ? '/admin/kds' :
-                        session.role === 'pos' ? '/admin/pos' :
-                            session.role === 'waiter' ? '/admin/waiter' : '/';
-
+                const redirect = ROLE_REDIRECTS[session.role] ?? DEFAULT_REDIRECT;
                 await this.router.navigate([redirect]);
                 return true;
             }
@@ -93,7 +96,7 @@ export class AuthService {
 
         this.logActivity('LOGOUT', { username: this.currentUser()?.username });
         this.currentUser.set(null);
-        localStorage.removeItem('disher_session');
+        localStorage.removeItem(STORAGE_KEYS.SESSION);
         this.router.navigate(['/login']);
     }
 

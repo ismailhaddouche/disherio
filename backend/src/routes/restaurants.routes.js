@@ -14,13 +14,14 @@ import AuditService from '../services/audit.service.js';
 import Order from '../models/Order.js';
 import { verifyToken } from '../middleware/auth.middleware.js';
 import { validate, mongoIdSchema, restaurantUpdateSchema } from '../middleware/validation.middleware.js';
+import { ROLES, SOCKET_EVENTS, ORDER_STATUS } from '../constants.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Middleware to ensure admin role
 async function requireAdmin(req, res, next) {
-    if (!req.user || req.user.role !== 'admin') {
+    if (!req.user || req.user.role !== ROLES.ADMIN) {
         return res.error(req.t('ERRORS.ACCESS_DENIED_ADMIN'), 403);
     }
     next();
@@ -102,7 +103,7 @@ router.patch('/restaurant',
         await AuditService.logChange(req, 'RESTAURANT_CONFIG_UPDATED', oldState, restaurant.toObject());
 
         const io = req.app.get('io');
-        if (io) io.emit('config-updated', restaurant);
+        if (io) io.emit(SOCKET_EVENTS.CONFIG_UPDATED, restaurant);
 
         res.success(restaurant);
     }
@@ -211,12 +212,12 @@ router.post('/totems/:id/session',
             totemId: totem.id,
             sessionId: sessionId,
             items: [],
-            status: 'active'
+            status: ORDER_STATUS.ACTIVE
         });
         await newOrder.save();
 
         const io = req.app.get('io');
-        if (io) io.emit('order-updated', newOrder); // Notify waiters that a table opened
+        if (io) io.emit(SOCKET_EVENTS.ORDER_UPDATED, newOrder); // Notify waiters that a table opened
 
         res.success({
             sessionId,
@@ -401,7 +402,7 @@ router.post('/close-shift', verifyToken, requireAdmin, async function(req, res) 
     const io = req.app.get('io');
     if (io) {
         // Emitir solo a la sala de clientes (QR/totems), no a admin/POS
-        io.to('customer').emit('all-sessions-ended', { reason: 'SHIFT_CLOSED' });
+        io.to('customer').emit(SOCKET_EVENTS.ALL_SESSIONS_ENDED, { reason: 'SHIFT_CLOSED' });
     }
 
     res.success({ message: req.t('ERRORS.SHIFT_CLOSED') });

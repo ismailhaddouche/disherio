@@ -1,4 +1,4 @@
-# Disher.io v1.0 — Plataforma Open-Source para Gestión de Restaurantes
+# Disher.io — Plataforma Open-Source para Gestión de Restaurantes
 
 Disher.io es una plataforma de gestión de restaurantes autoalojada y lista para producción, diseñada arquitectónicamente para pequeños y medianos establecimientos. Proporciona sincronización de pedidos en tiempo real entre clientes, personal de cocina y cajeros, operando desde un único despliegue unificado y altamente eficiente.
 
@@ -27,7 +27,7 @@ La arquitectura sigue el patrón cliente-servidor, haciendo uso intensivo de Web
 ```text
                         ┌────────────────────────────────────────────────────────┐
                         │                  Caddy (Proxy Inverso)                 │
-                        │           TLS/SSL · Compresión · Enrutamiento          │
+                        │           HTTP Proxy · Compresión · Enrutamiento       │
                         └──────────────┬─────────────────────────┬───────────────┘
                                        │                         │
                           /api/*  ─────┘                         └─── /* (Static Frontend)
@@ -124,26 +124,6 @@ sudo usermod -aG docker $USER
 > [!CAUTION]
 > **Aviso de Seguridad**: Nunca ejecutes scripts descargados directamente de internet con `sudo` sin revisarlos o confiar plenamente en la fuente oficial. Disher.io utiliza Docker para aislar los procesos y mejorar la seguridad general del servidor.
 
-### 4.1. Instalación de Dependencias (Crítico)
-Disher.io requiere que **Docker** y el plugin **Docker Compose** estén instalados previamente. Por seguridad, el instalador no gestiona estas dependencias por ti.
-
-#### En Ubuntu / Debian / Raspberry Pi OS (Recomendado)
-```bash
-# 1. Instalar Docker
-curl -fsSL https://get.docker.com -o get-docker.sh
-sudo sh get-docker.sh
-
-# 2. Instalar Plugin de Docker Compose
-sudo apt-get update
-sudo apt-get install -y docker-compose-plugin
-
-# 3. Dar permisos al usuario actual (opcional)
-sudo usermod -aG docker $USER
-```
-
-> [!CAUTION]
-> **Aviso de Seguridad**: Nunca ejecutes scripts descargados directamente de internet con `sudo` sin revisarlos o confiar plenamente en la fuente oficial. Disher.io utiliza Docker para aislar los procesos y mejorar la seguridad general del servidor.
-
 *Aviso Técnico: La ejecución en dispositivos SBC (como Raspberry Pi) está validada exclusivamente para despliegues intra-red (LAN). Para alojamientos en proveedores en la nube pública (AWS, Google Cloud, Azure) es mandatorio configurar las reglas de entrada en el Firewall del proveedor de red correspondientes a los puertos HTTP/HTTPS.*
 
 ---
@@ -169,7 +149,7 @@ La ejecución guiada del script cubre las siguientes seis etapas críticas:
 1. **Configuración de Red:** Selección de tipo de acceso (FQDN para dominio público o acceso por IP local).
 2. **Definición de Puertos:** Reasignación de puerto HTTP (default: `80`, alternativo: `8080`) para evitar conflictos de multiplexación.
 3. **Criptografía y Seguridad:** Autogeneración de claves aleatorias para el encriptado JWT (`JWT_SECRET`) y credenciales base de MongoDB.
-4. **Validación de Dependencias:** Detección e instalación no interactiva de Docker Compose (si no está cubierto por el sistema base).
+4. **Validación de Dependencias:** Verifica que Docker y Docker Compose estén instalados. Si faltan, aborta y solicita instalación manual.
 5. **Orquestación:** Construcción local de imágenes frontend/backend y ejecución asíncrona (`docker compose up -d --build`).
 6. **Inicialización de Datos:** Inyección del *store seed* inicial con los parámetros por defecto del restaurante.
 
@@ -177,7 +157,7 @@ La ejecución guiada del script cubre las siguientes seis etapas críticas:
 
 El instalador ajustará el proxy inverso según la decisión de red tomada inicialmente:
 
-- **Dominio Público (FQDN):** Por ejemplo, `app.restaurante.com`. Caddy Server gestionará la obtención y rotación automática de certificados TLS a través de Let's Encrypt / ZeroSSL, forzando todas las comunicaciones hacia HTTPS (puerto 443).
+- **Dominio Público (FQDN):** Por ejemplo, `app.restaurante.com`. La configuración actual de Caddy opera en **HTTP**; para habilitar HTTPS/TLS debes ajustar el `Caddyfile`.
 - **Dominio Local (mDNS / LAN):** Orientado a soluciones on-premise puras sin conexión a internet.
 - **Direccionamiento IP:** Acceso directo sin dominio (el proxy enrutará sobre el puerto HTTP configurado de forma plana, sin generar certificados SSL). Se divide en dos supuestos:
   - **IP Local (LAN):** Para instalaciones en equipos físicos dentro del restaurante (ej. ordenador en caja o Raspberry Pi). Los dispositivos se conectan a través de la red del router Wi-Fi local. **No requiere conexión a Internet**.
@@ -292,7 +272,11 @@ Para restaurar una copia de seguridad en una instalación limpia:
 tar -xzf backups/disher_backup_fecha.tar.gz
 
 # 2. Restaurar en el contenedor (asegúrate de que los servicios estén corriendo)
-docker exec -i disher-db mongorestore --username root --password tu_password --authenticationDatabase admin --archive < disher_backup_fecha.archive
+docker compose exec -T database mongorestore \
+  --username "$MONGO_INITDB_ROOT_USERNAME" \
+  --password "$MONGO_INITDB_ROOT_PASSWORD" \
+  --authenticationDatabase admin \
+  --archive < disher_backup_fecha.archive
 ```
 
 ---
@@ -323,7 +307,7 @@ El sistema impone aislamiento rígido de sus módulos. A continuación se define
 Arquitectura blindada frente al exterior. El sistema Caddy no intentará adquirir certificados y permitirá las transmisiones HTTP planas dentro del segmento de red privada, requiriéndose únicamente dispositivos de acceso locales (smartphones conectados al Wi-Fi del restaurante).
 
 ### 8.2 Topología Pública Externalizada (Producción)
-Se enlaza la instancia Docker mediante proxy inverso directamente a una IP expuesta a internet con un FQDN configurado. Caddy server implementa interceptación de tráfico SSL estricta con redirección forzada del puerto 80 al 443. La latencia operativa dependerá del centro de datos del host Cloud aprovisionado.
+Se enlaza la instancia Docker mediante proxy inverso directamente a una IP expuesta a internet con un FQDN configurado. La configuración actual de Caddy opera en **HTTP**; si deseas TLS/HTTPS debes ajustar el `Caddyfile` y abrir el puerto 443. La latencia operativa dependerá del centro de datos del host Cloud aprovisionado.
 
 ### 8.3 Contexto Arquitectura SBC (IoT/Raspberry Pi)
 Soporte absoluto para arquitecturas ARM64 nativas. Las rutinas de `docker-build.yml` y los scripts base contemplan las necesidades optimizadas requeridas por la limitada computación de memoria disponible en arquitecturas de silicio reducido.

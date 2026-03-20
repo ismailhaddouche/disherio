@@ -112,16 +112,22 @@ io.on('connection', (socket) => {
     });
 });
 
-// Database Connection with Retry Logic
+// Database Connection with Retry Logic — server only starts after DB is ready
 const connectDB = async () => {
     const mongoUser = encodeURIComponent(process.env.MONGO_INITDB_ROOT_USERNAME);
     const mongoPass = encodeURIComponent(process.env.MONGO_INITDB_ROOT_PASSWORD);
     const mongoHost = process.env.MONGO_HOST || 'database';
-    const MONGO_URI = `mongodb://${mongoUser}:${mongoPass}@${mongoHost}:27017/disher?authSource=admin`;
+    const mongoDB   = process.env.MONGO_DB_NAME || 'disher';
+    const MONGO_URI = `mongodb://${mongoUser}:${mongoPass}@${mongoHost}:27017/${mongoDB}?authSource=admin`;
 
     try {
         await mongoose.connect(MONGO_URI);
         console.log('[DATABASE] Connected to MongoDB');
+
+        // Only start listening AFTER the DB connection is established
+        server.listen(PORT, '0.0.0.0', () => {
+            console.log(`[SERVER] Running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
+        });
     } catch (err) {
         console.error('[DATABASE ERROR] Connection failed, retrying in 5 seconds...', err.message);
         setTimeout(connectDB, 5000);
@@ -129,10 +135,6 @@ const connectDB = async () => {
 };
 
 connectDB();
-
-server.listen(PORT, '0.0.0.0', async function() {
-    console.log(`[SERVER] Running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
-});
 
 // --- Global Resilience Listeners ---
 process.on('unhandledRejection', function(reason, promise) {

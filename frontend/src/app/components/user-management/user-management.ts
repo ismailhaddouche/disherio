@@ -97,7 +97,7 @@ import { filter, Subscription } from 'rxjs';
                 <lucide-icon name="users" [size]="24"></lucide-icon>
               </div>
               <div>
-                <h1 class="text-headline-medium">{{ 'ROLES.Admin' | translate }} - Usuarios</h1>
+                <h1 class="text-headline-medium">{{ 'USER_MGMT.TITLE' | translate }}</h1>
                 <p class="text-body-small opacity-60">{{ 'USER_MGMT.SUBTITLE' | translate }}</p>
               </div>
             </div>

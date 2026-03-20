@@ -10,15 +10,19 @@ import { TranslateModule } from '@ngx-translate/core';
   standalone: true,
   imports: [CommonModule, RouterModule, LucideAngularModule, TranslateModule],
   template: `
-    <aside class="sidebar" [class.collapsed]="isCollapsed">
+    <div class="sidebar-overlay" [class.visible]="isCollapsed" (click)="toggleSidebar()" aria-hidden="true"></div>
+    <aside class="sidebar" [class.collapsed]="isCollapsed" [attr.aria-expanded]="isCollapsed">
       <div class="sidebar-header">
         <div class="logo-container">
           <div class="logo-box">
             <lucide-icon name="chef-hat" [size]="20" color="white"></lucide-icon>
           </div>
-          <span class="text-title-large" *ngIf="!isCollapsed">Disher<span class="dot">.</span>io</span>
+          <span class="text-title-large" *ngIf="!isCollapsed">Disher<span class="logo-dot">.</span>io</span>
         </div>
-        <button class="md-icon-button" (click)="toggleSidebar()">
+        <button class="md-icon-button"
+                (click)="toggleSidebar()"
+                [attr.aria-label]="(isCollapsed ? 'SIDEBAR.COLLAPSE' : 'SIDEBAR.EXPAND') | translate"
+                [attr.aria-expanded]="isCollapsed">
           <lucide-icon [name]="isCollapsed ? 'chevrons-right' : 'chevrons-left'" [size]="20"></lucide-icon>
         </button>
       </div>
@@ -27,25 +31,25 @@ import { TranslateModule } from '@ngx-translate/core';
         <div class="nav-group">
           <label class="text-label-medium" *ngIf="!isCollapsed">{{ 'SIDEBAR.MAIN' | translate }}</label>
           
-          <a *ngIf="auth.hasRole('admin')" routerLink="/admin/dashboard" routerLinkActive="active" class="nav-item">
+          <a *ngIf="auth.hasRole('admin')" routerLink="/admin/dashboard" routerLinkActive="active" #rla1="routerLinkActive" [attr.aria-current]="rla1.isActive ? 'page' : null" class="nav-item" [attr.title]="isCollapsed ? ('NAV.DASHBOARD' | translate) : null">
             <div class="active-indicator"></div>
             <lucide-icon name="layout-dashboard" class="icon"></lucide-icon>
             <span class="label text-body-medium" *ngIf="!isCollapsed">{{ 'NAV.DASHBOARD' | translate }}</span>
           </a>
 
-          <a *ngIf="auth.hasRole('admin')" routerLink="/admin/menu" routerLinkActive="active" class="nav-item">
+          <a *ngIf="auth.hasRole('admin')" routerLink="/admin/menu" routerLinkActive="active" #rla2="routerLinkActive" [attr.aria-current]="rla2.isActive ? 'page' : null" class="nav-item" [attr.title]="isCollapsed ? ('NAV.MENU' | translate) : null">
             <div class="active-indicator"></div>
             <lucide-icon name="book-open" class="icon"></lucide-icon>
             <span class="label text-body-medium" *ngIf="!isCollapsed">{{ 'NAV.MENU' | translate }}</span>
           </a>
 
-          <a *ngIf="auth.hasRole('admin')" routerLink="/admin/users" routerLinkActive="active" class="nav-item">
+          <a *ngIf="auth.hasRole('admin')" routerLink="/admin/users" routerLinkActive="active" #rla3="routerLinkActive" [attr.aria-current]="rla3.isActive ? 'page' : null" class="nav-item" [attr.title]="isCollapsed ? ('NAV.USERS' | translate) : null">
             <div class="active-indicator"></div>
             <lucide-icon name="users" class="icon"></lucide-icon>
             <span class="label text-body-medium" *ngIf="!isCollapsed">{{ 'NAV.USERS' | translate }}</span>
           </a>
 
-          <a *ngIf="auth.hasRole('admin')" routerLink="/admin/config" routerLinkActive="active" class="nav-item">
+          <a *ngIf="auth.hasRole('admin')" routerLink="/admin/config" routerLinkActive="active" #rla4="routerLinkActive" [attr.aria-current]="rla4.isActive ? 'page' : null" class="nav-item" [attr.title]="isCollapsed ? ('NAV.SETTINGS' | translate) : null">
             <div class="active-indicator"></div>
             <lucide-icon name="settings" class="icon"></lucide-icon>
             <span class="label text-body-medium" *ngIf="!isCollapsed">{{ 'NAV.SETTINGS' | translate }}</span>
@@ -55,19 +59,19 @@ import { TranslateModule } from '@ngx-translate/core';
         <div class="nav-group">
           <label class="text-label-medium" *ngIf="!isCollapsed">{{ 'SIDEBAR.OPERATIONS' | translate }}</label>
           
-          <a *ngIf="auth.hasRole('kitchen')" routerLink="/admin/kds" routerLinkActive="active" class="nav-item">
+          <a *ngIf="auth.hasRole('kitchen')" routerLink="/admin/kds" routerLinkActive="active" #rla5="routerLinkActive" [attr.aria-current]="rla5.isActive ? 'page' : null" class="nav-item" [attr.title]="isCollapsed ? ('NAV.KDS' | translate) : null">
             <div class="active-indicator"></div>
             <lucide-icon name="flame" class="icon"></lucide-icon>
             <span class="label text-body-medium" *ngIf="!isCollapsed">{{ 'NAV.KDS' | translate }}</span>
           </a>
 
-          <a *ngIf="auth.hasRole('pos')" routerLink="/admin/pos" routerLinkActive="active" class="nav-item">
+          <a *ngIf="auth.hasRole('pos')" routerLink="/admin/pos" routerLinkActive="active" #rla6="routerLinkActive" [attr.aria-current]="rla6.isActive ? 'page' : null" class="nav-item" [attr.title]="isCollapsed ? ('NAV.POS' | translate) : null">
             <div class="active-indicator"></div>
             <lucide-icon name="wallet" class="icon"></lucide-icon>
             <span class="label text-body-medium" *ngIf="!isCollapsed">{{ 'NAV.POS' | translate }}</span>
           </a>
 
-          <a *ngIf="auth.hasRole('waiter')" routerLink="/admin/waiter" routerLinkActive="active" class="nav-item">
+          <a *ngIf="auth.hasRole('waiter')" routerLink="/admin/waiter" routerLinkActive="active" #rla7="routerLinkActive" [attr.aria-current]="rla7.isActive ? 'page' : null" class="nav-item" [attr.title]="isCollapsed ? ('SIDEBAR.WAITER' | translate) : null">
             <div class="active-indicator"></div>
             <lucide-icon name="hand-platter" class="icon"></lucide-icon>
             <span class="label text-body-medium" *ngIf="!isCollapsed">{{ 'SIDEBAR.WAITER' | translate }}</span>
@@ -76,7 +80,7 @@ import { TranslateModule } from '@ngx-translate/core';
       </nav>
 
       <div class="sidebar-footer">
-        <button class="logout-btn" (click)="auth.logout()">
+        <button class="logout-btn" (click)="auth.logout()" [attr.aria-label]="'NAV.LOGOUT' | translate" [attr.title]="isCollapsed ? ('NAV.LOGOUT' | translate) : null">
           <lucide-icon name="log-out" class="icon"></lucide-icon>
           <span class="label text-label-large" *ngIf="!isCollapsed">{{ 'NAV.LOGOUT' | translate }}</span>
         </button>
@@ -134,7 +138,7 @@ import { TranslateModule } from '@ngx-translate/core';
       letter-spacing: -0.5px;
     }
 
-    .logo-text .dot { color: var(--md-sys-color-primary); }
+    .logo-dot { color: var(--md-sys-color-primary); }
 
     .md-icon-button {
       background: transparent;
@@ -249,11 +253,30 @@ import { TranslateModule } from '@ngx-translate/core';
       color: var(--md-sys-color-on-error-container);
     }
 
+    .sidebar-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 99;
+        opacity: 0;
+        transition: opacity 0.3s;
+        pointer-events: none;
+    }
+
     @media (max-width: 768px) {
+        .sidebar-overlay {
+            display: block;
+        }
+        .sidebar-overlay.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
         .sidebar {
             position: fixed;
             left: -320px;
-            box-shadow: var(--shadow-3);
+            z-index: 200;
+            box-shadow: var(--md-sys-elevation-3);
         }
         .sidebar.collapsed {
             left: 0;

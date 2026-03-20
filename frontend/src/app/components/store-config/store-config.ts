@@ -186,7 +186,7 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
               <div class="md-switch-row mb-24">
                 <div class="switch-info">
                   <span class="text-title-small">{{ 'STORE_CONFIG.TIP_ENABLE' | translate }}</span>
-                  <p class="text-body-extra-small opacity-60">Permitir a los clientes añadir propina</p>
+                  <p class="text-body-extra-small opacity-60">{{ 'STORE_CONFIG.TIP_ENABLE_DESC' | translate }}</p>
                 </div>
                 <label class="md-switch">
                   <input type="checkbox" [ngModel]="vm.config().billing?.tipEnabled" (ngModelChange)="vm.updateBilling('tipEnabled', $event)">
@@ -291,7 +291,7 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
               <div class="md-switch-row">
                 <div class="switch-info">
                   <span class="text-title-small">{{ 'STORE_CONFIG.AUTO_PRINT' | translate }}</span>
-                  <p class="text-body-extra-small opacity-60">Imprimir tickets automáticamente al finalizar</p>
+                  <p class="text-body-extra-small opacity-60">{{ 'STORE_CONFIG.AUTO_PRINT_DESC' | translate }}</p>
                 </div>
                 <label class="md-switch">
                   <input type="checkbox" [ngModel]="vm.getLocalAutoPrint()" (ngModelChange)="vm.setLocalAutoPrint($event)">

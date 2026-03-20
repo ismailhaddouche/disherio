@@ -1,5 +1,5 @@
 node_modules
-npm-debug.log
+npm-debug.log*
 dist
 .angular
 .git
@@ -10,3 +10,9 @@ Dockerfile
 .vscode
 .idea
 *.log
+.env
+.env.*
+coverage/
+*.spec.ts
+tmp/
+temp/

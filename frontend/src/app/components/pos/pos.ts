@@ -116,6 +116,16 @@ export class FilterOccupiedPipe implements PipeTransform {
                 </div>
 
                 <div class="header-actions-md3">
+                  <div class="payment-method-toggle-md3">
+                    <button [class.active]="vm.paymentMethod() === 'cash'" (click)="vm.paymentMethod.set('cash')">
+                      <lucide-icon name="banknote" [size]="14"></lucide-icon>
+                      <span>{{ 'POS.CASH' | translate }}</span>
+                    </button>
+                    <button [class.active]="vm.paymentMethod() === 'card'" (click)="vm.paymentMethod.set('card')">
+                      <lucide-icon name="credit-card" [size]="14"></lucide-icon>
+                      <span>{{ 'POS.CARD' | translate }}</span>
+                    </button>
+                  </div>
                   <button class="btn-tonal" (click)="vm.toggleEditMode()">
                     <lucide-icon [name]="vm.editMode() ? 'check' : 'pen-line'" [size]="18"></lucide-icon>
                     <span>{{ (vm.editMode() ? 'POS.FINISH_EDIT' : 'POS.EDIT_ORDER') | translate }}</span>
@@ -486,7 +496,33 @@ export class FilterOccupiedPipe implements PipeTransform {
       z-index: 10;
     }
 
-    .header-actions-md3 { display: flex; gap: 12px; }
+    .header-actions-md3 { display: flex; gap: 12px; align-items: center; }
+
+    .payment-method-toggle-md3 {
+      display: flex;
+      background: var(--md-sys-color-surface-container-high);
+      border-radius: 100px;
+      padding: 3px;
+      gap: 2px;
+    }
+    .payment-method-toggle-md3 button {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border: none;
+      background: none;
+      border-radius: 100px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--md-sys-color-on-surface-variant);
+      transition: all 0.2s;
+    }
+    .payment-method-toggle-md3 button.active {
+      background: var(--md-sys-color-primary-container);
+      color: var(--md-sys-color-on-primary-container);
+    }
 
     .ticket-content-md3 {
       flex: 1;

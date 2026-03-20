@@ -60,7 +60,7 @@ case $OPTION in
             const User = require("./src/models/User");
             async function run() {
                 try {
-                    await mongoose.connect(process.env.MONGO_URI);
+                    await mongoose.connect(process.env.MONGODB_URI);
                     const user = await User.findOne({ username: process.env.TARGET_USER });
                     if (!user) { throw new Error("usuario no encontrado"); }
                     user.password = process.env.NEW_PASS;

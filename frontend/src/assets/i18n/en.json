@@ -92,7 +92,12 @@
         "ITEM_LABEL": "ITEM",
         "QTY_LABEL": "QTY",
         "ORIGIN_LABEL": "ORIGIN",
-        "PRINT_MESSAGE": "🖨️ ({{printerLabel}} {{printer}})\n{{title}}\n----------------------\n{{item}} × {{quantity}}\n{{table}}{{details}}\n----------------------"
+        "PRINT_MESSAGE": "🖨️ ({{printerLabel}} {{printer}})\n{{title}}\n----------------------\n{{item}} × {{quantity}}\n{{table}}{{details}}\n----------------------",
+        "ALL_READY": "Mark all ready",
+        "ALL_SERVED": "Mark all served",
+        "REPRINT": "Reprint voucher",
+        "STOCK_ACTIVE": "ACTIVE",
+        "STOCK_OUT": "OUT OF STOCK"
     },
     "POS": {
         "TITLE": "Cash Register",
@@ -160,6 +165,8 @@
         "PRINT_THERMAL": "Thermal",
         "PRINT_SYSTEM": "System",
         "CASHIER_LABEL": "Cashier",
+        "CASH": "Cash",
+        "CARD": "Card",
         "REMOVE_ITEM_ERROR": "Could not remove the item",
         "ASSOCIATE_ERROR": "Could not associate the dish",
         "ADD_ITEM_ERROR": "Could not add the dish",
@@ -189,6 +196,7 @@
         "EQUITATIVE_PARTS": "Equal parts",
         "EQUITATIVE_HELPER": "Each person pays a proportional part of the total bill.",
         "PROCEED_PAY": "Proceed to Payment",
+        "PAYMENT_REQUESTED": "Request sent — your waiter will be with you shortly.",
         "PERS": "pers.",
         "SUBTITLE": "Select payment method"
     },
@@ -236,11 +244,14 @@
     },
     "LOGIN": {
         "ACCESS_TERMINAL": "Management Terminal Access",
+        "SUBTITLE": "Sign in to the management panel",
+        "FORM_LABEL": "Sign in form",
         "USER": "User",
         "USER_PLACEHOLDER": "e.g., kitchen",
         "PASSWORD": "Password",
-        "AUTHENTICATING": "AUTHENTICATING...",
+        "AUTHENTICATING": "Signing in...",
         "ENTER_SYSTEM": "ENTER SYSTEM",
+        "SIGN_IN": "Sign in",
         "ERROR_CREDS": "Invalid credentials or network unavailable.",
         "ERROR_SYSTEM": "System error. Try again later."
     },
@@ -287,7 +298,11 @@
         "DELETE_CONFIRM": "Delete this dish?",
         "DELETE_ERROR": "Could not delete the dish",
         "UPLOAD_ERROR": "Image upload failed",
-        "LOAD_ERROR": "Error loading the menu"
+        "LOAD_ERROR": "Error loading the menu",
+        "UPLOAD_VARIANT_IMAGE": "Upload variant image",
+        "DISH_IMAGE": "Dish Image",
+        "IMAGE_HINT": "Square format recommended.",
+        "UPLOAD_BTN": "Upload image"
     },
     "STORE_CONFIG": {
         "TITLE": "Store Configuration",
@@ -330,7 +345,9 @@
         "DEVICE_SUB": "Specific configuration for this terminal.",
         "ASSIGNED_PRINTER": "Assigned Printer",
         "NO_PRINTER": "No Printer",
-        "AUTO_PRINT": "Auto Print",
+        "AUTO_PRINT": "Automatic Printing",
+        "TIP_ENABLE_DESC": "Allow customers to add a tip",
+        "AUTO_PRINT_DESC": "Automatically print tickets when done",
         "LOAD_ERROR": "Could not load store configuration",
         "SAVE_SUCCESS": "Configuration saved. Reloading...",
         "SAVE_ERROR": "Could not save the configuration",
@@ -382,6 +399,7 @@
         "FOOTER_MSG": "Footer Message",
         "FOOTER_PH": "E.g.: Thank you for your visit!",
         "SAVE": "Save Changes",
+        "TITLE": "User Management",
         "SUBTITLE": "Create and manage accounts with specific roles (KDS, POS, Admin).",
         "LOADING": "Loading users...",
         "NO_PRINTER": "No printer assigned",
@@ -413,7 +431,9 @@
         "CASHIER": "Cashier",
         "KITCHEN": "Kitchen",
         "MENU": "Menu",
-        "CONFIG": "Settings"
+        "CONFIG": "Settings",
+        "EXPAND": "Open navigation menu",
+        "COLLAPSE": "Collapse navigation menu"
     },
     "APP": {
         "RESTAURANT_NAME": "Digital Restaurant",

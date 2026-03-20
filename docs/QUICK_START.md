@@ -7,9 +7,9 @@ Esta guía te permitirá tener una plataforma de restaurante funcional en menos 
 ## Prerrequisitos
 
 - Un servidor o dispositivo con al menos 1GB de RAM.
-- **Docker (v24+)** y **Docker Compose (v2.x)**. El instalador los instala automáticamente si no están presentes.
+- **Docker (v24+)** y **Docker Compose (v2.x)** instalados previamente.
 - Git para clonar el repositorio.
-- Puertos **80** y **443** disponibles en el sistema.
+- Puerto **80** disponible en el sistema. El **443** solo es necesario si habilitas HTTPS manualmente en `Caddyfile`.
 - Si usas un proveedor cloud (Google Cloud, AWS, Azure...), los puertos deben estar **abiertos también en el firewall del proveedor** (ver sección [Proveedores Cloud](#proveedores-cloud-firewall)).
 
 ---
@@ -42,7 +42,7 @@ Durante la instalación, el script adaptará el comportamiento del Proxy y la se
 - **Dominio Público (Online):** 
   - *Ejemplo:* `app.mirestaurante.com`
   - *Uso:* Para instalaciones en servidores cloud (VPS). Permite a los clientes acceder a la aplicación desde cualquier parte del mundo.
-  - *Requisitos:* Un dominio real apuntando a la IP de tu servidor. El sistema generará e instalará automáticamente **certificados SSL (HTTPS)**.
+  - *Requisitos:* Un dominio real apuntando a la IP de tu servidor. El proxy opera en **HTTP** por defecto; para **HTTPS** debes ajustar el `Caddyfile`.
 - **Dominio Local (mDNS / LAN):** 
   - *Ejemplo:* `disher.local`
   - *Uso:* Instalaciones alojadas físicamente en el local (ej. una caja registradora o mini-PC) sin depender de que exista conexión a internet hacia fuera.

@@ -16,33 +16,41 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
             <img src="logo.svg" alt="Disher.io Logo" class="login-logo">
           </div>
           <h1 class="text-headline-large color-primary">DISHER.IO</h1>
-          <p class="text-label-large opacity-60">{{ 'LOGIN.ACCESS_TERMINAL' | translate }}</p>
+          <p class="text-label-large opacity-60">{{ 'LOGIN.SUBTITLE' | translate }}</p>
         </header>
 
-        <form (submit)="onSubmit($event)" class="login-form">
+        <form (submit)="onSubmit($event)" class="login-form" aria-label="{{ 'LOGIN.FORM_LABEL' | translate }}">
           <div class="md-field">
-            <label class="text-label-large">{{ 'LOGIN.USER' | translate }}</label>
-            <input type="text" [(ngModel)]="username" name="username" class="md-input" [placeholder]="'LOGIN.USER_PLACEHOLDER' | translate" required>
+            <label for="username" class="text-label-large">{{ 'LOGIN.USER' | translate }}</label>
+            <input id="username" type="text" [(ngModel)]="username" name="username" class="md-input"
+                   [placeholder]="'LOGIN.USER_PLACEHOLDER' | translate"
+                   autocomplete="username"
+                   [attr.aria-describedby]="errorMessage() ? 'login-error' : null"
+                   required>
           </div>
 
           <div class="md-field">
-            <label class="text-label-large">{{ 'LOGIN.PASSWORD' | translate }}</label>
-            <input type="password" [(ngModel)]="password" name="password" class="md-input" placeholder="••••" required>
+            <label for="password" class="text-label-large">{{ 'LOGIN.PASSWORD' | translate }}</label>
+            <input id="password" type="password" [(ngModel)]="password" name="password" class="md-input"
+                   placeholder="••••"
+                   autocomplete="current-password"
+                   [attr.aria-describedby]="errorMessage() ? 'login-error' : null"
+                   required>
           </div>
 
           @if (errorMessage()) {
-            <div class="error-banner">
+            <div id="login-error" class="error-banner" role="alert" aria-live="assertive">
               <span class="text-body-small">{{ errorMessage() }}</span>
             </div>
           }
 
-          <button type="submit" class="btn-primary login-btn" [disabled]="loading()">
-            {{ loading() ? ('LOGIN.AUTHENTICATING' | translate) : ('LOGIN.ENTER_SYSTEM' | translate) }}
+          <button type="submit" class="btn-primary login-btn" [disabled]="loading()" [attr.aria-busy]="loading()">
+            {{ loading() ? ('LOGIN.AUTHENTICATING' | translate) : ('LOGIN.SIGN_IN' | translate) }}
           </button>
         </form>
 
         <footer class="login-footer">
-          <p class="text-label-small opacity-40">© 2026 DISHER.IO ENGINE</p>
+          <p class="text-label-small opacity-40">Disher.io &copy; {{ currentYear }}</p>
         </footer>
       </div>
     </div>
@@ -128,6 +136,7 @@ export class LoginComponent {
   password = '';
   loading = signal(false);
   errorMessage = signal('');
+  readonly currentYear = new Date().getFullYear();
 
   async onSubmit(event: Event) {
     event.preventDefault();

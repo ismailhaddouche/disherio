@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken';
+import { ROLES } from '../constants.js';
 
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
@@ -42,7 +43,8 @@ export function generateToken(payload) {
 export function getCookieOptions() {
     // Detect if we should use Secure flag (only for HTTPS)
     const protocol = process.env.PROTOCOL || '';
-    const isHttps = protocol === 'https' || (process.env.DOMAIN && process.env.DOMAIN.startsWith('https'));
+    // DOMAIN is a bare hostname (e.g. mydomain.com), not a URL — check PROTOCOL instead
+    const isHttps = protocol === 'https' || process.env.NODE_ENV === 'production';
 
     return {
         httpOnly: true,
@@ -59,7 +61,7 @@ export function requireRole(...allowedRoles) {
             return res.error(req.t?.('ERRORS.UNAUTHORIZED') || 'Unauthorized', 401);
         }
 
-        if (req.user.role === 'admin' || allowedRoles.includes(req.user.role)) {
+        if (req.user.role === ROLES.ADMIN || allowedRoles.includes(req.user.role)) {
             return next();
         }
 

@@ -5,6 +5,7 @@ import User from '../models/User.js';
 import AuditService from '../services/audit.service.js';
 import { verifyToken } from '../middleware/auth.middleware.js';
 import { validate, mongoIdSchema } from '../middleware/validation.middleware.js';
+import { ROLES } from '../constants.js';
 
 // ── Joi Schemas ──────────────────────────────────────────────────────────────
 
@@ -32,7 +33,7 @@ const printSettingsSchema = Joi.object({
 
 // Middleware to ensure admin role
 async function requireAdmin(req, res, next) {
-    if (!req.user || req.user.role !== 'admin') {
+    if (!req.user || req.user.role !== ROLES.ADMIN) {
         return res.error(req.t('ERRORS.ACCESS_DENIED_ADMIN'), 403);
     }
     next();

@@ -86,10 +86,10 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
                             <lucide-icon name="camera" [size]="24"></lucide-icon>
                         </div>
                         <div style="flex: 1;">
-                            <span class="text-label-large">Imagen del Plato</span>
-                            <p class="text-body-small opacity-60">Recomendado formato cuadrado.</p>
+                            <span class="text-label-large">{{ 'MENU_EDITOR.DISH_IMAGE' | translate }}</span>
+                            <p class="text-body-small opacity-60">{{ 'MENU_EDITOR.IMAGE_HINT' | translate }}</p>
                         </div>
-                        <button class="btn-outline" (click)="mainImageInput.click()">Subir WebP</button>
+                        <button class="btn-outline" (click)="mainImageInput.click()">{{ 'MENU_EDITOR.UPLOAD_BTN' | translate }}</button>
                         <input #mainImageInput type="file" style="display: none" accept="image/*" (change)="onFileSelected($event, 'main')">
                     </div>
 
@@ -208,7 +208,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
                         @for (v of vm.selectedItem()!.variants; track $index; let vIdx = $index) {
                           <div class="list-item-row-md3" style="align-items: center;">
                             <img *ngIf="v.image" [src]="vm.resolveImageUrl(v.image)" style="width: 32px; height: 32px; object-fit: cover; border-radius: 4px;">
-                            <button class="icon-btn" (click)="variantImageInput.click()" [title]="'Subir imagen de la variante'"><lucide-icon name="camera" [size]="14"></lucide-icon></button>
+                            <button class="icon-btn" (click)="variantImageInput.click()" [title]="'MENU_EDITOR.UPLOAD_VARIANT_IMAGE' | translate"><lucide-icon name="camera" [size]="14"></lucide-icon></button>
                             <input #variantImageInput type="file" style="display: none" accept="image/*" (change)="onFileSelected($event, 'variant', vIdx)">
 
                             <input type="text" [(ngModel)]="v.name" class="md-input-compact flex-2" [placeholder]="'MENU_EDITOR.VAR_NAME_PH' | translate">

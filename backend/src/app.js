@@ -32,31 +32,40 @@ app.use(helmet({
 app.use(compression());
 
 // ── CORS ─────────────────────────────────────────────────────────────────────
+const CORS_ORIGINS = process.env.NODE_ENV === 'production'
+    ? [
+        ...(process.env.DOMAIN ? [process.env.DOMAIN] : []),
+        /\.disher\.io$/,
+        /^https?:\/\/\d+\.\d+\.\d+\.\d+(:\d+)?$/  // IP addresses (dev/internal)
+      ]
+    : true;
+
 app.use(cors({
-    origin: process.env.NODE_ENV === 'production'
-        ? [process.env.DOMAIN, /\.disher\.io$/, /^http:\/\/\d+\.\d+\.\d+\.\d+$/]  // Allow IP addresses
-        : true,
+    origin: CORS_ORIGINS,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept-Language']
 }));
 
 // ── Body Parsers ─────────────────────────────────────────────────────────────
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(express.json({ limit: '1mb' }));        // images go through multer, not JSON
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 app.use(cookieParser());
-// Custom NoSQL Sanitization (to avoid issues with read-only properties in req)
+// Custom NoSQL Sanitization (strips $-prefixed keys and keys with dots to prevent injection)
 app.use((req, res, next) => {
-    const sanitize = (obj) => {
-        if (obj && typeof obj === 'object') {
-            Object.keys(obj).forEach(key => {
+    const sanitize = (value) => {
+        if (Array.isArray(value)) {
+            value.forEach((item, i) => { value[i] = sanitize(item); });
+        } else if (value && typeof value === 'object') {
+            Object.keys(value).forEach(key => {
                 if (key.startsWith('$') || key.includes('.')) {
-                    delete obj[key];
-                } else if (typeof obj[key] === 'object') {
-                    sanitize(obj[key]);
+                    delete value[key];
+                } else {
+                    value[key] = sanitize(value[key]);
                 }
             });
         }
+        return value;
     };
     if (req.body) sanitize(req.body);
     if (req.params) sanitize(req.params);

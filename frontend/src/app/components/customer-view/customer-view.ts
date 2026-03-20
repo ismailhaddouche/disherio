@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { CustomerViewModel } from './customer-view.viewmodel';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-customer-view',
@@ -35,10 +35,10 @@ import { TranslateModule } from '@ngx-translate/core';
             }
             
             <div class="md-input-field">
-              <input type="text" #nameInput [placeholder]="'WAITER.NEW_NAME_OPTIONAL' | translate" (keyup.enter)="vm.registerNameAndStartSession(nameInput.value || 'Camarero')" [value]="vm.comms.userName() !== 'Comensal' ? vm.comms.userName() : ''">
+              <input type="text" #nameInput [placeholder]="'WAITER.NEW_NAME_OPTIONAL' | translate" (keyup.enter)="vm.registerNameAndStartSession(nameInput.value || defaultWaiterName)" [value]="vm.comms.userName() !== 'Comensal' ? vm.comms.userName() : ''">
             </div>
             
-            <button class="btn-primary" (click)="vm.registerNameAndStartSession(nameInput.value || 'Camarero')">
+            <button class="btn-primary" (click)="vm.registerNameAndStartSession(nameInput.value || defaultWaiterName)">
               <lucide-icon name="play" [size]="18"></lucide-icon>
               {{ 'WAITER.START_ORDERING' | translate }}
             </button>
@@ -572,8 +572,8 @@ import { TranslateModule } from '@ngx-translate/core';
     .text-primary-color { color: var(--md-sys-color-primary); }
 
     .status-badge.connected {
-        background: #2e7d32;
-        color: white;
+        background: rgba(52, 211, 153, 0.18);
+        color: #34d399;
         padding: 2px 10px;
         border-radius: 4px;
         font-size: 0.7rem;
@@ -584,4 +584,9 @@ import { TranslateModule } from '@ngx-translate/core';
 })
 export class CustomerViewComponent {
   public vm = inject(CustomerViewModel);
+  private translate = inject(TranslateService);
+
+  get defaultWaiterName(): string {
+    return this.translate.instant('ROLES.waiter') as string;
+  }
 }

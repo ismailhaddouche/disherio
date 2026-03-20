@@ -69,12 +69,12 @@ export const orderItemSchema = Joi.object({
 }).unknown(true);
 
 export const orderPlacementSchema = Joi.object({
-    items: Joi.array().items(orderItemSchema).min(1).max(50).required(),
+    items: Joi.array().items(orderItemSchema).min(1).max(200).required(),
     tableNumber: Joi.string().max(10).optional(),
     totemId: Joi.number().integer().optional(),
     sessionId: Joi.string().max(100).optional(),
     __v: Joi.number().optional()
-}).unknown(true);
+}).unknown(false);
 
 /**
  * Restaurant Configuration Schemas
@@ -87,11 +87,13 @@ export const restaurantUpdateSchema = Joi.object({
     description: Joi.string().max(500).trim().allow(''),
     defaultLanguage: Joi.string().valid('es', 'en'),
     theme: Joi.object({
-        primaryColor: Joi.string().regex(/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/).optional(),
-        secondaryColor: Joi.string().regex(/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/).optional(),
-        fontFamily: Joi.string().max(50).optional(),
-        borderRadius: Joi.string().max(20).optional(),
-        darkMode: Joi.boolean().optional()
+        primaryColor:    Joi.string().regex(/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/).optional(),
+        secondaryColor:  Joi.string().regex(/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/).optional(),
+        backgroundColor: Joi.string().regex(/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/).optional(),
+        textColor:       Joi.string().regex(/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/).optional(),
+        fontFamily:      Joi.string().max(50).allow('').optional(),
+        borderRadius:    Joi.string().max(20).allow('').optional(),
+        darkMode:        Joi.boolean().optional()
     }).optional(),
     billing: Joi.object({
         vatPercentage: Joi.number().min(0).max(100).required(),
@@ -106,7 +108,12 @@ export const restaurantUpdateSchema = Joi.object({
         facebook: Joi.string().max(100).allow('').optional(),
         twitter: Joi.string().max(100).allow('').optional()
     }).optional(),
-    stations: Joi.array().items(Joi.string().max(50)).max(20)
+    stations: Joi.array().items(
+        Joi.object({
+            name:       Joi.string().max(100).required(),
+            lastPulse:  Joi.date().optional()
+        })
+    ).max(20)
 }).min(1).unknown(true);
 
 /**
