@@ -55,8 +55,6 @@ const checkoutSchema = Joi.object({
 
 // ── Routes ───────────────────────────────────────────────────────────────────
 
-const staffAccess = (...roles) => [verifyToken, requireRole(...roles)];
-
 // GET / - List active orders (Restricted to staff)
 router.get('/', verifyToken, requireRole(ROLES.ADMIN, ROLES.WAITER, ROLES.KITCHEN, ROLES.POS), async function(req, res) {
     const orders = await Order.find({ status: ORDER_STATUS.ACTIVE }).sort({ createdAt: -1 });

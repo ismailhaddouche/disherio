@@ -33,7 +33,7 @@ class MenuService {
                 .toFile(webpFilepath);
 
             return `/uploads/menu/${webpFilename}`;
-        } catch (sharpError) {
+        } catch {
             const extension = (file.originalname && path.extname(file.originalname)) || '.jpg';
             const fallbackFilename = `item-${Date.now()}-${Math.round(Math.random() * 1000)}${extension.toLowerCase()}`;
             const fallbackPath = path.join(uploadDir, fallbackFilename);
