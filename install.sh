@@ -63,7 +63,9 @@ if [ "$LANG_OPT" = "2" ]; then
     MSG_PORT_PROMPT="HTTP Port (default 80, use 8080 if 80 is busy): "
     MSG_PORT_BUSY="Port is already in use! Try another port (e.g. 8080):"
     MSG_PORT_OK="Port available"
-    MSG_HTTPS_WARN="[IMPORTANT] You enabled local HTTPS. To avoid browser warnings, download the Caddy root certificate from your gateway and install it on your devices."
+    MSG_HTTPS_WARN="[IMPORTANT] You enabled local HTTPS. The installer will export and trust the Caddy root certificate automatically on this VM."
+    MSG_CERT_EXPORT="[IMPORTANT] Caddy root certificate exported and trusted automatically on this VM."
+    MSG_CERT_FALLBACK="[WARNING] Automatic trust store update is not available on this distro. The certificate was exported to ./caddy-root.crt."
 else
     MSG_DOM="[1/6] Configuración de Acceso"
     MSG_DOM_TYPE="Selecciona el tipo de acceso:"
@@ -96,7 +98,9 @@ else
     MSG_PORT_PROMPT="Puerto HTTP (por defecto 80, usa 8080 si el 80 está ocupado): "
     MSG_PORT_BUSY="El puerto está en uso. Prueba otro (ej: 8080):"
     MSG_PORT_OK="Puerto disponible"
-    MSG_HTTPS_WARN="[IMPORTANTE] Has activado HTTPS local. Para evitar advertencias del navegador, descarga el certificado raíz de Caddy e instálalo en tus dispositivos."
+    MSG_HTTPS_WARN="[IMPORTANTE] Has activado HTTPS local. El instalador exportará y confiará automáticamente el certificado raíz de Caddy en esta VM."
+    MSG_CERT_EXPORT="[IMPORTANTE] El certificado raíz de Caddy se exportó y quedó confiado automáticamente en esta VM."
+    MSG_CERT_FALLBACK="[AVISO] La actualización automática del almacén de confianza no está disponible en esta distribución. El certificado se exportó a ./caddy-root.crt."
 fi
 
 # 2. Domain or IP
@@ -121,12 +125,14 @@ while true; do
             if [ "$DOM_OPT" = "1" ]; then
                 CADDY_DOMAIN="disherio.local"
                 PROTOCOL="http"
+                ENABLE_HTTPS="false"
                 break 2
             elif [ "$DOM_OPT" = "2" ]; then
                 while true; do
                     read -p "${MSG_DOM_PROMPT}" CADDY_DOMAIN
                     if [[ "$CADDY_DOMAIN" =~ ^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]; then
                         PROTOCOL="https"
+                        ENABLE_HTTPS="true"
                         break 3
                     else
                         echo -e "${RED}${MSG_ERR_DOM}${NC}"
@@ -151,6 +157,8 @@ while true; do
                     continue
                 fi
                 echo -e "${GREEN}Detected Public IP: ${CADDY_DOMAIN}${NC}"
+                PROTOCOL="http"
+                ENABLE_HTTPS="false"
             else
                 # Filtrar solo la primera IPv4 encontrada
                 CADDY_DOMAIN=$(hostname -I | tr ' ' '\n' | grep -v ':' | head -n 1)
@@ -165,15 +173,19 @@ while true; do
                 read -p "Enter IP manually: " CADDY_DOMAIN
             fi
             
-            echo -e "\n${YELLOW}SECURITY CHOICE:${NC}"
-            echo -e "1) HTTPS (Secure, Recommended - Requires trusting Caddy CA on devices)"
-            echo -e "2) HTTP (Fast, Insecure - Traffic is visible on local network)"
-            read -p "Select protocol [1-2] (default: 1): " SEC_OPT
-            if [ "$SEC_OPT" = "2" ]; then
-                PROTOCOL="http"
-            else
-                PROTOCOL="https"
-                echo -e "${YELLOW}NOTE: You will need to trust the Caddy Local CA on your devices to avoid browser warnings.${NC}"
+            if [ "$IP_OPT" != "2" ]; then
+                echo -e "\n${YELLOW}SECURITY CHOICE:${NC}"
+                echo -e "1) HTTPS (Secure, Recommended - Requires trusting Caddy CA on devices)"
+                echo -e "2) HTTP (Fast, Insecure - Traffic is visible on local network)"
+                read -p "Select protocol [1-2] (default: 1): " SEC_OPT
+                if [ "$SEC_OPT" = "2" ]; then
+                    PROTOCOL="http"
+                    ENABLE_HTTPS="false"
+                else
+                    PROTOCOL="https"
+                    ENABLE_HTTPS="true"
+                    echo -e "${YELLOW}NOTE: You will need to trust the Caddy Local CA on your devices to avoid browser warnings.${NC}"
+                fi
             fi
 
             HTTPS_PORT=443
@@ -213,6 +225,7 @@ MONGODB_URI="mongodb://admin:${MONGO_PASS}@database:27017/disher?authSource=admi
 
 ADMIN_PASS=$(openssl rand -base64 16 | tr -dc 'a-zA-Z0-9' | head -c 12)
 HTTPS_PORT=${HTTPS_PORT:-443}
+ENABLE_HTTPS=${ENABLE_HTTPS:-false}
 
 # 4. Environment
 echo -e "\n${CYAN}${MSG_ENV}${NC}"
@@ -240,6 +253,96 @@ HTTPS_PORT=${HTTPS_PORT}
 DEFAULT_LANG=$( [ "${LANG_OPT}" = "2" ] && echo "en" || echo "es" )
 INIT_DEFAULT_LANG=\${DEFAULT_LANG}
 EOF
+
+# 4.5 Caddy configuration
+echo -e "\n${CYAN}[4.5/6] Generating Caddyfile...${NC}"
+if [ "$ENABLE_HTTPS" = "true" ]; then
+    cat > Caddyfile <<'EOF'
+{
+    # Enable internal CA for local domains/IPs
+    local_certs
+}
+
+# HTTP and HTTPS access for the same host/IP
+http://{$DOMAIN}:{$HTTP_PORT:80}, https://{$DOMAIN}:{$HTTPS_PORT:443} {
+    # API Backend
+    handle /api/* {
+        reverse_proxy backend:3000
+    }
+
+    # Socket.io WebSocket support
+    handle /socket.io/* {
+        reverse_proxy backend:3000
+    }
+
+    # Frontend - Angular App (fallback for all other routes)
+    handle {
+        reverse_proxy frontend:80
+    }
+
+    # Security Headers
+    header {
+        X-Content-Type-Options nosniff
+        X-Frame-Options SAMEORIGIN
+        Referrer-Policy strict-origin-when-cross-origin
+        Permissions-Policy "camera=(), microphone=(), geolocation=()"
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        -Server
+    }
+
+    # Compression
+    encode zstd gzip
+
+    # Logging
+    log {
+        output file /data/access.log {
+            roll_size 10mb
+            roll_keep 10
+        }
+    }
+}
+EOF
+else
+    cat > Caddyfile <<'EOF'
+# HTTP-only access for public IP deployments
+http://{$DOMAIN}:{$HTTP_PORT:80} {
+    # API Backend
+    handle /api/* {
+        reverse_proxy backend:3000
+    }
+
+    # Socket.io WebSocket support
+    handle /socket.io/* {
+        reverse_proxy backend:3000
+    }
+
+    # Frontend - Angular App (fallback for all other routes)
+    handle {
+        reverse_proxy frontend:80
+    }
+
+    # Security Headers
+    header {
+        X-Content-Type-Options nosniff
+        X-Frame-Options SAMEORIGIN
+        Referrer-Policy strict-origin-when-cross-origin
+        Permissions-Policy "camera=(), microphone=(), geolocation=()"
+        -Server
+    }
+
+    # Compression
+    encode zstd gzip
+
+    # Logging
+    log {
+        output file /data/access.log {
+            roll_size 10mb
+            roll_keep 10
+        }
+    }
+}
+EOF
+fi
 
 # 5. Docker Detection
 echo -e "\n${CYAN}${MSG_DOCKER}${NC}"
@@ -308,12 +411,34 @@ echo -e "  ${MSG_USRADM}${CYAN}admin${NC}"
 echo -e "  ${MSG_PWDADM}${CYAN}$ADMIN_PASS${NC}"
 echo -e "\n  Acceso: ${CYAN}${ACCESS_URL}${NC}"
 
-if [ "$PROTOCOL" = "https" ]; then
+if [ "$ENABLE_HTTPS" = "true" ]; then
     echo -e "\n${YELLOW}${MSG_HTTPS_WARN}${NC}"
 fi
 
-if [ "$IP_OPT" = "2" ] && [ "$PROTOCOL" = "https" ]; then
+if [ "$IP_OPT" = "2" ] && [ "$ENABLE_HTTPS" = "true" ]; then
     echo -e "${YELLOW}Public IP HTTPS requires port 443/TCP to be reachable from the internet (firewall/router/NAT).${NC}"
+fi
+
+if [ "$ENABLE_HTTPS" = "true" ]; then
+    CADDY_ROOT_CERT="./caddy-root.crt"
+    if $DOCKER_CMD cp disher-proxy:/data/caddy/pki/authorities/local/root.crt "$CADDY_ROOT_CERT" 2>/dev/null; then
+        TRUST_CERT=""
+        if [ -d /usr/local/share/ca-certificates ] && command -v update-ca-certificates >/dev/null 2>&1; then
+            TRUST_CERT="/usr/local/share/ca-certificates/disher-caddy.crt"
+            install -m 0644 "$CADDY_ROOT_CERT" "$TRUST_CERT"
+            update-ca-certificates >/dev/null 2>&1 || true
+            echo -e "\n${GREEN}${MSG_CERT_EXPORT}${NC}"
+        elif [ -d /etc/pki/ca-trust/source/anchors ] && command -v update-ca-trust >/dev/null 2>&1; then
+            TRUST_CERT="/etc/pki/ca-trust/source/anchors/disher-caddy.crt"
+            install -m 0644 "$CADDY_ROOT_CERT" "$TRUST_CERT"
+            update-ca-trust extract >/dev/null 2>&1 || true
+            echo -e "\n${GREEN}${MSG_CERT_EXPORT}${NC}"
+        else
+            echo -e "\n${YELLOW}${MSG_CERT_FALLBACK}${NC}"
+        fi
+    else
+        echo -e "\n${RED}Could not export Caddy root certificate to ${CADDY_ROOT_CERT}.${NC}"
+    fi
 fi
 
 echo -e "\n${GREEN}Listo! / Done!${NC}\n"
