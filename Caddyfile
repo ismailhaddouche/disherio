@@ -3,8 +3,8 @@
     local_certs
 }
 
-# HTTP port only - for IP-based access without TLS
-http://{$DOMAIN}:{$HTTP_PORT:80} {
+# HTTP and HTTPS access for the same host/IP
+http://{$DOMAIN}:{$HTTP_PORT:80}, https://{$DOMAIN}:{$HTTPS_PORT:443} {
     # API Backend
     handle /api/* {
         reverse_proxy backend:3000

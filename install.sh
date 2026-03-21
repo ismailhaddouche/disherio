@@ -175,6 +175,8 @@ while true; do
                 PROTOCOL="https"
                 echo -e "${YELLOW}NOTE: You will need to trust the Caddy Local CA on your devices to avoid browser warnings.${NC}"
             fi
+
+            HTTPS_PORT=443
             break 2
         done
     else
@@ -210,6 +212,7 @@ MONGO_PASS=$(openssl rand -base64 24 | tr -dc 'a-zA-Z0-9' | head -c 20)
 MONGODB_URI="mongodb://admin:${MONGO_PASS}@database:27017/disher?authSource=admin"
 
 ADMIN_PASS=$(openssl rand -base64 16 | tr -dc 'a-zA-Z0-9' | head -c 12)
+HTTPS_PORT=${HTTPS_PORT:-443}
 
 # 4. Environment
 echo -e "\n${CYAN}${MSG_ENV}${NC}"
@@ -231,6 +234,7 @@ CADDY_DOMAIN=${CADDY_DOMAIN}
 DOMAIN=${CADDY_DOMAIN}
 PROTOCOL=${PROTOCOL}
 HTTP_PORT=${HTTP_PORT}
+HTTPS_PORT=${HTTPS_PORT}
 
 # Language
 DEFAULT_LANG=$( [ "${LANG_OPT}" = "2" ] && echo "en" || echo "es" )
@@ -285,7 +289,13 @@ echo -e "${GREEN}   ${MSG_INST}${NC}"
 echo -e "${GREEN}============================================${NC}"
 
 # Construir URL de acceso
-if [ "$HTTP_PORT" = "80" ]; then
+if [ "$PROTOCOL" = "https" ]; then
+    if [ "$HTTPS_PORT" = "443" ]; then
+        ACCESS_URL="${PROTOCOL}://${CADDY_DOMAIN}"
+    else
+        ACCESS_URL="${PROTOCOL}://${CADDY_DOMAIN}:${HTTPS_PORT}"
+    fi
+elif [ "$HTTP_PORT" = "80" ]; then
     ACCESS_URL="${PROTOCOL}://${CADDY_DOMAIN}"
 else
     ACCESS_URL="${PROTOCOL}://${CADDY_DOMAIN}:${HTTP_PORT}"
@@ -300,6 +310,10 @@ echo -e "\n  Acceso: ${CYAN}${ACCESS_URL}${NC}"
 
 if [ "$PROTOCOL" = "https" ]; then
     echo -e "\n${YELLOW}${MSG_HTTPS_WARN}${NC}"
+fi
+
+if [ "$IP_OPT" = "2" ] && [ "$PROTOCOL" = "https" ]; then
+    echo -e "${YELLOW}Public IP HTTPS requires port 443/TCP to be reachable from the internet (firewall/router/NAT).${NC}"
 fi
 
 echo -e "\n${GREEN}Listo! / Done!${NC}\n"
