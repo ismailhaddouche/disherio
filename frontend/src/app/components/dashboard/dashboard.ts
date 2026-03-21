@@ -13,7 +13,28 @@ import { filter, Subscription } from 'rxjs';
   imports: [CommonModule, LucideAngularModule, TranslateModule],
   providers: [DashboardViewModel],
   template: `
-    <div class="dashboard-container animate-fade-in">
+    <div class="md-page-shell dashboard-container animate-fade-in">
+      <header class="section-header-md3">
+        <div class="header-content">
+          <div class="title-with-icon">
+            <div class="icon-box-md3 primary">
+              <lucide-icon name="layout-dashboard" [size]="24"></lucide-icon>
+            </div>
+            <div>
+              <h1 class="text-headline-medium">{{ 'DASHBOARD.TITLE' | translate }}</h1>
+              <p class="text-body-small opacity-60">{{ 'DASHBOARD.SUBTITLE' | translate }}</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="header-actions">
+          <div class="stat-chip-md3">
+            <span class="text-title-medium">{{ vm.activeOrdersCount() }}</span>
+            <span class="text-label-small">{{ 'DASHBOARD.ACTIVE_ORDERS' | translate }}</span>
+          </div>
+        </div>
+      </header>
+
       <!-- Error Display -->
       @if (vm.error()) {
         <div class="error-banner md-card">
@@ -118,19 +139,29 @@ import { filter, Subscription } from 'rxjs';
 
       <!-- Edit Totem Modal -->
       @if (vm.editingTotem(); as totem) {
-        <div class="modal-overlay" (click)="vm.editingTotem.set(null)">
-          <div class="modal-dialog md-card-elevated" (click)="$event.stopPropagation()">
-            <h2 class="text-headline-small">{{ 'DASHBOARD.EDIT_TOTEM' | translate }} #{{ totem.id }}</h2>
-            
-            <div class="form-field">
-                <label class="text-label-large">{{ 'DASHBOARD.TOTEM_NAME' | translate }}</label>
-                <input type="text" #editName [value]="totem.name" class="md-input" (keyup.enter)="vm.updateTotem(totem.id, editName.value)" autofocus>
+        <div class="md-modal-overlay" (click)="vm.editingTotem.set(null)">
+          <div class="md-modal-dialog md-form-panel" (click)="$event.stopPropagation()">
+            <header class="md-form-panel-header">
+              <div>
+                <h2 class="text-headline-small">{{ 'DASHBOARD.EDIT_TOTEM' | translate }} #{{ totem.id }}</h2>
+                <p class="text-body-small opacity-60">{{ 'DASHBOARD.TOTEM_NAME' | translate }}</p>
+              </div>
+              <button class="icon-btn-md3" (click)="vm.editingTotem.set(null)">
+                <lucide-icon name="x" [size]="20"></lucide-icon>
+              </button>
+            </header>
+
+            <div class="md-form-panel-body">
+              <div class="form-field">
+                  <label class="text-label-large">{{ 'DASHBOARD.TOTEM_NAME' | translate }}</label>
+                  <input type="text" #editName [value]="totem.name" class="md-input" (keyup.enter)="vm.updateTotem(totem.id, editName.value)" autofocus>
+              </div>
             </div>
 
-            <div class="modal-actions">
+            <footer class="md-form-panel-footer">
               <button class="btn-outline" (click)="vm.editingTotem.set(null)">{{ 'DASHBOARD.CANCEL' | translate }}</button>
               <button class="btn-primary" (click)="vm.updateTotem(totem.id, editName.value)">{{ 'DASHBOARD.SAVE' | translate }}</button>
-            </div>
+            </footer>
           </div>
         </div>
       }
@@ -226,9 +257,7 @@ import { filter, Subscription } from 'rxjs';
   `,
   styles: [`
     .dashboard-container {
-      display: flex;
-      flex-direction: column;
-      gap: 32px;
+      width: 100%;
     }
 
     .error-banner {
@@ -420,17 +449,6 @@ import { filter, Subscription } from 'rxjs';
         display: flex; flex-direction: column; align-items: center;
         justify-content: center; min-height: 200px; gap: 16px;
     }
-
-    .modal-overlay {
-        position: fixed; inset: 0; background: rgba(0,0,0,0.5);
-        display: flex; align-items: center; justify-content: center; z-index: 1000;
-        backdrop-filter: blur(4px);
-    }
-    .modal-dialog {
-        width: 100%; max-width: 400px; padding: 32px;
-        display: flex; flex-direction: column; gap: 24px;
-    }
-    .modal-actions { display: flex; justify-content: flex-end; gap: 12px; }
 
     .opacity-60 { opacity: 0.6; }
     .opacity-40 { opacity: 0.4; }

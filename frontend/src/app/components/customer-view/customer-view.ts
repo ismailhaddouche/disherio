@@ -19,6 +19,10 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
         </div>
       } @else if (!vm.session()?.sessionId || !vm.comms.userName() || vm.comms.userName() === 'Comensal') {
         <div class="name-selection md-card-elevated">
+          <div class="name-selection-icon icon-box-md3 primary">
+            <lucide-icon [name]="vm.isStaff() ? 'users' : 'utensils-crossed'" [size]="24"></lucide-icon>
+          </div>
+
           @if (vm.isStaff()) {
             <h2 class="text-headline-medium">{{ 'WAITER.NEW_ORDER_FOR' | translate }}</h2>
             <p class="text-body-large">{{ 'WAITER.SELECT_NAME_OR_SKIP' | translate }}</p>
@@ -35,10 +39,10 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
             }
             
             <div class="md-input-field">
-              <input type="text" #nameInput [placeholder]="'WAITER.NEW_NAME_OPTIONAL' | translate" (keyup.enter)="vm.registerNameAndStartSession(nameInput.value || defaultWaiterName)" [value]="vm.comms.userName() !== 'Comensal' ? vm.comms.userName() : ''">
+              <input type="text" #nameInput class="name-input" [placeholder]="'WAITER.NEW_NAME_OPTIONAL' | translate" (keyup.enter)="vm.registerNameAndStartSession(nameInput.value || defaultWaiterName)" [value]="vm.comms.userName() !== 'Comensal' ? vm.comms.userName() : ''">
             </div>
             
-            <button class="btn-primary" (click)="vm.registerNameAndStartSession(nameInput.value || defaultWaiterName)">
+            <button class="btn-primary full-width action-button" (click)="vm.registerNameAndStartSession(nameInput.value || defaultWaiterName)">
               <lucide-icon name="play" [size]="18"></lucide-icon>
               {{ 'WAITER.START_ORDERING' | translate }}
             </button>
@@ -47,10 +51,10 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
             <p class="text-body-large">{{ 'CUSTOMER.HOW_TO_CALL' | translate }}</p>
             
             <div class="md-input-field">
-              <input type="text" #nameInput [placeholder]="'CUSTOMER.YOUR_NAME' | translate" (keyup.enter)="vm.registerNameAndStartSession(nameInput.value)" [value]="vm.comms.userName() !== 'Comensal' ? vm.comms.userName() : ''">
+              <input type="text" #nameInput class="name-input" [placeholder]="'CUSTOMER.YOUR_NAME' | translate" (keyup.enter)="vm.registerNameAndStartSession(nameInput.value)" [value]="vm.comms.userName() !== 'Comensal' ? vm.comms.userName() : ''">
             </div>
             
-            <button class="btn-primary" (click)="vm.registerNameAndStartSession(nameInput.value)">
+            <button class="btn-primary full-width action-button" (click)="vm.registerNameAndStartSession(nameInput.value)">
               <lucide-icon name="chef-hat" [size]="18"></lucide-icon>
               {{ 'CUSTOMER.START_ORDERING' | translate }}
             </button>
@@ -58,18 +62,20 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
         </div>
       } @else {
         <header class="md-card table-header">
-          <div class="restaurant-info">
-            <span class="restaurant-name text-title-large">{{ vm.restaurantName() }}</span>
-            <span class="table-badge text-label-large">
-                <lucide-icon name="hash" [size]="12" class="inline-icon"></lucide-icon>
-                {{ vm.session()?.tableNumber }}
-            </span>
-          </div>
-          <div class="header-actions">
-            @if (vm.session()?.activeOrder) {
-                <span class="status-chip">{{ 'CUSTOMER.IN_SESSION' | translate }}</span>
-            }
-            <button routerLink="checkout" class="btn-secondary btn-sm">
+          <div class="table-header-main">
+            <div class="restaurant-info">
+              <span class="restaurant-name text-title-large">{{ vm.restaurantName() }}</span>
+              <div class="table-header-meta">
+                <span class="table-badge text-label-large">
+                    <lucide-icon name="hash" [size]="12" class="inline-icon"></lucide-icon>
+                    {{ vm.session()?.tableNumber }}
+                </span>
+                @if (vm.session()?.activeOrder) {
+                  <span class="status-chip">{{ 'CUSTOMER.IN_SESSION' | translate }}</span>
+                }
+              </div>
+            </div>
+            <button routerLink="checkout" class="btn-secondary btn-sm account-button">
                 <lucide-icon name="receipt" [size]="16"></lucide-icon>
                 {{ 'CUSTOMER.MY_ACCOUNT' | translate }}
             </button>
@@ -77,7 +83,7 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
         </header>
 
         <main class="menu-content">
-          <section class="welcome-hero">
+          <section class="welcome-hero md-card">
             <div class="restaurant-logo-wrapper">
               <img src="logo.svg" alt="Disher.io Logo" class="restaurant-logo">
             </div>
@@ -86,14 +92,22 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
           </section>
 
           <!-- Menu Section -->
-          <div class="menu-grid">
+          <section class="content-section">
+            <div class="section-heading-row">
+              <div>
+                <h2 class="text-title-large">{{ 'NAV.MENU' | translate }}</h2>
+                <p class="text-body-small opacity-60">{{ vm.menu().length }} {{ 'CUSTOMER.DISHES' | translate }}</p>
+              </div>
+            </div>
+
+            <div class="menu-grid">
             @for (item of vm.menu(); track item._id || item.id || (item.name + '-' + $index)) {
               <div class="md-card menu-item clickable-card" 
                    [class.unavailable]="!item.available"
                    (click)="vm.handleItemClick(item)">
                 <div class="item-visual" [style.background]="item.image ? 'transparent' : (item.category === 'Bebidas' ? 'var(--md-sys-color-tertiary-container)' : 'var(--md-sys-color-secondary-container)')" [style.padding]="item.image ? '0' : 'inherit'">
                   <ng-container *ngIf="item.image">
-                    <img [src]="vm.resolveItemImage(item.image)" style="width: 100%; height: 100%; object-fit: cover; border-radius: 16px;">
+                    <img [src]="vm.resolveItemImage(item.image)" class="item-image">
                   </ng-container>
                   <ng-container *ngIf="!item.image">
                     <lucide-icon *ngIf="item.category === 'Bebidas'" name="glass-water" [size]="24" [color]="'var(--md-sys-color-on-tertiary-container)'"></lucide-icon>
@@ -101,7 +115,12 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
                   </ng-container>
                 </div>
                 <div class="item-details">
-                  <h3 class="text-title-medium">{{ item.name }}</h3>
+                  <div class="item-top-row">
+                    <h3 class="text-title-medium">{{ item.name }}</h3>
+                    @if (!item.available) {
+                      <span class="sold-out-badge">{{ 'CUSTOMER.SOLD_OUT' | translate }}</span>
+                    }
+                  </div>
                   <p class="text-body-medium">{{ item.description }}</p>
                   <div class="item-footer">
                     <span class="price text-title-large">
@@ -118,26 +137,25 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
                 </div>
                 
                 @if (item.available) {
-                  <button class="add-fab">
+                  <button class="add-fab" aria-label="Add item">
                     <lucide-icon name="plus" [size]="20"></lucide-icon>
                   </button>
-                } @else {
-                  <span class="sold-out-badge">{{ 'CUSTOMER.SOLD_OUT' | translate }}</span>
                 }
               </div>
             }
-          </div>
+            </div>
+          </section>
 
           <!-- Configuration Modal (Bottom Sheet MD3) -->
           @if (vm.selectedForConfig(); as item) {
-            <div class="modal-overlay" (click)="vm.selectedForConfig.set(null)">
-                <div class="md-bottom-sheet" (click)="$event.stopPropagation()">
+            <div class="md-modal-overlay customer-modal-overlay" (click)="vm.selectedForConfig.set(null)">
+                <div class="md-modal-bottom-sheet customer-sheet" (click)="$event.stopPropagation()">
                     <div class="sheet-drag-handle"></div>
-                    <header class="config-header" style="display: flex; gap: 16px; align-items: center;">
-                        <img *ngIf="vm.selectedVariant()?.image || item.image" [src]="vm.selectedVariant()?.image || item.image" style="width: 64px; height: 64px; border-radius: 16px; object-fit: cover;">
+                    <header class="config-header">
+                        <img *ngIf="vm.selectedVariant()?.image || item.image" [src]="vm.selectedVariant()?.image || item.image" class="config-image">
                         <div>
                             <span class="text-label-large">{{ 'CUSTOMER.CUSTOMIZE_ORDER' | translate }}</span>
-                            <h2 class="text-headline-small" style="margin: 0;">{{ item.name }}</h2>
+                            <h2 class="text-headline-small config-title">{{ item.name }}</h2>
                         </div>
                     </header>
 
@@ -210,7 +228,7 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
           <!-- ACTIVE ORDER HISTORY -->
           @if (vm.session()?.activeOrder; as order) {
-            <div class="order-section mt-32">
+            <section class="order-section content-section mt-32">
               <div class="section-header">
                 <h3 class="text-title-large">{{ 'CUSTOMER.YOUR_ORDER' | translate }}</h3>
                 <span class="status-badge connected">{{ 'CUSTOMER.IN_KITCHEN' | translate }}</span>
@@ -249,12 +267,12 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
                 <span class="text-body-large">{{ 'CUSTOMER.TOTAL_ACCUMULATED' | translate }}</span>
                 <span class="text-headline-small">{{ order.totalAmount | currency:'EUR' }}</span>
               </div>
-            </div>
+            </section>
           }
 
           <!-- SHOPPING CART -->
           @if (vm.cart().length > 0) {
-            <div class="cart-section mt-32 animate-fade-in">
+            <section class="cart-section content-section mt-32 animate-fade-in">
               <h3 class="text-title-large">{{ 'CUSTOMER.NEW_CHOICES' | translate }}</h3>
               <p class="text-body-medium opacity-60">{{ 'CUSTOMER.CART_SUBTITLE' | translate }}</p>
               
@@ -266,7 +284,7 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
                             <span class="qty text-primary-color">1x</span>
                             <span class="text-title-medium">{{ item.name }}</span>
                         </div>
-                        <button class="btn-sm" style="padding: 4px; border-radius: 50%; width: 32px; height: 32px; background: var(--md-sys-color-surface-variant);" (click)="vm.removeFromCart(item)">
+                        <button class="cart-remove-btn" (click)="vm.removeFromCart(item)">
                             <lucide-icon name="x" [size]="14"></lucide-icon>
                         </button>
                     </div>
@@ -280,7 +298,7 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
                   </div>
                 }
               </div>
-            </div>
+            </section>
           }
         </main>
 
@@ -302,17 +320,18 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
   `,
   styles: [`
     .customer-container {
-      max-width: 600px;
+      width: 100%;
+      max-width: 760px;
       margin: 0 auto;
       min-height: 100vh;
       display: flex;
       flex-direction: column;
-      gap: 24px;
-      padding: 16px 16px 120px 16px;
+      gap: 20px;
+      padding: 12px 12px 120px 12px;
     }
 
     .loading-screen {
-      height: 70vh;
+      min-height: 70vh;
       display: flex;
       flex-direction: column;
       justify-content: center;
@@ -321,12 +340,17 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
     }
 
     .name-selection {
-      margin-top: 15vh;
-      padding: 32px;
+      margin-top: clamp(40px, 10vh, 96px);
+      padding: 24px;
       display: flex;
       flex-direction: column;
-      gap: 24px;
+      gap: 20px;
       text-align: center;
+      border-radius: 28px;
+    }
+
+    .name-selection-icon {
+      margin: 0 auto;
     }
 
     .existing-names {
@@ -336,19 +360,37 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
       justify-content: center;
     }
 
+    .name-input {
+      min-height: 56px;
+      text-align: center;
+      font-size: 1rem;
+    }
+
+    .action-button {
+      min-height: 52px;
+    }
+
     .table-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 12px 20px;
+      padding: 14px 16px;
       position: sticky;
-      top: 16px;
+      top: 8px;
       z-index: 100;
+      backdrop-filter: blur(12px);
+      background: color-mix(in srgb, var(--md-sys-color-surface-1) 92%, transparent);
+      border: 1px solid var(--md-sys-color-outline-variant);
+    }
+
+    .table-header-main {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
     }
 
     .restaurant-info { display: flex; flex-direction: column; }
+    .restaurant-name { line-height: 1.15; }
+    .table-header-meta { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 6px; }
     .table-badge { opacity: 0.7; display: flex; align-items: center; gap: 4px; }
-    .header-actions { display: flex; align-items: center; gap: 12px; }
+    .account-button { width: 100%; min-height: 44px; }
 
     .status-chip {
         background: var(--md-sys-color-secondary-container);
@@ -359,9 +401,18 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
         font-weight: 600;
     }
 
+    .menu-content {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
     .welcome-hero {
-      padding: 24px 0;
+      padding: 24px 20px;
       text-align: center;
+      border-radius: 28px;
+      border: 1px solid var(--md-sys-color-outline-variant);
+      background: linear-gradient(180deg, color-mix(in srgb, var(--md-sys-color-primary-container) 22%, transparent), transparent 68%);
     }
 
     .restaurant-logo-wrapper {
@@ -374,23 +425,39 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
     }
     .restaurant-logo { width: 100%; height: 100%; object-fit: contain; }
 
-    .menu-grid {
+    .content-section {
       display: flex;
       flex-direction: column;
       gap: 16px;
     }
 
+    .section-heading-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 12px;
+    }
+
+    .menu-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
     .menu-item {
       display: flex;
-      gap: 16px;
+      gap: 14px;
       padding: 16px;
-      align-items: flex-start;
+      align-items: center;
       position: relative;
+      border-radius: 24px;
+      border: 1px solid var(--md-sys-color-outline-variant);
+      min-height: 108px;
     }
 
     .item-visual {
-      width: 56px;
-      height: 56px;
+      width: 72px;
+      height: 72px;
       border-radius: 16px;
       display: flex;
       align-items: center;
@@ -398,20 +465,29 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
       flex-shrink: 0;
     }
 
+    .item-image {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 16px;
+    }
+
     .item-details { flex: 1; display: flex; flex-direction: column; gap: 4px; }
     .item-details p { opacity: 0.6; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .item-top-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
     
     .item-footer {
         display: flex;
+        flex-wrap: wrap;
         align-items: baseline;
         gap: 12px;
-        margin-top: 4px;
+        margin-top: 6px;
     }
     .price { color: var(--md-sys-color-primary); font-weight: 600; }
 
     .add-fab {
-      width: 40px;
-      height: 40px;
+      width: 44px;
+      height: 44px;
       border-radius: 12px;
       background: var(--md-sys-color-primary-container);
       color: var(--md-sys-color-on-primary-container);
@@ -419,7 +495,7 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
       align-items: center;
       justify-content: center;
       border: none;
-      align-self: flex-end;
+      flex-shrink: 0;
     }
 
     .sold-out-badge {
@@ -431,33 +507,41 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
         font-weight: bold;
     }
 
-    /* Bottom Sheet Refined */
-    .md-bottom-sheet {
-        width: 100%;
-        max-width: 600px;
-        background: var(--md-sys-color-surface-1);
-        border-radius: 28px 28px 0 0;
-        padding: 16px 24px 32px;
-        animation: slideInUp 0.3s cubic-bezier(0.2, 0, 0, 1);
-        display: flex;
-        flex-direction: column;
-        gap: 24px;
-        box-shadow: 0 -8px 32px rgba(0,0,0,0.4);
+    .customer-modal-overlay {
+        align-items: flex-end;
     }
 
-    .modal-overlay {
-        position: fixed;
-        inset: 0;
-        background: rgba(0,0,0,0.6);
-        z-index: 1000;
-        display: flex;
-        align-items: flex-end;
-        justify-content: center;
-    }
+    .customer-sheet { max-width: 760px; }
 
     .sheet-drag-handle {
         width: 32px; height: 4px; background: var(--md-sys-color-outline);
         opacity: 0.4; border-radius: 2px; margin: 0 auto;
+    }
+
+    .config-header {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .config-image {
+      width: 64px;
+      height: 64px;
+      border-radius: 16px;
+      object-fit: cover;
+      flex-shrink: 0;
+    }
+
+    .config-title {
+      margin: 0;
+    }
+
+    .config-content,
+    .config-section,
+    .addons-list {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
     }
 
     .options-row {
@@ -479,11 +563,13 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
       display: flex;
       justify-content: space-between;
       align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
       margin-bottom: 16px;
     }
 
     .history-grid { display: grid; gap: 12px; }
-    .history-item { padding: 16px; border: 1px solid var(--md-sys-color-outline); background: transparent; }
+    .history-item { padding: 16px; border: 1px solid var(--md-sys-color-outline-variant); background: transparent; border-radius: 20px; }
     
     .choices-row {
         display: flex;
@@ -502,6 +588,8 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
     .item-meta {
         display: flex;
         justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
         margin-top: 12px;
         font-size: 0.8rem;
     }
@@ -517,17 +605,32 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
         align-items: center;
         background: var(--md-sys-color-primary-container);
         color: var(--md-sys-color-on-primary-container);
+        border-radius: 24px;
     }
 
-    .cart-item { display: flex; flex-direction: column; gap: 8px; border: 1px dashed var(--md-sys-color-outline); }
-    .cart-item-header { display: flex; justify-content: space-between; align-items: center; }
+    .cart-item { display: flex; flex-direction: column; gap: 8px; border: 1px dashed var(--md-sys-color-outline); border-radius: 20px; }
+    .cart-item-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
     .cart-item-name { display: flex; gap: 8px; }
+
+    .cart-remove-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: none;
+      background: var(--md-sys-color-surface-variant);
+      color: var(--md-sys-color-on-surface);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      flex-shrink: 0;
+    }
 
     .cart-sticky-footer {
         position: fixed;
-        bottom: 24px;
-        left: 24px;
-        right: 24px;
+        bottom: max(12px, env(safe-area-inset-bottom));
+        left: 12px;
+        right: 12px;
         z-index: 500;
         display: flex;
         justify-content: center;
@@ -535,27 +638,25 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
     .cart-fab-container {
         background: var(--md-sys-color-surface-2);
-        padding: 12px 12px 12px 24px;
-        border-radius: var(--radius-full);
+        padding: 12px;
+        border-radius: 24px;
         display: flex;
         align-items: center;
-        gap: 24px;
+        justify-content: space-between;
+        gap: 16px;
         box-shadow: 0 8px 24px rgba(0,0,0,0.4);
         border: 1px solid var(--md-sys-color-outline);
+        width: min(100%, 760px);
     }
 
     .checkout-fab {
-        padding: 12px 24px;
-        height: 56px;
+        padding: 12px 20px;
+        min-height: 52px;
+        flex-shrink: 0;
     }
 
     .opacity-60 { opacity: 0.6; }
     .mt-16 { margin-top: 16px; }
-
-    @keyframes slideInUp {
-        from { transform: translateY(100%); }
-        to { transform: translateY(0); }
-    }
 
     .md-input-field input {
         background: var(--md-sys-color-surface-variant);
@@ -578,6 +679,76 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
         border-radius: 4px;
         font-size: 0.7rem;
         font-weight: bold;
+    }
+
+    @media (min-width: 640px) {
+      .customer-container {
+        padding: 20px 20px 132px 20px;
+      }
+
+      .table-header-main {
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .account-button {
+        width: auto;
+      }
+
+      .menu-grid {
+        gap: 16px;
+      }
+
+      .cart-fab-container {
+        padding: 12px 12px 12px 20px;
+        border-radius: 999px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .customer-container {
+        padding-inline: 10px;
+      }
+
+      .name-selection {
+        padding: 20px;
+      }
+
+      .welcome-hero {
+        padding: 20px 16px;
+      }
+
+      .menu-item {
+        padding: 14px;
+        gap: 12px;
+      }
+
+      .item-visual {
+        width: 64px;
+        height: 64px;
+      }
+
+      .config-header {
+        align-items: flex-start;
+      }
+
+      .config-image {
+        width: 56px;
+        height: 56px;
+      }
+
+      .cart-fab-container {
+        gap: 12px;
+      }
+
+      .cart-info {
+        min-width: 0;
+      }
+
+      .checkout-fab {
+        flex: 1;
+      }
     }
   `]
 

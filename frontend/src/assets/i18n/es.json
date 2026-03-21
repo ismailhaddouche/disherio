@@ -21,6 +21,8 @@
         "LANGUAGE": "Idioma"
     },
     "DASHBOARD": {
+        "TITLE": "Panel de Gestión",
+        "SUBTITLE": "Supervisa pedidos, tótems y actividad en tiempo real desde un solo lugar.",
         "UPS": "Ups! Algo salió mal",
         "RETRY": "Reintentar",
         "ACTIVE_ORDERS": "Pedidos Activos",
@@ -407,7 +409,7 @@
         "GO_BACK": "Volver",
         "NEW_USER_PH": "Nuevo Usuario (ej: camarero1)",
         "CREATE_USER": "Crear Usuario",
-        "PRINTER_ASSIGNED": "🖨️ Impresora Asignada",
+        "PRINTER_ASSIGNED": "Impresora Asignada",
         "EDIT": "Editar",
         "SYSTEM": "Sistema",
         "DEFAULT_FOOTER": "Gracias por su visita",

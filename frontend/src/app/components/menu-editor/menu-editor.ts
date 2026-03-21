@@ -14,19 +14,25 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
   imports: [CommonModule, FormsModule, LucideAngularModule, TranslateModule],
   providers: [MenuEditorViewModel],
   template: `
-    <div class="editor-container animate-fade-in">
+    <div class="md-page-shell editor-container animate-fade-in">
       <header class="section-header-md3">
-        <div class="header-text">
-          <h1 class="text-headline-medium">
-            <lucide-icon name="menu" [size]="28"></lucide-icon>
-            {{ 'MENU_EDITOR.TITLE' | translate }}
-          </h1>
-          <p class="text-body-large opacity-60">{{ 'MENU_EDITOR.DESC' | translate }}</p>
+        <div class="header-content">
+          <div class="title-with-icon">
+            <div class="icon-box-md3 primary">
+              <lucide-icon name="menu" [size]="24"></lucide-icon>
+            </div>
+            <div>
+              <h1 class="text-headline-medium">{{ 'MENU_EDITOR.TITLE' | translate }}</h1>
+              <p class="text-body-small opacity-60">{{ 'MENU_EDITOR.DESC' | translate }}</p>
+            </div>
+          </div>
         </div>
-        <button class="btn-primary" (click)="vm.selectItem(null)">
+        <div class="header-actions">
+          <button class="btn-primary" (click)="vm.selectItem(null)">
             <lucide-icon name="plus" [size]="18"></lucide-icon>
             {{ 'MENU_EDITOR.NEW_ITEM' | translate }}
-        </button>
+          </button>
+        </div>
       </header>
 
       <div class="editor-main-layout">
@@ -62,9 +68,12 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
         <main class="editor-detail">
           @if (vm.isEditing(); as item) {
-            <div class="md-card detail-form">
-              <header class="form-header-row">
-                <h2 class="text-headline-small">{{ vm.selectedItem()?._id ? ('MENU_EDITOR.EDIT_ITEM' | translate) : ('MENU_EDITOR.NEW_ITEM' | translate) }}</h2>
+            <div class="md-form-panel detail-form">
+              <header class="md-form-panel-header">
+                <div>
+                  <h2 class="text-headline-small">{{ vm.selectedItem()?._id ? ('MENU_EDITOR.EDIT_ITEM' | translate) : ('MENU_EDITOR.NEW_ITEM' | translate) }}</h2>
+                  <p class="text-body-small opacity-60">{{ 'MENU_EDITOR.PRO_MANAGER' | translate }}</p>
+                </div>
                 <div class="form-actions-md3">
                   <button class="btn-outline" (click)="vm.isEditing.set(false)">{{ 'MENU_EDITOR.CANCEL' | translate }}</button>
                   <button class="btn-primary" (click)="vm.saveItem()">
@@ -74,7 +83,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
                 </div>
               </header>
 
-              <div class="form-scrollable">
+              <div class="md-form-panel-body form-scrollable">
                 <div class="form-grid-md3">
                   <!-- Fundamental Data -->
                   <section class="form-section-md3">
@@ -250,6 +259,14 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
                   </div>
                 }
               </div>
+
+              <footer class="md-form-panel-footer">
+                <button class="btn-outline" (click)="vm.isEditing.set(false)">{{ 'MENU_EDITOR.CANCEL' | translate }}</button>
+                <button class="btn-primary" (click)="vm.saveItem()">
+                  <lucide-icon name="check" [size]="18"></lucide-icon>
+                  {{ 'MENU_EDITOR.SAVE_CHANGES' | translate }}
+                </button>
+              </footer>
             </div>
           } @else {
             <div class="empty-detail-state">
@@ -266,17 +283,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
   `,
   styles: [`
     .editor-container {
-      display: flex;
-      flex-direction: column;
-      gap: 32px;
-      height: calc(100vh - 120px);
-    }
-
-    .section-header-md3 {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 24px;
+      width: 100%;
     }
 
     .editor-main-layout {
@@ -342,21 +349,10 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
     .detail-form {
         height: 100%;
-        background: var(--md-sys-color-surface-1);
         display: flex;
         flex-direction: column;
         padding: 0;
         overflow: hidden;
-    }
-
-    .form-header-row {
-        padding: 24px 32px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        border-bottom: 1px solid var(--md-sys-color-outline-variant);
-        background: var(--md-sys-color-surface-1);
-        z-index: 10;
     }
 
     .form-actions-md3 { display: flex; gap: 12px; }
@@ -364,7 +360,6 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
     .form-scrollable {
         flex: 1;
         overflow-y: auto;
-        padding: 32px;
         display: flex;
         flex-direction: column;
         gap: 32px;
@@ -382,16 +377,6 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
     
     .field-row { display: flex; gap: 20px; }
     .field-row .md-field { flex: 1; }
-
-    .md-field { display: flex; flex-direction: column; gap: 6px; }
-    
-    .md-input {
-        background: var(--md-sys-color-surface-variant);
-        border: none; border-radius: 8px; padding: 12px 16px;
-        color: var(--md-sys-color-on-surface); font-family: inherit;
-        transition: box-shadow 0.2s;
-    }
-    .md-input:focus { box-shadow: 0 0 0 2px var(--md-sys-color-primary); outline: none; }
 
     .input-with-icon { position: relative; }
     .icon-suffix { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); opacity: 0.4; }
@@ -441,19 +426,9 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
     .section-editor-card { padding: 16px; background: var(--md-sys-color-surface-2); }
     .section-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-    
-    .md-input-transparent {
-        background: transparent; border: none; border-bottom: 2px solid var(--md-sys-color-outline-variant);
-        padding: 8px 0; color: var(--md-sys-color-on-surface); width: 100%;
-    }
-    .md-input-transparent:focus { border-color: var(--md-sys-color-primary); outline: none; }
 
     .options-container { display: flex; flex-direction: column; gap: 12px; }
     .option-field-row { display: flex; gap: 8px; }
-    .md-input-compact {
-        background: var(--md-sys-color-surface-3); border: none; border-radius: 6px;
-        padding: 8px 12px; color: var(--md-sys-color-on-surface); font-size: 0.9rem;
-    }
 
     .list-stack { display: flex; flex-direction: column; gap: 8px; }
     .list-item-row-md3 { display: flex; gap: 8px; }

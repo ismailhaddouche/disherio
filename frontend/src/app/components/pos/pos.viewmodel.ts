@@ -407,7 +407,7 @@ export class POSViewModel {
                 quantity: 1,
                 status: ITEM_STATUS.PENDING,
                 orderedBy: { id: SYSTEM_USER_IDS.POS, name: this.translate.instant('POS.CASHIER_LABEL') },
-                emoji: menuItem.emoji || '🍽️'
+                emoji: menuItem.emoji || null
             };
 
             const updatedItems = [...order.items, newItem];
@@ -438,7 +438,7 @@ export class POSViewModel {
                 quantity: 1,
                 status: ITEM_STATUS.PENDING,
                 orderedBy: { id: SYSTEM_USER_IDS.POS, name: this.translate.instant('POS.CASHIER_LABEL') },
-                emoji: '📝',
+                emoji: null,
                 isCustom: true
             };
 

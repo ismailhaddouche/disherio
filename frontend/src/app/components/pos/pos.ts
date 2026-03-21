@@ -19,7 +19,7 @@ export class FilterOccupiedPipe implements PipeTransform {
   imports: [CommonModule, FormsModule, FilterOccupiedPipe, LucideAngularModule, TranslateModule],
   providers: [POSViewModel],
   template: `
-    <div class="pos-container">
+    <div class="md-page-shell pos-container">
       <header class="section-header-md3" style="grid-column: 1 / -1; margin-bottom: 0;">
         <div class="header-content">
           <div class="title-with-icon">
@@ -396,6 +396,7 @@ export class FilterOccupiedPipe implements PipeTransform {
   `,
   styles: [`
     .pos-container {
+      width: 100%;
       display: grid;
       grid-template-columns: 360px 1fr;
       grid-template-rows: auto 1fr;

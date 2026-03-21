@@ -14,7 +14,7 @@ import { filter, Subscription } from 'rxjs';
   imports: [CommonModule, FormsModule, LucideAngularModule, TranslateModule],
   providers: [UserManagementViewModel],
   template: `
-    <div class="user-management-container animate-fade-in">
+    <div class="md-page-shell user-management-container animate-fade-in">
       @if (vm.editingUser(); as editUser) {
         <!-- Edit View -->
         <header class="section-header-md3">
@@ -24,13 +24,15 @@ import { filter, Subscription } from 'rxjs';
                 <lucide-icon name="pen-line" [size]="24"></lucide-icon>
               </div>
               <div>
-                <h2 class="text-headline-medium">{{ 'USER_MGMT.EDITING' | translate }} {{ editUser.username }}</h2>
+                <h1 class="text-headline-medium">{{ 'USER_MGMT.EDITING' | translate }} {{ editUser.username }}</h1>
                 <div class="subtitle-badge-row">
                   <span class="text-body-small opacity-60">{{ 'USER_MGMT.SYSTEM_ROLE' | translate }}</span>
                   <div class="md-badge-tonal-sm" [class]="editUser.role">{{ 'ROLES.' + editUser.role | translate }}</div>
                 </div>
               </div>
             </div>
+          </div>
+          <div class="header-actions">
             <button class="btn-tonal" (click)="vm.closeEditModal()">
               <lucide-icon name="chevron-left" [size]="18"></lucide-icon>
               <span>{{ 'USER_MGMT.GO_BACK' | translate }}</span>
@@ -101,7 +103,8 @@ import { filter, Subscription } from 'rxjs';
                 <p class="text-body-small opacity-60">{{ 'USER_MGMT.SUBTITLE' | translate }}</p>
               </div>
             </div>
-            
+          </div>
+          <div class="header-actions">
             <div class="user-add-controls-md3">
               <input type="text" #usernameInput [placeholder]="'USER_MGMT.NEW_USER_PH' | translate" class="md-input-sm">
               <select #roleInput class="md-select-sm">
@@ -181,14 +184,10 @@ import { filter, Subscription } from 'rxjs';
   styles: [`
     :host {
       display: block;
-      height: 100%;
     }
 
     .user-management-container {
-      display: flex;
-      flex-direction: column;
-      height: 100%;
-      background: var(--md-sys-color-surface-container-low);
+      width: 100%;
     }
 
     .subtitle-badge-row {

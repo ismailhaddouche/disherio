@@ -24,17 +24,21 @@ interface TotemWithStatus {
   standalone: true,
   imports: [CommonModule, RouterModule, LucideAngularModule, TranslateModule],
   template: `
-    <div class="waiter-container animate-fade-in">
+    <div class="md-page-shell waiter-container animate-fade-in">
       <header class="section-header-md3">
         <div class="header-content">
-          <h1 class="text-headline-medium">
-            <lucide-icon name="hand-platter" [size]="28"></lucide-icon>
-            {{ 'WAITER.PANEL' | translate }}
-          </h1>
-          <p class="text-body-large opacity-60">{{ 'WAITER.DESC' | translate }}</p>
+          <div class="title-with-icon">
+            <div class="icon-box-md3 primary">
+              <lucide-icon name="hand-platter" [size]="24"></lucide-icon>
+            </div>
+            <div>
+              <h1 class="text-headline-medium">{{ 'WAITER.PANEL' | translate }}</h1>
+              <p class="text-body-small opacity-60">{{ 'WAITER.DESC' | translate }}</p>
+            </div>
+          </div>
         </div>
         <div class="header-actions">
-          <div class="badge-tonal">
+          <div class="stat-chip-md3">
             <span class="text-title-large">{{ occupiedCount() }}</span>
             <span class="text-label-small opacity-60">{{ 'WAITER.ACTIVE_BADGE' | translate }}</span>
           </div>
@@ -132,17 +136,29 @@ interface TotemWithStatus {
 
       <!-- Add Virtual Table Modal (Bottom Sheet mobile / Dialog desktop) -->
       @if (showAddModal()) {
-        <div class="modal-overlay" (click)="showAddModal.set(false)">
-          <div class="modal-dialog md-card-elevated" (click)="$event.stopPropagation()">
-              <h2 class="text-headline-small">{{ 'WAITER.ADD_VIRTUAL' | translate }}</h2>
-              <div class="form-field-md3">
-                  <label class="text-label-large">{{ 'WAITER.NEW_VIRTUAL_NAME' | translate }}</label>
-                  <input type="text" #totemName class="md-input" (keyup.enter)="addVirtualTotem(totemName.value)" autofocus>
+        <div class="md-modal-overlay" (click)="showAddModal.set(false)">
+          <div class="md-modal-dialog md-form-panel" (click)="$event.stopPropagation()">
+              <header class="md-form-panel-header">
+                <div>
+                  <h2 class="text-headline-small">{{ 'WAITER.ADD_VIRTUAL' | translate }}</h2>
+                  <p class="text-body-small opacity-60">{{ 'WAITER.NEW_VIRTUAL_NAME' | translate }}</p>
+                </div>
+                <button class="icon-btn-md3" (click)="showAddModal.set(false)">
+                  <lucide-icon name="x" [size]="20"></lucide-icon>
+                </button>
+              </header>
+
+              <div class="md-form-panel-body">
+                <div class="form-field-md3">
+                    <label class="text-label-large">{{ 'WAITER.NEW_VIRTUAL_NAME' | translate }}</label>
+                    <input type="text" #totemName class="md-input" (keyup.enter)="addVirtualTotem(totemName.value)" autofocus>
+                </div>
               </div>
-              <div class="modal-actions-md3">
+
+              <footer class="md-form-panel-footer">
                   <button class="btn-outline" (click)="showAddModal.set(false)">{{ 'COMMON.CANCEL' | translate }}</button>
                   <button class="btn-primary" (click)="addVirtualTotem(totemName.value)">{{ 'COMMON.SAVE' | translate }}</button>
-              </div>
+              </footer>
           </div>
         </div>
       }
@@ -150,28 +166,7 @@ interface TotemWithStatus {
   `,
   styles: [`
     .waiter-container {
-      display: flex;
-      flex-direction: column;
-      gap: 32px;
-    }
-
-    .section-header-md3 {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 24px;
-        flex-wrap: wrap;
-    }
-
-    .header-content h1 { display: flex; align-items: center; gap: 16px; margin: 0; }
-    
-    .header-actions { display: flex; align-items: center; gap: 16px; }
-
-    .badge-tonal {
-        display: flex; flex-direction: column; align-items: center; justify-content: center;
-        background: var(--md-sys-color-secondary-container);
-        color: var(--md-sys-color-on-secondary-container);
-        width: 80px; height: 64px; border-radius: 16px;
+      max-width: 1400px;
     }
 
     .tables-grid {
@@ -298,25 +293,12 @@ interface TotemWithStatus {
     .skeleton-bar.w40 { width: 40%; }
     .skeleton-bar.w70 { width: 70%; }
 
-    /* Modal */
-    .modal-overlay {
-        position: fixed; inset: 0; background: rgba(0,0,0,0.5);
-        display: flex; align-items: center; justify-content: center; z-index: 1000;
-        backdrop-filter: blur(4px);
-    }
-    .modal-dialog { width: 100%; max-width: 440px; padding: 32px; display: flex; flex-direction: column; gap: 24px; }
     .form-field-md3 { display: flex; flex-direction: column; gap: 8px; }
-    .md-input {
-        background: var(--md-sys-color-surface-variant);
-        border: none; border-radius: 8px; padding: 12px 16px;
-        color: var(--md-sys-color-on-surface); font-family: inherit;
-    }
-    .modal-actions-md3 { display: flex; justify-content: flex-end; gap: 12px; margin-top: 8px; }
 
     @media (max-width: 600px) {
-        .waiter-container { gap: 24px; }
-        .section-header-md3 { flex-direction: column; align-items: stretch; }
-        .badge-tonal { display: none; }
+        .waiter-container { padding-inline: 16px; }
+        .section-header-md3 { align-items: stretch; }
+        .stat-chip-md3 { display: none; }
         .tables-grid { grid-template-columns: 1fr; }
     }
 

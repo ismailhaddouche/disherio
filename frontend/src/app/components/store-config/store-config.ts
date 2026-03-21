@@ -13,7 +13,7 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
     imports: [CommonModule, FormsModule, LucideAngularModule, TranslateModule],
     providers: [StoreConfigViewModel],
     template: `
-    <div class="config-container animate-fade-in">
+    <div class="md-page-shell config-container animate-fade-in">
       <header class="section-header-md3">
         <div class="header-content">
           <div class="title-with-icon">
@@ -25,6 +25,8 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
               <p class="text-body-small opacity-60">{{ 'STORE_CONFIG.SUBTITLE' | translate }}</p>
             </div>
           </div>
+        </div>
+        <div class="header-actions">
           <button class="btn-primary" (click)="vm.saveConfig()" [disabled]="vm.saving()">
             <lucide-icon [name]="vm.saving() ? 'loader-2' : 'save'" [size]="20" [class.animate-spin]="vm.saving()"></lucide-icon>
             <span>{{ vm.saving() ? ('STORE_CONFIG.SAVING' | translate) : ('STORE_CONFIG.SAVE' | translate) }}</span>
@@ -311,10 +313,7 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
     }
 
     .config-container {
-      display: flex;
-      flex-direction: column;
-      height: 100%;
-      background: var(--md-sys-color-surface-container-low);
+      width: 100%;
     }
 
     .config-main-md3 {
@@ -349,12 +348,6 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
     .billing-accent { border-left: 4px solid var(--md-sys-color-primary); }
     .printer-accent { border-left: 4px solid var(--md-sys-color-secondary); }
     .device-accent { border-left: 4px solid var(--md-sys-color-tertiary); }
-
-    .md-form-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 20px;
-    }
 
     .logo-upload-group {
       display: flex;

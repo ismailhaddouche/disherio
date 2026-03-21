@@ -139,6 +139,81 @@ h6 {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
+/* Shared page shell and header primitives for main app views */
+.md-page-shell {
+    width: 100%;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 8px 24px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-lg);
+}
+
+.section-header-md3 {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 24px;
+    flex-wrap: wrap;
+}
+
+.header-content {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.title-with-icon {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.title-with-icon h1,
+.title-with-icon p {
+    margin: 0;
+}
+
+.icon-box-md3 {
+    width: 48px;
+    height: 48px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    background: var(--md-sys-color-surface-container-high);
+    color: var(--md-sys-color-on-surface-variant);
+}
+
+.icon-box-md3.primary {
+    background: var(--md-sys-color-primary-container);
+    color: var(--md-sys-color-on-primary-container);
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.stat-chip-md3 {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 24px;
+    background: var(--md-sys-color-secondary-container);
+    color: var(--md-sys-color-on-secondary-container);
+    border-radius: 100px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.stat-chip-md3 .text-label-small {
+    white-space: nowrap;
+}
+
 .clickable-card {
     cursor: pointer;
 }
@@ -887,11 +962,129 @@ a:focus-visible {
     gap: 8px;
 }
 
+.md-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px;
+}
+
+.md-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(4px);
+}
+
+.md-modal-dialog {
+    width: min(90vw, 560px);
+    max-height: min(90vh, 860px);
+    background: var(--md-sys-color-surface-1);
+    border-radius: 28px;
+    box-shadow: var(--md-sys-elevation-3);
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    padding: 32px;
+    overflow: hidden;
+    animation: zoomIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.md-modal-bottom-sheet {
+    width: 100%;
+    background: var(--md-sys-color-surface-1);
+    border-radius: 28px 28px 0 0;
+    box-shadow: var(--md-sys-elevation-3);
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    padding: 32px;
+    max-height: 80vh;
+    overflow-y: auto;
+    animation: slideUp 0.3s cubic-bezier(0, 0, 0.2, 1);
+}
+
+.modal-header-md3 {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+}
+
+.modal-body-md3 {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
 .modal-actions-md3 {
     display: flex;
     justify-content: flex-end;
     gap: 12px;
     margin-top: 8px;
+}
+
+.md-form-panel {
+    background: var(--md-sys-color-surface-1);
+    border: 1px solid var(--md-sys-color-outline-variant);
+    border-radius: 28px;
+    overflow: hidden;
+}
+
+.md-form-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 24px 32px;
+    border-bottom: 1px solid var(--md-sys-color-outline-variant);
+    background: var(--md-sys-color-surface-1);
+}
+
+.md-form-panel-body {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    padding: 32px;
+}
+
+.md-form-panel-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding: 0 32px 32px;
+}
+
+.md-input-sm,
+.md-select-sm {
+    padding: 10px 14px;
+    min-height: 44px;
+    border-radius: 14px;
+    background: var(--md-sys-color-surface-container-high);
+    border-bottom: 1px solid var(--md-sys-color-outline-variant);
+}
+
+.md-input-readonly {
+    background: var(--md-sys-color-surface-container-high);
+    color: var(--md-sys-color-on-surface-variant);
+    opacity: 0.88;
+}
+
+.md-input-compact,
+.md-input-transparent,
+.md-borderless-input {
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: var(--md-sys-color-surface-container-high);
+}
+
+.md-input-transparent {
+    background: transparent;
+    border-radius: 0;
+    border-bottom: 2px solid var(--md-sys-color-outline-variant);
 }
 
 .md-borderless-input {

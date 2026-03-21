@@ -15,7 +15,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
   imports: [CommonModule, LucideAngularModule, TranslateModule],
   providers: [KDSViewModel],
   template: `
-    <div class="kds-container animate-fade-in">
+    <div class="md-page-shell kds-container animate-fade-in">
       <header class="section-header-md3">
         <div class="header-content">
           <div class="title-with-icon">
@@ -194,12 +194,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
   `,
   styles: [`
     .kds-container {
-      display: flex;
-      flex-direction: column;
-      gap: 24px;
-      padding: 8px;
-      max-width: 1400px;
-      margin: 0 auto;
+      width: 100%;
     }
 
     .kds-layout {
@@ -428,22 +423,6 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
     }
 
     /* Helper Classes */
-    .icon-box-md3.primary { 
-      background: var(--md-sys-color-primary-container); 
-      color: var(--md-sys-color-on-primary-container); 
-    }
-    
-    .stat-chip-md3 {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 10px 24px;
-      background: var(--md-sys-color-secondary-container);
-      color: var(--md-sys-color-on-secondary-container);
-      border-radius: 100px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-    }
-
     .md-badge-error {
       display: flex;
       align-items: center;
@@ -509,11 +488,6 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
     .color-primary { color: var(--md-sys-color-primary); }
     .opacity-60 { opacity: 0.6; }
 
-    .header-actions {
-      display: flex;
-      gap: 32px;
-      align-items: center;
-    }
   `]
 })
 export class KDSComponent implements OnInit {
