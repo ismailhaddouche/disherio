@@ -44,7 +44,7 @@ export function getCookieOptions() {
     // Detect if we should use Secure flag (only for HTTPS)
     const protocol = process.env.PROTOCOL || '';
     // DOMAIN is a bare hostname (e.g. mydomain.com), not a URL — check PROTOCOL instead
-    const isHttps = protocol === 'https' || process.env.NODE_ENV === 'production';
+    const isHttps = protocol === 'https';
 
     return {
         httpOnly: true,
