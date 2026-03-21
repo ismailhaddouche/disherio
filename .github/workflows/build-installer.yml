@@ -177,16 +177,18 @@ jobs:
 
       - name: Show Artifact Info
         run: |
+          PLATFORM_TAG=$(echo "${{ inputs.platform }}" | tr '/' '-')
+          TARBALL_NAME="disher-setup-${PLATFORM_TAG}.tar.gz"
           echo "Platform:  ${{ inputs.platform }}"
-          echo "Artifact:  ${{ env.TARBALL_NAME }}"
-          echo "Size:      $(du -h ${{ env.TARBALL_NAME }} | cut -f1)"
+          echo "Artifact:  ${TARBALL_NAME}"
+          echo "Size:      $(du -h ${TARBALL_NAME} | cut -f1)"
           echo ""
           echo "Contents:"
-          tar -tzvf ${{ env.TARBALL_NAME }}
+          tar -tzvf ${TARBALL_NAME}
 
       - name: Upload Installer Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.ARTIFACT_NAME }}
-          path: ${{ env.TARBALL_NAME }}
+          name: disher-setup-${{ inputs.platform == 'linux/arm64' && 'linux-arm64' || 'linux-amd64' }}
+          path: disher-setup-${{ inputs.platform == 'linux/arm64' && 'linux-arm64' || 'linux-amd64' }}.tar.gz
           retention-days: 30
