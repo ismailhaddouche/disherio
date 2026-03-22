@@ -168,7 +168,7 @@ import { WaiterTableViewModel } from './waiter-table.viewmodel';
                         @for (a of item.addons; track a.name) {
                           <div class="addon-item list-item" [class.active]="vm.selectedAddons().includes(a)" (click)="vm.toggleAddon(a)">
                             <div class="addon-info">
-                              <lucide-icon [name]="vm.selectedAddons().includes(a) ? 'check-circle-2' : 'plus-circle'" [size]="20"></lucide-icon>
+                              <lucide-icon [name]="vm.selectedAddons().includes(a) ? 'check-circle-2' : 'circle-plus'" [size]="20"></lucide-icon>
                               <span class="text-body-large">{{ a.name }}</span>
                             </div>
                             <span class="price text-label-large">+{{ a.price }}€</span>
@@ -211,7 +211,7 @@ import { WaiterTableViewModel } from './waiter-table.viewmodel';
 
                 <footer class="config-footer">
                   <button class="btn-primary full-width" (click)="vm.addCustomItemToCart()">
-                    <lucide-icon name="plus-circle" [size]="18"></lucide-icon>
+                    <lucide-icon name="circle-plus" [size]="18"></lucide-icon>
                     {{ 'POS.ADD_CUSTOM_LINE' | translate }}
                   </button>
                 </footer>

@@ -180,7 +180,7 @@ import { TranslateModule } from '@ngx-translate/core';
                                              [class.active]="vm.selectedAddons().includes(a)"
                                              (click)="vm.toggleAddon(a)">
                                             <div class="addon-info">
-                                                <lucide-icon [name]="vm.selectedAddons().includes(a) ? 'check-circle-2' : 'plus-circle'" [size]="20"></lucide-icon>
+                                                <lucide-icon [name]="vm.selectedAddons().includes(a) ? 'check-circle-2' : 'circle-plus'" [size]="20"></lucide-icon>
                                                 <span class="text-body-large">{{ a.name }}</span>
                                             </div>
                                             <span class="price text-label-large">+{{ a.price }}€</span>

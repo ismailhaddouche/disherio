@@ -12,11 +12,11 @@ import { DashboardViewModel } from './dashboard.viewmodel';
     <div class="md-card charts-section">
       <div class="section-header">
         <h3 class="text-title-large">{{ 'DASHBOARD.VISUAL_DATA' | translate }}</h3>
-        <lucide-icon name="bar-chart-3" [size]="20" class="opacity-40"></lucide-icon>
+        <lucide-icon name="chart-bar" [size]="20" class="opacity-40"></lucide-icon>
       </div>
       
       <div class="chart-placeholder">
-        <lucide-icon name="pie-chart" [size]="48" class="opacity-10"></lucide-icon>
+        <lucide-icon name="chart-pie" [size]="48" class="opacity-10"></lucide-icon>
         <p class="text-body-medium opacity-40">{{ 'DASHBOARD.CHARTS_COMING_SOON' | translate }}</p>
       </div>
     </div>

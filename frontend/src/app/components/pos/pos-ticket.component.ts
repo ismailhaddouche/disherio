@@ -40,7 +40,7 @@ import { TranslateModule } from '@ngx-translate/core';
                     <span>{{ (vm.editMode() ? 'POS.FINISH_EDIT' : 'POS.EDIT_ORDER') | translate }}</span>
                   </button>
                   <button class="btn-tonal" (click)="vm.openSplitModal()">
-                    <lucide-icon name="columns" [size]="18"></lucide-icon>
+                    <lucide-icon name="columns-2" [size]="18"></lucide-icon>
                     <span>{{ 'POS.PAY_SPLIT' | translate }}</span>
                   </button>
                   <button class="btn-primary" (click)="vm.processPayment()">
@@ -60,7 +60,7 @@ import { TranslateModule } from '@ngx-translate/core';
                         {{ 'POS.ADD_ITEM' | translate }}
                       </button>
                       <button class="btn-tonal-sm" (click)="vm.showCustomLineModal.set(true)">
-                        <lucide-icon name="edit-3" [size]="14"></lucide-icon>
+                        <lucide-icon name="pencil" [size]="14"></lucide-icon>
                         {{ 'POS.CUSTOM' | translate }}
                       </button>
                     </div>
@@ -172,7 +172,7 @@ import { TranslateModule } from '@ngx-translate/core';
               <p class="text-body-medium opacity-60">{{ table.name }} {{ 'POS.EMPTY_DESC' | translate }}</p>
               <div class="empty-actions-md3">
                 <button class="btn-primary" (click)="vm.openTable(table)">
-                  <lucide-icon name="plus-circle" [size]="20"></lucide-icon>
+                  <lucide-icon name="circle-plus" [size]="20"></lucide-icon>
                   <span>{{ 'POS.OPEN_TABLE' | translate }}</span>
                 </button>
                 @if (table.isVirtual) {
@@ -284,7 +284,7 @@ import { TranslateModule } from '@ngx-translate/core';
                 </button>
 
                 <div class="strategy-card-md3 interactive">
-                  <div class="strategy-icon accent"><lucide-icon name="grid" [size]="24"></lucide-icon></div>
+                  <div class="strategy-icon accent"><lucide-icon name="grid-2x2" [size]="24"></lucide-icon></div>
                   <div class="strategy-info">
                     <span class="text-title-medium">{{ 'POS.EQUAL_PARTS' | translate }}</span>
                     <span class="text-label-small opacity-60">{{ 'POS.SPLIT_N_DESC' | translate }}</span>

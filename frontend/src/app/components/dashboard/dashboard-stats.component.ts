@@ -22,7 +22,7 @@ import { DashboardViewModel } from './dashboard.viewmodel';
       
       <div class="md-card md-card-elevated stat-card">
         <div class="icon-box-md3 secondary">
-          <lucide-icon name="currency-euro" [size]="20"></lucide-icon>
+          <lucide-icon name="euro" [size]="20"></lucide-icon>
         </div>
         <div class="stat-info">
           <span class="text-label-large opacity-70">{{ 'DASHBOARD.DAILY_REVENUE' | translate }}</span>
