@@ -41,7 +41,6 @@ export const appConfig: ApplicationConfig = {
     provideAnimations(),
     importProvidersFrom(
       TranslateModule.forRoot({
-        defaultLang: 'es',
         fallbackLang: 'es'
       })
     ),
