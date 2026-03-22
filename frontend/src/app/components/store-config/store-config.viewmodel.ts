@@ -76,13 +76,15 @@ export class StoreConfigViewModel {
         try {
             const data: any = await firstValueFrom(this.http.get(`${environment.apiUrl}/api/restaurant`));
 
+            const raw = data ?? {};
             // Merge with defaults to avoid null checks in template
             this.config.set({
                 ...this.config(),
-                ...data,
-                socials: { ...this.config().socials, ...(data.socials || {}) },
-                theme: { ...this.config().theme, ...(data.theme || {}) },
-                billing: { ...this.config().billing, ...(data.billing || {}) }
+                ...raw,
+                socials: { ...this.config().socials, ...(raw.socials ?? {}) },
+                theme: { ...this.config().theme, ...(raw.theme ?? {}) },
+                billing: { ...this.config().billing, ...(raw.billing ?? {}) },
+                printers: raw.printers ?? this.config().printers
             });
 
         } catch (e) {
@@ -92,6 +94,10 @@ export class StoreConfigViewModel {
         } finally {
             this.loading.set(false);
         }
+    }
+
+    updateConfig(prop: string, value: any) {
+        this.config.update(c => ({ ...c, [prop]: value }));
     }
 
     public async saveConfig() {

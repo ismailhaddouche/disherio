@@ -65,13 +65,13 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
               <div class="md-form-grid">
                 <div class="md-field">
                   <label class="text-label-medium">{{ 'STORE_CONFIG.REST_NAME' | translate }}</label>
-                  <input type="text" [(ngModel)]="vm.config().name" class="md-input">
+                  <input type="text" [ngModel]="vm.config().name" (ngModelChange)="vm.updateConfig('name', $event)" class="md-input">
                 </div>
 
                 <div class="md-field">
                   <label class="text-label-medium">{{ 'STORE_CONFIG.REST_LOGO' | translate }}</label>
                   <div class="logo-upload-group">
-                    <input type="text" [(ngModel)]="vm.config().logo" class="md-input" placeholder="https://..." style="flex:1">
+                    <input type="text" [ngModel]="vm.config().logo" (ngModelChange)="vm.updateConfig('logo', $event)" class="md-input" placeholder="https://..." style="flex:1">
                     <button class="icon-btn-md3 tonal" (click)="logoInput.click()" [title]="'STORE_CONFIG.UPLOAD_IMG' | translate">
                       <lucide-icon name="camera" [size]="18"></lucide-icon>
                     </button>
@@ -88,13 +88,13 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
               <div class="md-field mt-20">
                 <label class="text-label-medium">{{ 'STORE_CONFIG.DESC_SLOGAN' | translate }}</label>
-                <textarea [(ngModel)]="vm.config().description" class="md-input" rows="3"></textarea>
+                <textarea [ngModel]="vm.config().description" (ngModelChange)="vm.updateConfig('description', $event)" class="md-input" rows="3"></textarea>
               </div>
 
               <div class="md-form-grid mt-20">
                 <div class="md-field">
                   <label class="text-label-medium">{{ 'STORE_CONFIG.PHONE' | translate }}</label>
-                  <input type="tel" [(ngModel)]="vm.config().phone" class="md-input">
+                  <input type="tel" [ngModel]="vm.config().phone" (ngModelChange)="vm.updateConfig('phone', $event)" class="md-input">
                 </div>
 
                 <div class="md-field">
