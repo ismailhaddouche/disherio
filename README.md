@@ -74,7 +74,141 @@ El instalador guiará al usuario a través de la configuración de red (IP local
 
 ---
 
-## 5. Documentación Técnica
+## 5. Procedimientos de Mantenimiento y Operaciones
+
+### 5.1 Actualización desde una Instalación Existente
+
+El script de instalación también actúa como actualizador. Conserva los datos y reconstruye las imágenes con el nuevo código.
+
+```bash
+# 1. Obtén los últimos cambios del repositorio
+git pull origin main
+
+# 2. Ejecuta el instalador en modo actualización
+sudo ./install.sh
+```
+
+### 5.2 Copia de Seguridad de la Base de Datos
+
+Usa el script automatizado incluido en la raíz del proyecto para crear copias de seguridad consistentes y comprimidas.
+
+```bash
+chmod +x backup.sh
+sudo ./backup.sh
+```
+
+El script genera `backups/disher_backup_YYYY-MM-DD_HH-MM-SS.tar.gz` y retiene las últimas 7 copias automáticamente. **Guarda este archivo en una ubicación externa y segura.**
+
+Para restaurar un backup o configurar backups automáticos por cron, consulta la [Guía de Mantenimiento](./docs/MAINTENANCE.md).
+
+### 5.3 Detención Estándar (Conserva los Datos)
+
+Detiene todos los contenedores preservando intactos los volúmenes (base de datos, imágenes y configuración).
+
+```bash
+docker compose down
+```
+
+*Para reiniciar el sistema: `docker compose up -d`*
+
+### 5.4 Eliminación Total e Infraestructura (Purge Completo de Docker)
+
+> **Acción destructiva e irreversible.** Elimina contenedores, redes, imágenes compiladas, volúmenes y todos los datos persistidos.
+
+```bash
+cd disherio
+
+# 1. Bajar servicios destruyendo volúmenes, imágenes compiladas y contenedores huérfanos
+docker compose down -v --rmi all --remove-orphans
+
+# 2. Purga profunda a nivel de sistema Docker (limpia cachés y datos sin uso)
+docker system prune -a --volumes -f
+
+# 3. Eliminación forzada del directorio del proyecto
+cd ..
+sudo rm -rf disherio
+```
+
+### 5.5 Resolución de Instalación Corrupta
+
+En caso de corrupción del estado (apagón crítico, modificación manual de volúmenes, corrupción del demonio Docker), ejecuta la siguiente secuencia de reseteo forzado completo:
+
+```bash
+# 1. Diagnóstico preliminar
+docker ps -a
+docker compose logs backend
+
+# 2. Destrucción exhaustiva de la pila y todos sus rastros
+cd disherio
+docker compose down -v --rmi all --remove-orphans
+docker system prune -a --volumes -f
+
+# 3. Eliminación del directorio
+cd ..
+sudo rm -rf disherio
+
+# 4. Reinstalación limpia desde cero
+git clone https://github.com/ismailhaddouche/disherio.git
+cd disherio
+chmod +x install.sh
+sudo ./install.sh
+```
+
+---
+
+## 6. Apertura de Puertos en Servidores Cloud
+
+Cuando Disher.io se instala en un VPS o instancia cloud, el proveedor dispone de un **firewall de red propio**, independiente del sistema operativo del servidor. Aunque la aplicación esté corriendo correctamente en el interior del servidor, el acceso externo quedará bloqueado hasta que se abra el puerto 80 explícitamente desde el panel del proveedor.
+
+### Google Cloud (Compute Engine)
+
+La forma más fiable es desde la **consola web**, ya que desde la propia VM los permisos de red suelen estar restringidos.
+
+**Opción A — Consola web:**
+
+1. Ve a [console.cloud.google.com](https://console.cloud.google.com)
+2. Navega a **VPC Network → Firewall**
+3. Haz clic en **"+ CREATE FIREWALL RULE"** y usa estos valores:
+
+| Campo | Valor |
+|-------|-------|
+| Name | `allow-http-80` |
+| Network | `default` |
+| Direction of traffic | `Ingress` |
+| Action on match | `Allow` |
+| Targets | `All instances in the network` |
+| Source filter | `IPv4 ranges` |
+| Source IPv4 ranges | `0.0.0.0/0` |
+| Protocols and ports | `TCP: 80` |
+
+4. Haz clic en **"Create"**. La regla se activa en menos de 30 segundos.
+
+**Opción B — gcloud CLI** (requiere permisos de administrador de red en el proyecto):
+
+```bash
+gcloud compute firewall-rules create allow-http-80 \
+  --allow tcp:80 \
+  --source-ranges 0.0.0.0/0 \
+  --description "Disher.io HTTP"
+```
+
+> **Nota:** Si aparece el error `Request had insufficient authentication scopes`, la VM no tiene permisos para gestionar el firewall desde dentro. Usa la Opción A desde la consola web.
+
+### AWS (EC2)
+
+1. Ve a **EC2 → Instancias → selecciona tu instancia**
+2. En la pestaña **Security**, haz clic en el **Security Group**
+3. En **Inbound rules**, añade: Type `HTTP`, Port `80`, Source `0.0.0.0/0`
+4. Guarda los cambios.
+
+### Azure (Virtual Machine)
+
+1. Ve a tu VM en el portal de Azure
+2. En **Networking**, añade una **Inbound port rule**: Port `80`, Protocol `TCP`, Action `Allow`
+
+---
+
+## 7. Documentación Técnica
 
 Para información detallada sobre aspectos específicos del sistema, consulte los siguientes documentos en la carpeta `/docs`:
 
@@ -85,7 +219,7 @@ Para información detallada sobre aspectos específicos del sistema, consulte lo
 
 ---
 
-## 6. Seguridad y Resiliencia
+## 8. Seguridad y Resiliencia
 
 - **Gestión Global de Errores**: Implementación de un `GlobalErrorHandler` en el frontend para la captura y notificación centralizada de excepciones.
 - **Sistema de Notificaciones MD3**: Basado en Material Design 3, integrado con el sistema de mensajería para alertas críticas y de éxito.
@@ -94,6 +228,6 @@ Para información detallada sobre aspectos específicos del sistema, consulte lo
 
 ---
 
-## 7. Licencia
+## 9. Licencia
 
 Este proyecto se distribuye bajo la licencia **MIT**. Para más detalles, consulte el archivo `LICENSE` en la raíz del repositorio.
