@@ -54,13 +54,16 @@ describe('AuthService', () => {
     expect(req.request.method).toBe('POST');
     req.flush(mockSession);
 
-    // 2. Health check (waitForAuthenticatedBackend)
-    const healthReq = httpMock.expectOne(`${environment.apiUrl}/api/orders`);
-    healthReq.flush([]);
+    // Yield to let Promise microtasks run so logActivity and waitForAuthenticatedBackend fire
+    await Promise.resolve();
 
-    // 3. Log activity
+    // 2. Log activity — logActivity() is called without await before waitForAuthenticatedBackend()
     const logReq = httpMock.expectOne(`${environment.apiUrl}/api/logs`);
     logReq.flush({});
+
+    // 3. Health check (waitForAuthenticatedBackend)
+    const healthReq = httpMock.expectOne(`${environment.apiUrl}/api/orders`);
+    healthReq.flush([]);
 
     const result = await loginPromise;
     expect(result).toBe(true);
@@ -91,6 +94,9 @@ describe('AuthService', () => {
     // 1. Logout request
     const req = httpMock.expectOne(`${environment.apiUrl}/api/auth/logout`);
     req.flush({});
+
+    // Yield to let Promise microtasks run so logActivity fires after logout resolves
+    await Promise.resolve();
 
     // 2. Log activity
     const logReq = httpMock.expectOne(`${environment.apiUrl}/api/logs`);
