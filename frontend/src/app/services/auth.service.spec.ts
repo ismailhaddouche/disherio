@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
 import { Router } from '@angular/router';
 import { AuthService, UserSession } from './auth.service';
+import { NotifyService } from './notify.service';
 import { environment } from '../../environments/environment';
 import { STORAGE_KEYS } from '../core/constants';
 
@@ -18,7 +19,8 @@ describe('AuthService', () => {
       imports: [HttpClientTestingModule],
       providers: [
         AuthService,
-        { provide: Router, useValue: routerSpy }
+        { provide: Router, useValue: routerSpy },
+        { provide: NotifyService, useValue: { successKey: vi.fn(), errorKey: vi.fn(), infoKey: vi.fn(), warningKey: vi.fn() } }
       ]
     });
     service = TestBed.inject(AuthService);

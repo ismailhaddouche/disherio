@@ -7,6 +7,28 @@ y este proyecto se adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.
 
 ---
 
+## [3.0.0] - 2026-03-22
+
+Esta versión marca el hito "Production-Ready" para la Hackathon, con una reestructuración completa de la arquitectura y la interfaz de usuario.
+
+### Añadido
+- **Backend Clean Architecture:** Reestructuración en capas (Entidades, Casos de Uso, Controladores) para una separación de intereses superior.
+- **Angular 21 Signals:** Implementación nativa de Signals para la gestión de estado reactivo, eliminando la complejidad innecesaria de RxJS en componentes de vista.
+- **Material Design 3 (MD3):** Nueva interfaz de usuario moderna, táctil y accesible siguiendo las guías de diseño de Google.
+- **Pipeline CI/CD:** Automatización total de pruebas unitarias (Jest/Vitest) y despliegue continuo.
+- **Arquitectura ViewModel:** Patrón de diseño formal en el frontend para desacoplar la lógica de negocio de la presentación.
+
+### Cambiado
+- **Refactorización Integral:** Migración de componentes críticos a `standalone` y optimización de inyección de dependencias.
+- **Validación de Datos:** Centralización de esquemas Joi para una validación más robusta en el backend.
+- **Dockerización:** Imágenes optimizadas para despliegues rápidos y soporte multiarquitectura mejorado.
+
+### Calidad
+- **QA Automation:** Suite de tests extendida cubriendo flujos de Checkout, Sincronización POS/KDS y Seguridad.
+- **Observabilidad:** Mejoras en el sistema de logs y auditoría para trazabilidad en tiempo real.
+
+---
+
 ## [2.4.0] - 2024-05-24
 
 Esta es una versión mayor que introduce mejoras significativas en la seguridad, robustez y compatibilidad de la plataforma, preparándola para despliegues en producción a gran escala.

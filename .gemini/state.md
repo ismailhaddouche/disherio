@@ -1,44 +1,42 @@
-# Contexto del Proyecto Disherio
+# Contexto del Proyecto Disherio - Hito Hackathon
 
-## Arquitectura General
-Sistema de gestión de restaurantes y Punto de Venta (POS) alojado de forma independiente (Self-Hosted) mediante Docker. Arquitectura Cliente-Servidor.
+## Estado del Proyecto: **Production-Ready** 🚀
+El sistema ha completado su fase de refactorización integral y está optimizado para su despliegue en la Hackathon. Se han implementado estándares de arquitectura limpia y reactividad moderna.
 
-## Componentes
+## Resumen de Refactorizaciones y Mejoras
 
-### 1. Frontend
-- **Framework**: Angular 21 (Stand-alone components).
-- **Diseño**: Arquitectura basada en el patrón ViewModel (ej. `pos.ts` + `pos.viewmodel.ts`).
-- **Librerías Clave**:
-  - `socket.io-client`: Actualizaciones en tiempo real (KDS, mesas, pedidos).
-  - `ngx-translate`: Internacionalización (i18n).
-  - `lucide-angular`: Iconografía.
-- **Despliegue**: Optimizado mediante `build-stage` (Node.js) y empaquetado final servido desde un contenedor Nginx ultraligero (`nginx:stable-alpine`).
+### 1. Backend: Clean Architecture & Robustez
+- **Arquitectura Limpia**: Transición hacia una estructura de capas (Entidades, Casos de Uso, Controladores y Adaptadores) para mejorar la testabilidad y el mantenimiento.
+- **Validación Estricta**: Implementación de Joi para la validación de esquemas en todos los puntos de entrada.
+- **Gestión de Errores**: Middleware centralizado para respuestas uniformes y auditoría automática de fallos.
+- **Base de Datos**: Esquemas de Mongoose optimizados con índices para alto rendimiento y soporte nativo para transacciones.
 
-### 2. Backend
-- **Framework**: Node.js 20, usando Express 5 y ES Modules (`type: "module"`).
-- **Base de Datos**: MongoDB 7.0 a través de Mongoose.
-  - Colecciones principales: `Orders`, `MenuItems`, `Users`, `Restaurants`, `Tickets`, `ActivityLogs`.
-- **Autenticación**: JWT (`jsonwebtoken`) junto con `bcrypt` para seguridad de contraseñas.
-- **Tiempo Real**: WebSockets usando `socket.io` (crucial para sincronización POS, Kitchen Display System - KDS y Waiter View).
-- **Validación y Pruebas**: Validación con Joi, Tests con Jest y supertest.
-- **Otros**: API RESTful con módulos de auditoría y servicios separados por lógica de negocio.
+### 2. Frontend: Angular 21 & Reactividad (Signals)
+- **Signals API**: Sustitución de flujos complejos de RxJS por Angular Signals para una gestión de estado más eficiente y predecible.
+- **Arquitectura ViewModel**: Separación clara entre la lógica de vista (`.viewmodel.ts`) y los componentes visuales (`.ts` / `.html`).
+- **Rendimiento**: Componentes `standalone` y carga diferida (Lazy Loading) optimizada para tiempos de carga mínimos.
 
-### 3. Infraestructura y Redes
-- **Orquestación**: Docker Compose (`docker-compose.yml`, con variantes `.prod` y `.rpi`).
-- **Servicios Docker**:
-  1. `database`: Contenedor Mongo 7 con volúmenes persistentes.
-  2. `backend`: Imagen Node slim en el puerto interno 3000.
-  3. `frontend`: Imagen Nginx en el puerto interno 80.
-  4. `caddy`: Reverse proxy Caddy v2 gestionando los dominios locales/externos, sirviendo tráfico de la API (`/api/*`), WebSockets (`/socket.io/*`) al backend, y todo lo demás al frontend. Gestiona HTTPS de forma transparente (`local_certs` o auto-emisión).
+### 3. UI/UX: Material Design 3 (MD3)
+- **Diseño Moderno**: Implementación de componentes basados en MD3 para una interfaz táctil amigable (POS-ready).
+- **Tematización Dinámica**: Soporte completo para modo oscuro/claro y paletas de colores accesibles.
+- **Iconografía**: Uso de `lucide-angular` para una estética limpia y consistente.
 
-### 4. Scripts y Utilidades
-- **Gestión**: Herramientas en la raíz del proyecto para simplificar instalación y operación.
-- `install.sh` y `configure.sh`: Setup inicial y configuración de entorno (`.env`).
-- `backup.sh`: Sistema de respaldos para la base de datos.
-- `check-ip.sh`: Verificador de direcciones IP de red para accesibilidad.
-- `build-installer.sh / .ps1`: Herramientas de empaquetado/instalación multi-plataforma.
+### 4. Infraestructura y CI/CD
+- **Dockerización Avanzada**: Imágenes multi-stage optimizadas. Soporte nativo para Raspberry Pi (`docker-compose.rpi.yml`) y producción (`docker-compose.prod.yml`).
+- **Pipeline CI/CD**: Automatización de pruebas unitarias e integración en cada commit/PR.
+- **Reverse Proxy**: Caddy v2 gestionando TLS automático y compresión de assets.
+
+### 5. Calidad y QA
+- **Cobertura de Tests**: Suite de pruebas con Jest (Backend) y Vitest (Frontend) validando flujos críticos (Checkout, Concurrencia, Auth).
+- **Estándares de Código**: ESLint y Prettier configurados para mantener la consistencia en el equipo.
+- **Auditoría**: Logs de actividad detallados para trazabilidad completa de operaciones en el POS.
+
+## Decisiones Técnicas Clave
+- **Sincronización en Tiempo Real**: Socket.io se mantiene como el núcleo para KDS y POS para garantizar latencia mínima.
+- **Arquitectura Offline-First (Parcial)**: Estrategias de caché en frontend para resiliencia ante cortes de red.
+- **I18n nativo**: Soporte multilingüe desde el núcleo para escalabilidad internacional.
 
 ## Reglas del PM/Tech Lead
-- Todo código nuevo debe estar validado por QA.
-- Interacciones con GitHub usando `gh pr create` y `gh pr merge`.
-- Intercepción de dudas automática y esquema de revisión estricta.
+- Todo código nuevo debe pasar la suite de tests (QA) antes de fusionarse.
+- Uso obligatorio de `gh pr create` para proponer cambios significativos.
+- Documentar hitos clave en Engram para persistencia de contexto.
