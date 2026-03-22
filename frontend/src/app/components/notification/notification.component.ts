@@ -44,6 +44,9 @@ import { LucideAngularModule } from 'lucide-angular';
       width: 100%;
       max-width: 560px;
       padding: 0 24px;
+      height: 0;
+      overflow: visible;
+      justify-content: flex-start;
     }
 
     .notification-snackbar {
@@ -53,9 +56,10 @@ import { LucideAngularModule } from 'lucide-angular';
       align-items: center;
       gap: 12px;
       width: 100%;
-      box-shadow: var(--md-sys-elevation-2);
+      box-shadow: var(--md-sys-elevation-3);
       pointer-events: auto;
       border: 1px solid var(--md-sys-color-outline-variant);
+      margin-bottom: 12px;
     }
 
     /* MD3 Tonal Variations */

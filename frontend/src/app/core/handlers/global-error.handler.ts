@@ -11,6 +11,10 @@ export class GlobalErrorHandler implements ErrorHandler {
         // Log to console for developers
         console.error('Global Error Captured:', error);
 
+        // Don't show system error for expected 401s (auth validation)
+        const status = error?.status || error?.rejection?.status;
+        if (status === 401) return;
+
         // Notify user within Angular's zone to ensure UI updates
         this.zone.run(() => {
             const message = error?.message || 'Ocurrió un error inesperado en la aplicación.';

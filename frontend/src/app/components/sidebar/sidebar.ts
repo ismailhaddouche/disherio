@@ -88,6 +88,13 @@ import { TranslateModule } from '@ngx-translate/core';
     </aside>
   `,
   styles: [`
+    :host {
+      --sidebar-width: 280px;
+      --sidebar-collapsed-width: 88px;
+      display: block;
+      z-index: 100;
+    }
+
     .sidebar {
       width: var(--sidebar-width);
       height: 100vh;
@@ -97,9 +104,9 @@ import { TranslateModule } from '@ngx-translate/core';
       transition: all 0.3s cubic-bezier(0.2, 0, 0, 1);
       position: sticky;
       top: 0;
-      z-index: 100;
       padding: 12px;
       gap: 12px;
+      border-right: 1px solid var(--md-sys-color-outline-variant);
     }
 
     .sidebar.collapsed {

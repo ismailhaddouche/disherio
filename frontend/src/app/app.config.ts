@@ -45,6 +45,14 @@ export const appConfig: ApplicationConfig = {
       })
     ),
     provideTranslateHttpLoader({ prefix: './assets/i18n/', suffix: '.json' }),
-    { provide: LUCIDE_ICONS, useValue: icons }
+    importProvidersFrom(LucideAngularModule.pick({
+      LayoutDashboard, Utensils, Users, ChefHat, Wallet, Settings, LogOut,
+      ChevronLeft, ChevronRight, Bell, Clock, RefreshCw, Plus, Camera, Facebook, Globe, CreditCard, Printer, User, Lock, PenLine, Package, CheckCircle2, Trash2, AlertTriangle, BookOpen, GlassWater, Circle, HandPlatter, Flame,
+      QrCode, ClipboardList, Armchair, LayoutGrid, Loader2, CheckCircle, CheckCheck, BellRing, MessageSquare, AlertCircle, Monitor,
+      Activity, History, UserCheck, Edit2, Pen, Check, X,
+      ArrowLeft, Banknote, ChartBar, ChartPie, ChevronsLeft, ChevronsRight, CirclePlus, Columns2, Euro, Grid2x2,
+      Hash, Info, Instagram, Layers, Menu, Minus, Pencil, Receipt, Save, Send,
+      ShoppingBag, ShoppingCart, SlidersHorizontal, Split, TriangleAlert, UtensilsCrossed
+    }))
   ]
 };
