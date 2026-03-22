@@ -46,18 +46,23 @@ export class UserManagementViewModel {
         }
     }
 
+    private generatePassword(): string {
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+        return Array.from({ length: 10 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+    }
+
     public async addUser(username: string, role: string) {
         if (!username || !role) return;
 
         try {
-            const password = '1';
+            const password = this.generatePassword();
 
             const payload = { username, role, password };
             const newUser: any = await lastValueFrom(this.http.post(`${environment.apiUrl}/api/users`, payload));
 
             this.users.update(curr => [...curr, newUser]);
             this.auth.logActivity('USER_ADDED', { username, role });
-            this.notify.successKey('USER_MGMT.ADD_SUCCESS', { username });
+            this.notify.successKey('USER_MGMT.ADD_SUCCESS_PASSWORD', { username, password });
         } catch (e: any) {
             console.error(e);
             this.error.set(this.translate.instant('USER_MGMT.ADD_ERROR'));

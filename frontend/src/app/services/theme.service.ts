@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpContext } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
+import { SILENT_REQUEST } from '../interceptors/http-context';
 import { CommunicationService } from './communication.service';
 import { AuthService } from './auth.service';
 import { environment } from '../../environments/environment';
@@ -38,7 +39,8 @@ export class ThemeService {
 
     private async loadAndApplyConfig() {
         try {
-            const config = await firstValueFrom(this.http.get<any>(`${environment.apiUrl}/api/restaurant`));
+            const ctx = new HttpContext().set(SILENT_REQUEST, true);
+            const config = await firstValueFrom(this.http.get<any>(`${environment.apiUrl}/api/restaurant`, { context: ctx }));
             if (config?.theme) this.applyTheme(config.theme);
             if (config?.name) this.restaurantName = config.name;
         } catch (e) {

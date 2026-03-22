@@ -242,7 +242,8 @@
         "VARIANT_REQUIRED": "Selecciona una variante antes de continuar.",
         "MENU_SECTION_REQUIRED": "Selecciona una opción en {{section}}.",
         "ORDER_SENT": "Pedido enviado a cocina",
-        "ORDER_ERROR": "No se pudo enviar el pedido"
+        "ORDER_ERROR": "No se pudo enviar el pedido",
+        "SESSION_ENDED": "La sesión de mesa ha finalizado. ¡Gracias por tu visita!"
     },
     "LOGIN": {
         "ACCESS_TERMINAL": "Acceso a Terminal de Gestión",
@@ -385,7 +386,8 @@
         "ADD_VIRTUAL_SUCCESS": "Mesa temporal {{name}} creada",
         "ADD_VIRTUAL_ERROR": "No se pudo crear la mesa temporal",
         "DELETE_VIRTUAL_SUCCESS": "Mesa temporal #{{id}} eliminada",
-        "DELETE_VIRTUAL_ERROR": "No se pudo eliminar la mesa temporal"
+        "DELETE_VIRTUAL_ERROR": "No se pudo eliminar la mesa temporal",
+        "SESSION_ENDED": "Mesa cerrada. La sesión ha finalizado."
     },
     "USER_MGMT": {
         "SYSTEM_ROLE": "Rol del sistema:",
@@ -415,6 +417,7 @@
         "DEFAULT_FOOTER": "Gracias por su visita",
         "LOAD_ERROR": "No se pudieron cargar los usuarios",
         "ADD_SUCCESS": "Usuario {{username}} creado",
+        "ADD_SUCCESS_PASSWORD": "Usuario {{username}} creado. Contraseña temporal: {{password}}",
         "ADD_ERROR": "No se pudo crear el usuario",
         "DELETE_CONFIRM": "¿Eliminar este usuario?",
         "DELETE_SUCCESS": "Usuario eliminado",

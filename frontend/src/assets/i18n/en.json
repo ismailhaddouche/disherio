@@ -242,7 +242,8 @@
         "VARIANT_REQUIRED": "Select a variant before continuing.",
         "MENU_SECTION_REQUIRED": "Choose an option in {{section}}.",
         "ORDER_SENT": "Order sent to kitchen",
-        "ORDER_ERROR": "Could not send the order"
+        "ORDER_ERROR": "Could not send the order",
+        "SESSION_ENDED": "Table session has ended. Thank you for your visit!"
     },
     "LOGIN": {
         "ACCESS_TERMINAL": "Management Terminal Access",
@@ -385,7 +386,8 @@
         "ADD_VIRTUAL_SUCCESS": "Temporary table {{name}} created",
         "ADD_VIRTUAL_ERROR": "Could not create the temporary table",
         "DELETE_VIRTUAL_SUCCESS": "Temporary table #{{id}} deleted",
-        "DELETE_VIRTUAL_ERROR": "Could not delete the temporary table"
+        "DELETE_VIRTUAL_ERROR": "Could not delete the temporary table",
+        "SESSION_ENDED": "Table closed. The session has ended."
     },
     "USER_MGMT": {
         "SYSTEM_ROLE": "System role:",
@@ -415,6 +417,7 @@
         "DEFAULT_FOOTER": "Thank you for your visit",
         "LOAD_ERROR": "Could not load users",
         "ADD_SUCCESS": "User {{username}} created",
+        "ADD_SUCCESS_PASSWORD": "User {{username}} created. Temporary password: {{password}}",
         "ADD_ERROR": "Could not create the user",
         "DELETE_CONFIRM": "Delete this user?",
         "DELETE_SUCCESS": "User deleted",

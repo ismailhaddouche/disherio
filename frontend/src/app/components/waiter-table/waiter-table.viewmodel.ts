@@ -71,7 +71,7 @@ export class WaiterTableViewModel {
             }
             this.cart.set([]);
             this.session.update(prev => prev ? { ...prev, activeOrder: null } : prev);
-            this.notify.infoKey('CHECKOUT.PAYMENT_REQUESTED');
+            this.notify.infoKey('WAITER.SESSION_ENDED');
         }
     };
 

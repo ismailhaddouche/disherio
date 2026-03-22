@@ -214,24 +214,19 @@ export class CustomerViewModel {
             if (current && (data.sessionId === current.sessionId || data.totemId === current.totemId || data.tableNumber === current.tableNumber)) {
                 console.log('[SECURITY] Table session ended. Clearing local data.');
 
-                // Clear cart
                 this.cart.set([]);
                 if (current.sessionId) localStorage.removeItem(`disher_cart_${current.sessionId}`);
                 localStorage.removeItem(STORAGE_KEYS.CURRENT_SESSION);
-
-                // Clear user name
-                this.auth.logout(); // This clears the session cookie too
                 this.comms.userName.set('Comensal');
                 localStorage.removeItem(STORAGE_KEYS.USER_NAME);
-
-                // Clear local active order
                 this.session.update(s => s ? { ...s, activeOrder: null, sessionId: undefined } : s);
+                this.notify.infoKey('CUSTOMER.SESSION_ENDED');
             }
         });
 
         this.comms.subscribeToSystemReset(() => {
             console.log('[SECURITY] Global system reset (Cierre de Caja). Clearing all sessions.');
-            this.auth.logout();
+            this.cart.set([]);
             this.comms.userName.set('Comensal');
             localStorage.removeItem(STORAGE_KEYS.USER_NAME);
             localStorage.removeItem(STORAGE_KEYS.CURRENT_SESSION);

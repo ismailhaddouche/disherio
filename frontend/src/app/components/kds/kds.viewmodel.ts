@@ -43,17 +43,19 @@ export class KDSViewModel {
     public localConfig = signal<any>(null);
     public currentTime = signal<number>(Date.now());
 
-    // Optimized computed signal that updates when orders OR currentTime changes
+    // Computed signal that updates when orders, currentTime OR currentFilter changes
     public filteredOrders = computed(() => {
         const allOrders = this.orders();
         const now = this.currentTime(); // Dependency for auto-refresh
+        const filter = this.currentFilter();
 
         return allOrders
             .filter(order => order.status === ORDER_STATUS.ACTIVE)
             .map(order => {
                 const kitchenItems = order.items.filter(item =>
                     item.status !== ITEM_STATUS.SERVED &&
-                    item.status !== ITEM_STATUS.CANCELLED
+                    item.status !== ITEM_STATUS.CANCELLED &&
+                    item.status === filter
                 );
                 return {
                     ...order,
