@@ -29,7 +29,6 @@ const icons = {
 
 export const appConfig: ApplicationConfig = {
   providers: [
-    provideZoneChangeDetection({ eventCoalescing: true }),
     provideRouter(routes),
     { provide: ErrorHandler, useClass: GlobalErrorHandler },
     {
@@ -42,7 +41,8 @@ export const appConfig: ApplicationConfig = {
     provideAnimations(),
     importProvidersFrom(
       TranslateModule.forRoot({
-        defaultLanguage: 'es'
+        defaultLang: 'es',
+        fallbackLang: 'es'
       })
     ),
     provideTranslateHttpLoader({ prefix: './assets/i18n/', suffix: '.json' }),
