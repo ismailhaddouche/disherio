@@ -7,11 +7,22 @@ import { FormsModule } from '@angular/forms';
 import { TranslateModule } from '@ngx-translate/core';
 import { Router, NavigationEnd } from '@angular/router';
 import { filter, Subscription } from 'rxjs';
+import { DashboardStatsComponent } from './dashboard-stats.component';
+import { DashboardRecentActivityComponent } from './dashboard-recent-activity.component';
+import { DashboardChartsComponent } from './dashboard-charts.component';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, LucideAngularModule, FormsModule, TranslateModule],
+  imports: [
+    CommonModule, 
+    LucideAngularModule, 
+    FormsModule, 
+    TranslateModule,
+    DashboardStatsComponent,
+    DashboardRecentActivityComponent,
+    DashboardChartsComponent
+  ],
   providers: [DashboardViewModel],
   template: `
     <div class="md-page-shell dashboard-container animate-fade-in">
@@ -53,34 +64,8 @@ import { filter, Subscription } from 'rxjs';
         </div>
       }
 
-      <!-- Stats Header -->
-      <div class="stats-grid">
-        <div class="md-card-elevated stat-card primary-tonal">
-          <div class="stat-header">
-            <lucide-icon name="clock" [size]="20"></lucide-icon>
-            <span class="text-label-large">{{ 'DASHBOARD.ACTIVE_ORDERS' | translate }}</span>
-          </div>
-          <h2 class="text-headline-large">{{ vm.activeOrdersCount() }}</h2>
-        </div>
-        
-        <div class="md-card-elevated stat-card secondary-tonal">
-          <div class="stat-header">
-            <lucide-icon name="wallet" [size]="20"></lucide-icon>
-            <span class="text-label-large">{{ 'DASHBOARD.DAILY_REVENUE' | translate }}</span>
-          </div>
-          <h2 class="text-headline-large">{{ vm.dailyRevenue() | currency:'EUR' }}</h2>
-        </div>
-
-        <div class="md-card-elevated stat-card surface-tonal">
-          <div class="stat-header">
-            <lucide-icon name="activity" [size]="20"></lucide-icon>
-            <span class="text-label-large">{{ 'DASHBOARD.SYS_STATUS' | translate }}</span>
-          </div>
-          <h2 class="text-title-large" [class.text-success]="!vm.error()">
-            {{ vm.error() ? ('DASHBOARD.ERROR_CONN' | translate) : ('DASHBOARD.OPERATIONAL' | translate) }}
-          </h2>
-        </div>
-      </div>
+      <!-- Stats Section -->
+      <app-dashboard-stats></app-dashboard-stats>
 
       <!-- Totem Management -->
       <div class="md-card qr-section">
@@ -228,30 +213,9 @@ import { filter, Subscription } from 'rxjs';
           }
         </div>
 
-        <div class="md-card activity-section">
-          <div class="section-header">
-            <h3 class="text-title-large">{{ 'DASHBOARD.ACTIVITY_LOG' | translate }}</h3>
-            <lucide-icon name="history" [size]="20" class="opacity-40"></lucide-icon>
-          </div>
-
-          <div class="log-entries-column">
-            @for (log of vm.logs(); track log._id) {
-              <div class="log-item-md3">
-                <div class="log-icon-wrapper">
-                    <lucide-icon [name]="log.action.includes('LOGIN') ? 'user-check' : 'edit-2'" [size]="14"></lucide-icon>
-                </div>
-                <div class="log-content">
-                  <div class="log-top">
-                    <span class="text-label-large">{{ log.username }}</span>
-                    <span class="text-label-small opacity-40">{{ log.timestamp | date:'HH:mm:ss' }}</span>
-                  </div>
-                  <span class="action-chip" [class]="log.action">{{ log.action }}</span>
-                </div>
-              </div>
-            } @empty {
-              <div class="empty-state">{{ 'DASHBOARD.NO_ACTIVITY' | translate }}</div>
-            }
-          </div>
+        <div>
+            <app-dashboard-recent-activity></app-dashboard-recent-activity>
+            <app-dashboard-charts></app-dashboard-charts>
         </div>
       </div>
     </div>
@@ -268,38 +232,10 @@ import { filter, Subscription } from 'rxjs';
       background: var(--md-sys-color-error-container);
       color: var(--md-sys-color-on-error-container);
       padding: 16px 24px;
+      margin-bottom: 24px;
     }
 
-    .stats-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 24px;
-    }
-
-    .stat-card {
-      padding: 24px;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-
-    .stat-header { display: flex; align-items: center; gap: 12px; opacity: 0.8; }
-    
-    .primary-tonal { 
-        background: var(--md-sys-color-primary-container); 
-        color: var(--md-sys-color-on-primary-container); 
-    }
-    .secondary-tonal { 
-        background: var(--md-sys-color-secondary-container); 
-        color: var(--md-sys-color-on-secondary-container); 
-    }
-    .surface-tonal { 
-        background: var(--md-sys-color-surface-2); 
-    }
-
-    .text-success { color: var(--highlight); }
-
-    .qr-section { padding: 32px; }
+    .qr-section { padding: 32px; margin-top: 24px; }
     
     .view-header-row {
         display: flex;
@@ -367,6 +303,7 @@ import { filter, Subscription } from 'rxjs';
         display: grid;
         grid-template-columns: 2fr 1fr;
         gap: 24px;
+        margin-top: 24px;
     }
 
     @media (max-width: 1024px) {
@@ -376,7 +313,7 @@ import { filter, Subscription } from 'rxjs';
         .totem-add-controls .md-input { flex: 1; }
     }
 
-    .orders-section, .activity-section { padding: 24px; }
+    .orders-section { padding: 24px; }
     .section-header { 
         display: flex; justify-content: space-between; align-items: center; 
         margin-bottom: 24px; 
@@ -424,42 +361,18 @@ import { filter, Subscription } from 'rxjs';
         padding-top: 16px; border-top: 1px solid var(--md-sys-color-outline);
     }
 
-    .log-entries-column { display: flex; flex-direction: column; gap: 12px; }
-    .log-item-md3 {
-        display: flex; gap: 16px; padding: 12px;
-        border-radius: 16px; background: var(--md-sys-color-surface-1);
-    }
-    .log-icon-wrapper {
-        width: 32px; height: 32px; border-radius: 10px;
-        background: var(--md-sys-color-surface-variant);
-        display: flex; align-items: center; justify-content: center;
-        opacity: 0.6;
-    }
-    .log-content { flex: 1; display: flex; flex-direction: column; gap: 4px; }
-    .log-top { display: flex; justify-content: space-between; }
-    .action-chip {
-        font-size: 0.65rem; padding: 2px 8px; border-radius: 4px;
-        background: var(--md-sys-color-primary-container);
-        color: var(--md-sys-color-on-primary-container);
-        width: fit-content;
-        text-transform: uppercase;
-        font-weight: 700;
-    }
-
     .loader-container {
         display: flex; flex-direction: column; align-items: center;
         justify-content: center; min-height: 200px; gap: 16px;
     }
 
     .opacity-60 { opacity: 0.6; }
-    .opacity-40 { opacity: 0.4; }
     .opacity-20 { opacity: 0.2; }
     .animate-spin { animation: spin 1s linear infinite; }
     @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
   `]
-
 })
 export class DashboardComponent implements OnInit, OnDestroy {
   public vm = inject(DashboardViewModel);
@@ -489,8 +402,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
     window.open(`${base}/api/qr/${totemId}`, '_blank');
   }
 
-  public openEditTotem(totem: { id: number; name?: string }) {
-    this.editingTotemName = totem.name ?? '';
+  public openEditTotem(totem: { id: number; name: string }) {
+    this.editingTotemName = totem.name;
     this.vm.editingTotem.set(totem);
   }
 

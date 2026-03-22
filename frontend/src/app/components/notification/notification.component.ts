@@ -10,19 +10,22 @@ import { LucideAngularModule } from 'lucide-angular';
     template: `
     <div class="notification-container" aria-label="Notifications" role="region">
       @for (n of notify.notifications(); track n.id) {
-        <div class="notification-toast animate-slide-in" [class]="n.type"
+        <div class="notification-snackbar animate-slide-up" [class]="n.type"
              [attr.role]="n.type === 'error' ? 'alert' : 'status'"
              [attr.aria-live]="n.type === 'error' ? 'assertive' : 'polite'"
              aria-atomic="true">
-          <div class="toast-icon" aria-hidden="true">
-             @if (n.type === 'success') { <lucide-icon name="check-circle" [size]="20"></lucide-icon> }
+          <div class="snackbar-icon" aria-hidden="true">
+             @if (n.type === 'success') { <lucide-icon name="check-circle-2" [size]="20"></lucide-icon> }
              @if (n.type === 'error') { <lucide-icon name="alert-circle" [size]="20"></lucide-icon> }
              @if (n.type === 'info') { <lucide-icon name="info" [size]="20"></lucide-icon> }
              @if (n.type === 'warning') { <lucide-icon name="alert-triangle" [size]="20"></lucide-icon> }
           </div>
-          <div class="toast-content text-body-medium">
+          <div class="snackbar-content text-label-large">
             {{ n.message }}
           </div>
+          <button class="snackbar-close" (click)="notify.notifications.set([])" aria-label="Close">
+            <lucide-icon name="x" [size]="16"></lucide-icon>
+          </button>
         </div>
       }
     </div>
@@ -30,58 +33,96 @@ import { LucideAngularModule } from 'lucide-angular';
     styles: [`
     .notification-container {
       position: fixed;
-      top: 24px;
-      right: 24px;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
       z-index: 9999;
       display: flex;
-      flex-direction: column;
+      flex-direction: column-reverse;
       gap: 12px;
       pointer-events: none;
+      width: 100%;
+      max-width: 560px;
+      padding: 0 24px;
     }
 
-    .notification-toast {
-      padding: 16px 20px;
-      border-radius: 16px;
+    .notification-snackbar {
+      padding: 14px 16px 14px 20px;
+      border-radius: var(--radius-md);
       display: flex;
       align-items: center;
-      gap: 16px;
-      min-width: 300px;
-      max-width: 450px;
-      box-shadow: 0 12px 32px rgba(0,0,0,0.3);
-      backdrop-filter: blur(12px);
+      gap: 12px;
+      width: 100%;
+      box-shadow: var(--md-sys-elevation-2);
       pointer-events: auto;
-      border: 1px solid rgba(255,255,255,0.1);
+      border: 1px solid var(--md-sys-color-outline-variant);
     }
 
-    .notification-toast.info { 
-      background: rgba(30, 30, 35, 0.9); 
-      color: white;
-      border-left: 4px solid var(--md-sys-color-primary);
+    /* MD3 Tonal Variations */
+    .notification-snackbar.info { 
+      background: var(--md-sys-color-surface-container-highest);
+      color: var(--md-sys-color-on-surface);
     }
     
-    .notification-toast.success { 
-      background: rgba(13, 137, 74, 0.9); 
-      color: white;
+    .notification-snackbar.success { 
+      background: #b0ffc6; /* Success highlight */
+      color: #00391c;
+      border-color: rgba(0,0,0,0.1);
     }
     
-    .notification-toast.error { 
-      background: rgba(186, 26, 26, 0.9); 
-      color: white;
+    .notification-snackbar.error { 
+      background: var(--md-sys-color-error-container); 
+      color: var(--md-sys-color-on-error-container);
+      border-color: var(--md-sys-color-error);
     }
     
-    .notification-toast.warning { 
-      background: rgba(235, 163, 0, 0.9); 
-      color: black;
-      border-left: 4px solid black;
+    .notification-snackbar.warning { 
+      background: var(--md-sys-color-secondary-container); 
+      color: var(--md-sys-color-on-secondary-container);
     }
 
-    .animate-slide-in {
-      animation: slideIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    .snackbar-icon {
+      display: flex;
+      align-items: center;
+      flex-shrink: 0;
     }
 
-    @keyframes slideIn {
-      from { transform: translateX(100%); opacity: 0; }
-      to { transform: translateX(0); opacity: 1; }
+    .snackbar-content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .snackbar-close {
+      background: transparent;
+      border: none;
+      color: inherit;
+      opacity: 0.6;
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 50%;
+      display: flex;
+      transition: background 0.2s;
+    }
+
+    .snackbar-close:hover {
+      background: rgba(0,0,0,0.05);
+      opacity: 1;
+    }
+
+    .animate-slide-up {
+      animation: slideUp 0.3s cubic-bezier(0.2, 0, 0, 1);
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(40px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    @media (max-width: 600px) {
+      .notification-container {
+        bottom: 16px;
+        padding: 0 16px;
+      }
     }
   `]
 })

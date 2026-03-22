@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../environments/environment';
+import { NotifyService } from './notify.service';
 import {
     STORAGE_KEYS, AUTH_RETRY, ROLE_REDIRECTS, DEFAULT_REDIRECT
 } from '../core/constants';
@@ -29,6 +30,7 @@ export interface UserSession {
 export class AuthService {
     private router = inject(Router);
     private http = inject(HttpClient);
+    private notify = inject(NotifyService);
 
     public currentUser = signal<UserSession | null>(this.loadSession());
 
@@ -76,11 +78,15 @@ export class AuthService {
 
                 const redirect = ROLE_REDIRECTS[session.role] ?? DEFAULT_REDIRECT;
                 await this.router.navigate([redirect]);
+                this.notify.successKey('AUTH.LOGIN_SUCCESS');
                 return true;
             }
+            this.notify.errorKey('AUTH.LOGIN_INVALID');
             return false;
         } catch (error: any) {
             console.error('Login error', error);
+            const msg = error.error?.error || 'AUTH.LOGIN_ERROR';
+            this.notify.errorKey(msg);
             return false;
         }
     }
@@ -90,8 +96,10 @@ export class AuthService {
             await firstValueFrom(
                 this.http.post(`${environment.apiUrl}/api/auth/logout`, {}, { withCredentials: true })
             );
+            this.notify.successKey('AUTH.LOGOUT_SUCCESS');
         } catch (e) {
             console.warn('Logout request failed', e);
+            // Even if the server fails, we clear local state
         }
 
         this.logActivity('LOGOUT', { username: this.currentUser()?.username });
@@ -127,6 +135,32 @@ export class AuthService {
 
     public isAuthenticated(): boolean {
         return this.currentUser() !== null;
+    }
+
+    /**
+     * Verifies the session with the backend to ensure the httpOnly cookie is still valid.
+     * This is called during app initialization.
+     */
+    public async verifySession(): Promise<void> {
+        try {
+            // If we have a local session, verify it. If not, try to fetch current user (SSO/Refresh style)
+            const session = await firstValueFrom(
+                this.http.get<UserSession>(`${environment.apiUrl}/api/auth/me`, { withCredentials: true })
+            );
+            if (session) {
+                this.currentUser.set(session);
+                localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(session));
+            } else {
+                this.clearLocalSession();
+            }
+        } catch (e) {
+            this.clearLocalSession();
+        }
+    }
+
+    private clearLocalSession() {
+        this.currentUser.set(null);
+        localStorage.removeItem(STORAGE_KEYS.SESSION);
     }
 
     public getHeaders() {

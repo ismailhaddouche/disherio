@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { ITEM_STATUS, ORDER_STATUS, PAYMENT_STATUS } from '../constants.js';
 
 const MAX_ITEMS_PER_ORDER = 200;
 
@@ -8,56 +9,59 @@ const OrderItemSchema = new mongoose.Schema({
     quantity: { type: Number, required: true, min: 1, max: 99 },
     status: {
         type: String,
-        enum: ['pending', 'preparing', 'ready', 'served', 'cancelled'],
-        default: 'pending'
+        enum: {
+            values: Object.values(ITEM_STATUS),
+            message: '{VALUE} no es un estado válido'
+        },
+        default: ITEM_STATUS.PENDING
     },
-    station: { type: String, default: 'Kitchen' },
+    station: { type: String, default: 'Kitchen', trim: true, maxlength: 100 },
     orderedBy: {
         _id: false, // Subdoc — no need for an extra ObjectId
-        id: { type: String, maxlength: 100 },
-        name: { type: String, maxlength: 100 }
+        id: { type: String, trim: true, maxlength: 100 },
+        name: { type: String, trim: true, maxlength: 100 }
     },
     // Support for complex menu choices
     selectedVariant: {
-        name: String,
-        priceAddon: Number
+        name: { type: String, trim: true, maxlength: 200 },
+        priceAddon: { type: Number, min: 0 }
     },
     selectedAddons: [{
-        name: String,
-        price: Number
+        name: { type: String, trim: true, maxlength: 200 },
+        price: { type: Number, min: 0 }
     }],
-    notes: String,
-    emoji: String,
-    image: String,
+    notes: { type: String, trim: true, maxlength: 500 },
+    emoji: { type: String, trim: true, maxlength: 10 },
+    image: { type: String, trim: true, maxlength: 500 },
     isCustom: { type: Boolean, default: false },
     isPaid: { type: Boolean, default: false },
     statusHistory: [{
-        status: String,
+        status: { type: String, enum: Object.values(ITEM_STATUS) },
         timestamp: { type: Date, default: Date.now }
     }],
     createdAt: { type: Date, default: Date.now }
 });
 
 const OrderSchema = new mongoose.Schema({
-    tableNumber: String,
+    tableNumber: { type: String, trim: true, maxlength: 50 },
     totemId: { type: Number, required: true },
     items: { type: [OrderItemSchema], validate: { validator: v => v.length <= MAX_ITEMS_PER_ORDER, message: `An order cannot exceed ${MAX_ITEMS_PER_ORDER} items` } },
     totalAmount: { type: Number, default: 0, min: 0 },
     paymentStatus: {
         type: String,
-        enum: ['unpaid', 'paid', 'split', 'processing'],
-        default: 'unpaid'
+        enum: Object.values(PAYMENT_STATUS),
+        default: PAYMENT_STATUS.UNPAID
     },
     status: {
         type: String,
-        enum: ['active', 'completed', 'cancelled'],
-        default: 'active'
+        enum: Object.values(ORDER_STATUS),
+        default: ORDER_STATUS.ACTIVE
     },
     statusHistory: [{
-        status: String,
+        status: { type: String, enum: Object.values(ORDER_STATUS) },
         timestamp: { type: Date, default: Date.now }
     }],
-    sessionId: { type: String, unique: true, sparse: true }
+    sessionId: { type: String, unique: true, sparse: true, trim: true, maxlength: 100 }
 }, { timestamps: true, optimisticConcurrency: true });
 
 // Indexes for performance optimization

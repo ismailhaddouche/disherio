@@ -91,14 +91,15 @@ import { TranslateModule } from '@ngx-translate/core';
     .sidebar {
       width: var(--sidebar-width);
       height: 100vh;
-      background: var(--md-sys-color-surface-2);
-      border-right: 1px solid var(--md-sys-color-outline-variant);
+      background: var(--md-sys-color-surface-container-low);
       display: flex;
       flex-direction: column;
       transition: all 0.3s cubic-bezier(0.2, 0, 0, 1);
       position: sticky;
       top: 0;
       z-index: 100;
+      padding: 12px;
+      gap: 12px;
     }
 
     .sidebar.collapsed {
@@ -106,36 +107,30 @@ import { TranslateModule } from '@ngx-translate/core';
     }
 
     .sidebar-header {
-      padding: 24px 16px;
+      padding: 12px 16px 24px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      min-height: 80px;
+      min-height: 64px;
     }
 
     .logo-container {
       display: flex;
       align-items: center;
-      gap: 16px;
+      gap: 12px;
       overflow: hidden;
     }
 
     .logo-box {
       width: 40px;
       height: 40px;
-      background: var(--md-sys-color-primary);
+      background: var(--md-sys-color-primary-container);
+      color: var(--md-sys-color-on-primary-container);
       border-radius: 12px;
       display: flex;
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    }
-
-    .logo-text {
-      white-space: nowrap;
-      font-weight: 700;
-      letter-spacing: -0.5px;
     }
 
     .logo-dot { color: var(--md-sys-color-primary); }
@@ -158,7 +153,6 @@ import { TranslateModule } from '@ngx-translate/core';
 
     .sidebar-nav {
       flex: 1;
-      padding: 8px 12px;
       display: flex;
       flex-direction: column;
       gap: 24px;
@@ -173,8 +167,9 @@ import { TranslateModule } from '@ngx-translate/core';
     .nav-group label {
       padding: 0 16px;
       margin-bottom: 8px;
-      opacity: 0.6;
-      color: var(--md-sys-color-on-surface);
+      color: var(--md-sys-color-on-surface-variant);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
     }
 
     .nav-item {
@@ -184,53 +179,29 @@ import { TranslateModule } from '@ngx-translate/core';
       gap: 12px;
       padding: 0 16px;
       height: 56px;
-      border-radius: 28px;
+      border-radius: var(--radius-full);
       color: var(--md-sys-color-on-surface-variant);
       text-decoration: none;
-      transition: all 0.2s ease-in-out;
-      overflow: hidden;
-    }
-
-    .active-indicator {
-      position: absolute;
-      left: 12px;
-      right: 12px;
-      height: 32px;
-      background: var(--md-sys-color-secondary-container);
-      border-radius: 16px;
-      transform: scaleX(0);
-      transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1);
-      z-index: 0;
-    }
-
-    .nav-item.active .active-indicator {
-      transform: scaleX(1);
+      transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
     }
 
     .nav-item.active {
+      background: var(--md-sys-color-secondary-container);
       color: var(--md-sys-color-on-secondary-container);
-      font-weight: 600;
+    }
+
+    .nav-item:hover:not(.active) {
+      background: var(--md-sys-color-surface-container-high);
     }
 
     .icon {
       width: 24px;
       height: 24px;
-      position: relative;
-      z-index: 1;
-    }
-
-    .label {
-      position: relative;
-      z-index: 1;
-      white-space: nowrap;
-    }
-
-    .nav-item:hover:not(.active) {
-      background: rgba(0,0,0,0.04);
+      flex-shrink: 0;
     }
 
     .sidebar-footer {
-      padding: 16px 12px;
+      padding-top: 12px;
       border-top: 1px solid var(--md-sys-color-outline-variant);
     }
 
@@ -239,13 +210,14 @@ import { TranslateModule } from '@ngx-translate/core';
       display: flex;
       align-items: center;
       gap: 12px;
-      padding: 16px;
-      border-radius: 28px;
+      padding: 0 24px;
+      height: 56px;
+      border-radius: var(--radius-full);
       background: transparent;
       border: none;
       color: var(--md-sys-color-error);
       cursor: pointer;
-      transition: background 0.2s;
+      transition: all 0.2s;
     }
 
     .logout-btn:hover {

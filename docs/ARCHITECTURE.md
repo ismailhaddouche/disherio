@@ -1,123 +1,101 @@
-# Arquitectura de Disher.io
+# Arquitectura del Sistema Disher.io
 
-Este documento describe el diseño del sistema, la interacción entre componentes, los modelos de datos y las decisiones arquitectónicas clave de Disher.io.
-
----
-
-## Visión General
-
-Disher.io es una aplicación **de inquilino único (single-tenant)**. Un despliegue sirve a un único restaurante. Esta decisión de diseño fue intencional para:
-
--   Simplificar la configuración y el mantenimiento para los propietarios de restaurantes.
--   Eliminar el riesgo de filtración de datos entre diferentes inquilinos.
--   Permitir el despliegue en hardware mínimo (como una Raspberry Pi).
--   Evitar la complejidad de la gestión de suscripciones o facturación.
-
-Cada restaurante ejecuta su propio stack de Docker de forma aislada.
+Este documento detalla los principios de diseño, la estructura de componentes, el flujo de datos y las capas de seguridad implementadas en Disher.io.
 
 ---
 
-## Arquitectura de Servicios
+## 1. Visión General de la Arquitectura
 
-```
-Internet / Red Local
-      │
-      ▼
-┌─────────────────────────────────────────────┐
-│               Caddy (Puerto 80; 443 opc.)   │
-│                                             │
-│  Rutas:                                     │
-│    /api/*        → backend:3000             │
-│    /socket.io/*  → backend:3000 (WebSocket) │
-│    /*            → frontend:80 (SPA)        │
-│                                             │
-│  Funcionalidades: HTTP Proxy, Compresión    │
-└────────────────────┬────────────────────────┘
-                     │
-        ┌────────────┴────────────┐
-        │                         │
-        ▼                         ▼
-┌──────────────┐         ┌──────────────────┐
-│   Backend    │         │    Frontend      │
-│  Node.js 20  │         │   Angular 21     │
-│  Express 5   │         │   Nginx (prod)   │
-│  Puerto 3000 │         │   Puerto 80      │
-└──────┬───────┘         └──────────────────┘
-       │
-       ├── REST API (/api/*)
-       ├── Socket.io (WebSocket)
-       │
-       ▼
-┌───────────────────────────────┐
-│  MongoDB 7 (con Autenticación)│
-│  Puerto 27017                 │
-└───────────────────────────────┘
+Disher.io emplea un modelo de **inquilino único (single-tenant)**, donde cada instancia del sistema sirve exclusivamente a un restaurante. Esta decisión estratégica simplifica la gestión de datos, minimiza los vectores de ataque y permite la ejecución en hardware con recursos limitados.
+
+El sistema se organiza bajo los principios de **Clean Architecture**, asegurando un desacoplamiento efectivo entre la lógica de negocio, las interfaces de usuario y la persistencia de datos.
+
+### Diagrama de Servicios
+
+```text
+Entrada de Tráfico (Público/LAN)
+           │
+           ▼
+┌───────────────────────────────────────────────┐
+│               Proxy Inverso: Caddy            │
+│  - Terminación TLS (Automatizada)             │
+│  - Enrutamiento de Tráfico (/api, /socket.io) │
+│  - Compresión y Cacheo de Activos Estáticos   │
+└──────────────┬─────────────────────────┬──────┘
+               │                         │
+               ▼                         ▼
+┌───────────────────────────┐   ┌──────────────────────────┐
+│   Frontend (SPA Angular)  │   │   Backend (Node.js API)  │
+│ - Angular 21 (Signals)    │   │ - Express 5 (LTS)        │
+│ - Material Design 3       │   │ - Socket.io (WS)         │
+│ - Global Error Handling   │   │ - Joi Validation         │
+└───────────────────────────┘   └──────────────┬───────────┘
+                                               │
+                                               ▼
+                                ┌──────────────────────────┐
+                                │ Persistencia: MongoDB 7  │
+                                │ - Control Concurrencia    │
+                                │ - Índices de Rendimiento │
+                                └──────────────────────────┘
 ```
 
 ---
 
-## Flujo de Peticiones
+## 2. Capa Frontend (Angular 21)
 
-El flujo de una petición típica (por ejemplo, un administrador que actualiza el menú) sigue estos pasos:
+La capa de presentación ha sido rediseñada para aprovechar las últimas innovaciones en el ecosistema Angular.
 
-1.  **Navegador a Caddy:** La petición llega al reverse proxy Caddy.
-2.  **Caddy a Frontend:** Caddy sirve la Single-Page Application (SPA) de Angular.
-3.  **Frontend a Backend (API):** La aplicación Angular realiza una petición HTTP a `/api/*`.
-4.  **Autenticación y Autorización:** El backend valida el token JWT y verifica que el usuario tiene el rol adecuado (ej. `admin`).
-5.  **Lógica de Negocio y Auditoría:** El controlador correspondiente procesa la petición y se apoya en el `AuditService` para registrar la acción de forma segura.
-6.  **Interacción con la Base de Datos (Integridad OCC):** Se realiza la consulta a MongoDB. Si es una actualización crítica, se verifica la versión (`__v`) para garantizar que no haya conflictos de concurrencia.
-7.  **Respuesta y Evento en Tiempo Real:** El backend devuelve una respuesta JSON y emite un evento por Socket.io para notificar a todos los clientes conectados del cambio.
+### Gestión de Estado Reactiva (Signals)
+Se ha sustituido el modelo tradicional de detección de cambios por **Angular Signals**. Esto permite:
+- **Reactividad Granular**: Actualización exclusiva de los nodos del DOM que dependen de una señal específica.
+- **Rendimiento Optimizado**: Reducción drástica del overhead en la ejecución de la lógica de UI.
+- **Interfaces Predictibles**: El flujo de datos es unidireccional y fácilmente trazable.
 
----
+### Sistema de Notificaciones MD3
+Implementación de un sistema de notificaciones centralizado basado en **Material Design 3**.
+- **Servicio Inyectable (`NotifyService`)**: Permite disparar alertas desde cualquier punto de la aplicación (componentes, servicios o interceptores).
+- **Tipología de Alertas**: Soporte para estados de éxito, error, información y advertencia.
+- **Internacionalización**: Integración nativa con `ngx-translate` para notificaciones multi-idioma.
 
-## Stack de Docker y Contenedores
-
-Disher.io utiliza `docker-compose.yml` como base, con variantes para producción (`docker-compose.prod.yml`) y Raspberry Pi (`docker-compose.rpi.yml`).
-
-### Servicios
-
--   `database` (**Mongo 7**): La base de datos. Ahora requiere autenticación, con credenciales gestionadas por el instalador.
--   `backend` (**Node.js 20**): La API principal. Depende de que la base de datos esté saludable (`service_healthy`).
--   `frontend` (**Nginx**): El cliente web de Angular. Se sirve a través de Nginx.
--   `caddy` (**Caddy 2**): El reverse proxy. Dirige el tráfico al `frontend` o `backend` según corresponda.
-
-### Logging
-
-Todos los servicios están configurados con un **driver de logging `json-file`** que incluye rotación automática. Esto previene el consumo excesivo de disco por parte de los logs.
-
--   **Tamaño Máximo:** 10m (10 megabytes)
--   **Archivos a Conservar:** 3
-
-### Redes y Volúmenes
-
--   **Red:** Todos los contenedores comparten una red interna de tipo bridge llamada `disher-network`. Solo Caddy expone los puertos 80 y 443 al exterior.
--   **Volúmenes:**
-    -   `mongo-data`: Persistencia de los datos de la base de datos.
-    -   `caddy-data`: Almacenamiento de certificados TLS.
-    -   `caddy-config`: Configuración de Caddy.
-    -   `uploads-data`: Almacenamiento de archivos subidos (como logos de restaurante).
+### Gestión Global de Errores
+El sistema implementa una política de tolerancia a fallos mediante un `GlobalErrorHandler` personalizado.
+- **Captura Centralizada**: Todas las excepciones no manejadas son interceptadas.
+- **Feedback al Usuario**: Se genera una notificación visual inmediata a través del sistema MD3.
+- **Trazabilidad**: Los errores se registran en la consola de desarrollo con información de contexto para facilitar el depurado.
 
 ---
 
-## Capas de Seguridad
+## 3. Capa Backend (Node.js)
 
-| Capa | Mecanismo | Descripción |
-|---|---|---|
-| **Transporte** | Caddy | Proxy HTTP; HSTS aplica cuando se habilita TLS manualmente en `Caddyfile`. |
-| **Autenticación (BD)** | MongoDB | El acceso a la base de datos requiere un nombre de usuario y contraseña. |
-| **Autenticación (API)** | JWT en Cookies `HttpOnly` | El token de sesión no es accesible mediante JavaScript en el navegador. |
-| **Autorización** | RBAC | Middleware que verifica los roles de usuario (`admin`, `waiter`, `kitchen`, `pos`) en cada ruta protegida. |
-| **Integridad** | OCC (`__v`) | Control de concurrencia optimista que evita sobrescrituras accidentales en pedidos y menús. |
-| **Validación de Entrada** | `Joi` | Validación estricta de tipos y esquemas en todos los endpoints de la API. |
-| **Trazabilidad** | `AuditService` | Registro automático e inmutable en el servidor de acciones críticas (anulaciones, cambios de precio). |
-| **Contenedores** | Docker | Todos los servicios se ejecutan con **usuarios no-root** para minimizar el impacto de una posible vulnerabilidad. |
-| **Resiliencia** | `backup.sh` | Sistema de copias de seguridad automáticas con rotación de 7 días. |
+El servidor API actúa como el orquestador central de la lógica de negocio y la comunicación en tiempo real.
+
+### Comunicación Bidireccional
+La integración de **Socket.io** permite una arquitectura dirigida por eventos:
+- **Eventos Críticos**: `order-update`, `menu-update`, `config-updated`.
+- **Baja Latencia**: Sincronización instantánea entre el cliente que realiza el pedido y el terminal de cocina (KDS).
+
+### Validación e Integridad de Datos
+- **Joi Validation**: Todos los payloads entrantes son validados contra esquemas estrictos antes de ser procesados.
+- **Optimistic Concurrency Control (OCC)**: Implementación del campo de versión (`__v`) en los modelos de Mongoose. Esto garantiza que, en operaciones de alta concurrencia, no se pierdan datos por actualizaciones simultáneas conflictivas.
 
 ---
 
-## Decisiones Clave de Diseño
+## 4. Persistencia (MongoDB 7)
 
--   **Inquilino Único (Single-Tenant):** Simplifica radicalmente la arquitectura, la seguridad y el mantenimiento, haciéndolo ideal para el auto-alojamiento.
--   **MongoDB sobre Base de Datos Relacional:** El esquema flexible de MongoDB es perfecto para la estructura anidada y variable de los menús de restaurante.
--   **Caddy sobre Nginx (como proxy principal):** La gestión automática de certificados TLS de Caddy es una característica crítica para operadores no técnicos.
--   **Imágenes Multi-Arquitectura:** El uso de imágenes base compatibles con `amd64` y `arm64` permite que Disher.io se ejecute en una amplia gama de hardware sin cambios en el código.
+Se ha seleccionado MongoDB por su flexibilidad en el manejo de estructuras de datos anidadas, como los menús y la configuración del restaurante.
+
+- **Autenticación Mandataria**: El acceso a la base de datos requiere credenciales robustas autogeneradas durante la instalación.
+- **Volúmenes Persistentes**: Los datos se almacenan fuera de los contenedores Docker para garantizar la permanencia tras reinicios o actualizaciones.
+
+---
+
+## 5. Capas de Seguridad Implementadas
+
+| Capa | Mecanismo de Seguridad |
+| :--- | :--- |
+| **Transporte** | Caddy con TLS automatizado y HSTS. |
+| **Identidad** | JWT almacenado en Cookies `HttpOnly` y `Secure` (SameSite=Strict). |
+| **Autorización** | Role-Based Access Control (RBAC) con middleware de validación. |
+| **Infraestructura** | Ejecución de procesos bajo usuarios no-privilegiados (non-root) en Docker. |
+| **Red** | Aislamiento de microservicios en redes virtuales internas (Bridge). |
+| **Auditoría** | `AuditService` para el registro inmutable de cambios administrativos. |

@@ -7,16 +7,20 @@ import { environment } from '../../../environments/environment';
 import { TranslateService } from '@ngx-translate/core';
 import { NotifyService } from '../../services/notify.service';
 import { ORDER_STATUS, ITEM_STATUS } from '../../core/constants';
+import { IOrder, IOrderItem } from '../../core/interfaces/order.interface';
 
-export interface KDSOrder {
+export interface IKDSProduct {
     _id: string;
-    tableNumber: string;
-    totemId?: number;
-    items: any[];
+    name: string;
+    category: string;
+    available: boolean;
+    image?: string;
+}
+
+export interface IKDSTotem {
+    id: number;
+    name: string;
     status: string;
-    createdAt: string;
-    timeElapsed?: number;
-    __v?: number;
 }
 
 @Injectable()
@@ -29,9 +33,9 @@ export class KDSViewModel {
     private destroyRef = inject(DestroyRef);
 
     // State
-    public orders = signal<KDSOrder[]>([]);
-    public productList = signal<any[]>([]);
-    public totems = signal<any[]>([]);
+    public orders = signal<IOrder[]>([]);
+    public productList = signal<IKDSProduct[]>([]);
+    public totems = signal<IKDSTotem[]>([]);
     public loading = signal<boolean>(true);
     public error = signal<string | null>(null);
     public showStockManager = signal<boolean>(false);
@@ -54,11 +58,11 @@ export class KDSViewModel {
                 return {
                     ...order,
                     kitchenItems,
-                    urgent: this.getTimeDiffMinutes(order.createdAt, now) >= 15
+                    urgent: this.getTimeDiffMinutes(order.createdAt?.toString() || '', now) >= 15
                 };
             })
             .filter(order => order.kitchenItems.length > 0)
-            .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+            .sort((a, b) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime());
     });
 
     constructor() {
@@ -91,11 +95,11 @@ export class KDSViewModel {
         try {
             const [orders, products, totems] = await Promise.all([
                 this.comms.syncOrders(),
-                firstValueFrom(this.http.get<any[]>(`${environment.apiUrl}/api/menu`)),
-                firstValueFrom(this.http.get<any[]>(`${environment.apiUrl}/api/totems`))
+                firstValueFrom(this.http.get<IKDSProduct[]>(`${environment.apiUrl}/api/menu`)),
+                firstValueFrom(this.http.get<IKDSTotem[]>(`${environment.apiUrl}/api/totems`))
             ]);
 
-            if (orders) this.orders.set(orders as any[]);
+            if (orders) this.orders.set(orders as IOrder[]);
             if (products) this.productList.set(products);
             if (totems) this.totems.set(totems);
         } catch (e: any) {
@@ -106,7 +110,7 @@ export class KDSViewModel {
         }
     }
 
-    private ordersCallback = (updatedOrder: KDSOrder) => {
+    private ordersCallback = (updatedOrder: IOrder) => {
         this.orders.update(prev => {
             const index = prev.findIndex(o => o._id === updatedOrder._id);
             if (index !== -1) {
@@ -145,7 +149,7 @@ export class KDSViewModel {
 
             if (print && nextStatus === ITEM_STATUS.READY) {
                 const order = this.orders().find(o => o._id === orderId);
-                const item = order?.items.find((i: any) => (i._id || i.id) === itemId);
+                const item = order?.items.find((i: IOrderItem) => (i._id || '').toString() === itemId);
                 if (order && item) {
                     this.printItemTicket(order, item);
                 }
@@ -171,7 +175,7 @@ export class KDSViewModel {
         } catch (e) { console.error('Error bulk updating', e); }
     }
 
-    public printItemTicket(order: any, item: any) {
+    public printItemTicket(order: IOrder, item: IOrderItem) {
         const p = this.localConfig()?.printer;
         const totem = this.totems().find(t => t.id === (order.totemId || parseInt(order.tableNumber)));
         const tableName = totem?.name || `${this.translate.instant('ROLES.Table')} ${order.tableNumber}`;
@@ -219,7 +223,7 @@ export class KDSViewModel {
 
     public async toggleProduct(productId: string) {
         try {
-            const updated: any = await firstValueFrom(this.http.post(`${environment.apiUrl}/api/menu/${productId}/toggle`, {}, { withCredentials: true }));
+            const updated: IKDSProduct = await firstValueFrom(this.http.post<IKDSProduct>(`${environment.apiUrl}/api/menu/${productId}/toggle`, {}, { withCredentials: true }));
 
             this.productList.update(list =>
                 list.map(p => p._id === productId ? updated : p)

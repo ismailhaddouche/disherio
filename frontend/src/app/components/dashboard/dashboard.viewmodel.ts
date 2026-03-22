@@ -12,11 +12,37 @@ export interface Order {
     _id: string;
     tableNumber: string;
     totemId?: number;
-    items: any[];
+    items: OrderItem[];
     totalAmount: number;
     status: OrderStatus;
     createdAt: string;
     __v?: number;
+}
+
+export interface OrderItem {
+    name: string;
+    quantity: number;
+    status: string;
+}
+
+export interface Totem {
+    id: number;
+    name: string;
+    isVirtual?: boolean;
+}
+
+export interface Log {
+    _id: string;
+    username: string;
+    action: string;
+    timestamp: string;
+}
+
+export interface Ticket {
+    _id: string;
+    amount: number;
+    timestamp?: string;
+    createdAt?: string;
 }
 
 @Injectable()
@@ -30,14 +56,14 @@ export class DashboardViewModel {
 
     // State using Signals
     public orders = signal<Order[]>([]);
-    public totems = signal<any[]>([]);
-    public logs = signal<any[]>([]);
-    public tickets = signal<any[]>([]);
+    public totems = signal<Totem[]>([]);
+    public logs = signal<Log[]>([]);
+    public tickets = signal<Ticket[]>([]);
     public loading = signal<boolean>(false);
     public error = signal<string | null>(null);
 
     // Editing State
-    public editingTotem = signal<any | null>(null);
+    public editingTotem = signal<Totem | null>(null);
 
     // Computed values
     public activeOrdersCount = computed(() =>
@@ -48,7 +74,10 @@ export class DashboardViewModel {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         return this.tickets()
-            .filter(t => new Date(t.timestamp || t.createdAt) >= today)
+            .filter(t => {
+                const date = t.timestamp || t.createdAt;
+                return date ? new Date(date) >= today : false;
+            })
             .reduce((acc, t) => acc + (t.amount || 0), 0);
     });
 

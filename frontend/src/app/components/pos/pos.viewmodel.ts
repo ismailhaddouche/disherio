@@ -11,6 +11,7 @@ import {
     STORAGE_KEYS, ORDER_STATUS, ITEM_STATUS, SPLIT_TYPE, SYSTEM_USER_IDS,
     type PaymentMethod, type SplitType
 } from '../../core/constants';
+import { IOrder } from '../../core/interfaces/order.interface';
 
 export interface POSTable {
     number: string;
@@ -31,7 +32,7 @@ export class POSViewModel {
     private destroyRef = inject(DestroyRef);
 
     // State
-    public orders = signal<any[]>([]);
+    public orders = signal<IOrder[]>([]);
     public tables = signal<any[]>([]);
     public tickets = signal<any[]>([]);
     public selectedTable = signal<POSTable | null>(null);
@@ -249,6 +250,7 @@ export class POSViewModel {
             if (localStorage.getItem(STORAGE_KEYS.LOCAL_AUTOPRINT) === 'true' && resData.tickets?.[0]) {
                 resData.tickets.forEach((t: any) => this.printTicket(t));
             }
+            this.notify.successKey('POS.PAY_SUCCESS');
 
         } catch (e: any) {
             if (e.error?.code === 'ORPHANS_EXIST') {
@@ -348,7 +350,11 @@ export class POSViewModel {
             const newTotal = updatedItems.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0);
 
             await this.patchOrder(orderId, { items: updatedItems, totalAmount: newTotal });
-        } catch (e) { console.error('Error updating price', e); }
+            this.notify.successKey('POS.UPDATE_SUCCESS');
+        } catch (e) {
+            console.error('Error updating price', e);
+            this.notify.errorKey('POS.UPDATE_ERROR');
+        }
     }
 
     public async updateItemName(orderId: string, itemIndex: number, newName: string) {
@@ -359,7 +365,11 @@ export class POSViewModel {
             const updatedItems = order.items.map((item: any) => ({ ...item })); // deep-copy
             updatedItems[itemIndex].name = newName;
             await this.patchOrder(orderId, { items: updatedItems });
-        } catch (e) { console.error('Error updating name', e); }
+            this.notify.successKey('POS.UPDATE_SUCCESS');
+        } catch (e) {
+            console.error('Error updating name', e);
+            this.notify.errorKey('POS.UPDATE_ERROR');
+        }
     }
 
     public async reassignItem(orderId: string, itemIndex: number, guestName: string) {
@@ -371,7 +381,11 @@ export class POSViewModel {
             const guestId = guestName.toLowerCase().replace(/\s+/g, '-');
             updatedItems[itemIndex].orderedBy = { id: guestId, name: guestName };
             await this.patchOrder(orderId, { items: updatedItems });
-        } catch (e) { console.error('Error reassigning item', e); }
+            this.notify.successKey('POS.UPDATE_SUCCESS');
+        } catch (e) {
+            console.error('Error reassigning item', e);
+            this.notify.errorKey('POS.UPDATE_ERROR');
+        }
     }
 
     public async removeItemFromOrder(orderId: string, itemIndex: number) {
@@ -384,6 +398,7 @@ export class POSViewModel {
 
             await this.patchOrder(orderId, { items: updatedItems, totalAmount: newTotal });
             this.auth.logActivity('ORDER_ITEM_REMOVED', { orderId, itemIndex });
+            this.notify.successKey('POS.REMOVE_ITEM_SUCCESS');
         } catch (e) {
             console.error('Error removing item', e);
             this.notify.errorKey('POS.REMOVE_ITEM_ERROR');
@@ -403,6 +418,7 @@ export class POSViewModel {
             
             this.orders.update(prev => prev.map(o => o._id === orderId ? updatedOrder : o));
             this.syncSelectedTable();
+            this.notify.successKey('POS.ASSOCIATE_SUCCESS');
         } catch (e: any) {
             if (e.status === 409) {
                 this.notify.warningKey('POS.CONCURRENCY_ERROR');
@@ -435,6 +451,7 @@ export class POSViewModel {
             await this.patchOrder(orderId, { items: updatedItems, totalAmount: newTotal });
             this.auth.logActivity('ORDER_ITEM_ADDED', { orderId, itemName: menuItem.name });
             this.showAddItemModal.set(false);
+            this.notify.successKey('POS.ADD_ITEM_SUCCESS');
         } catch (e) {
             console.error('Error adding item', e);
             this.notify.errorKey('POS.ADD_ITEM_ERROR');
@@ -467,6 +484,7 @@ export class POSViewModel {
             await this.patchOrder(orderId, { items: updatedItems, totalAmount: newTotal });
             this.auth.logActivity('CUSTOM_LINE_ADDED', { orderId, customName, customPrice });
             this.showCustomLineModal.set(false);
+            this.notify.successKey('POS.ADD_CUSTOM_LINE_SUCCESS');
         } catch (e) {
             console.error('Error adding custom line', e);
             this.notify.errorKey('POS.ADD_CUSTOM_LINE_ERROR');

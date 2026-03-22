@@ -1,11 +1,9 @@
 import express from 'express';
 const router = express.Router();
 import Joi from 'joi';
-import { randomUUID } from 'crypto';
-import User from '../models/User.js';
-import { generateToken, getCookieOptions, COOKIE_NAME } from '../middleware/auth.middleware.js';
 import { validate } from '../middleware/validation.middleware.js';
-import { ROLES } from '../constants.js';
+import { verifyToken } from '../middleware/auth.middleware.js';
+import authController from '../controllers/auth.controller.js';
 
 // ── Joi Schemas ──────────────────────────────────────────────────────────────
 
@@ -22,59 +20,9 @@ const customerSessionSchema = Joi.object({
 
 // ── Routes ───────────────────────────────────────────────────────────────────
 
-// POST /auth/login
-router.post('/login',
-    validate(loginSchema),
-    async function(req, res) {
-        const { username, password } = req.body;
-        // username is stored lowercase; normalise before lookup
-        const user = await User.findOne({ username: username.toLowerCase().trim(), active: true })
-            .select('+password'); // password is select:false by default
-
-        if (!user || !(await user.comparePassword(password))) {
-            return res.error(req.t('ERRORS.INVALID_CREDENTIALS'), 401);
-        }
-
-        const token = generateToken({ userId: user._id, username: user.username, role: user.role });
-
-        // Set token as httpOnly cookie — inaccessible to JavaScript
-        res.cookie(COOKIE_NAME, token, getCookieOptions());
-
-        res.success({
-            username: user.username,
-            role: user.role,
-            printerId: user.printerId,
-            printTemplate: user.printTemplate
-        });
-    }
-);
-
-// POST /auth/customer-session - Guest joining a table via Totem
-router.post('/customer-session',
-    validate(customerSessionSchema),
-    async function(req, res) {
-        const { restaurantSlug, totemId, name } = req.body;
-
-        // Create a temporary JWT for the customer
-        const token = generateToken({
-            userId: `guest-${randomUUID()}`,
-            username: name,
-            role: ROLES.CUSTOMER,
-            restaurantSlug,
-            totemId
-        });
-
-        res.cookie(COOKIE_NAME, token, getCookieOptions());
-        res.success({ username: name, role: ROLES.CUSTOMER, restaurantSlug, totemId });
-    }
-);
-
-// POST /auth/logout
-router.post('/logout', function(req, res) {
-    const options = { ...getCookieOptions() };
-    delete options.maxAge; // Remove maxAge for clearing
-    res.clearCookie(COOKIE_NAME, { path: options.path || '/' });
-    res.success({ message: req.t('ERRORS.LOGGED_OUT') });
-});
+router.post('/login', validate(loginSchema), authController.login);
+router.get('/me', verifyToken, authController.me);
+router.post('/customer-session', validate(customerSessionSchema), authController.customerSession);
+router.post('/logout', authController.logout);
 
 export default router;

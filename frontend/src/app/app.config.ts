@@ -1,19 +1,32 @@
-import { ApplicationConfig, importProvidersFrom } from '@angular/core';
+import { ApplicationConfig, ErrorHandler, importProvidersFrom, APP_INITIALIZER } from '@angular/core';
 import { provideRouter } from '@angular/router';
-import { provideHttpClient, withInterceptors, HttpClient } from '@angular/common/http';
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { provideAnimations } from '@angular/platform-browser/animations';
 import { TranslateModule } from '@ngx-translate/core';
 import { provideTranslateHttpLoader } from '@ngx-translate/http-loader';
 import { authInterceptor } from './services/auth.interceptor';
 import { errorInterceptor } from './interceptors/error.interceptor';
 import { responseInterceptor } from './interceptors/response.interceptor';
-import { LucideAngularModule, LayoutDashboard, Utensils, Users, ChefHat, Wallet, Settings, LogOut, ChevronLeft, ChevronRight, Bell, Clock, RefreshCw, Plus, Camera, Facebook, Globe, CreditCard, Printer, User, Lock, PenLine, Package, CheckCircle2, Trash2, AlertTriangle, BookOpen, GlassWater, Circle, HandPlatter, Flame, QrCode, ClipboardList, Armchair, LayoutGrid, Loader2, CheckCircle, CheckCheck, BellRing, MessageSquare, AlertCircle, Monitor, Activity, History, UserCheck, Edit2, Pen, Check } from 'lucide-angular';
+import { LucideAngularModule, LayoutDashboard, Utensils, Users, ChefHat, Wallet, Settings, LogOut, ChevronLeft, ChevronRight, Bell, Clock, RefreshCw, Plus, Camera, Facebook, Globe, CreditCard, Printer, User, Lock, PenLine, Package, CheckCircle2, Trash2, AlertTriangle, BookOpen, GlassWater, Circle, HandPlatter, Flame, QrCode, ClipboardList, Armchair, LayoutGrid, Loader2, CheckCircle, CheckCheck, BellRing, MessageSquare, AlertCircle, Monitor, Activity, History, UserCheck, Edit2, Pen, Check, X } from 'lucide-angular';
 
 import { routes } from './app.routes';
+import { GlobalErrorHandler } from './core/handlers/global-error.handler';
+import { AppInitializerService } from './core/services/app-initializer.service';
+
+export function initializeApp(initializer: AppInitializerService) {
+  return () => initializer.init();
+}
 
 export const appConfig: ApplicationConfig = {
   providers: [
     provideRouter(routes),
+    { provide: ErrorHandler, useClass: GlobalErrorHandler },
+    {
+      provide: APP_INITIALIZER,
+      useFactory: initializeApp,
+      deps: [AppInitializerService],
+      multi: true
+    },
     provideHttpClient(withInterceptors([authInterceptor, errorInterceptor, responseInterceptor])),
     provideAnimations(),
     importProvidersFrom(
@@ -26,7 +39,7 @@ export const appConfig: ApplicationConfig = {
       LayoutDashboard, Utensils, Users, ChefHat, Wallet, Settings, LogOut,
       ChevronLeft, ChevronRight, Bell, Clock, RefreshCw, Plus, Camera, Facebook, Globe, CreditCard, Printer, User, Lock, PenLine, Package, CheckCircle2, Trash2, AlertTriangle, BookOpen, GlassWater, Circle, HandPlatter, Flame,
       QrCode, ClipboardList, Armchair, LayoutGrid, Loader2, CheckCircle, CheckCheck, BellRing, MessageSquare, AlertCircle, Monitor,
-      Activity, History, UserCheck, Edit2, Pen, Check
+      Activity, History, UserCheck, Edit2, Pen, Check, X
     }))
   ]
 };

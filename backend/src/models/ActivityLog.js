@@ -6,7 +6,14 @@ const LOG_TTL_DAYS = 90;
 const ActivityLogSchema = new mongoose.Schema({
     userId:    { type: String, required: true, index: true },
     username:  { type: String, required: true },
-    role:      { type: String, required: true, enum: VALID_ROLES },
+    role:      { 
+        type: String, 
+        required: true, 
+        enum: {
+            values: VALID_ROLES,
+            message: '{VALUE} no es un rol válido'
+        }
+    },
     action:    { type: String, required: true, uppercase: true, trim: true, index: true },
     details:   { type: mongoose.Schema.Types.Mixed, default: {} },
     timestamp: { type: Date, default: Date.now }

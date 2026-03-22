@@ -1,3 +1,4 @@
+import MenuItem from '../models/MenuItem.js';
 import sharp from 'sharp';
 import path from 'path';
 import fs from 'fs';
@@ -7,9 +8,50 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 class MenuService {
+    async getAllItems() {
+        return await MenuItem.find().sort({ category: 1, order: 1, name: 1 });
+    }
+
+    async getItemById(id) {
+        return await MenuItem.findById(id);
+    }
+
+    async createOrUpdateItem(id, data, userRole) {
+        let item;
+        let oldItem = null;
+        let isNew = false;
+
+        if (id) {
+            oldItem = await MenuItem.findById(id);
+            if (!oldItem) return null;
+            item = await MenuItem.findByIdAndUpdate(id, data, { new: true });
+        } else {
+            item = new MenuItem(data);
+            await item.save();
+            isNew = true;
+        }
+
+        return { item, oldItem, isNew };
+    }
+
+    async deleteItem(id) {
+        return await MenuItem.findByIdAndDelete(id);
+    }
+
+    async toggleAvailability(id) {
+        const item = await MenuItem.findById(id);
+        if (!item) return null;
+
+        const previousStatus = item.available;
+        item.available = !item.available;
+        await item.save();
+
+        return { item, previousStatus };
+    }
+
     /**
      * Processes and optimizes a menu item image
-     * @param {Buffer} buffer - The image buffer from multer
+     * @param {Object} file - The file object from multer
      * @returns {Promise<string>} - The relative URL of the saved image
      */
     async processImage(file) {

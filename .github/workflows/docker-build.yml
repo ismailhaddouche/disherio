@@ -18,18 +18,109 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-  build-amd64:
+  # ---------------------------------------------------------------------------
+  # 1. VALIDATION: Lint & Test (Frontend & Backend)
+  # ---------------------------------------------------------------------------
+  test:
+    name: Lint & Test
     runs-on: ubuntu-latest
     
+    services:
+      mongodb:
+        image: mongo:7
+        options: >-
+          --health-cmd "mongosh --eval 'db.adminCommand(\"ping\")'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 27017:27017
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+      
+      - name: Install Dependencies
+        run: |
+          echo "Installing Backend Dependencies..."
+          cd backend && npm ci
+          echo "Installing Frontend Dependencies..."
+          cd ../frontend && npm ci
+      
+      - name: Backend - Lint & Audit
+        working-directory: ./backend
+        run: |
+          npm run lint
+          npm audit --audit-level=high --omit=dev
+
+      - name: Backend - Unit Tests
+        working-directory: ./backend
+        env:
+          MONGODB_URI: mongodb://localhost:27017/test-disher
+          JWT_SECRET: test-secret-key-do-not-use-in-production
+          NODE_ENV: test
+          NODE_OPTIONS: --experimental-vm-modules
+        run: npm test
+
+      - name: Frontend - Audit & Test
+        working-directory: ./frontend
+        run: |
+          npm audit --audit-level=high --omit=dev
+          # Integrated Vitest tests as requested
+          npx vitest run
+
+      - name: Frontend - Build Check (Verification)
+        working-directory: ./frontend
+        run: npm run build -- --configuration=production
+
+  # ---------------------------------------------------------------------------
+  # 2. SECURITY: Vulnerability Scanning
+  # ---------------------------------------------------------------------------
+  security-scan:
+    name: Security Scan
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Run Trivy FS Scan (Source Code & Deps)
+        uses: aquasecurity/trivy-action@v0.35.0
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          severity: 'HIGH,CRITICAL'
+
+  # ---------------------------------------------------------------------------
+  # 3. BUILD: AMD64 Images
+  # ---------------------------------------------------------------------------
+  build-amd64:
+    name: Build AMD64
+    needs: [test, security-scan]
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
     
     strategy:
       matrix:
-        component:
-          - backend
-          - frontend
+        component: [backend, frontend]
     
     steps:
       - name: Checkout repository
@@ -75,18 +166,20 @@ jobs:
           cache-from: type=gha,scope=${{ matrix.component }}-amd64
           cache-to: type=gha,mode=max,scope=${{ matrix.component }}-amd64
 
+  # ---------------------------------------------------------------------------
+  # 4. BUILD: ARM64 Images
+  # ---------------------------------------------------------------------------
   build-arm64:
+    name: Build ARM64
+    needs: [test, security-scan]
     runs-on: ubuntu-latest
-    
     permissions:
       contents: read
       packages: write
     
     strategy:
       matrix:
-        component:
-          - backend
-          - frontend
+        component: [backend, frontend]
     
     steps:
       - name: Checkout repository
@@ -135,20 +228,21 @@ jobs:
           cache-from: type=gha,scope=${{ matrix.component }}-arm64
           cache-to: type=gha,mode=max,scope=${{ matrix.component }}-arm64
 
+  # ---------------------------------------------------------------------------
+  # 5. MANIFEST: Multi-Architecture Support
+  # ---------------------------------------------------------------------------
   create-manifest:
+    name: Create Manifest
     needs: [build-amd64, build-arm64]
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request'
-    
     permissions:
       contents: read
       packages: write
     
     strategy:
       matrix:
-        component:
-          - backend
-          - frontend
+        component: [backend, frontend]
     
     steps:
       - name: Checkout repository
@@ -185,96 +279,22 @@ jobs:
               ${TAG}-arm64
           done
 
-  test:
-    runs-on: ubuntu-latest
-    
-    services:
-      mongodb:
-        image: mongo:7
-        options: >-
-          --health-cmd "mongosh --eval 'db.adminCommand(\"ping\")'"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 27017:27017
-    
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v5
-      
-      - name: Set up Node.js
-        uses: actions/setup-node@v5
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: |
-            backend/package-lock.json
-            frontend/package-lock.json
-      
-      - name: Install backend dependencies
-        working-directory: ./backend
-        run: npm ci
-      
-      - name: Lint backend
-        working-directory: ./backend
-        run: npm run lint
-
-      - name: Audit backend dependencies
-        working-directory: ./backend
-        run: npm audit --audit-level=high --omit=dev
-
-      - name: Install frontend dependencies
-        working-directory: ./frontend
-        run: npm ci
-
-      - name: Audit frontend dependencies
-        working-directory: ./frontend
-        run: npm audit --audit-level=high --omit=dev
-
-      - name: Build frontend
-        working-directory: ./frontend
-        run: npm run build -- --configuration=production
-
-      - name: Test backend
-        working-directory: ./backend
-        env:
-          MONGODB_URI: mongodb://localhost:27017/test-disher
-          JWT_SECRET: test-secret-key-do-not-use-in-production
-          NODE_ENV: test
-          NODE_OPTIONS: --experimental-vm-modules
-        run: npm test
-
-  security-scan:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v5
-
-      - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@v0.35.0
-        with:
-          scan-type: 'fs'
-          scan-ref: '.'
-          format: 'table'
-          exit-code: '1'
-          severity: 'HIGH,CRITICAL'
-
+  # ---------------------------------------------------------------------------
+  # 6. NOTIFICATION: Final Pipeline Status
+  # ---------------------------------------------------------------------------
   notify:
-    needs: [build-amd64, build-arm64, create-manifest, test]
+    name: Notify Status
+    needs: [test, security-scan, build-amd64, build-arm64, create-manifest]
     runs-on: ubuntu-latest
     if: always()
     
     steps:
-      - name: Check build status
+      - name: Check overall status
         run: |
-          if [[ "${{ needs.build-amd64.result }}" == "success" && "${{ needs.build-arm64.result }}" == "success" && "${{ needs.test.result }}" == "success" ]]; then
-            echo "✅ All checks passed!"
+          if [[ "${{ needs.test.result }}" == "success" && "${{ needs.security-scan.result }}" == "success" && "${{ needs.build-amd64.result }}" == "success" && "${{ needs.build-arm64.result }}" == "success" ]]; then
+            echo "✅ Pipeline completed successfully!"
             exit 0
           else
-            echo "❌ Some checks failed"
+            echo "❌ Pipeline failed at some stage."
             exit 1
           fi

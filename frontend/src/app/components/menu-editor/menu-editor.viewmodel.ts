@@ -5,23 +5,7 @@ import { AuthService } from '../../services/auth.service';
 import { firstValueFrom } from 'rxjs';
 import { TranslateService } from '@ngx-translate/core';
 import { NotifyService } from '../../services/notify.service';
-
-export interface MenuItem {
-    _id?: string;
-    name: string;
-    description: string;
-    basePrice: number;
-    category: string;
-    image?: string;
-    allergens: string[];
-    tags: string[];
-    variants: { name: string; price: number; image?: string }[];
-    addons: { name: string; price: number }[];
-    available: boolean;
-    order: number;
-    isMenu: boolean;
-    menuSections: { name: string; options: string[]; minChoices: number; maxChoices: number }[];
-}
+import { IMenuItem, ICategory } from '../../core/interfaces/menu.interface';
 
 @Injectable()
 export class MenuEditorViewModel {
@@ -31,15 +15,15 @@ export class MenuEditorViewModel {
     private notify = inject(NotifyService);
 
     // State
-    public items = signal<MenuItem[]>([]);
+    public items = signal<IMenuItem[]>([]);
     public loading = signal<boolean>(true);
-    public error = signal<string | null>(null); // PM FIX: Added error state
-    public selectedItem = signal<MenuItem | null>(null);
+    public error = signal<string | null>(null);
+    public selectedItem = signal<IMenuItem | null>(null);
     public isEditing = signal<boolean>(false);
 
     // Computed: Group items by category
-    public categories = computed(() => {
-        const groups = new Map<string, MenuItem[]>();
+    public categories = computed<ICategory[]>(() => {
+        const groups = new Map<string, IMenuItem[]>();
         this.items().forEach(item => {
             if (!groups.has(item.category)) {
                 groups.set(item.category, []);
@@ -68,9 +52,9 @@ export class MenuEditorViewModel {
         this.error.set(null);
 
         try {
-            const data = await firstValueFrom(this.http.get<MenuItem[]>(`${environment.apiUrl}/api/menu`));
+            const data = await firstValueFrom(this.http.get<IMenuItem[]>(`${environment.apiUrl}/api/menu`));
             if (data) this.items.set(data);
-        } catch (e: any) {
+        } catch (e: unknown) {
             console.error('Error loading menu', e);
             this.error.set(this.translate.instant('MENU_EDITOR.LOAD_ERROR'));
         } finally {
@@ -78,12 +62,12 @@ export class MenuEditorViewModel {
         }
     }
 
-    public selectItem(item: MenuItem | null) {
+    public selectItem(item: IMenuItem | null) {
         this.selectedItem.set(item ? { ...item } : this.getEmptyItem());
         this.isEditing.set(true);
     }
 
-    private getEmptyItem(): MenuItem {
+    private getEmptyItem(): IMenuItem {
         return {
             name: '',
             description: '',
@@ -112,6 +96,7 @@ export class MenuEditorViewModel {
             this.auth.logActivity('MENU_ITEM_UPDATED', { itemName: item.name });
             this.loadMenu();
             this.isEditing.set(false);
+            this.notify.successKey('MENU_EDITOR.SAVE_SUCCESS');
         } catch (e) {
             console.error('Error saving item', e);
             this.notify.errorKey('MENU_EDITOR.SAVE_ERROR');
@@ -124,6 +109,9 @@ export class MenuEditorViewModel {
             await firstValueFrom(this.http.delete(`${environment.apiUrl}/api/menu/${id}`));
             this.auth.logActivity('MENU_ITEM_DELETED', { itemId: id });
             this.loadMenu();
+            this.isEditing.set(false);
+            this.selectedItem.set(null);
+            this.notify.successKey('MENU_EDITOR.DELETE_SUCCESS');
         } catch (e) {
             console.error('Error deleting item', e);
             this.notify.errorKey('MENU_EDITOR.DELETE_ERROR');
@@ -209,7 +197,7 @@ export class MenuEditorViewModel {
         try {
             const formData = new FormData();
             formData.append('image', file);
-            const res: any = await firstValueFrom(this.http.post(`${environment.apiUrl}/api/menu/upload-image`, formData));
+            const res = await firstValueFrom(this.http.post<{url: string}>(`${environment.apiUrl}/api/menu/upload-image`, formData));
             return res.url;
         } catch (e) {
             console.error('Error uploading image', e);

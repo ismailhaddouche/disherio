@@ -28,23 +28,5 @@ export class App {
 
   public sidebarCollapsed = signal(false);
 
-  constructor() {
-    this.translate.addLangs(['es', 'en']);
-    this.translate.setDefaultLang('es');
-
-    // Attempt to get language from localStorage or backend config
-    const savedLang = localStorage.getItem('appLang');
-    if (savedLang) {
-      this.translate.use(savedLang);
-    } else {
-      // Fetch default from backend
-      this.http.get<any>(`${environment.apiUrl}/api/restaurant`).subscribe({
-        next: (config) => {
-          const defaultLang = config.defaultLanguage || 'es';
-          this.translate.use(defaultLang);
-        },
-        error: () => this.translate.use('es')
-      });
-    }
-  }
+  constructor() {}
 }
