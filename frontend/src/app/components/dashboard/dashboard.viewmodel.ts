@@ -59,7 +59,7 @@ export class DashboardViewModel {
     public totems = signal<Totem[]>([]);
     public logs = signal<Log[]>([]);
     public tickets = signal<Ticket[]>([]);
-    public loading = signal<boolean>(false);
+    public loading = signal<boolean>(true);
     public error = signal<string | null>(null);
 
     // Editing State
@@ -102,13 +102,20 @@ export class DashboardViewModel {
     }
 
     public async loadInitialData() {
-        if (this.loading()) return;
         this.loading.set(true);
         this.error.set(null);
 
         try {
-            const [orders, logs, totems, tickets]: any[] = await Promise.all([
-                this.comms.syncOrders(),
+            // First attempt to sync orders (critical for dashboard)
+            let orders = await this.comms.syncOrders();
+            
+            // If sync fails (e.g. cold start), wait 800ms and retry once
+            if (!orders) {
+                await new Promise(resolve => setTimeout(resolve, 800));
+                orders = await this.comms.syncOrders();
+            }
+
+            const [logs, totems, tickets]: any[] = await Promise.all([
                 firstValueFrom(this.http.get<any[]>(`${environment.apiUrl}/api/logs`)),
                 firstValueFrom(this.http.get<any[]>(`${environment.apiUrl}/api/totems`)),
                 firstValueFrom(this.http.get<any[]>(`${environment.apiUrl}/api/history`))
@@ -121,7 +128,9 @@ export class DashboardViewModel {
 
         } catch (error: any) {
             console.error('Error loading dashboard data', error);
-            this.error.set(this.translate.instant('DASHBOARD.ERROR_CONN'));
+            const message = this.translate.instant('DASHBOARD.ERROR_CONN');
+            this.error.set(message);
+            this.notify.error(message);
         } finally {
             this.loading.set(false);
         }

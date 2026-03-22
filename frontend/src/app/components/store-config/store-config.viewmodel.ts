@@ -74,7 +74,13 @@ export class StoreConfigViewModel {
         this.loading.set(true);
         this.error.set(null);
         try {
-            const data: any = await firstValueFrom(this.http.get(`${environment.apiUrl}/api/restaurant`));
+            let data: any = await firstValueFrom(this.http.get(`${environment.apiUrl}/api/restaurant`));
+
+            // Small retry if data is empty or request was cold
+            if (!data) {
+                await new Promise(resolve => setTimeout(resolve, 800));
+                data = await firstValueFrom(this.http.get(`${environment.apiUrl}/api/restaurant`));
+            }
 
             const raw = data ?? {};
             // Merge with defaults to avoid null checks in template
@@ -89,8 +95,9 @@ export class StoreConfigViewModel {
 
         } catch (e) {
             console.error('Error loading config', e);
-            this.error.set(this.translate.instant('STORE_CONFIG.LOAD_ERROR'));
-            this.notify.errorKey('STORE_CONFIG.LOAD_ERROR');
+            const message = this.translate.instant('STORE_CONFIG.LOAD_ERROR');
+            this.error.set(message);
+            this.notify.error(message);
         } finally {
             this.loading.set(false);
         }
