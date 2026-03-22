@@ -7,7 +7,7 @@ import cookieParser from 'cookie-parser';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import routes from './routes/index.js';
-import { i18n, middleware as i18nMiddleware } from './i18n.js';
+import { i18nMiddleware } from './services/i18n.service.js';
 import { responseHandler } from './middleware/response.middleware.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -74,7 +74,7 @@ app.use((req, res, next) => {
 });
 
 // ── I18n ─────────────────────────────────────────────────────────────────────
-app.use(i18nMiddleware.handle(i18n));
+app.use(i18nMiddleware);
 
 // ── Standardized Response Helpers ────────────────────────────────────────────
 app.use(responseHandler);
