@@ -25,7 +25,7 @@ export class CustomerViewModel {
     private route = inject(ActivatedRoute);
     private router = inject(Router);
     private theme = inject(ThemeService);
-    public auth = inject(AuthService);
+    private auth = inject(AuthService);
     private destroyRef = inject(DestroyRef);
     private translate = inject(TranslateService);
     private notify = inject(NotifyService);
@@ -43,17 +43,25 @@ export class CustomerViewModel {
     public selectedVariant = signal<any | null>(null);
     public selectedAddons = signal<any[]>([]);
     public selectedMenuChoices = signal<{ [key: string]: string }>({});
-
-    public isStaff = computed(() => {
-        return this.auth.hasRole('waiter') || this.auth.hasRole('admin') || this.auth.hasRole('pos');
-    });
-
     public existingNames = computed(() => {
         const order = this.session()?.activeOrder;
         if (!order || !order.items) return [];
         const names = order.items.map((i: any) => i.orderedBy?.name).filter((n: string) => n && n !== 'Comensal');
         return [...new Set(names)] as string[];
     });
+
+    private resetSessionState() {
+        this.loading.set(true);
+        this.error.set(null);
+        this.session.set(null);
+        this.restaurantName.set('');
+        this.menu.set([]);
+        this.cart.set([]);
+        this.selectedForConfig.set(null);
+        this.selectedVariant.set(null);
+        this.selectedAddons.set([]);
+        this.selectedMenuChoices.set({});
+    }
 
     public resolveItemImage(image?: string): string {
         if (!image) return '';
@@ -67,11 +75,17 @@ export class CustomerViewModel {
     }
 
     constructor() {
-        this.initSession();
+        this.route.paramMap
+            .pipe(takeUntilDestroyed(this.destroyRef))
+            .subscribe(() => {
+                void this.initSession();
+            });
         this.setupTableListeners();
     }
 
     private async initSession() {
+        this.resetSessionState();
+
         const totemParam = this.route.snapshot.paramMap.get('tableNumber');
         const sessionParam = this.route.snapshot.paramMap.get('sessionCode');
 

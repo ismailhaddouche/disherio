@@ -69,6 +69,21 @@ export class POSViewModel {
         });
     });
 
+    private syncSelectedTable() {
+        const currentSelection = this.selectedTable();
+        if (!currentSelection) return;
+
+        const freshTable = this.tableStates().find(table => table.id === currentSelection.id) || null;
+        this.selectedTable.set(freshTable);
+
+        if (!freshTable?.order) {
+            this.editMode.set(false);
+            this.showAddItemModal.set(false);
+            this.showCustomLineModal.set(false);
+            this.showSplitDetailedModal.set(false);
+        }
+    }
+
     constructor() {
         this.initPOS();
         this.setupRealTime();
@@ -95,6 +110,7 @@ export class POSViewModel {
             this.billingConfig.set(restaurant?.billing || null);
             this.globalPrinters.set(restaurant?.printers || []);
             this.menuItems.set(menu || []);
+            this.syncSelectedTable();
 
         } catch (e) {
             console.error('POS Init Error', e);
@@ -119,6 +135,7 @@ export class POSViewModel {
             }
             return [updatedOrder, ...prev];
         });
+        this.syncSelectedTable();
     };
 
     private setupRealTime() {
@@ -133,8 +150,9 @@ export class POSViewModel {
     }
 
     public selectTable(table: POSTable) {
-        this.selectedTable.set(table);
-        if (table?.order) {
+        const freshTable = this.tableStates().find(current => current.id === table.id) || table;
+        this.selectedTable.set(freshTable);
+        if (freshTable?.order) {
             this.activeTipPercentage.set(this.billingConfig()?.tipPercentage || 0);
         }
     }
@@ -384,6 +402,7 @@ export class POSViewModel {
             }, { withCredentials: true }));
             
             this.orders.update(prev => prev.map(o => o._id === orderId ? updatedOrder : o));
+            this.syncSelectedTable();
         } catch (e: any) {
             if (e.status === 409) {
                 this.notify.warningKey('POS.CONCURRENCY_ERROR');
@@ -460,6 +479,7 @@ export class POSViewModel {
             this.auth.logActivity('TABLE_OPENED_MANUALLY', { tableNumber: table.number });
             const orders = await this.comms.syncOrders();
             if (orders) this.orders.set(orders as any[]);
+            this.syncSelectedTable();
         } catch (e) {
             console.error('Error opening table', e);
             this.notify.errorKey('POS.OPEN_TABLE_ERROR');
@@ -477,6 +497,7 @@ export class POSViewModel {
             const totems: any[] = await firstValueFrom(this.http.get<any[]>(`${environment.apiUrl}/api/totems`));
             this.tables.set(totems);
             if (this.selectedTable()?.id === tableId) this.selectedTable.set(null);
+            else this.syncSelectedTable();
         } catch (e) {
             console.error('Error deleting virtual table', e);
             this.notify.errorKey('POS.DELETE_VIRTUAL_ERROR');

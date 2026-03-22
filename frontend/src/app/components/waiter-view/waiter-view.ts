@@ -463,7 +463,7 @@ export class WaiterViewComponent implements OnInit, OnDestroy {
   }
 
   goToTable(id: number) {
-    this.router.navigate(['/', id]);
+    this.router.navigate(['/admin/waiter/table', id]);
   }
 
   openQR(event: Event, totemId: number) {

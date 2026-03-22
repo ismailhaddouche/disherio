@@ -1,9 +1,9 @@
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CustomerViewModel } from './customer-view.viewmodel';
-import { RouterLink, RouterLinkActive } from '@angular/router';
+import { RouterLink } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { TranslateModule } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-customer-view',
@@ -20,33 +20,9 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
       } @else if (!vm.session()?.sessionId || !vm.comms.userName() || vm.comms.userName() === 'Comensal') {
         <div class="name-selection md-card-elevated">
           <div class="name-selection-icon icon-box-md3 primary">
-            <lucide-icon [name]="vm.isStaff() ? 'users' : 'utensils-crossed'" [size]="24"></lucide-icon>
+            <lucide-icon name="utensils-crossed" [size]="24"></lucide-icon>
           </div>
 
-          @if (vm.isStaff()) {
-            <h2 class="text-headline-medium">{{ 'WAITER.NEW_ORDER_FOR' | translate }}</h2>
-            <p class="text-body-large">{{ 'WAITER.SELECT_NAME_OR_SKIP' | translate }}</p>
-
-            @if (vm.existingNames().length > 0) {
-              <div class="existing-names">
-                @for (name of vm.existingNames(); track name) {
-                  <button class="chip" (click)="vm.registerNameAndStartSession(name)">
-                    <lucide-icon name="user" [size]="14"></lucide-icon>
-                    {{ name }}
-                  </button>
-                }
-              </div>
-            }
-            
-            <div class="md-input-field">
-              <input type="text" #nameInput class="name-input" [placeholder]="'WAITER.NEW_NAME_OPTIONAL' | translate" (keyup.enter)="vm.registerNameAndStartSession(nameInput.value || defaultWaiterName)" [value]="vm.comms.userName() !== 'Comensal' ? vm.comms.userName() : ''">
-            </div>
-            
-            <button class="btn-primary full-width action-button" (click)="vm.registerNameAndStartSession(nameInput.value || defaultWaiterName)">
-              <lucide-icon name="play" [size]="18"></lucide-icon>
-              {{ 'WAITER.START_ORDERING' | translate }}
-            </button>
-          } @else {
             <h2 class="text-headline-medium">{{ 'CUSTOMER.HELLO' | translate }}</h2>
             <p class="text-body-large">{{ 'CUSTOMER.HOW_TO_CALL' | translate }}</p>
             
@@ -58,7 +34,6 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
               <lucide-icon name="chef-hat" [size]="18"></lucide-icon>
               {{ 'CUSTOMER.START_ORDERING' | translate }}
             </button>
-          }
         </div>
       } @else {
         <header class="md-card table-header">
@@ -401,6 +376,11 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
         font-weight: 600;
     }
 
+    .waiter-chip {
+      background: var(--md-sys-color-tertiary-container);
+      color: var(--md-sys-color-on-tertiary-container);
+    }
+
     .menu-content {
       display: flex;
       flex-direction: column;
@@ -669,6 +649,10 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
         font-size: 1rem;
         text-align: center;
     }
+
+    .left-aligned-field input.left-aligned-input {
+        text-align: left;
+    }
     
     .text-primary-color { color: var(--md-sys-color-primary); }
 
@@ -755,9 +739,4 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
 })
 export class CustomerViewComponent {
   public vm = inject(CustomerViewModel);
-  private translate = inject(TranslateService);
-
-  get defaultWaiterName(): string {
-    return this.translate.instant('ROLES.waiter') as string;
-  }
 }

@@ -35,6 +35,7 @@ export class StoreConfigViewModel {
     public loading = signal<boolean>(true);
     public saving = signal<boolean>(false);
     public message = signal<string>('');
+    public error = signal<string | null>(null);
 
     public readonly predefinedThemes = [
         { id: 'midnight', nameKey: 'STORE_CONFIG.THEME_MIDNIGHT', colors: { primaryColor: '#6366f1', secondaryColor: '#a855f7', backgroundColor: '#09090b', textColor: '#f8fafc' } },
@@ -69,8 +70,9 @@ export class StoreConfigViewModel {
         this.loadConfig();
     }
 
-    private async loadConfig() {
+    public async loadConfig() {
         this.loading.set(true);
+        this.error.set(null);
         try {
             const data: any = await firstValueFrom(this.http.get(`${environment.apiUrl}/api/restaurant`));
 
@@ -85,6 +87,7 @@ export class StoreConfigViewModel {
 
         } catch (e) {
             console.error('Error loading config', e);
+            this.error.set(this.translate.instant('STORE_CONFIG.LOAD_ERROR'));
             this.notify.errorKey('STORE_CONFIG.LOAD_ERROR');
         } finally {
             this.loading.set(false);

@@ -2,7 +2,7 @@ import { Injectable, signal, computed, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
 import { AuthService } from '../../services/auth.service';
-import { lastValueFrom } from 'rxjs';
+import { firstValueFrom } from 'rxjs';
 import { TranslateService } from '@ngx-translate/core';
 import { NotifyService } from '../../services/notify.service';
 
@@ -68,7 +68,7 @@ export class MenuEditorViewModel {
         this.error.set(null);
 
         try {
-            const data = await lastValueFrom(this.http.get<MenuItem[]>(`${environment.apiUrl}/api/menu`));
+            const data = await firstValueFrom(this.http.get<MenuItem[]>(`${environment.apiUrl}/api/menu`));
             if (data) this.items.set(data);
         } catch (e: any) {
             console.error('Error loading menu', e);
@@ -107,7 +107,7 @@ export class MenuEditorViewModel {
 
         try {
             const payload = { ...item };
-            await lastValueFrom(this.http.post(`${environment.apiUrl}/api/menu`, payload));
+            await firstValueFrom(this.http.post(`${environment.apiUrl}/api/menu`, payload));
 
             this.auth.logActivity('MENU_ITEM_UPDATED', { itemName: item.name });
             this.loadMenu();
@@ -121,7 +121,7 @@ export class MenuEditorViewModel {
     public async deleteItem(id: string) {
         if (!confirm(this.translate.instant('MENU_EDITOR.DELETE_CONFIRM'))) return;
         try {
-            await lastValueFrom(this.http.delete(`${environment.apiUrl}/api/menu/${id}`));
+            await firstValueFrom(this.http.delete(`${environment.apiUrl}/api/menu/${id}`));
             this.auth.logActivity('MENU_ITEM_DELETED', { itemId: id });
             this.loadMenu();
         } catch (e) {
@@ -209,7 +209,7 @@ export class MenuEditorViewModel {
         try {
             const formData = new FormData();
             formData.append('image', file);
-            const res: any = await lastValueFrom(this.http.post(`${environment.apiUrl}/api/menu/upload-image`, formData));
+            const res: any = await firstValueFrom(this.http.post(`${environment.apiUrl}/api/menu/upload-image`, formData));
             return res.url;
         } catch (e) {
             console.error('Error uploading image', e);

@@ -4,9 +4,6 @@ import { FormsModule } from '@angular/forms';
 import { MenuEditorViewModel } from './menu-editor.viewmodel';
 import { LucideAngularModule } from 'lucide-angular';
 import { TranslateModule } from '@ngx-translate/core';
-import { Router, NavigationEnd } from '@angular/router';
-import { filter } from 'rxjs';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 @Component({
   selector: 'app-menu-editor',
@@ -19,7 +16,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
         <div class="header-content">
           <div class="title-with-icon">
             <div class="icon-box-md3 primary">
-              <lucide-icon name="menu" [size]="24"></lucide-icon>
+              <lucide-icon name="book-open" [size]="24"></lucide-icon>
             </div>
             <div>
               <h1 class="text-headline-medium">{{ 'MENU_EDITOR.TITLE' | translate }}</h1>
@@ -35,6 +32,20 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
         </div>
       </header>
 
+      @if (vm.loading()) {
+        <div class="md-loading-state">
+          <div class="spinner"></div>
+          <p class="text-body-medium opacity-60">{{ 'MENU_EDITOR.LOADING' | translate }}</p>
+        </div>
+      } @else if (vm.error()) {
+        <div class="md-alert-error m-32">
+          <lucide-icon name="alert-circle" [size]="24"></lucide-icon>
+          <div class="alert-content">
+            <p class="text-title-medium">{{ vm.error() }}</p>
+            <button class="btn-text btn-sm mt-8" (click)="vm.loadMenu()">{{ 'COMMON.RETRY' | translate }}</button>
+          </div>
+        </div>
+      } @else {
       <div class="editor-main-layout">
         <aside class="menu-structure">
           <div class="categories-column">
@@ -47,7 +58,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
                          [class.is-selected]="vm.selectedItem()?._id === item._id"
                          (click)="vm.selectItem(item)">
                       <div class="item-visual">
-                        <lucide-icon [name]="item.isMenu ? 'layers' : 'utensils-crossomer'" [size]="18"></lucide-icon>
+                        <lucide-icon [name]="item.isMenu ? 'layers' : 'utensils-crossed'" [size]="18"></lucide-icon>
                       </div>
                       <div class="item-content">
                         <span class="text-title-small">{{ item.name }}</span>
@@ -279,6 +290,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
           }
         </main>
       </div>
+      }
     </div>
   `,
   styles: [`
@@ -456,6 +468,29 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
     }
     .empty-icon-box { margin-bottom: 24px; }
 
+    .md-loading-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 80px;
+      gap: 16px;
+    }
+
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid var(--md-sys-color-secondary-container);
+      border-top-color: var(--md-sys-color-primary);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+    .m-32 { margin: 32px; }
+    .mt-8 { margin-top: 8px; }
+
     .uppercase { text-transform: uppercase; letter-spacing: 1px; }
     .mt-16 { margin-top: 16px; }
     .opacity-60 { opacity: 0.6; }
@@ -466,20 +501,9 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 })
 export class MenuEditorComponent implements OnInit {
   public vm = inject(MenuEditorViewModel);
-  private router = inject(Router);
-  private destroyRef = inject(DestroyRef);
 
   ngOnInit() {
     this.vm.loadMenu();
-
-    this.router.events.pipe(
-      filter(e => e instanceof NavigationEnd),
-      takeUntilDestroyed(this.destroyRef)
-    ).subscribe((e: any) => {
-      if (e.url?.includes('/menu')) {
-        this.vm.loadMenu();
-      }
-    });
   }
 
   async onFileSelected(event: any, target: 'main' | 'variant', variantIndex?: number) {

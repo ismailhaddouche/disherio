@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { DashboardViewModel } from './dashboard.viewmodel';
 import { AuthService } from '../../services/auth.service';
 import { LucideAngularModule } from 'lucide-angular';
+import { FormsModule } from '@angular/forms';
 import { TranslateModule } from '@ngx-translate/core';
 import { Router, NavigationEnd } from '@angular/router';
 import { filter, Subscription } from 'rxjs';
@@ -10,7 +11,7 @@ import { filter, Subscription } from 'rxjs';
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, LucideAngularModule, TranslateModule],
+  imports: [CommonModule, LucideAngularModule, FormsModule, TranslateModule],
   providers: [DashboardViewModel],
   template: `
     <div class="md-page-shell dashboard-container animate-fade-in">
@@ -119,7 +120,7 @@ import { filter, Subscription } from 'rxjs';
                       </div>
                       
                        <div class="totem-actions">
-                        <button class="icon-btn-md3 tonal-sm" (click)="vm.editingTotem.set(totem)" [title]="'DASHBOARD.EDIT' | translate">
+                        <button class="icon-btn-md3 tonal-sm" (click)="openEditTotem(totem)" [title]="'DASHBOARD.EDIT' | translate">
                           <lucide-icon name="pen-line" [size]="16"></lucide-icon>
                         </button>
                         <button class="icon-btn-md3 tonal-sm" (click)="openQR(totem.id)" [title]="'DASHBOARD.VIEW_QR' | translate">
@@ -139,14 +140,14 @@ import { filter, Subscription } from 'rxjs';
 
       <!-- Edit Totem Modal -->
       @if (vm.editingTotem(); as totem) {
-        <div class="md-modal-overlay" (click)="vm.editingTotem.set(null)">
+        <div class="md-modal-overlay" (click)="closeEditTotem()">
           <div class="md-modal-dialog md-form-panel" (click)="$event.stopPropagation()">
             <header class="md-form-panel-header">
               <div>
                 <h2 class="text-headline-small">{{ 'DASHBOARD.EDIT_TOTEM' | translate }} #{{ totem.id }}</h2>
                 <p class="text-body-small opacity-60">{{ 'DASHBOARD.TOTEM_NAME' | translate }}</p>
               </div>
-              <button class="icon-btn-md3" (click)="vm.editingTotem.set(null)">
+              <button class="icon-btn-md3" (click)="closeEditTotem()">
                 <lucide-icon name="x" [size]="20"></lucide-icon>
               </button>
             </header>
@@ -154,13 +155,13 @@ import { filter, Subscription } from 'rxjs';
             <div class="md-form-panel-body">
               <div class="form-field">
                   <label class="text-label-large">{{ 'DASHBOARD.TOTEM_NAME' | translate }}</label>
-                  <input type="text" #editName [value]="totem.name" class="md-input" (keyup.enter)="vm.updateTotem(totem.id, editName.value)" autofocus>
+                  <input type="text" [(ngModel)]="editingTotemName" class="md-input" (keyup.enter)="saveEditTotem(totem.id)" autofocus>
               </div>
             </div>
 
             <footer class="md-form-panel-footer">
-              <button class="btn-outline" (click)="vm.editingTotem.set(null)">{{ 'DASHBOARD.CANCEL' | translate }}</button>
-              <button class="btn-primary" (click)="vm.updateTotem(totem.id, editName.value)">{{ 'DASHBOARD.SAVE' | translate }}</button>
+              <button class="btn-outline" (click)="closeEditTotem()">{{ 'DASHBOARD.CANCEL' | translate }}</button>
+              <button class="btn-primary" (click)="saveEditTotem(totem.id)">{{ 'DASHBOARD.SAVE' | translate }}</button>
             </footer>
           </div>
         </div>
@@ -462,8 +463,10 @@ import { filter, Subscription } from 'rxjs';
 })
 export class DashboardComponent implements OnInit, OnDestroy {
   public vm = inject(DashboardViewModel);
+  public auth = inject(AuthService);
   private router = inject(Router);
   private routerSub?: Subscription;
+  public editingTotemName = '';
 
   ngOnInit() {
     this.vm.loadInitialData();
@@ -484,6 +487,20 @@ export class DashboardComponent implements OnInit, OnDestroy {
   public openQR(totemId: number) {
     const base = window.location.origin;
     window.open(`${base}/api/qr/${totemId}`, '_blank');
+  }
+
+  public openEditTotem(totem: { id: number; name?: string }) {
+    this.editingTotemName = totem.name ?? '';
+    this.vm.editingTotem.set(totem);
+  }
+
+  public closeEditTotem() {
+    this.editingTotemName = '';
+    this.vm.editingTotem.set(null);
+  }
+
+  public saveEditTotem(totemId: number) {
+    this.vm.updateTotem(totemId, this.editingTotemName);
   }
 
   public loadAgain() {

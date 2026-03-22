@@ -18,7 +18,7 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
         <div class="header-content">
           <div class="title-with-icon">
             <div class="icon-box-md3 primary">
-              <lucide-icon name="settings" [size]="24"></lucide-icon>
+              <lucide-icon name="sliders-horizontal" [size]="24"></lucide-icon>
             </div>
             <div>
               <h1 class="text-headline-medium">{{ 'STORE_CONFIG.TITLE' | translate }}</h1>
@@ -45,6 +45,14 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
         <div class="md-loading-state">
           <div class="spinner"></div>
           <p class="text-body-medium opacity-60">{{ 'STORE_CONFIG.LOADING' | translate }}</p>
+        </div>
+      } @else if (vm.error()) {
+        <div class="md-alert-error mx-32">
+          <lucide-icon name="alert-circle" [size]="24"></lucide-icon>
+          <div class="alert-content">
+            <p class="text-title-medium">{{ vm.error() }}</p>
+            <button class="btn-text btn-sm mt-8" (click)="vm.loadConfig()">{{ 'COMMON.RETRY' | translate }}</button>
+          </div>
         </div>
       } @else {
         <main class="config-main-md3">
@@ -465,6 +473,7 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
     }
 
     .mx-32 { margin-left: 32px; margin-right: 32px; }
+    .mt-8 { margin-top: 8px; }
     .mt-20 { margin-top: 20px; }
     .max-w-300 { max-width: 300px; }
     .mb-8 { margin-bottom: 8px; }

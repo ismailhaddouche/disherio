@@ -9,6 +9,7 @@ import { MenuEditorComponent } from './components/menu-editor/menu-editor';
 import { UserManagementComponent } from './components/user-management/user-management';
 import { StoreConfigComponent } from './components/store-config/store-config';
 import { WaiterViewComponent } from './components/waiter-view/waiter-view';
+import { WaiterTableComponent } from './components/waiter-table/waiter-table';
 import { authGuard } from './guards/auth.guard';
 
 export const routes: Routes = [
@@ -24,6 +25,12 @@ export const routes: Routes = [
     {
         path: 'admin/waiter',
         component: WaiterViewComponent,
+        canActivate: [authGuard],
+        data: { role: 'waiter' }
+    },
+    {
+        path: 'admin/waiter/table/:tableNumber',
+        component: WaiterTableComponent,
         canActivate: [authGuard],
         data: { role: 'waiter' }
     },
