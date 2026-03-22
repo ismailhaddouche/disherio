@@ -1,9 +1,10 @@
 import { Injectable, signal } from '@angular/core';
 import { io, Socket } from 'socket.io-client';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpContext } from '@angular/common/http';
 import { Subject, lastValueFrom } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { SOCKET_EVENTS, STORAGE_KEYS } from '../core/constants';
+import { SILENT_REQUEST } from '../interceptors/http-context';
 
 @Injectable({
     providedIn: 'root'
@@ -127,7 +128,10 @@ export class CommunicationService {
 
         try {
             console.log('[SYNC] Starting background order sync...');
-            const orders = await lastValueFrom(this.http.get<any[]>(`${environment.apiUrl}/api/orders`));
+            const ctx = new HttpContext().set(SILENT_REQUEST, true);
+            const orders = await lastValueFrom(
+                this.http.get<any[]>(`${environment.apiUrl}/api/orders`, { context: ctx })
+            );
             console.log('[SYNC] Successfully synchronized', orders?.length || 0, 'orders.');
             return orders;
         } catch (error) {

@@ -35,11 +35,18 @@ if (FORBIDDEN_SECRETS.includes(process.env.JWT_SECRET)) {
 const server = http.createServer(app);
 
 // Initialize Socket.io
+// Mirror the same CORS origin logic used in app.js for consistency
+const SOCKET_CORS_ORIGINS = process.env.NODE_ENV === 'production'
+    ? [
+        ...(process.env.DOMAIN ? [process.env.DOMAIN] : []),
+        /\.disher\.io$/,
+        /^https?:\/\/\d+\.\d+\.\d+\.\d+(:\d+)?$/  // IP addresses (LAN / VPS without domain)
+      ]
+    : true;
+
 const io = new Server(server, {
     cors: {
-        origin: process.env.NODE_ENV === 'production'
-            ? [process.env.DOMAIN, /\.disher\.io$/]
-            : true,
+        origin: SOCKET_CORS_ORIGINS,
         credentials: true
     },
     connectionStateRecovery: {

@@ -1,7 +1,8 @@
 import { Injectable, signal, inject } from '@angular/core';
 import { Router } from '@angular/router';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpContext } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
+import { SILENT_REQUEST } from '../interceptors/http-context';
 import { environment } from '../../environments/environment';
 import { NotifyService } from './notify.service';
 import {
@@ -47,9 +48,10 @@ export class AuthService {
         maxRetries = AUTH_RETRY.MAX_RETRIES,
         delayMs = AUTH_RETRY.DELAY_MS
     ): Promise<void> {
+        const ctx = new HttpContext().set(SILENT_REQUEST, true);
         for (let attempt = 0; attempt < maxRetries; attempt++) {
             try {
-                await firstValueFrom(this.http.get(`${environment.apiUrl}/api/orders`, { withCredentials: true }));
+                await firstValueFrom(this.http.get(`${environment.apiUrl}/api/orders`, { withCredentials: true, context: ctx }));
                 return;
             } catch (e) {
                 if (attempt === maxRetries - 1) return;
@@ -144,8 +146,9 @@ export class AuthService {
     public async verifySession(): Promise<void> {
         try {
             // If we have a local session, verify it. If not, try to fetch current user (SSO/Refresh style)
+            const ctx = new HttpContext().set(SILENT_REQUEST, true);
             const session = await firstValueFrom(
-                this.http.get<UserSession>(`${environment.apiUrl}/api/auth/me`, { withCredentials: true })
+                this.http.get<UserSession>(`${environment.apiUrl}/api/auth/me`, { withCredentials: true, context: ctx })
             );
             if (session) {
                 this.currentUser.set(session);
