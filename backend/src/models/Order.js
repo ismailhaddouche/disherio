@@ -24,7 +24,7 @@ const OrderItemSchema = new mongoose.Schema({
     // Support for complex menu choices
     selectedVariant: {
         name: { type: String, trim: true, maxlength: 200 },
-        priceAddon: { type: Number, min: 0 }
+        price: { type: Number, min: 0 }
     },
     selectedAddons: [{
         name: { type: String, trim: true, maxlength: 200 },

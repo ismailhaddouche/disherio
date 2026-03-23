@@ -93,7 +93,7 @@ class RestaurantController {
             isVirtual: result.newTotem.isVirtual
         });
 
-        res.success(result.newTotem, 201);
+        res.success(result.newTotem, undefined, 201);
     }
 
     async updateTotem(req, res) {
@@ -155,7 +155,7 @@ class RestaurantController {
 
     async closeShift(req, res) {
         const result = await RestaurantService.closeShift();
-        if (result.error) return res.error('Restaurant not found', 404);
+        if (result.error) return res.error(req.t('ERRORS.RESTAURANT_NOT_FOUND'), 404);
 
         await AuditService.log(req, 'SHIFT_CLOSED', {
             affectedTablesCount: result.affectedTables.length,
@@ -179,7 +179,7 @@ class RestaurantController {
         };
         const log = new ActivityLog(auditLog);
         await log.save();
-        res.success(log, 201);
+        res.success(log, undefined, 201);
     }
 
     async getLogs(req, res) {
