@@ -231,6 +231,7 @@ Para información detallada sobre aspectos específicos del sistema, consulte lo
 - **[API.md](./docs/API.md)**: Referencia rápida de la API.
 - **[MAINTENANCE.md](./docs/MAINTENANCE.md)**: Backups, restauración, gestión de credenciales y actualizaciones.
 - **[TESTING_AND_CI.md](./docs/TESTING_AND_CI.md)**: Estrategia de testing y pipeline de CI/CD.
+- **[CONTRIBUTING.md](./docs/CONTRIBUTING.md)**: Guía de contribución, convenciones de código y flujo de Pull Requests.
 
 ---
 
