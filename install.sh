@@ -555,4 +555,13 @@ if [ "$IS_PUBLIC_DOMAIN" = "true" ]; then
     fi
 fi
 
+if [ "$IS_PUBLIC_DOMAIN" = "true" ]; then
+    if [ "$LANG_OPT" = "2" ]; then
+        echo -e "\n  ${CYAN}TIP: You can view this DNS info again at any time by running:${NC}"
+    else
+        echo -e "\n  ${CYAN}TIP: Puedes ver esta info DNS de nuevo en cualquier momento ejecutando:${NC}"
+    fi
+    echo -e "  ${GREEN}sudo ./show-dns.sh${NC}"
+fi
+
 echo -e "\n${GREEN}Listo! / Done!${NC}\n"
