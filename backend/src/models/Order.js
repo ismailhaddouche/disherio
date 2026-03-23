@@ -30,6 +30,7 @@ const OrderItemSchema = new mongoose.Schema({
         name: { type: String, trim: true, maxlength: 200 },
         price: { type: Number, min: 0 }
     }],
+    menuChoices: { type: Map, of: String, default: {} },
     notes: { type: String, trim: true, maxlength: 500 },
     emoji: { type: String, trim: true, maxlength: 10 },
     image: { type: String, trim: true, maxlength: 500 },

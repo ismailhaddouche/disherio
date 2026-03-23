@@ -118,7 +118,7 @@ class OrderController {
     // POST /
     async createOrder(req, res) {
         const { tableNumber, totemId, sessionId, items } = req.body;
-        const numericTotemId = Number(totemId);
+        const numericTotemId = totemId !== undefined ? Number(totemId) : 0;
 
         if (!Number.isInteger(numericTotemId)) {
             return res.error(req.t('ERRORS.INVALID_TOTEM_ID') || 'Invalid totem identifier', 400);
@@ -156,10 +156,9 @@ class OrderController {
         const taggedItems = items.map(item => ({
             ...item,
             status: ITEM_STATUS.PENDING,
-            orderedBy: {
-                id: req.user?.userId || 'guest',
-                name: req.user?.username || 'Invitado'
-            }
+            orderedBy: req.user
+                ? { id: req.user.userId, name: req.user.username }
+                : (item.orderedBy || { id: 'guest', name: 'Guest' })
         }));
 
         order.items.push(...taggedItems);
