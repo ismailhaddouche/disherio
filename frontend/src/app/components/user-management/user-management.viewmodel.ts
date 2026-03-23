@@ -106,6 +106,9 @@ export class UserManagementViewModel {
 
         try {
             const payload = { ...user };
+            delete payload.createdAt;
+            delete payload.updatedAt;
+            delete payload.__v;
             if (!payload.password) {
                 delete payload.password;
             }

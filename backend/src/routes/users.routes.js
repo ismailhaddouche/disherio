@@ -20,7 +20,8 @@ const userAdminSchema = Joi.object({
     password: Joi.string().min(8).max(100).optional(),
     restaurantSlug: Joi.string().max(100).optional(),
     printerId: Joi.string().max(100).optional(),
-    printTemplate: Joi.object().optional()
+    printTemplate: Joi.object().optional(),
+    active: Joi.boolean().optional()
 }).unknown(false);
 
 const printSettingsSchema = Joi.object({
