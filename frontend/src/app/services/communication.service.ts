@@ -3,7 +3,7 @@ import { io, Socket } from 'socket.io-client';
 import { HttpClient, HttpContext } from '@angular/common/http';
 import { Subject, lastValueFrom } from 'rxjs';
 import { environment } from '../../environments/environment';
-import { SOCKET_EVENTS, STORAGE_KEYS } from '../core/constants';
+import { SOCKET_EVENTS, STORAGE_KEYS, GUEST_SENTINEL } from '../core/constants';
 import { SILENT_REQUEST } from '../interceptors/http-context';
 
 @Injectable({
@@ -17,7 +17,7 @@ export class CommunicationService {
     public connectionStatus = signal<'connected' | 'disconnected' | 'reconnecting'>('disconnected');
     public conflictDetected$ = new Subject<void>();
     public userId = signal<string>(this.getOrCreateUserId());
-    public userName = signal<string>(localStorage.getItem(STORAGE_KEYS.USER_NAME) || 'Comensal');
+    public userName = signal<string>(localStorage.getItem(STORAGE_KEYS.USER_NAME) || GUEST_SENTINEL);
 
     private getOrCreateUserId(): string {
         let id = window.localStorage.getItem(STORAGE_KEYS.USER_ID);

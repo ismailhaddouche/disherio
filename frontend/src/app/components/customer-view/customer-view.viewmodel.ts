@@ -9,7 +9,7 @@ import { firstValueFrom } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { TranslateService } from '@ngx-translate/core';
 import { NotifyService } from '../../services/notify.service';
-import { STORAGE_KEYS, ORDER_STATUS, PAYMENT_STATUS } from '../../core/constants';
+import { STORAGE_KEYS, ORDER_STATUS, PAYMENT_STATUS, GUEST_SENTINEL } from '../../core/constants';
 
 export interface TableSession {
     tableNumber: string;
@@ -46,7 +46,7 @@ export class CustomerViewModel {
     public existingNames = computed(() => {
         const order = this.session()?.activeOrder;
         if (!order || !order.items) return [];
-        const names = order.items.map((i: any) => i.orderedBy?.name).filter((n: string) => n && n !== 'Comensal');
+        const names = order.items.map((i: any) => i.orderedBy?.name).filter((n: string) => n && n !== GUEST_SENTINEL);
         return [...new Set(names)] as string[];
     });
 
@@ -85,7 +85,7 @@ export class CustomerViewModel {
             this.cart.set([]);
             if (current.sessionId) localStorage.removeItem(`disher_cart_${current.sessionId}`);
             localStorage.removeItem(STORAGE_KEYS.CURRENT_SESSION);
-            this.comms.userName.set('Comensal');
+            this.comms.userName.set(GUEST_SENTINEL);
             localStorage.removeItem(STORAGE_KEYS.USER_NAME);
             this.session.update(s => s ? { ...s, activeOrder: null, sessionId: undefined } : s);
             this.notify.infoKey('CUSTOMER.SESSION_ENDED');
@@ -95,7 +95,7 @@ export class CustomerViewModel {
     private systemResetCallback = () => {
         console.log('[SECURITY] Global system reset (Cierre de Caja). Clearing all sessions.');
         this.cart.set([]);
-        this.comms.userName.set('Comensal');
+        this.comms.userName.set(GUEST_SENTINEL);
         localStorage.removeItem(STORAGE_KEYS.USER_NAME);
         localStorage.removeItem(STORAGE_KEYS.CURRENT_SESSION);
         this.session.set(null);
@@ -208,7 +208,7 @@ export class CustomerViewModel {
     }
 
     public async registerNameAndStartSession(name: string) {
-        const userName = (!name || name.trim() === '') ? 'Comensal ' + Math.floor(Math.random() * 100) : name.trim();
+        const userName = (!name || name.trim() === '') ? this.translate.instant('CUSTOMER.DEFAULT_NAME') + ' ' + Math.floor(Math.random() * 100) : name.trim();
         this.comms.setUserName(userName);
 
         const currentSession = this.session();

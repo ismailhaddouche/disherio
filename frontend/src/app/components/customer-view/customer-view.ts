@@ -4,6 +4,7 @@ import { CustomerViewModel } from './customer-view.viewmodel';
 import { RouterLink } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
 import { TranslateModule } from '@ngx-translate/core';
+import { GUEST_SENTINEL } from '../../core/constants';
 
 @Component({
   selector: 'app-customer-view',
@@ -17,7 +18,7 @@ import { TranslateModule } from '@ngx-translate/core';
           <div class="loader-ripple"><div></div><div></div></div>
           <p class="text-title-medium">{{ 'CUSTOMER.CONNECTING' | translate }}</p>
         </div>
-      } @else if (!vm.session()?.sessionId || !vm.comms.userName() || vm.comms.userName() === 'Comensal') {
+      } @else if (!vm.session()?.sessionId || !vm.comms.userName() || vm.comms.userName() === GUEST) {
         <div class="name-selection md-card-elevated">
           <div class="name-selection-icon icon-box-md3 primary">
             <lucide-icon name="utensils-crossed" [size]="24"></lucide-icon>
@@ -27,7 +28,7 @@ import { TranslateModule } from '@ngx-translate/core';
             <p class="text-body-large">{{ 'CUSTOMER.HOW_TO_CALL' | translate }}</p>
             
             <div class="md-input-field">
-              <input type="text" #nameInput class="name-input" [placeholder]="'CUSTOMER.YOUR_NAME' | translate" (keyup.enter)="vm.registerNameAndStartSession(nameInput.value)" [value]="vm.comms.userName() !== 'Comensal' ? vm.comms.userName() : ''">
+              <input type="text" #nameInput class="name-input" [placeholder]="'CUSTOMER.YOUR_NAME' | translate" (keyup.enter)="vm.registerNameAndStartSession(nameInput.value)" [value]="vm.comms.userName() !== GUEST ? vm.comms.userName() : ''">
             </div>
             
             <button class="btn-primary full-width action-button" (click)="vm.registerNameAndStartSession(nameInput.value)">
@@ -739,4 +740,5 @@ import { TranslateModule } from '@ngx-translate/core';
 })
 export class CustomerViewComponent {
   public vm = inject(CustomerViewModel);
+  public readonly GUEST = GUEST_SENTINEL;
 }

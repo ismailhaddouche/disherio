@@ -9,6 +9,9 @@ export const STORAGE_KEYS = {
     APP_LANG:        'appLang',
 } as const;
 
+// ─── Guest Sentinel (language-agnostic, never displayed) ─────────────────────
+export const GUEST_SENTINEL = '__guest__';
+
 // ─── Route Parameters ─────────────────────────────────────────────────────────
 export const ROUTE_PARAMS = {
     TABLE_NUMBER: 'tableNumber',

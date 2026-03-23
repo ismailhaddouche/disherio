@@ -249,6 +249,7 @@
         "TOTAL": "Total",
         "ORDER_NOW": "Pedir Ahora",
         "ADD_ITEM_LABEL": "Añadir artículo",
+        "DEFAULT_NAME": "Comensal",
         "ERROR_SESSION_LINK": "No se pudo conectar con la mesa. Intenta escanear de nuevo.",
         "ERROR_LOADING_SESSION": "Error al cargar la información de la sesión.",
         "ERROR_INVALID_LINK": "Enlace no válido. Vuelve a escanear el código QR.",

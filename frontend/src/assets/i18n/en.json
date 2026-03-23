@@ -249,6 +249,7 @@
         "TOTAL": "Total",
         "ORDER_NOW": "Order Now",
         "ADD_ITEM_LABEL": "Add item",
+        "DEFAULT_NAME": "Guest",
         "ERROR_SESSION_LINK": "Could not connect to the table. Try scanning again.",
         "ERROR_LOADING_SESSION": "Failed to load session information.",
         "ERROR_INVALID_LINK": "Invalid link. Please scan the QR code again.",
