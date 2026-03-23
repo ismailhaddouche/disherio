@@ -210,7 +210,9 @@
         "PROCEED_PAY": "Proceder al Pago",
         "PAYMENT_REQUESTED": "Solicitud enviada — tu camarero vendrá enseguida.",
         "PERS": "pers.",
-        "SUBTITLE": "Selecciona el método de pago"
+        "SUBTITLE": "Selecciona el método de pago",
+        "PAYMENT_REQUEST_ERROR": "No se pudo enviar la solicitud de pago. Inténtalo de nuevo.",
+        "PAYMENT_REQUESTED_BADGE": "Pago solicitado"
     },
     "CUSTOMER": {
         "CONNECTING": "Conectando con la mesa...",

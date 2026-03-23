@@ -5,7 +5,7 @@ import { NotifyService } from '../../services/notify.service';
 import { ActivatedRoute } from '@angular/router';
 import { environment } from '../../../environments/environment';
 import { firstValueFrom } from 'rxjs';
-import { ROUTE_PARAMS, ORDER_STATUS } from '../../core/constants';
+import { ROUTE_PARAMS, ORDER_STATUS, PAYMENT_STATUS } from '../../core/constants';
 
 export type PaymentMode = 'total' | 'individual' | 'equitativo';
 
@@ -92,8 +92,22 @@ export class CheckoutViewModel {
         this.paymentMode.set(mode);
     }
 
-    public processPayment() {
-        this.paymentRequested.set(true);
-        this.notify.infoKey('CHECKOUT.PAYMENT_REQUESTED');
+    public async processPayment() {
+        const currentOrder = this.order();
+        if (!currentOrder?._id || this.paymentRequested()) return;
+
+        try {
+            const updated = await firstValueFrom(
+                this.http.patch<any>(`${environment.apiUrl}/api/orders/${currentOrder._id}`, {
+                    paymentStatus: PAYMENT_STATUS.PROCESSING,
+                    __v: currentOrder.__v
+                })
+            );
+            this.order.set(updated);
+            this.paymentRequested.set(true);
+            this.notify.infoKey('CHECKOUT.PAYMENT_REQUESTED');
+        } catch (e) {
+            this.notify.errorKey('CHECKOUT.PAYMENT_REQUEST_ERROR');
+        }
     }
 }

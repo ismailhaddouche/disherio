@@ -25,7 +25,7 @@ export function verifyToken(req, res, next) {
     jwt.verify(token, JWT_SECRET, (err, decoded) => {
         if (err) {
             console.error('[AUTH] JWT Verification failed:', err.message);
-            return res.status(401).json({ error: req.t('ERRORS.FAILED_AUTH_TOKEN') });
+            return res.error(req.t('ERRORS.FAILED_AUTH_TOKEN'), 401);
         }
 
         if (process.env.NODE_ENV !== 'production') {

@@ -12,6 +12,7 @@ import { TotemWithStatus, WaiterViewModel } from './waiter.viewmodel';
     <div class="md-card table-item-md3"
          [class.is-occupied]="!!totem.order"
          [class.is-urgent]="vm.isUrgent(totem.order?.createdAt)"
+         [class.is-payment-requested]="totem.order?.paymentStatus === 'processing'"
          (click)="onClick.emit(totem.id)">
 
       <div class="item-header-row">
@@ -19,8 +20,13 @@ import { TotemWithStatus, WaiterViewModel } from './waiter.viewmodel';
           @if (totem.isVirtual) {
             <div class="chip primary text-label-small">{{ 'WAITER.VIRTUAL_TAG' | translate }}</div>
           }
-          <div class="chip text-label-small" [class.success]="!totem.order" [class.primary]="totem.order">
-            {{ totem.order ? ('WAITER.STATUS_OCCUPIED' | translate) : ('WAITER.STATUS_FREE' | translate) }}
+          <div class="chip text-label-small" [class.success]="!totem.order" [class.primary]="totem.order && totem.order?.paymentStatus !== 'processing'" [class.warning]="totem.order?.paymentStatus === 'processing'">
+            @if (totem.order?.paymentStatus === 'processing') {
+              <lucide-icon name="bell" [size]="12" style="margin-right:4px"></lucide-icon>
+              {{ 'CHECKOUT.PAYMENT_REQUESTED_BADGE' | translate }}
+            } @else {
+              {{ totem.order ? ('WAITER.STATUS_OCCUPIED' | translate) : ('WAITER.STATUS_FREE' | translate) }}
+            }
           </div>
         </div>
         <div class="item-actions">
@@ -98,6 +104,16 @@ import { TotemWithStatus, WaiterViewModel } from './waiter.viewmodel';
         border-color: var(--md-sys-color-error);
     }
 
+    .table-item-md3.is-payment-requested {
+        border-color: var(--md-sys-color-tertiary);
+        animation: pulse-border 1.5s ease-in-out infinite;
+    }
+
+    @keyframes pulse-border {
+        0%, 100% { border-color: var(--md-sys-color-tertiary); box-shadow: 0 0 0 0 color-mix(in srgb, var(--md-sys-color-tertiary) 40%, transparent); }
+        50% { border-color: var(--md-sys-color-tertiary); box-shadow: 0 0 0 6px color-mix(in srgb, var(--md-sys-color-tertiary) 0%, transparent); }
+    }
+
     .item-header-row {
         display: flex;
         justify-content: space-between;
@@ -134,6 +150,8 @@ import { TotemWithStatus, WaiterViewModel } from './waiter.viewmodel';
     
     .color-primary { color: var(--md-sys-color-primary); }
     .color-error { color: var(--md-sys-color-error); }
+
+    .chip.warning { background: var(--md-sys-color-tertiary-container); color: var(--md-sys-color-on-tertiary-container); display: flex; align-items: center; }
 
     .order-summary-md3 {
         margin-top: 16px; padding-top: 16px;

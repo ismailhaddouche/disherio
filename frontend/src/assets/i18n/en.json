@@ -210,7 +210,9 @@
         "PROCEED_PAY": "Proceed to Payment",
         "PAYMENT_REQUESTED": "Request sent — your waiter will be with you shortly.",
         "PERS": "pers.",
-        "SUBTITLE": "Select payment method"
+        "SUBTITLE": "Select payment method",
+        "PAYMENT_REQUEST_ERROR": "Could not send payment request. Try again.",
+        "PAYMENT_REQUESTED_BADGE": "Payment requested"
     },
     "CUSTOMER": {
         "CONNECTING": "Connecting to the table...",
