@@ -15,7 +15,9 @@
         "DELETE": "Eliminar",
         "LOADING": "Cargando...",
         "UNEXPECTED_ERROR": "Ha ocurrido un error inesperado",
-        "RETRY": "Reintentar"
+        "RETRY": "Reintentar",
+        "NOTIFICATIONS": "Notificaciones",
+        "CLOSE_LABEL": "Cerrar"
     },
     "CONFIG": {
         "TITLE": "Configuración del Sistema",
@@ -122,6 +124,7 @@
         "CUSTOM": "Línea Extra",
         "ASSIGN_NAME": "Asignar Nombre",
         "CHARGE_USER": "Cobrar a esta persona",
+        "PAY_USER_TITLE": "Cobrar a este usuario",
         "CUSTOM_ITEM": "Línea personalizada",
         "GUEST_NAME": "Nombre...",
         "SUBTOTAL": "Suma de Platos (IVA incl.)",
@@ -245,6 +248,7 @@
         "DISHES": "platos",
         "TOTAL": "Total",
         "ORDER_NOW": "Pedir Ahora",
+        "ADD_ITEM_LABEL": "Añadir artículo",
         "ERROR_SESSION_LINK": "No se pudo conectar con la mesa. Intenta escanear de nuevo.",
         "ERROR_LOADING_SESSION": "Error al cargar la información de la sesión.",
         "ERROR_INVALID_LINK": "Enlace no válido. Vuelve a escanear el código QR.",

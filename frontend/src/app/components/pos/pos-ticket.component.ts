@@ -82,7 +82,7 @@ import { TranslateModule } from '@ngx-translate/core';
                           <div class="guest-total-actions">
                             <span class="text-title-medium color-primary">{{ user.total | currency:'EUR' }}</span>
                             @if (!vm.editMode()) {
-                              <button class="icon-btn-md3 success-tonal-sm" (click)="vm.payByUser(user.id)" title="Cobrar este usuario">
+                              <button class="icon-btn-md3 success-tonal-sm" (click)="vm.payByUser(user.id)" [title]="'POS.PAY_USER_TITLE' | translate">
                                 <lucide-icon name="credit-card" [size]="16"></lucide-icon>
                               </button>
                             }

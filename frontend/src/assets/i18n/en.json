@@ -15,7 +15,9 @@
         "DELETE": "Delete",
         "LOADING": "Loading...",
         "UNEXPECTED_ERROR": "An unexpected error occurred",
-        "RETRY": "Retry"
+        "RETRY": "Retry",
+        "NOTIFICATIONS": "Notifications",
+        "CLOSE_LABEL": "Close"
     },
     "CONFIG": {
         "TITLE": "System Configuration",
@@ -122,6 +124,7 @@
         "CUSTOM": "Extra Line",
         "ASSIGN_NAME": "Assign Name",
         "CHARGE_USER": "Charge this person",
+        "PAY_USER_TITLE": "Charge this user",
         "CUSTOM_ITEM": "Custom line",
         "GUEST_NAME": "Name...",
         "SUBTOTAL": "Dish Subtotal (incl. Tax)",
@@ -245,6 +248,7 @@
         "DISHES": "dishes",
         "TOTAL": "Total",
         "ORDER_NOW": "Order Now",
+        "ADD_ITEM_LABEL": "Add item",
         "ERROR_SESSION_LINK": "Could not connect to the table. Try scanning again.",
         "ERROR_LOADING_SESSION": "Failed to load session information.",
         "ERROR_INVALID_LINK": "Invalid link. Please scan the QR code again.",

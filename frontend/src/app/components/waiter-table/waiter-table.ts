@@ -110,7 +110,7 @@ import { WaiterTableViewModel } from './waiter-table.viewmodel';
                   </div>
 
                   @if (item.available) {
-                    <button class="add-fab" aria-label="Add item">
+                    <button class="add-fab" [attr.aria-label]="'CUSTOMER.ADD_ITEM_LABEL' | translate">
                       <lucide-icon name="plus" [size]="20"></lucide-icon>
                     </button>
                   }

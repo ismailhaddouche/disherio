@@ -2,13 +2,14 @@ import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { NotifyService } from '../../services/notify.service';
 import { LucideAngularModule } from 'lucide-angular';
+import { TranslateModule } from '@ngx-translate/core';
 
 @Component({
     selector: 'app-notification',
     standalone: true,
-    imports: [CommonModule, LucideAngularModule],
+    imports: [CommonModule, LucideAngularModule, TranslateModule],
     template: `
-    <div class="notification-container" aria-label="Notifications" role="region">
+    <div class="notification-container" [attr.aria-label]="'COMMON.NOTIFICATIONS' | translate" role="region">
       @for (n of notify.notifications(); track n.id) {
         <div class="notification-snackbar animate-slide-up" [class]="n.type"
              [attr.role]="n.type === 'error' ? 'alert' : 'status'"
@@ -23,7 +24,7 @@ import { LucideAngularModule } from 'lucide-angular';
           <div class="snackbar-content text-label-large">
             {{ n.message }}
           </div>
-          <button class="snackbar-close" (click)="notify.notifications.set([])" aria-label="Close">
+          <button class="snackbar-close" (click)="notify.notifications.set([])" [attr.aria-label]="'COMMON.CLOSE_LABEL' | translate">
             <lucide-icon name="x" [size]="16"></lucide-icon>
           </button>
         </div>

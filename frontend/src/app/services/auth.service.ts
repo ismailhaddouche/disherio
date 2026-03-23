@@ -89,7 +89,7 @@ export class AuthService {
         } catch (error: any) {
             console.error('Login error', error);
             const msg = error.error?.message || 'AUTH.LOGIN_ERROR';
-            this.notify.error(msg);
+            this.notify.errorKey(msg);
             return false;
         }
     }
