@@ -122,8 +122,10 @@ export class CustomerViewModel {
             let initialData: TableSession = { tableNumber: '...', sessionId: sessionParam, activeOrder: null };
 
             if (savedSession) {
-                const parsed = JSON.parse(savedSession);
-                if (parsed.sessionId === sessionParam) initialData = parsed;
+                try {
+                    const parsed = JSON.parse(savedSession);
+                    if (parsed.sessionId === sessionParam) initialData = parsed;
+                } catch { localStorage.removeItem(STORAGE_KEYS.CURRENT_SESSION); }
             }
             this.session.set(initialData);
 
@@ -245,7 +247,10 @@ export class CustomerViewModel {
 
             const savedCart = localStorage.getItem(`disher_cart_${s.sessionId}`);
             // Note: cart key uses dynamic sessionId suffix — intentional per-session scoping
-            if (savedCart) this.cart.set(JSON.parse(savedCart));
+            if (savedCart) {
+                try { this.cart.set(JSON.parse(savedCart)); }
+                catch { localStorage.removeItem(`disher_cart_${s.sessionId}`); }
+            }
 
             const orderRes: any = await firstValueFrom(this.http.get(`${environment.apiUrl}/api/orders/session/${s.sessionId}`));
             const activeOrder = orderRes;

@@ -46,7 +46,8 @@ export class StoreConfigViewModel {
 
     private loadLocal(): any {
         const saved = localStorage.getItem('disher_local_config');
-        return saved ? JSON.parse(saved) : null;
+        if (!saved) return null;
+        try { return JSON.parse(saved); } catch { localStorage.removeItem('disher_local_config'); return null; }
     }
 
 

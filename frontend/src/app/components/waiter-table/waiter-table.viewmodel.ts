@@ -199,7 +199,8 @@ export class WaiterTableViewModel {
         try {
             const savedCart = localStorage.getItem(`disher_cart_${current.sessionId}`);
             if (savedCart) {
-                this.cart.set(JSON.parse(savedCart));
+                try { this.cart.set(JSON.parse(savedCart)); }
+                catch { localStorage.removeItem(`disher_cart_${current.sessionId}`); }
             }
 
             const orderRes: any = await firstValueFrom(this.http.get(`${environment.apiUrl}/api/orders/session/${current.sessionId}`));
