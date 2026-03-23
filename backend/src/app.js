@@ -115,6 +115,11 @@ app.use((err, req, res, _next) => {
         return res.error(req.t?.('ERRORS.UNAUTHORIZED') || 'Unauthorized', 401);
     }
 
+    if (err.name === 'MulterError' || err.message?.startsWith('ERRORS.')) {
+        const key = err.name === 'MulterError' ? 'ERRORS.IMAGE_PROCESS_ERROR' : err.message;
+        return res.error(req.t?.(key) || key, 400);
+    }
+
     const statusCode = err.statusCode || 500;
     const message = process.env.NODE_ENV === 'production'
         ? (req.t?.('ERRORS.INTERNAL_SERVER_ERROR') || 'Internal server error')
