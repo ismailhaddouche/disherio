@@ -20,7 +20,7 @@ describe('AuthService', () => {
       providers: [
         AuthService,
         { provide: Router, useValue: routerSpy },
-        { provide: NotifyService, useValue: { successKey: vi.fn(), errorKey: vi.fn(), infoKey: vi.fn(), warningKey: vi.fn() } }
+        { provide: NotifyService, useValue: { success: vi.fn(), error: vi.fn(), info: vi.fn(), warning: vi.fn(), successKey: vi.fn(), errorKey: vi.fn(), infoKey: vi.fn(), warningKey: vi.fn() } }
       ]
     });
     service = TestBed.inject(AuthService);
