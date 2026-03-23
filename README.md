@@ -1,5 +1,7 @@
 # Disher.io — Todo lo que tu restaurante necesita, en una sola plataforma
 
+> **English version:** [README_EN.md](./README_EN.md) | **Documentación en inglés:** [docs/](./docs/) (archivos con sufijo `_EN.md`)
+
 Disher.io es un sistema completo y gratuito que digitaliza toda la operativa de tu restaurante: desde que el cliente escanea un QR en la mesa hasta que paga la cuenta, pasando por la cocina y la caja registradora. Todo conectado en tiempo real, sin cuotas mensuales y funcionando en tu propio servidor.
 
 ---
