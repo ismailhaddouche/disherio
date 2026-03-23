@@ -163,6 +163,7 @@
   }
 
   .sidebar-overlay {
+    display: none;
     position: fixed;
     inset: 0;
     background: rgba(0, 0, 0, 0.4);
@@ -260,6 +261,10 @@
 
   /* Responsive Adjustments */
   @media (max-width: 768px) {
+    .sidebar-overlay {
+      display: block;
+    }
+
     .mobile-only {
       display: flex;
     }
