@@ -66,6 +66,15 @@ if [ "$LANG_OPT" = "2" ]; then
     MSG_HTTPS_WARN="[IMPORTANT] You enabled local HTTPS. The installer will export and trust the Caddy root certificate automatically on this VM."
     MSG_CERT_EXPORT="[IMPORTANT] Caddy root certificate exported and trusted automatically on this VM."
     MSG_CERT_FALLBACK="[WARNING] Automatic trust store update is not available on this distro. The certificate was exported to ./caddy-root.crt."
+    MSG_DNS_TITLE="DNS RECORDS REQUIRED"
+    MSG_DNS_DESC="Add these DNS records at your domain registrar:"
+    MSG_DNS_TYPE="Type"
+    MSG_DNS_HOST="Host"
+    MSG_DNS_VALUE="Value"
+    MSG_DNS_DETECTING="Detecting server public IP..."
+    MSG_DNS_NOIP="Could not detect public IP. Add an A record pointing to this server's IP manually."
+    MSG_DNS_PROPAGATION="DNS propagation can take from a few minutes to 48 hours."
+    MSG_DNS_LETSENCRYPT="Caddy will automatically provision a Let's Encrypt SSL certificate once DNS is configured."
 else
     MSG_DOM="[1/6] Configuración de Acceso"
     MSG_DOM_TYPE="Selecciona el tipo de acceso:"
@@ -101,6 +110,15 @@ else
     MSG_HTTPS_WARN="[IMPORTANTE] Has activado HTTPS local. El instalador exportará y confiará automáticamente el certificado raíz de Caddy en esta VM."
     MSG_CERT_EXPORT="[IMPORTANTE] El certificado raíz de Caddy se exportó y quedó confiado automáticamente en esta VM."
     MSG_CERT_FALLBACK="[AVISO] La actualización automática del almacén de confianza no está disponible en esta distribución. El certificado se exportó a ./caddy-root.crt."
+    MSG_DNS_TITLE="REGISTROS DNS NECESARIOS"
+    MSG_DNS_DESC="Añade estos registros DNS en tu proveedor de dominio:"
+    MSG_DNS_TYPE="Tipo"
+    MSG_DNS_HOST="Host"
+    MSG_DNS_VALUE="Valor"
+    MSG_DNS_DETECTING="Detectando IP pública del servidor..."
+    MSG_DNS_NOIP="No se pudo detectar la IP pública. Añade un registro A apuntando a la IP de este servidor manualmente."
+    MSG_DNS_PROPAGATION="La propagación DNS puede tardar desde minutos hasta 48 horas."
+    MSG_DNS_LETSENCRYPT="Caddy provisionará automáticamente un certificado SSL de Let's Encrypt una vez configurado el DNS."
 fi
 
 # 2. Domain or IP
@@ -133,6 +151,7 @@ while true; do
                     if [[ "$CADDY_DOMAIN" =~ ^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]; then
                         PROTOCOL="https"
                         ENABLE_HTTPS="true"
+                        IS_PUBLIC_DOMAIN="true"
                         break 3
                     else
                         echo -e "${RED}${MSG_ERR_DOM}${NC}"
@@ -256,7 +275,50 @@ EOF
 
 # 4.5 Caddy configuration
 echo -e "\n${CYAN}[4.5/6] Generating Caddyfile...${NC}"
-if [ "$ENABLE_HTTPS" = "true" ]; then
+if [ "$IS_PUBLIC_DOMAIN" = "true" ]; then
+    # Public domain: Caddy auto-provisions Let's Encrypt SSL
+    cat > Caddyfile <<'EOF'
+# Public domain with automatic Let's Encrypt HTTPS
+{$DOMAIN} {
+    # API Backend
+    handle /api/* {
+        reverse_proxy backend:3000
+    }
+
+    # Socket.io WebSocket support
+    handle /socket.io/* {
+        reverse_proxy backend:3000
+    }
+
+    # Frontend - Angular App (fallback for all other routes)
+    handle {
+        reverse_proxy frontend:80
+    }
+
+    # Security Headers
+    header {
+        X-Content-Type-Options nosniff
+        X-Frame-Options SAMEORIGIN
+        Referrer-Policy strict-origin-when-cross-origin
+        Permissions-Policy "camera=(), microphone=(), geolocation=()"
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        -Server
+    }
+
+    # Compression
+    encode zstd gzip
+
+    # Logging
+    log {
+        output file /data/access.log {
+            roll_size 10mb
+            roll_keep 10
+        }
+    }
+}
+EOF
+elif [ "$ENABLE_HTTPS" = "true" ]; then
+    # Local HTTPS with internal Caddy CA
     cat > Caddyfile <<'EOF'
 {
     # Enable internal CA for local domains/IPs
@@ -438,6 +500,40 @@ if [ "$ENABLE_HTTPS" = "true" ]; then
         fi
     else
         echo -e "\n${RED}Could not export Caddy root certificate to ${CADDY_ROOT_CERT}.${NC}"
+    fi
+fi
+
+# --- DNS Records for Public Domain ---
+if [ "$IS_PUBLIC_DOMAIN" = "true" ]; then
+    echo -e "\n${CYAN}============================================${NC}"
+    echo -e "${CYAN}   ${MSG_DNS_TITLE}${NC}"
+    echo -e "${CYAN}============================================${NC}"
+    echo -e "${YELLOW}${MSG_DNS_DESC}${NC}\n"
+
+    echo -e "${MSG_DNS_DETECTING}"
+    VPS_PUBLIC_IP=$(curl -4 -s --max-time 5 ifconfig.me 2>/dev/null || curl -4 -s --max-time 5 api.ipify.org 2>/dev/null || curl -4 -s --max-time 5 icanhazip.com 2>/dev/null)
+
+    if [ -n "$VPS_PUBLIC_IP" ]; then
+        echo -e ""
+        echo -e "  ┌──────────┬─────────────────────────┬──────────────────┐"
+        printf  "  │ %-8s │ %-23s │ %-16s │\n" "${MSG_DNS_TYPE}" "${MSG_DNS_HOST}" "${MSG_DNS_VALUE}"
+        echo -e "  ├──────────┼─────────────────────────┼──────────────────┤"
+        printf  "  │ ${GREEN}%-8s${NC} │ ${CYAN}%-23s${NC} │ ${CYAN}%-16s${NC} │\n" "A" "${CADDY_DOMAIN}" "${VPS_PUBLIC_IP}"
+        printf  "  │ ${GREEN}%-8s${NC} │ ${CYAN}%-23s${NC} │ ${CYAN}%-16s${NC} │\n" "A" "www.${CADDY_DOMAIN}" "${VPS_PUBLIC_IP}"
+        echo -e "  └──────────┴─────────────────────────┴──────────────────┘"
+        echo -e ""
+        echo -e "  ${YELLOW}${MSG_DNS_PROPAGATION}${NC}"
+        echo -e "  ${GREEN}${MSG_DNS_LETSENCRYPT}${NC}"
+    else
+        echo -e "  ${RED}${MSG_DNS_NOIP}${NC}"
+        echo -e ""
+        echo -e "  ${MSG_DNS_TYPE}: A"
+        echo -e "  ${MSG_DNS_HOST}: ${CADDY_DOMAIN}"
+        echo -e "  ${MSG_DNS_VALUE}: <IP_DE_ESTE_SERVIDOR>"
+        echo -e ""
+        echo -e "  ${MSG_DNS_TYPE}: A"
+        echo -e "  ${MSG_DNS_HOST}: www.${CADDY_DOMAIN}"
+        echo -e "  ${MSG_DNS_VALUE}: <IP_DE_ESTE_SERVIDOR>"
     fi
 fi
 
