@@ -353,9 +353,9 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
       box-shadow: var(--md-sys-elevation-1);
     }
 
-    .billing-accent { border-left: 4px solid var(--md-sys-color-primary); }
-    .printer-accent { border-left: 4px solid var(--md-sys-color-secondary); }
-    .device-accent { border-left: 4px solid var(--md-sys-color-tertiary); }
+    .billing-accent { }
+    .printer-accent { }
+    .device-accent { }
 
     .logo-upload-group {
       display: flex;
