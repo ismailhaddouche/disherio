@@ -270,13 +270,14 @@ gcloud compute firewall-rules create allow-disher \
 
 For detailed information on specific aspects of the system, consult the following documents in the `/docs` folder:
 
-- **[QUICK_START.md](./docs/QUICK_START.md)**: Quick start guide, network variants, and cloud provider firewall configuration.
-- **[ARCHITECTURE.md](./docs/ARCHITECTURE.md)**: Design decisions, flow diagrams, and security layers.
+- **[QUICK_START_EN.md](./docs/QUICK_START_EN.md)**: Quick start guide, network variants, and cloud provider firewall configuration.
+- **[ARCHITECTURE_EN.md](./docs/ARCHITECTURE_EN.md)**: Design decisions, flow diagrams, and security layers.
 - **[API_GUIDE.md](./docs/API_GUIDE.md)**: Technical specification of REST endpoints and WebSocket events.
 - **[API_EN.md](./docs/API_EN.md)**: Quick API reference (English).
-- **[MAINTENANCE.md](./docs/MAINTENANCE.md)**: Backups, restoration, credential management, and updates.
-- **[TESTING_AND_CI.md](./docs/TESTING_AND_CI.md)**: Testing strategy and CI/CD pipeline.
-- **[CONTRIBUTING.md](./docs/CONTRIBUTING.md)**: Contribution guide, code conventions, and Pull Request flow.
+- **[MAINTENANCE_EN.md](./docs/MAINTENANCE_EN.md)**: Backups, restoration, credential management, and updates.
+- **[TESTING_AND_CI_EN.md](./docs/TESTING_AND_CI_EN.md)**: Testing strategy and CI/CD pipeline.
+- **[CONTRIBUTING_EN.md](./docs/CONTRIBUTING_EN.md)**: Contribution guide, code conventions, and Pull Request flow.
+- **[SECURITY_EN.md](./docs/SECURITY_EN.md)**: Security policy, vulnerability reporting, and best practices.
 
 ---
 
