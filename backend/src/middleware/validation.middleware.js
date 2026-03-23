@@ -86,6 +86,7 @@ export const restaurantUpdateSchema = Joi.object({
     phone: Joi.string().max(20).trim().allow(''),
     email: Joi.string().email().max(100).trim().allow(''),
     description: Joi.string().max(500).trim().allow(''),
+    logo: Joi.string().max(500).trim().allow(''),
     defaultLanguage: Joi.string().valid('es', 'en'),
     theme: Joi.object({
         primaryColor:    Joi.string().regex(/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/).optional(),
@@ -109,6 +110,15 @@ export const restaurantUpdateSchema = Joi.object({
         facebook: Joi.string().max(100).allow('').optional(),
         twitter: Joi.string().max(100).allow('').optional()
     }).optional(),
+    printers: Joi.array().items(
+        Joi.object({
+            id:         Joi.string().max(100).required(),
+            name:       Joi.string().max(100).required(),
+            type:       Joi.string().valid('network', 'usb', 'cloud', 'thermal').default('network'),
+            address:    Joi.string().max(200).allow('').optional(),
+            connection: Joi.string().max(100).allow('').optional()
+        })
+    ).max(20).optional(),
     stations: Joi.array().items(
         Joi.object({
             name:       Joi.string().max(100).required(),

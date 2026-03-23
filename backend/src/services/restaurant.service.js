@@ -26,8 +26,8 @@ class RestaurantService {
         const oldState = restaurant.toObject();
 
         const ALLOWED_FIELDS = [
-            'name', 'address', 'phone', 'email', 'description',
-            'theme', 'billing', 'socials', 'stations', 'defaultLanguage'
+            'name', 'address', 'phone', 'email', 'description', 'logo',
+            'theme', 'billing', 'socials', 'stations', 'defaultLanguage', 'printers'
         ];
 
         for (const field of ALLOWED_FIELDS) {
