@@ -274,11 +274,16 @@ class OrderController {
         const order = await Order.findById(req.params.id);
         if (!order) return res.error(req.t('ERRORS.ORDER_NOT_FOUND'), 404);
 
+        if (req.body.__v !== undefined && order.__v !== req.body.__v) {
+            return res.error(req.t('ERRORS.VERSION_CONFLICT'), 409);
+        }
+
         const item = order.items.id(req.params.itemId);
         const previousStatus = item?.status;
 
         try {
-            await OrderService.updateItemStatus(order, req.params.itemId, req.body.status);
+            OrderService.updateItemStatus(order, req.params.itemId, req.body.status);
+            await order.save();
             
             await AuditService.log(req, 'ORDER_ITEM_STATUS_CHANGED', {
                 orderId: order._id,
@@ -325,6 +330,10 @@ class OrderController {
             return res.error(req.t('ERRORS.TICKET_CALCULATION_ERROR'), 400);
         }
 
+        if (req.body.__v !== undefined && order.__v !== req.body.__v) {
+            return res.error(req.t('ERRORS.VERSION_CONFLICT') || 'Version conflict detected.', 409);
+        }
+
         const generatedTickets = [];
         for (let i = 0; i < ticketCount; i++) {
             const ticket = new Ticket({
@@ -340,10 +349,6 @@ class OrderController {
             });
             await ticket.save();
             generatedTickets.push(ticket);
-        }
-
-        if (req.body.__v !== undefined && order.__v !== req.body.__v) {
-            return res.error(req.t('ERRORS.VERSION_CONFLICT') || 'Version conflict detected.', 409);
         }
 
         order.paymentStatus = totalPaidFlag ? PAYMENT_STATUS.PAID : PAYMENT_STATUS.SPLIT;
