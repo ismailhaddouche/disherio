@@ -18,14 +18,19 @@ Disher.io moderniza la operativa de establecimientos gastronómicos mediante la 
 
 ## 2. Stack Tecnológico
 
-El proyecto se sustenta sobre un stack moderno y escalable basado en TypeScript:
+El proyecto se sustenta sobre un stack moderno, escalable y 100% basado en TypeScript de extremo a extremo:
 
-- **Frontend**: Angular 21, haciendo uso de la API de **Signals** para una gestión reactiva y eficiente del estado.
-- **Backend**: Node.js 20 con Express 5 (LTS).
-- **Persistencia**: MongoDB 7.
-- **Comunicaciones**: Socket.io 4.x para mensajería bidireccional.
-- **Proxy Inverso**: Caddy 2 para la gestión de tráfico y terminación TLS automática.
-- **Infraestructura**: Docker y Docker Compose para la orquestación de microservicios.
+| Capa | Tecnología | Detalles |
+|------|-----------|----------|
+| **Frontend** | Angular 21 | Signals API para reactividad granular, componentes standalone, Material Design 3 |
+| **Backend** | Node.js 20 + Express 5 | API REST + WebSockets, control de concurrencia optimista (OCC) |
+| **Base de Datos** | MongoDB 7 | Esquemas Mongoose con versionado (`__v`) para integridad multi-usuario |
+| **Tiempo Real** | Socket.io 4.x | Sincronización bidireccional instantánea entre todos los terminales |
+| **Proxy Inverso** | Caddy 2 | Terminación TLS automática (Let's Encrypt), compresión y headers de seguridad |
+| **Infraestructura** | Docker + Compose | Multi-arquitectura (AMD64/ARM64), health checks y límites de recursos |
+| **CI/CD** | GitHub Actions | Build multi-arch, auditoría de seguridad (Trivy), despliegue automatizado |
+| **i18n** | ngx-translate | Soporte completo bilingüe (Español / Inglés) |
+| **Testing** | Jest + Supertest | Tests de integración con MongoDB en memoria (`mongodb-memory-server`) |
 
 ---
 
