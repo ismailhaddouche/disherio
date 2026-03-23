@@ -241,7 +241,6 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
                   <p class="text-body-small opacity-60">{{ 'STORE_CONFIG.PRINTERS_SUB' | translate }}</p>
                 </div>
                 <button class="btn-tonal btn-sm" (click)="vm.addPrinter()">
-                  <lucide-icon name="plus" [size]="16"></lucide-icon>
                   <span>{{ 'MENU_EDITOR.ADD' | translate }}</span>
                 </button>
               </div>
