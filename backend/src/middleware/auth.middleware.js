@@ -41,15 +41,15 @@ export function generateToken(payload) {
 }
 
 export function getCookieOptions() {
-    // Detect if we should use Secure flag (only for HTTPS)
+    // PROTOCOL takes precedence; fall back to INSTALL_MODE (local = HTTP, anything else = HTTPS)
     const protocol = process.env.PROTOCOL || '';
-    // DOMAIN is a bare hostname (e.g. mydomain.com), not a URL — check PROTOCOL instead
-    const isHttps = protocol === 'https';
+    const isHttps = protocol === 'https' ||
+        (process.env.INSTALL_MODE !== undefined && process.env.INSTALL_MODE !== 'local');
 
     return {
         httpOnly: true,
         secure: isHttps,
-        sameSite: isHttps ? 'none' : 'lax', // Use 'none' for cross-site if https, beneficial for some proxy setups
+        sameSite: isHttps ? 'none' : 'lax',
         maxAge: 24 * 60 * 60 * 1000,
         path: '/'
     };
