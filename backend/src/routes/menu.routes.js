@@ -49,7 +49,7 @@ router.post('/:productId/toggle',
     validate(Joi.object({ productId: Joi.string().hex().length(24).required() }).unknown(false), 'params'),
     async function(req, res, next) {
         if ([ROLES.ADMIN, ROLES.KITCHEN].includes(req.user.role)) return next();
-        res.error('Solo administración o cocina pueden cambiar la disponibilidad', 403);
+        res.error(req.t('ERRORS.ACCESS_DENIED_ROLE'), 403);
     },
     menuController.toggleAvailability
 );

@@ -2,6 +2,7 @@ import Restaurant from '../models/Restaurant.js';
 import Order from '../models/Order.js';
 import Ticket from '../models/Ticket.js';
 import ActivityLog from '../models/ActivityLog.js';
+import { randomInt } from 'crypto';
 import { ORDER_STATUS } from '../constants.js';
 
 class RestaurantService {
@@ -43,7 +44,7 @@ class RestaurantService {
         const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
         let result = 'DSH-';
         for (let i = 0; i < 12; i++) {
-            result += chars.charAt(Math.floor(Math.random() * chars.length));
+            result += chars[randomInt(chars.length)];
         }
         const currentYear = new Date().getFullYear();
         return `${result}-${currentYear}-${currentYear + 1}`;
@@ -191,6 +192,12 @@ class RestaurantService {
         });
 
         await restaurant.save();
+
+        // Mark all still-active orders as completed so they stop showing in KDS/POS
+        await Order.updateMany(
+            { status: ORDER_STATUS.ACTIVE },
+            { $set: { status: ORDER_STATUS.COMPLETED } }
+        );
 
         return { affectedTables };
     }

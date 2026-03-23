@@ -62,10 +62,11 @@ export class AuthService {
 
     public async login(username: string, password: string): Promise<boolean> {
         try {
+            const ctx = new HttpContext().set(SILENT_REQUEST, true);
             const session = await firstValueFrom(
                 this.http.post<UserSession>(`${environment.apiUrl}/api/auth/login`,
                     { username, password },
-                    { withCredentials: true })
+                    { withCredentials: true, context: ctx })
             );
 
             if (session) {
@@ -87,8 +88,8 @@ export class AuthService {
             return false;
         } catch (error: any) {
             console.error('Login error', error);
-            const msg = error.error?.error || 'AUTH.LOGIN_ERROR';
-            this.notify.errorKey(msg);
+            const msg = error.error?.message || 'AUTH.LOGIN_ERROR';
+            this.notify.error(msg);
             return false;
         }
     }
