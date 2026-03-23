@@ -392,7 +392,7 @@
         "LOADING": "Cargando mesas...",
         "TOUCH_ORDER": "TOCAR PARA PEDIR",
         "NO_TABLES": "No hay mesas configuradas aún.",
-        "ADD_VIRTUAL": "Abrir Mesa Temporal",
+        "ADD_VIRTUAL": "Totem",
         "DELETE_CONFIRM": "¿Eliminar esta mesa temporal?",
         "VIRTUAL_TAG": "TEMP",
         "NEW_VIRTUAL_NAME": "Nombre (ej: Barra 2, Grupo Terraza)",

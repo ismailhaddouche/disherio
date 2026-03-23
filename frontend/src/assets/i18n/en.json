@@ -392,7 +392,7 @@
         "LOADING": "Loading tables...",
         "TOUCH_ORDER": "TAP TO ORDER",
         "NO_TABLES": "No tables configured yet.",
-        "ADD_VIRTUAL": "Open Temporary Table",
+        "ADD_VIRTUAL": "Totem",
         "DELETE_CONFIRM": "Delete this temporary table?",
         "VIRTUAL_TAG": "TEMP",
         "NEW_VIRTUAL_NAME": "Name (e.g.: Bar 2, Terrace Group)",
