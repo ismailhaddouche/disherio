@@ -23,7 +23,7 @@
         <button class="icon-btn-md3 mobile-only" (click)="sidebarCollapsed.set(!sidebarCollapsed())">
           <lucide-icon name="menu" [size]="24"></lucide-icon>
         </button>
-        <span class="restaurant-name-md3 text-title-large">{{ theme.restaurantName || ('APP.RESTAURANT_NAME' | translate) }}</span>
+        <span class="restaurant-name-md3 text-title-large">{{ theme.restaurantName?.trim() || ('APP.RESTAURANT_NAME' | translate) }}</span>
       </div>
 
       <div class="top-bar-end">
