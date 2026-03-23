@@ -22,7 +22,7 @@ const upload = multer({
     limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
     fileFilter: (req, file, cb) => {
         if (file.mimetype.startsWith('image/')) cb(null, true);
-        else cb(new Error('Solo se permiten imágenes'));
+        else cb(new Error('ERRORS.NO_IMAGE_PROVIDED'));
     }
 });
 
@@ -64,6 +64,6 @@ router.post('/logs', verifyToken, validate(logSchema), restaurantController.crea
 router.get('/logs', verifyToken, requireAdmin, restaurantController.getLogs);
 
 router.get('/history', verifyToken, restaurantController.getHistory);
-router.delete('/tickets/:ticketId', verifyToken, validate(mongoIdSchema.rename('id', 'ticketId'), 'params'), restaurantController.deleteTicket);
+router.delete('/tickets/:ticketId', verifyToken, validate(Joi.object({ ticketId: Joi.string().hex().length(24).required() }), 'params'), restaurantController.deleteTicket);
 
 export default router;
