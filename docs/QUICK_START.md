@@ -81,10 +81,11 @@ Simplemente accede a la URL e inicia sesión con estas credenciales.
 
 Una vez dentro del panel de administración, puedes empezar a personalizar tu restaurante:
 
-1.  **Crea tu Menú:** Ve a `/admin/menu` para añadir categorías, platos, variantes y extras.
-2.  **Define tus Mesas:** En `/admin/config` -> `Mesas`, genera los códigos QR únicos para cada mesa.
-3.  **Crea Cuentas para el Personal:** En `/admin/users`, añade más usuarios con roles de `cocina` y `cajero`.
-4.  **Abre las Estaciones de Trabajo:**
+1.  **Configura el IVA (Obligatorio):** Ve a `/admin/config` → sección **Facturación** y establece el porcentaje de IVA de tu país (ej: 21% en España, 16% en México). **Sin este paso, el sistema no podrá generar tickets ni calcular cobros correctamente.**
+2.  **Crea tu Menú:** Ve a `/admin/menu` para añadir categorías, platos, variantes y extras. Los precios se introducen con IVA incluido.
+3.  **Define tus Mesas:** En `/admin/config` → `Mesas`, genera los códigos QR únicos para cada mesa.
+4.  **Crea Cuentas para el Personal:** En `/admin/users`, añade más usuarios con roles de `cocina` y `cajero`.
+5.  **Abre las Estaciones de Trabajo:**
     - **Vista de Cocina (KDS):** `.../admin/kds`
     - **Terminal Punto de Venta (TPV):** `.../admin/pos`
 
