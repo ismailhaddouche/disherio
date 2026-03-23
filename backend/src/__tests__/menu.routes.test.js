@@ -79,7 +79,7 @@ describe('Menu Routes — Integration Tests', () => {
                 .post('/api/menu')
                 .send({ name: 'Test', category: 'Test', basePrice: 5 });
 
-            expect(res.status).toBe(403);
+            expect(res.status).toBe(401);
         });
 
         it('should reject invalid menu item data', async () => {

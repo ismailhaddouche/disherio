@@ -112,10 +112,10 @@ describe('Validation Middleware — Joi Schemas', () => {
             expect(error).toBeUndefined();
         });
 
-        it('should reject when menuItemId is missing', () => {
+        it('should accept when menuItemId is missing (now optional)', () => {
             const input = { quantity: 1 };
             const { error } = orderItemSchema.validate(input);
-            expect(error).toBeDefined();
+            expect(error).toBeUndefined();
         });
 
         it('should reject quantity less than 1', () => {
@@ -180,7 +180,7 @@ describe('Validation Middleware — Joi Schemas', () => {
 
         it('should reject items with invalid entries', () => {
             const input = {
-                items: [{ quantity: 1 }] // missing menuItemId
+                items: [{ quantity: 0 }] // quantity below minimum
             };
             const { error } = orderPlacementSchema.validate(input);
             expect(error).toBeDefined();

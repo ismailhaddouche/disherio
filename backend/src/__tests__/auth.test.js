@@ -43,7 +43,8 @@ describe('Auth Middleware', () => {
                 statusCode: null,
                 body: null,
                 status(code) { this.statusCode = code; return this; },
-                json(data) { this.body = data; return this; }
+                json(data) { this.body = data; return this; },
+                error(message, code = 500) { this.statusCode = code; this.body = { message }; return this; }
             };
             return { req, res };
         };
@@ -70,14 +71,14 @@ describe('Auth Middleware', () => {
             });
         });
 
-        it('should return 403 when no token is provided', () => {
+        it('should return 401 when no token is provided', () => {
             const { req, res } = createMockReqRes(null, 'none');
 
             const next = jest.fn();
             verifyToken(req, res, next);
 
-            expect(res.statusCode).toBe(403);
-            expect(res.body.error).toBe('ERRORS.NO_TOKEN_PROVIDED');
+            expect(res.statusCode).toBe(401);
+            expect(res.body.message).toBe('ERRORS.NO_TOKEN_PROVIDED');
             expect(next).not.toHaveBeenCalled();
         });
 

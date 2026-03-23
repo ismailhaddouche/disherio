@@ -61,9 +61,9 @@ describe('Order Routes — Integration Tests', () => {
             expect(res.body.data.length).toBe(1);
         });
 
-        it('should reject without auth token (403)', async () => {
+        it('should reject without auth token (401)', async () => {
             const res = await request(app).get('/api/orders');
-            expect(res.status).toBe(403);
+            expect(res.status).toBe(401);
         });
     });
 
