@@ -273,7 +273,7 @@ Para información detallada sobre aspectos específicos del sistema, consulte lo
 - **[QUICK_START.md](./docs/QUICK_START.md)**: Guía de inicio rápido, variantes de red y configuración de firewalls en proveedores cloud.
 - **[ARCHITECTURE.md](./docs/ARCHITECTURE.md)**: Decisiones de diseño, diagramas de flujo y capas de seguridad.
 - **[API_GUIDE.md](./docs/API_GUIDE.md)**: Especificación técnica de los endpoints REST y eventos WebSocket.
-- **[API.md](./docs/API.md)**: Referencia rápida de la API.
+- **[API.md](./docs/API.md)**: Referencia rápida de la API (español).
 - **[MAINTENANCE.md](./docs/MAINTENANCE.md)**: Backups, restauración, gestión de credenciales y actualizaciones.
 - **[TESTING_AND_CI.md](./docs/TESTING_AND_CI.md)**: Estrategia de testing y pipeline de CI/CD.
 - **[CONTRIBUTING.md](./docs/CONTRIBUTING.md)**: Guía de contribución, convenciones de código y flujo de Pull Requests.

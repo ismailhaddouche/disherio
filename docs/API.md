@@ -1,748 +1,346 @@
-# Disher.io API Reference
+# Referencia de API de Disher.io
 
-**Version:** 1.2
-**Architecture:** Single-tenant — all endpoints operate on a single restaurant instance.
-**Integrity:** All critical state changes are protected by **Optimistic Concurrency Control (OCC)** using the `__v` field.
-
----
-
-## Base URL
-
-| Environment | Base URL |
-|-------------|----------|
-| Development | `http://localhost:3000/api` |
-| Production | `https://yourdomain.com/api` |
+**Versión:** 1.2
+**Arquitectura:** Single-tenant — todos los endpoints operan sobre una única instancia de restaurante.
+**Integridad:** Todos los cambios de estado críticos están protegidos por **Control de Concurrencia Optimista (OCC)** usando el campo `__v`.
 
 ---
 
-## Authentication
+## URL Base
 
-Authentication uses **httpOnly cookies**. The token is set automatically by the server on login and sent by the browser on every subsequent request — no manual token handling required.
-
-For **API clients** (scripts, integrations, curl), the legacy `Authorization: Bearer <token>` header is still accepted as a fallback.
-
-Tokens expire after **24 hours**. Call `POST /api/auth/logout` to invalidate the session cookie immediately.
-
-**Role levels:**
-- `admin` — Full access to all endpoints
-- `waiter` — Access to orders and tables (Waiter View)
-- `kitchen` — Access to orders (KDS)
-- `pos` — Access to orders and checkout (POS)
-- `customer` — No authenticated access (uses public endpoints)
+| Entorno | URL Base |
+|---------|----------|
+| Desarrollo | `http://localhost:3000/api` |
+| Producción | `https://tudominio.com/api` |
 
 ---
 
-## Endpoints
+## Autenticación
 
-### Authentication
+La autenticación usa **cookies httpOnly**. El token se establece automáticamente por el servidor al iniciar sesión y es enviado por el navegador en cada petición posterior — no se requiere manejo manual del token.
 
-#### Login
-`POST /api/auth/login`
+---
 
-Authenticates a staff member and returns a JWT token.
+## Endpoints de Autenticación
 
-**Request:**
+### POST /auth/login
+Inicia sesión y establece la cookie de sesión.
+
+**Request Body:**
 ```json
 {
   "username": "admin",
-  "password": "yourpassword"
+  "password": "tu_contraseña"
 }
 ```
 
-**Response `200 OK`:**
+**Response:**
 ```json
 {
-  "username": "admin",
-  "role": "admin"
-}
-```
-
-The JWT token is set as a `Set-Cookie: disher_token` header — `HttpOnly`, `Secure`, `SameSite=Strict`. It is **not** returned in the response body.
-
-**Response `400 Bad Request`:** (missing fields)
-```json
-{ "error": "Username is required" }
-```
-
-**Response `401 Unauthorized`:**
-```json
-{ "error": "Invalid credentials" }
-```
-
-**Response `429 Too Many Requests`:** (after 10 failed attempts in 15 min)
-```json
-{ "error": "Too many login attempts. Please try again in 15 minutes." }
-```
-
-#### Logout
-`POST /api/auth/logout`
-
-Clears the authentication cookie. No request body required.
-
-**Response `200 OK`:**
-```json
-{ "message": "Logged out successfully" }
-```
-
-#### Customer Guest Session
-`POST /api/auth/customer-session`
-
-Generates a temporary session token for a customer joining a table. Employs `httpOnly` cookies.
-
-**Request:**
-```json
-{
-  "restaurantSlug": "default",
-  "totemId": 1,
-  "name": "Juan"
-}
-```
-
-**Response `200 OK`:**
-```json
-{
-  "username": "Juan",
-  "role": "customer",
-  "restaurantSlug": "default",
-  "totemId": 1
-}
-```
-
----
-
-### System
-
-#### Health Check
-`GET /api/health`
-
-Returns system status. No authentication required. Used by Docker health checks and monitoring tools.
-
-**Response `200 OK`:**
-```json
-{
-  "status": "ok",
-  "uptime": 3600.42,
-  "domain": "yourdomain.com",
-  "mode": "production"
-}
-```
-
----
-
-### Restaurant Configuration
-
-#### Get Restaurant Info
-`GET /api/restaurant`
-
-Returns the full restaurant configuration including branding, billing, and totem list. Public — no authentication required (used by the customer-facing menu to load branding).
-
-**Response `200 OK`:**
-```json
-{
-  "_id": "65a1b2c3d4e5f6a7b8c9d0e1",
-  "name": "La Bonne Table",
-  "logo": "https://yourdomain.com/logo.png",
-  "theme": {
-    "primaryColor": "#E63946",
-    "secondaryColor": "#1D3557"
-  },
-  "billing": {
-    "vatPercentage": 10,
-    "tipEnabled": true,
-    "tipPercentage": 5
-  },
-  "totems": [
-    { "id": 1, "name": "Mesa 1", "active": true },
-    { "id": 2, "name": "Mesa 2", "active": true }
-  ],
-  "nextTotemId": 3
-}
-```
-
-#### Update Restaurant Info
-`PATCH /api/restaurant` — **Requires: Admin**
-
-Updates any restaurant field (branding, theme, billing, socials). Sends a `config-updated` Socket.io event to all connected clients.
-
-**Request (partial update example):**
-```json
-{
-  "name": "La Bonne Table",
-  "theme": {
-    "primaryColor": "#E63946"
-  },
-  "billing": {
-    "vatPercentage": 10,
-    "tipEnabled": true,
-    "tipPercentage": 5
+  "success": true,
+  "user": {
+    "id": "507f1f77bcf86cd799439011",
+    "username": "admin",
+    "role": "admin"
   }
 }
 ```
 
-**Response `200 OK`:** Full updated restaurant object.
+### POST /auth/logout
+Cierra sesión y elimina la cookie.
 
-#### Upload Logo
-`POST /api/upload-logo` — **Requires: Admin**
-
-Uploads and optimizes the restaurant logo (converts to WebP, forces 500x500px boundaries). Accepts `multipart/form-data` with a `logo` file field.
-
-**Response `200 OK`:**
+**Response:**
 ```json
 {
-  "url": "/uploads/logo-1708691400000.webp"
-}
-```
-
-#### Close Shift (Cierre de Caja)
-`POST /api/close-shift` — **Requires: Admin**
-
-Terminates all active table sessions globally. Emits `all-sessions-ended` via Socket.io to disconnect all customers. Used typically at the end of the day.
-
-**Response `200 OK`:**
-```json
-{
-  "message": "Cierre de caja realizado. Todas las sesiones de clientes han sido liquidadas."
+  "success": true
 }
 ```
 
 ---
 
-### Totems (Tables)
+## Endpoints de Restaurant
 
-#### List Totems
-`GET /api/totems`
+### GET /restaurant
+Obtiene la configuración completa del restaurante.
 
-Returns the list of all configured tables/totems. Public — no authentication required.
-
-**Response `200 OK`:**
-```json
-[
-  { "id": 1, "name": "Mesa 1", "active": true, "isVirtual": false, "currentSessionId": "DSH-ABC123-2026-2027" },
-  { "id": 2, "name": "Barra", "active": true, "isVirtual": true, "currentSessionId": null }
-]
-```
-
-#### Add New Totem
-`POST /api/totems` — **Requires: Admin**
-
-Creates a new table. The `id` is auto-incremented. The `name` defaults to `Mesa {id}` if not provided.
-
-**Request:**
+**Response:**
 ```json
 {
-  "name": "Terraza 2"
+  "id": "507f1f77bcf86cd799439011",
+  "name": "Mi Restaurante",
+  "phone": "+34 900 123 456",
+  "website": "https://mirestaurante.com",
+  "theme": "midnight",
+  "vat": 21,
+  "tipEnabled": true,
+  "tipPercentage": 5,
+  "tipDescription": "La propina es opcional",
+  "printers": [...],
+  "__v": 0
 }
 ```
 
-**Response `201 Created`:**
+### PUT /restaurant
+Actualiza la configuración del restaurante.
+
+**Request Body:**
 ```json
 {
-  "id": 3,
-  "name": "Terraza 2",
-  "active": true,
-  "isVirtual": false,
-  "createdBy": "admin"
+  "name": "Mi Restaurante Actualizado",
+  "phone": "+34 900 123 456",
+  "vat": 21,
+  "__v": 0
 }
 ```
 
-#### Update Totem
-`PATCH /api/totems/:id` — **Requires: Admin**
-
-Updates an existing table's name.
-
-**Request:**
+**Response:**
 ```json
 {
-  "name": "Terraza VIP"
+  "success": true,
+  "restaurant": { /* configuración actualizada */ }
 }
 ```
-
-#### Delete Totem
-`DELETE /api/totems/:id` — **Requires: Admin (Waiters can delete virtual totems)**
-
-Permanently removes a table from the restaurant config. Kills any active sessions on that table.
-
-#### Get Totem Session
-`GET /api/totems/:id/session`
-
-Retrieves the currently active `sessionId` for a specific table. If the session has expired or the table is empty, `sessionId` will be `null`.
-
-**Response `200 OK`:**
-```json
-{
-  "sessionId": "DSH-XYZ789-2026-2027",
-  "totemId": 1,
-  "tableNumber": "Mesa 1"
-}
-```
-
-#### Start Totem Session
-`POST /api/totems/:id/session`
-
-Generates and opens a new session for a table. Required before a customer can place an order via QR or via public session code link. If an active session already exists, it returns the existing one. It also initializes an empty order lock in the backend.
-
-**Response `200 OK`:**
-```json
-{
-  "sessionId": "DSH-NEW123-2026-2027",
-  "totemId": 1,
-  "tableNumber": "Mesa 1"
-}
-```
-
-#### Get QR Code
-`GET /api/qr/:totemId`
-
-Returns a PNG image of the QR code for the specified table. Scan the code to open the customer menu for that table. No authentication required.
-
-**Parameters:**
-- `totemId` (number) — The table ID
-
-**Response:** `image/png` binary
-
-**Usage:** Open directly in browser or `<img src="/api/qr/1">` in HTML.
-
-> The QR code URL is built from the `DOMAIN` environment variable. Set it correctly before printing QR codes.
 
 ---
 
-### Menu
+## Endpoints de Menú
 
-#### List Menu Items
-`GET /api/menu`
+### GET /menu
+Obtiene todo el menú con categorías y platos.
 
-Returns all menu items sorted by category, then by `order` field, then alphabetically. Public — no authentication required.
-
-**Response `200 OK`:**
-```json
-[
-  {
-    "_id": "65a1b2c3d4e5f6a7b8c9d0e2",
-    "name": "Margherita",
-    "description": "Tomato, mozzarella, basil",
-    "price": 12.50,
-    "category": "Pizza",
-    "available": true,
-    "variants": [
-      { "name": "Small", "priceDelta": -2 },
-      { "name": "Large", "priceDelta": 3 }
-    ],
-    "addons": [
-      { "name": "Extra cheese", "price": 1.5 }
-    ],
-    "allergens": ["gluten", "dairy"],
-    "order": 1
-  }
-]
-```
-
-#### Create or Update Menu Item
-`POST /api/menu` — **Requires: Admin**
-
-- If `_id` is **omitted**: creates a new item.
-- If `_id` is **provided**: updates the existing item.
-
-Sends a `menu-update` Socket.io event to all connected clients.
-
-**Request (create):**
+**Response:**
 ```json
 {
-  "name": "Caesar Salad",
-  "price": 9.00,
-  "category": "Starters",
-  "available": true,
-  "allergens": ["dairy", "gluten"]
+  "categories": [
+    {
+      "id": "507f1f77bcf86cd799439011",
+      "name": "Entrantes",
+      "order": 1,
+      "items": [...]
+    }
+  ]
 }
 ```
 
-**Request (update):**
+### POST /menu/categories
+Crea una nueva categoría.
+
+**Request Body:**
 ```json
 {
-  "_id": "65a1b2c3d4e5f6a7b8c9d0e2",
-  "price": 10.00,
-  "available": false
+  "name": "Postres",
+  "order": 3
 }
 ```
 
-**Response `200 OK`:** Full item object.
+### PUT /menu/categories/:id
+Actualiza una categoría.
 
-#### Delete Menu Item
-`DELETE /api/menu/:id` — **Requires: Admin**
+### DELETE /menu/categories/:id
+Elimina una categoría.
 
-Permanently deletes a menu item. Sends a `menu-update` event with `{ deleted: id }`.
+### POST /menu/items
+Crea un nuevo plato.
 
-**Response `200 OK`:**
+**Request Body:**
 ```json
-{ "message": "Menu item deleted" }
+{
+  "name": "Ensalada César",
+  "description": "Lechuga, pollo, parmesano",
+  "price": 8.50,
+  "category": "507f1f77bcf86cd799439011",
+  "allergens": ["gluten", "lacteos"],
+  "available": true
+}
 ```
-
-#### Toggle Item Availability
-`POST /api/menu/:productId/toggle` — **Requires: Admin**
-
-Flips the `available` flag without editing the item. Use this when an item sells out mid-service. Sends a `menu-update` Socket.io event.
-
-**Response `200 OK`:** Full item object with updated `available` field.
 
 ---
 
-### Orders
+## Endpoints de Pedidos
 
-#### List Active Orders
-`GET /api/orders` — **Requires: Token (any role)**
+### GET /orders
+Obtiene todos los pedidos (con filtros opcionales).
 
-Returns all orders with `status: active`, sorted newest first. Used by KDS and POS.
+**Query Parameters:**
+- `status`: `pending`, `confirmed`, `ready`, `delivered`, `cancelled`
+- `table`: ID de la mesa
 
-**Response `200 OK`:** Array of order objects.
-
-#### Get Order by Table
-`GET /api/orders/table/:tableNumber`
-
-Returns the active order for a specific table number. Public — used by the customer checkout view.
-
-**Parameters:**
-- `tableNumber` (string) — The table identifier (matches `totemId` or `name`)
-
-**Response `200 OK`:** Order object or `null` if no active order.
-
-#### Get Order by Session Code
-`GET /api/orders/session/:sessionId`
-
-Returns the active order linked to a specific alphanumeric session code. Public — used by the customer view when accessed out of local network.
-
-**Response `200 OK`:** Order object or `null` if no active order matches the session.
-
-#### Create New Order (Customer)
-`POST /api/orders`
-
-Creates a new order. Public — called when a customer confirms their cart. Sends an `order-update` Socket.io event.
-
-**Request:**
+**Response:**
 ```json
 {
-  "tableNumber": "1",
-  "totemId": 1,
-  "sessionId": "DSH-ABC123-2026-2027",
+  "orders": [
+    {
+      "id": "507f1f77bcf86cd799439011",
+      "table": "mesa-1",
+      "status": "pending",
+      "items": [...],
+      "total": 25.50,
+      "createdAt": "2024-01-01T12:00:00.000Z",
+      "__v": 0
+    }
+  ]
+}
+```
+
+### POST /orders
+Crea un nuevo pedido.
+
+**Request Body:**
+```json
+{
+  "table": "mesa-1",
   "items": [
     {
-      "name": "Margherita",
-      "price": 12.50,
+      "productId": "507f1f77bcf86cd799439011",
       "quantity": 2,
-      "variants": ["Large"],
-      "addons": ["Extra cheese"]
+      "notes": "Sin cebolla"
     }
   ]
 }
 ```
 
-**Response `201 Created`:** Full order object.
+### PUT /orders/:id/status
+Actualiza el estado de un pedido.
 
-#### Add Items to Order (Waiter)
-`POST /api/orders/table/:tableNumber/add-items` — **Requires: Token (any role)**
-
-Appends items to an existing active order (or creates the order if the table is empty). This is the endpoint used by Waiters in the POS/Waiter interface.
-
-**Request:**
+**Request Body:**
 ```json
 {
-  "items": [
-    { "name": "Beer", "price": 4.50, "quantity": 3 }
-  ],
-  "guestId": "guest-timestamp",
-  "guestName": "Carlos"
+  "status": "confirmed",
+  "__v": 0
 }
 ```
 
-**Response `200 OK`:** Full order object.
+---
 
-#### Update Order
-`PATCH /api/orders/:orderId` — **Requires: Token (any role)**
+## Endpoints de Mesas
 
-Updates any field of an order (items, totalAmount, status, paymentStatus). Sends `order-updated` Socket.io event.
+### GET /tables
+Obtiene todas las mesas.
 
-**Request (example — mark as ready):**
+**Response:**
 ```json
 {
-  "status": "completed",
-  "paymentStatus": "paid"
-}
-```
-
-**Response `200 OK`:** Full updated order object.
-
-#### Update Single Item Status
-`PATCH /api/orders/:orderId/items/:itemId` — **Requires: Token (any role)**
-
-Updates the status of a single item within an order. Used by KDS to mark items as `preparing` or `ready`.
-
-**Item status values:**
-| Status | Meaning |
-|--------|---------|
-| `pending` | Received, not started |
-| `preparing` | Kitchen is working on it |
-| `ready` | Ready to serve |
-| `served` | Delivered to customer |
-| `cancelled`| Cancelled order |
-
-**Request:**
-```json
-{
-  "status": "preparing"
-}
-```
-
-**Response `200 OK`:** Full order object with updated item.
-
-#### Associate Item to Customer
-`PATCH /api/orders/:orderId/items/:itemId/associate` — **Requires: Token (any role)**
-
-Changes the `orderedBy` tag of an individual item inside an order to a specific customer's name. Useful for waiters managing split bills.
-
-**Request:**
-```json
-{
-  "userId": "guest-timestamp-123",
-  "userName": "Carlos"
-}
-```
-
-**Response `200 OK`:** Full updated order object.
-
-#### Bulk Status Update
-`PATCH /api/orders/:orderId/items/bulk-status` — **Requires: Token (any role)**
-
-Updates the status of *all* items in the order at once (excluding already `served` or `cancelled` items).
-
-**Request:**
-```json
-{
-  "status": "preparing"
-}
-```
-
-**Response `200 OK`:** Full updated order object.
-
-#### Complete an Order
-`POST /api/orders/:orderId/complete` — **Requires: Token (any role)**
-
-Sets order `status` to `completed` and `paymentStatus` to `paid`. Shortcut for simple full-table payments.
-
-**Response `200 OK`:** Full updated order object.
-
-#### Checkout (Payment Processing)
-`POST /api/orders/:orderId/checkout` — **Requires: Token (any role)**
-
-Processes payment for an order. Applies VAT and tip, splits into tickets if requested, and marks the order as completed.
-
-**Request:**
-```json
-{
-  "splitType": "equal",
-  "parts": 2,
-  "method": "card",
-  "billingConfig": {
-    "vatPercentage": 10,
-    "tipEnabled": true,
-    "tipPercentage": 5
-  }
-}
-```
-
-**Fields:**
-- `splitType` — `"equal"` to split evenly, or `"single"` / omit for no split
-- `parts` — Number of people splitting the bill (used when `splitType` is `"equal"`)
-- `method` — `"cash"` or `"card"`
-- `billingConfig` — Pass the billing settings from `GET /api/restaurant`
-
-**Response `200 OK`:**
-```json
-{
-  "tickets": [
+  "tables": [
     {
-      "_id": "...",
-      "orderId": "...",
-      "customId": "ABC123/1-2",
-      "method": "card",
-      "amount": 16.24,
-      "itemsSummary": ["2x Margherita", "1x Caesar Salad"]
-    },
-    {
-      "customId": "ABC123/2-2",
-      "amount": 16.24
+      "id": "mesa-1",
+      "name": "Mesa 1",
+      "qr": "data:image/png;base64,...",
+      "active": true
     }
   ]
 }
 ```
 
----
+### POST /tables
+Crea una nueva mesa.
 
-### Users (Staff Management)
-
-All user endpoints require **Admin** role.
-
-#### List All Users
-`GET /api/users` — **Requires: Admin**
-
-Returns all user accounts. Password field is excluded.
-
-**Response `200 OK`:**
-```json
-[
-  {
-    "_id": "65a1b2c3...",
-    "username": "maria_kitchen",
-    "role": "kitchen",
-    "active": true
-  }
-]
-```
-
-#### Update Own Profile
-`PATCH /api/users/me` — **Requires: Token (any role)**
-
-Allows a logged-in user to change their username or password.
-
-**Request:**
+**Request Body:**
 ```json
 {
-  "username": "maria_chef",
-  "password": "newSecurePassword123"
+  "name": "Mesa 5"
 }
 ```
 
-#### Create or Update User
-`POST /api/users` — **Requires: Admin**
-
-- If `_id` is **omitted**: creates a new user.
-- If `_id` is **provided**: updates the existing user. Password is re-hashed if changed.
-
-**Request (create):**
-```json
-{
-  "username": "carlos_pos",
-  "password": "securepassword123",
-  "role": "pos",
-  "active": true
-}
-```
-
-**Available roles:** `admin`, `kitchen`, `pos`
-
-**Response `200 OK`:** User object (without password).
-
-#### Delete User
-`DELETE /api/users/:id` — **Requires: Admin**
-
-Permanently removes a user account.
-
-**Response `200 OK`:**
-```json
-{ "message": "User deleted" }
-```
-
-#### Update Printer Settings
-`PATCH /api/users/:id/print-settings` — **Requires: Admin**
-
-Updates network printer configuration and receipt template details for a specific POS/Admin user.
-
-**Request:**
-```json
-{
-  "printerId": "192.168.1.100",
-  "printTemplate": {
-    "header": "Gracias por su visita",
-    "showLogo": true
-  }
-}
-```
-
-#### Copy Printer Settings
-`POST /api/users/:id/copy-print-settings/:sourceUserId` — **Requires: Admin**
-
-Copies the printer configuration and template from the `sourceUserId` to the target `:id`. Very useful when setting up multiple POS terminals.
+### DELETE /tables/:id
+Elimina una mesa.
 
 ---
 
-### Logs & History
+## Endpoints de Usuarios
 
-#### Get Activity Logs
-`GET /api/logs` — **Requires: Token (any role)**
+### GET /users
+Obtiene todos los usuarios (requiere rol admin).
 
-Returns the last 100 admin activity log entries, sorted newest first.
-
-#### Create Activity Log
-`POST /api/logs`
-
-Records an administrative action. Called by the frontend automatically.
-
-**Request:**
+**Response:**
 ```json
 {
-  "action": "menu_item_updated",
-  "details": "Updated price for Margherita",
-  "userId": "65a1b2c3..."
+  "users": [
+    {
+      "id": "507f1f77bcf86cd799439011",
+      "username": "camarero1",
+      "role": "waiter",
+      "active": true
+    }
+  ]
 }
 ```
 
-#### Get Order History
-`GET /api/history` — **Requires: Token (any role)**
+### POST /users
+Crea un nuevo usuario.
 
-Returns the last 200 closed tickets, sorted newest first. Used by the POS history view.
-
-**Response `200 OK`:** Array of Ticket objects.
-
-#### Delete Ticket
-`DELETE /api/tickets/:ticketId` — **Requires: Token (any role)**
-
-Removes a ticket from history.
-
-**Response `200 OK`:**
+**Request Body:**
 ```json
-{ "message": "Ticket deleted" }
+{
+  "username": "cocinero1",
+  "password": "contraseña123",
+  "role": "kitchen"
+}
 ```
 
 ---
 
-## WebSocket Events (Socket.io)
+## Eventos WebSocket
 
-Connect to the same host as the API. The server emits events to **all connected clients** when data changes.
-
-**Connection:**
+### Conexión
 ```javascript
-import { io } from 'socket.io-client';
-const socket = io('https://yourdomain.com', {
-  transports: ['websocket', 'polling']
-});
+const socket = io('wss://tudominio.com');
 ```
 
-**Events:**
+### Eventos Disponibles
 
-| Event | Direction | Payload | Description |
-|-------|-----------|---------|-------------|
-| `order-update` | Server → All | Order object | A new order was created |
-| `order-updated` | Server → All | Order object | An order or item was updated |
-| `menu-update` | Server → All | Item object or `{ deleted: id }` | Menu item changed |
-| `config-updated` | Server → All | Restaurant object | Branding or billing changed |
-
----
-
-## Error Responses
-
-All errors follow a consistent format:
-
+#### order:new
+Se emite cuando se crea un nuevo pedido.
 ```json
 {
-  "error": "Human-readable error message",
-  "status": 404,
-  "requestId": "1708691400000-abc123"
+  "type": "order:new",
+  "data": { /* pedido completo */ }
 }
 ```
 
-| Status Code | Meaning |
-|-------------|---------|
-| `400` | Bad request — malformed input |
-| `401` | Unauthorized — missing or invalid token |
-| `403` | Forbidden — insufficient role |
-| `404` | Resource not found |
-| `500` | Internal server error |
+#### order:status
+Se emite cuando cambia el estado de un pedido.
+```json
+{
+  "type": "order:status",
+  "data": {
+    "orderId": "507f1f77bcf86cd799439011",
+    "status": "ready"
+  }
+}
+```
 
-Include the `requestId` when reporting bugs — it links the error to the server logs.
+#### table:updated
+Se emite cuando se actualiza una mesa.
+```json
+{
+  "type": "table:updated",
+  "data": { /* mesa actualizada */ }
+}
+```
+
+---
+
+## Códigos de Error
+
+| Código | Descripción |
+|--------|-------------|
+| 400 | Bad Request — datos inválidos |
+| 401 | Unauthorized — no autenticado |
+| 403 | Forbidden — sin permisos |
+| 409 | Conflict — OCC detectado, recarga los datos |
+| 500 | Internal Server Error |
+
+---
+
+## Control de Concurrencia (OCC)
+
+Todos los recursos importantes incluyen el campo `__v`. Al actualizar, debes incluir el valor actual:
+
+```json
+{
+  "name": "Nuevo nombre",
+  "__v": 3  // valor actual
+}
+```
+
+Si `__v` no coincide, recibirás error 409. Debes recargar el recurso y reintentar.
