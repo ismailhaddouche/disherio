@@ -42,7 +42,8 @@
         "IMAGE_PROCESS_ERROR": "Error processing the image",
         "MENU_ITEM_NOT_FOUND": "Menu item not found",
         "MENU_ITEM_DELETED": "Menu item deleted",
-        "KITCHEN_CATEGORY_RESTRICTED": "Kitchen role can only manage items in the 'Fuera de Carta' category"
+        "KITCHEN_CATEGORY_RESTRICTED": "Kitchen role can only manage items in the 'Fuera de Carta' category",
+        "ACCESS_DENIED_ROLE": "Access denied for this role"
     },
     "AUTH": {
         "REQ_USERNAME": "Username is required",

@@ -42,7 +42,8 @@
         "IMAGE_PROCESS_ERROR": "Error al procesar la imagen",
         "MENU_ITEM_NOT_FOUND": "Plato del menú no encontrado",
         "MENU_ITEM_DELETED": "Plato del menú eliminado",
-        "KITCHEN_CATEGORY_RESTRICTED": "El rol de cocina solo puede gestionar platos de la categoría 'Fuera de Carta'"
+        "KITCHEN_CATEGORY_RESTRICTED": "El rol de cocina solo puede gestionar platos de la categoría 'Fuera de Carta'",
+        "ACCESS_DENIED_ROLE": "Acceso denegado para este rol"
     },
     "AUTH": {
         "REQ_USERNAME": "El nombre de usuario es obligatorio",
