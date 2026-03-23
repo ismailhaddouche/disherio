@@ -225,10 +225,12 @@ gcloud compute firewall-rules create allow-disher \
 
 Para información detallada sobre aspectos específicos del sistema, consulte los siguientes documentos en la carpeta `/docs`:
 
+- **[QUICK_START.md](./docs/QUICK_START.md)**: Guía de inicio rápido, variantes de red y configuración de firewalls en proveedores cloud.
 - **[ARCHITECTURE.md](./docs/ARCHITECTURE.md)**: Decisiones de diseño, diagramas de flujo y capas de seguridad.
 - **[API_GUIDE.md](./docs/API_GUIDE.md)**: Especificación técnica de los endpoints REST y eventos WebSocket.
-- **[INFRASTRUCTURE.md](./docs/INFRASTRUCTURE.md)**: Guía de despliegue, mantenimiento, backups y configuración de red.
-- **[CONTRIBUTING.md](./docs/CONTRIBUTING.md)**: Estándares de codificación, flujo de CI/CD y guía para contribuyentes.
+- **[API.md](./docs/API.md)**: Referencia rápida de la API.
+- **[MAINTENANCE.md](./docs/MAINTENANCE.md)**: Backups, restauración, gestión de credenciales y actualizaciones.
+- **[TESTING_AND_CI.md](./docs/TESTING_AND_CI.md)**: Estrategia de testing y pipeline de CI/CD.
 
 ---
 
