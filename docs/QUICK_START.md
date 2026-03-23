@@ -9,7 +9,7 @@ Esta guía te permitirá tener una plataforma de restaurante funcional en menos 
 - Un servidor o dispositivo con al menos 1GB de RAM.
 - **Docker (v24+)** y **Docker Compose (v2.x)** instalados previamente.
 - Git para clonar el repositorio.
-- Puerto **80** disponible en el sistema. El **443** solo es necesario si habilitas HTTPS manualmente en `Caddyfile`.
+- Puerto **80** disponible en el sistema. El **443** también es necesario si usas un dominio público (Let's Encrypt lo requiere para HTTPS automático).
 - Si usas un proveedor cloud (Google Cloud, AWS, Azure...), los puertos deben estar **abiertos también en el firewall del proveedor** (ver sección [Proveedores Cloud](#proveedores-cloud-firewall)).
 
 ---
@@ -42,7 +42,7 @@ Durante la instalación, el script adaptará el comportamiento del Proxy y la se
 - **Dominio Público (Online):** 
   - *Ejemplo:* `app.mirestaurante.com`
   - *Uso:* Para instalaciones en servidores cloud (VPS). Permite a los clientes acceder a la aplicación desde cualquier parte del mundo.
-  - *Requisitos:* Un dominio real apuntando a la IP de tu servidor. El proxy opera en **HTTP** por defecto; para **HTTPS** debes ajustar el `Caddyfile`.
+  - *Requisitos:* Un dominio real apuntando a la IP de tu servidor. Caddy provisionará automáticamente un certificado SSL de **Let's Encrypt** (HTTPS). Al finalizar la instalación, se mostrarán los **registros DNS** necesarios (A y CAA).
 - **Dominio Local (mDNS / LAN):** 
   - *Ejemplo:* `disher.local`
   - *Uso:* Instalaciones alojadas físicamente en el local (ej. una caja registradora o mini-PC) sin depender de que exista conexión a internet hacia fuera.
@@ -61,6 +61,12 @@ Durante la instalación, el script adaptará el comportamiento del Proxy y la se
 ## Paso 2 — Primer Inicio de Sesión
 
 Al final de la instalación, el script mostrará un resumen con tus credenciales iniciales. **Guárdalas en un lugar seguro.**
+
+Si has elegido un **dominio público**, también verás una tabla con los registros DNS que debes configurar en tu registrador de dominios (registros A y CAA para Let's Encrypt). Puedes consultar esta información en cualquier momento ejecutando:
+
+```bash
+sudo ./show-dns.sh
+```
 
 - **URL de Acceso:** La que seleccionaste durante la instalación (ej. `http://disher.local` o `https://tu-dominio.com`).
 - **Credenciales de Administrador:**
@@ -98,7 +104,10 @@ El menú interactivo te guiará a través de las opciones disponibles. Para más
 
 ## Proveedores Cloud — Firewall
 
-Cuando se instala en un VPS o instancia cloud, el proveedor dispone de un **firewall de red propio**, independiente del sistema operativo. Aunque la aplicación esté corriendo correctamente, el acceso externo quedará bloqueado hasta que se abra el puerto 80 explícitamente.
+Cuando se instala en un VPS o instancia cloud, el proveedor dispone de un **firewall de red propio**, independiente del sistema operativo. Aunque la aplicación esté corriendo correctamente, el acceso externo quedará bloqueado hasta que se abran los puertos necesarios.
+
+- **Puerto 80** (HTTP) — obligatorio para todas las instalaciones.
+- **Puerto 443** (HTTPS) — obligatorio si usas un dominio público con Let's Encrypt.
 
 ### Google Cloud (Compute Engine)
 
@@ -119,17 +128,17 @@ La forma más fiable es hacerlo desde la **consola web**, ya que desde la propia
 | Targets | `All instances in the network` |
 | Source filter | `IPv4 ranges` |
 | Source IPv4 ranges | `0.0.0.0/0` |
-| Protocols and ports | `TCP: 80` |
+| Protocols and ports | `TCP: 80, 443` |
 
 4. Haz clic en **"Create"**. La regla se activa en menos de 30 segundos.
 
 **Opción B — gcloud CLI** (requiere permisos de administrador de red en el proyecto):
 
 ```bash
-gcloud compute firewall-rules create allow-http-80 \
-  --allow tcp:80 \
+gcloud compute firewall-rules create allow-disher \
+  --allow tcp:80,tcp:443 \
   --source-ranges 0.0.0.0/0 \
-  --description "Disher.io HTTP"
+  --description "Disher.io HTTP + HTTPS"
 ```
 
 > **Nota:** Si ves el error `Request had insufficient authentication scopes`, la VM no tiene permisos para gestionar el firewall. Usa la Opción A desde la consola web.
@@ -140,13 +149,15 @@ gcloud compute firewall-rules create allow-http-80 \
 2. En la pestaña **Security**, haz clic en el **Security Group**
 3. En **Inbound rules**, añade:
    - Type: `HTTP`, Port: `80`, Source: `0.0.0.0/0`
+   - Type: `HTTPS`, Port: `443`, Source: `0.0.0.0/0`
 4. Guarda los cambios.
 
 ### Azure (Virtual Machine)
 
 1. Ve a tu VM en el portal de Azure
-2. En **Networking**, añade una **Inbound port rule**:
+2. En **Networking**, añade **Inbound port rules**:
    - Port: `80`, Protocol: `TCP`, Action: `Allow`
+   - Port: `443`, Protocol: `TCP`, Action: `Allow`
 
 ---
 

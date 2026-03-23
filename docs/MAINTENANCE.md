@@ -116,6 +116,18 @@ sudo docker compose restart backend
 
 ---
 
+## Consultar Configuración DNS
+
+Si tu instalación usa un dominio público, puedes ver en cualquier momento los registros DNS necesarios ejecutando:
+
+```bash
+sudo ./show-dns.sh
+```
+
+El script mostrará la IP pública del servidor, los registros A y CAA recomendados, y la URL de acceso configurada.
+
+---
+
 ## Actualizaciones y Diagnósticos
 
 ### Actualizar la Aplicación

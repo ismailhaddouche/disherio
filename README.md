@@ -72,6 +72,12 @@ sudo ./install.sh
 
 El instalador guiará al usuario a través de la configuración de red (IP local o FQDN), la generación de claves criptográficas y el levantamiento de los contenedores.
 
+Si se elige un **dominio público**, el instalador configurará automáticamente **Caddy con Let's Encrypt** para HTTPS y mostrará los registros DNS necesarios (A y CAA). Esta información se puede consultar en cualquier momento:
+
+```bash
+sudo ./show-dns.sh
+```
+
 ---
 
 ## 5. Procedimientos de Mantenimiento y Operaciones
@@ -158,7 +164,10 @@ sudo ./install.sh
 
 ## 6. Apertura de Puertos en Servidores Cloud
 
-Cuando Disher.io se instala en un VPS o instancia cloud, el proveedor dispone de un **firewall de red propio**, independiente del sistema operativo del servidor. Aunque la aplicación esté corriendo correctamente en el interior del servidor, el acceso externo quedará bloqueado hasta que se abra el puerto 80 explícitamente desde el panel del proveedor.
+Cuando Disher.io se instala en un VPS o instancia cloud, el proveedor dispone de un **firewall de red propio**, independiente del sistema operativo del servidor. Aunque la aplicación esté corriendo correctamente en el interior del servidor, el acceso externo quedará bloqueado hasta que se abran los puertos necesarios desde el panel del proveedor.
+
+- **Puerto 80** (HTTP) — obligatorio para todas las instalaciones.
+- **Puerto 443** (HTTPS) — obligatorio si usas un dominio público con Let's Encrypt.
 
 ### Google Cloud (Compute Engine)
 
@@ -179,17 +188,17 @@ La forma más fiable es desde la **consola web**, ya que desde la propia VM los 
 | Targets | `All instances in the network` |
 | Source filter | `IPv4 ranges` |
 | Source IPv4 ranges | `0.0.0.0/0` |
-| Protocols and ports | `TCP: 80` |
+| Protocols and ports | `TCP: 80, 443` |
 
 4. Haz clic en **"Create"**. La regla se activa en menos de 30 segundos.
 
 **Opción B — gcloud CLI** (requiere permisos de administrador de red en el proyecto):
 
 ```bash
-gcloud compute firewall-rules create allow-http-80 \
-  --allow tcp:80 \
+gcloud compute firewall-rules create allow-disher \
+  --allow tcp:80,tcp:443 \
   --source-ranges 0.0.0.0/0 \
-  --description "Disher.io HTTP"
+  --description "Disher.io HTTP + HTTPS"
 ```
 
 > **Nota:** Si aparece el error `Request had insufficient authentication scopes`, la VM no tiene permisos para gestionar el firewall desde dentro. Usa la Opción A desde la consola web.
@@ -198,13 +207,17 @@ gcloud compute firewall-rules create allow-http-80 \
 
 1. Ve a **EC2 → Instancias → selecciona tu instancia**
 2. En la pestaña **Security**, haz clic en el **Security Group**
-3. En **Inbound rules**, añade: Type `HTTP`, Port `80`, Source `0.0.0.0/0`
+3. En **Inbound rules**, añade:
+   - Type: `HTTP`, Port: `80`, Source: `0.0.0.0/0`
+   - Type: `HTTPS`, Port: `443`, Source: `0.0.0.0/0`
 4. Guarda los cambios.
 
 ### Azure (Virtual Machine)
 
 1. Ve a tu VM en el portal de Azure
-2. En **Networking**, añade una **Inbound port rule**: Port `80`, Protocol `TCP`, Action `Allow`
+2. En **Networking**, añade **Inbound port rules**:
+   - Port: `80`, Protocol: `TCP`, Action: `Allow`
+   - Port: `443`, Protocol: `TCP`, Action: `Allow`
 
 ---
 
