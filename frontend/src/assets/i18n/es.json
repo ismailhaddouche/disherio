@@ -182,7 +182,11 @@
         "UNKNOWN_ERROR": "Error desconocido",
         "PRINT_THERMAL_MESSAGE": " ({{label}} {{printer}}) — {{ticketId}} ({{amount}}€){{fiscalInfo}}",
         "PRINT_SYSTEM_MESSAGE": " ({{label}}) — {{ticketId}} ({{amount}}€){{fiscalInfo}}",
-        "PRINT_FISCAL_INFO": " (Base: {{base}}€ + IVA: {{vat}}€)"
+        "PRINT_FISCAL_INFO": " (Base: {{base}}€ + IVA: {{vat}}€)",
+        "PAY_SUCCESS": "Pago procesado correctamente",
+        "ADD_ITEM_SUCCESS": "Plato añadido al pedido",
+        "ADD_CUSTOM_LINE_SUCCESS": "Línea personalizada añadida",
+        "ASSOCIATE_SUCCESS": "Plato asignado correctamente"
     },
     "CHECKOUT": {
         "BACK": "← Botón Volver",
@@ -305,7 +309,9 @@
         "UPLOAD_VARIANT_IMAGE": "Subir imagen de la variante",
         "DISH_IMAGE": "Imagen del Plato",
         "IMAGE_HINT": "Recomendado formato cuadrado.",
-        "UPLOAD_BTN": "Subir imagen"
+        "UPLOAD_BTN": "Subir imagen",
+        "SAVE_SUCCESS": "Plato guardado correctamente",
+        "DELETE_SUCCESS": "Plato eliminado correctamente"
     },
     "STORE_CONFIG": {
         "TITLE": "Configuración de Tienda",
@@ -444,5 +450,10 @@
         "RESTAURANT_NAME": "Restaurante Digital",
         "ONLINE": "En Línea",
         "OFFLINE": "Desconectado"
+    },
+    "AUTH": {
+        "LOGIN_INVALID": "Credenciales incorrectas",
+        "LOGIN_SUCCESS": "¡Bienvenido de nuevo!",
+        "LOGOUT_SUCCESS": "Sesión cerrada"
     }
 }

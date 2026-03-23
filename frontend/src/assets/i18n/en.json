@@ -182,7 +182,11 @@
         "UNKNOWN_ERROR": "Unknown error",
         "PRINT_THERMAL_MESSAGE": "{{label}} {{printer}} — {{ticketId}} ({{amount}}€){{fiscalInfo}}",
         "PRINT_SYSTEM_MESSAGE": "{{label}} — {{ticketId}} ({{amount}}€){{fiscalInfo}}",
-        "PRINT_FISCAL_INFO": " (Base: {{base}}€ + VAT: {{vat}}€)"
+        "PRINT_FISCAL_INFO": " (Base: {{base}}€ + VAT: {{vat}}€)",
+        "PAY_SUCCESS": "Payment processed successfully",
+        "ADD_ITEM_SUCCESS": "Dish added to the order",
+        "ADD_CUSTOM_LINE_SUCCESS": "Custom line added",
+        "ASSOCIATE_SUCCESS": "Dish assigned successfully"
     },
     "CHECKOUT": {
         "BACK": "← Back",
@@ -305,7 +309,9 @@
         "UPLOAD_VARIANT_IMAGE": "Upload variant image",
         "DISH_IMAGE": "Dish Image",
         "IMAGE_HINT": "Square format recommended.",
-        "UPLOAD_BTN": "Upload image"
+        "UPLOAD_BTN": "Upload image",
+        "SAVE_SUCCESS": "Dish saved successfully",
+        "DELETE_SUCCESS": "Dish deleted successfully"
     },
     "STORE_CONFIG": {
         "TITLE": "Store Configuration",
@@ -444,5 +450,10 @@
         "RESTAURANT_NAME": "Digital Restaurant",
         "ONLINE": "Online",
         "OFFLINE": "Offline"
+    },
+    "AUTH": {
+        "LOGIN_INVALID": "Invalid credentials",
+        "LOGIN_SUCCESS": "Welcome back!",
+        "LOGOUT_SUCCESS": "Session closed"
     }
 }
