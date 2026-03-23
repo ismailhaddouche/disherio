@@ -1,5 +1,7 @@
 # Testing and CI/CD in Disher.io
 
+> **Versión en español:** [TESTING_AND_CI.md](./TESTING_AND_CI.md)
+
 This document describes the automated testing strategy and Continuous Integration/Deployment (CI/CD) flows configured for the project.
 
 ---

@@ -1,5 +1,7 @@
 # Arquitectura del Sistema Disher.io
 
+> **English version:** [ARCHITECTURE_EN.md](./ARCHITECTURE_EN.md)
+
 Este documento detalla los principios de diseño, la estructura de componentes, el flujo de datos y las capas de seguridad implementadas en Disher.io.
 
 ---

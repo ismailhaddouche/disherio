@@ -1,5 +1,7 @@
 # Disher.io v2.6 Maintenance Guide
 
+> **Versión en español:** [MAINTENANCE.md](./MAINTENANCE.md)
+
 This guide covers backups, restorations, updates, and security for a Disher.io deployment.
 
 ---

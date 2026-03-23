@@ -1,5 +1,7 @@
 # Disher.io System Architecture
 
+> **Versión en español:** [ARCHITECTURE.md](./ARCHITECTURE.md)
+
 This document details the design principles, component structure, data flow, and security layers implemented in Disher.io.
 
 ---

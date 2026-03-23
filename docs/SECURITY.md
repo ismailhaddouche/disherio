@@ -1,5 +1,7 @@
 # Política de Seguridad
 
+> **English version:** [SECURITY_EN.md](./SECURITY_EN.md)
+
 ## Versiones Soportadas
 
 | Versión | Soportada |

@@ -1,5 +1,7 @@
 # Contribution Guide — Disher.io
 
+> **Versión en español:** [CONTRIBUTING.md](./CONTRIBUTING.md)
+
 Thank you for your interest in contributing to Disher.io! This document establishes guidelines for collaborating effectively on the project.
 
 ---

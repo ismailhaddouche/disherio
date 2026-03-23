@@ -1,5 +1,7 @@
 # Disher.io API Reference
 
+> **Versión en español:** [API.md](./API.md)
+
 **Version:** 1.2
 **Architecture:** Single-tenant — all endpoints operate on a single restaurant instance.
 **Integrity:** All critical state changes are protected by **Optimistic Concurrency Control (OCC)** using the `__v` field.

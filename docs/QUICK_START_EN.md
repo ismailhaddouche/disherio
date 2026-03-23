@@ -1,5 +1,7 @@
 # Disher.io v2.6 Quick Start Guide
 
+> **Versión en español:** [QUICK_START.md](./QUICK_START.md)
+
 This guide will get you a functional restaurant platform in under 5 minutes.
 
 ---

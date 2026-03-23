@@ -1,5 +1,7 @@
 # Security Policy
 
+> **Versión en español:** [SECURITY.md](./SECURITY.md)
+
 ## Supported Versions
 
 | Version | Supported |

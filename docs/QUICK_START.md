@@ -1,5 +1,7 @@
 # Guía de Inicio Rápido de Disher.io v2.6
 
+> **English version:** [QUICK_START_EN.md](./QUICK_START_EN.md)
+
 Esta guía te permitirá tener una plataforma de restaurante funcional en menos de 5 minutos.
 
 ---
