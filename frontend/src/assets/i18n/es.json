@@ -14,7 +14,8 @@
         "EDIT": "Editar",
         "DELETE": "Eliminar",
         "LOADING": "Cargando...",
-        "UNEXPECTED_ERROR": "Ha ocurrido un error inesperado"
+        "UNEXPECTED_ERROR": "Ha ocurrido un error inesperado",
+        "RETRY": "Reintentar"
     },
     "CONFIG": {
         "TITLE": "Configuración del Sistema",
@@ -53,7 +54,9 @@
         "TOTEM_UPDATE_ERROR": "No se pudo actualizar el tótem",
         "TOTEM_DELETE_ERROR": "No se pudo eliminar el tótem",
         "DELETE_TOTEM_CONFIRM": "¿Eliminar este tótem? Se invalidarán los QR actuales.",
-        "COMPLETE_ERROR": "No se pudo completar el pedido"
+        "COMPLETE_ERROR": "No se pudo completar el pedido",
+        "CHARTS_COMING_SOON": "Gráficas próximamente",
+        "VISUAL_DATA": "Datos visuales"
     },
     "ROLES": {
         "admin": "Administrador",
@@ -186,7 +189,10 @@
         "PAY_SUCCESS": "Pago procesado correctamente",
         "ADD_ITEM_SUCCESS": "Plato añadido al pedido",
         "ADD_CUSTOM_LINE_SUCCESS": "Línea personalizada añadida",
-        "ASSOCIATE_SUCCESS": "Plato asignado correctamente"
+        "ASSOCIATE_SUCCESS": "Plato asignado correctamente",
+        "REMOVE_ITEM_SUCCESS": "Plato eliminado",
+        "UPDATE_ERROR": "No se pudo actualizar el pedido",
+        "UPDATE_SUCCESS": "Pedido actualizado correctamente"
     },
     "CHECKOUT": {
         "BACK": "← Botón Volver",
@@ -311,7 +317,8 @@
         "IMAGE_HINT": "Recomendado formato cuadrado.",
         "UPLOAD_BTN": "Subir imagen",
         "SAVE_SUCCESS": "Plato guardado correctamente",
-        "DELETE_SUCCESS": "Plato eliminado correctamente"
+        "DELETE_SUCCESS": "Plato eliminado correctamente",
+        "LOADING": "Cargando menú..."
     },
     "STORE_CONFIG": {
         "TITLE": "Configuración de Tienda",
@@ -393,7 +400,9 @@
         "ADD_VIRTUAL_ERROR": "No se pudo crear la mesa temporal",
         "DELETE_VIRTUAL_SUCCESS": "Mesa temporal #{{id}} eliminada",
         "DELETE_VIRTUAL_ERROR": "No se pudo eliminar la mesa temporal",
-        "SESSION_ENDED": "Mesa cerrada. La sesión ha finalizado."
+        "SESSION_ENDED": "Mesa cerrada. La sesión ha finalizado.",
+        "DELETE_TITLE": "Eliminar mesa",
+        "QR_TITLE": "Código QR de mesa"
     },
     "USER_MGMT": {
         "SYSTEM_ROLE": "Rol del sistema:",
@@ -454,6 +463,7 @@
     "AUTH": {
         "LOGIN_INVALID": "Credenciales incorrectas",
         "LOGIN_SUCCESS": "¡Bienvenido de nuevo!",
-        "LOGOUT_SUCCESS": "Sesión cerrada"
+        "LOGOUT_SUCCESS": "Sesión cerrada",
+        "LOGIN_ERROR": "Error al iniciar sesión. Inténtalo de nuevo."
     }
 }

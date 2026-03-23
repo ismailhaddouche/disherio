@@ -14,7 +14,8 @@
         "EDIT": "Edit",
         "DELETE": "Delete",
         "LOADING": "Loading...",
-        "UNEXPECTED_ERROR": "An unexpected error occurred"
+        "UNEXPECTED_ERROR": "An unexpected error occurred",
+        "RETRY": "Retry"
     },
     "CONFIG": {
         "TITLE": "System Configuration",
@@ -53,7 +54,9 @@
         "TOTEM_UPDATE_ERROR": "Could not update the totem",
         "TOTEM_DELETE_ERROR": "Could not delete the totem",
         "DELETE_TOTEM_CONFIRM": "Delete this totem? Existing QR links will stop working.",
-        "COMPLETE_ERROR": "Could not complete the order"
+        "COMPLETE_ERROR": "Could not complete the order",
+        "CHARTS_COMING_SOON": "Charts coming soon",
+        "VISUAL_DATA": "Visual Data"
     },
     "ROLES": {
         "admin": "Administrator",
@@ -186,7 +189,10 @@
         "PAY_SUCCESS": "Payment processed successfully",
         "ADD_ITEM_SUCCESS": "Dish added to the order",
         "ADD_CUSTOM_LINE_SUCCESS": "Custom line added",
-        "ASSOCIATE_SUCCESS": "Dish assigned successfully"
+        "ASSOCIATE_SUCCESS": "Dish assigned successfully",
+        "REMOVE_ITEM_SUCCESS": "Item removed",
+        "UPDATE_ERROR": "Could not update the order",
+        "UPDATE_SUCCESS": "Order updated successfully"
     },
     "CHECKOUT": {
         "BACK": "← Back",
@@ -311,7 +317,8 @@
         "IMAGE_HINT": "Square format recommended.",
         "UPLOAD_BTN": "Upload image",
         "SAVE_SUCCESS": "Dish saved successfully",
-        "DELETE_SUCCESS": "Dish deleted successfully"
+        "DELETE_SUCCESS": "Dish deleted successfully",
+        "LOADING": "Loading menu..."
     },
     "STORE_CONFIG": {
         "TITLE": "Store Configuration",
@@ -393,7 +400,9 @@
         "ADD_VIRTUAL_ERROR": "Could not create the temporary table",
         "DELETE_VIRTUAL_SUCCESS": "Temporary table #{{id}} deleted",
         "DELETE_VIRTUAL_ERROR": "Could not delete the temporary table",
-        "SESSION_ENDED": "Table closed. The session has ended."
+        "SESSION_ENDED": "Table closed. The session has ended.",
+        "DELETE_TITLE": "Delete Table",
+        "QR_TITLE": "Table QR Code"
     },
     "USER_MGMT": {
         "SYSTEM_ROLE": "System role:",
@@ -454,6 +463,7 @@
     "AUTH": {
         "LOGIN_INVALID": "Invalid credentials",
         "LOGIN_SUCCESS": "Welcome back!",
-        "LOGOUT_SUCCESS": "Session closed"
+        "LOGOUT_SUCCESS": "Session closed",
+        "LOGIN_ERROR": "Login failed. Please try again."
     }
 }
