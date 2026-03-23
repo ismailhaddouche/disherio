@@ -185,7 +185,7 @@ import { DashboardChartsComponent } from './dashboard-charts.component';
                       <div class="item-row-md3">
                         <span class="qty text-label-large">{{ item.quantity }}x</span>
                         <span class="name text-body-large">{{ item.name }}</span>
-                        <span class="status-tag" [class]="item.status">{{ item.status }}</span>
+                        <span class="status-tag" [class]="item.status">{{ 'STATUS.' + item.status | translate }}</span>
                       </div>
                     }
                   </div>

@@ -466,6 +466,14 @@
         "ONLINE": "En Línea",
         "OFFLINE": "Desconectado"
     },
+    "STATUS": {
+        "pending": "Pendiente",
+        "preparing": "En preparación",
+        "ready": "Listo",
+        "served": "Servido",
+        "completed": "Completado",
+        "cancelled": "Anulado"
+    },
     "AUTH": {
         "LOGIN_INVALID": "Credenciales incorrectas",
         "LOGIN_SUCCESS": "¡Bienvenido de nuevo!",

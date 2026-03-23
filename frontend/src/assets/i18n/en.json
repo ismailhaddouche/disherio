@@ -466,6 +466,14 @@
         "ONLINE": "Online",
         "OFFLINE": "Offline"
     },
+    "STATUS": {
+        "pending": "Pending",
+        "preparing": "Preparing",
+        "ready": "Ready",
+        "served": "Served",
+        "completed": "Completed",
+        "cancelled": "Cancelled"
+    },
     "AUTH": {
         "LOGIN_INVALID": "Invalid credentials",
         "LOGIN_SUCCESS": "Welcome back!",
