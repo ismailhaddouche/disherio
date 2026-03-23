@@ -74,6 +74,7 @@ export type SplitType = typeof SPLIT_TYPE[keyof typeof SPLIT_TYPE];
 // ─── Item Status ──────────────────────────────────────────────────────────────
 export const ITEM_STATUS = {
     PENDING:   'pending',
+    PREPARING: 'preparing',
     READY:     'ready',
     SERVED:    'served',
     CANCELLED: 'cancelled',

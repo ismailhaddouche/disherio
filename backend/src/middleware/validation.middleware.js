@@ -50,7 +50,7 @@ export const menuItemSchema = Joi.object({
  * Order iteration schema (for adding items to a session/order)
  */
 export const orderItemSchema = Joi.object({
-    menuItemId: Joi.string().max(50).required(),
+    menuItemId: Joi.string().max(50).optional(),
     name: Joi.string().max(100).optional(),
     price: Joi.number().min(0).max(10000).optional(),
     quantity: Joi.number().integer().min(1).max(99).default(1),
@@ -58,11 +58,11 @@ export const orderItemSchema = Joi.object({
     selectedVariant: Joi.object({
         name: Joi.string().max(100).required(),
         price: Joi.number().min(0).max(10000).required()
-    }).allow(null),
+    }).unknown(true).allow(null),
     selectedAddons: Joi.array().items(Joi.object({
         name: Joi.string().max(100).required(),
         price: Joi.number().min(0).max(10000).required()
-    })).max(50).default([]),
+    }).unknown(true)).max(50).default([]),
     image: Joi.string().max(255).allow('').optional(),
     menuChoices: Joi.object().pattern(Joi.string().max(100), Joi.string().max(100)).max(20).default({}),
     __v: Joi.number().optional()
