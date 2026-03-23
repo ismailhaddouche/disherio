@@ -24,7 +24,7 @@ import { MenuEditorViewModel } from './menu-editor.viewmodel';
               @for (sec of item.menuSections; track $index; let sIdx = $index) {
                   <div class="md-card section-editor-card">
                       <div class="section-header-row">
-                          <input type="text" [(ngModel)]="sec.name" placeholder="Ej: Primer Plato" class="md-input-transparent text-title-medium">
+                          <input type="text" [(ngModel)]="sec.name" [placeholder]="'MENU_EDITOR.SECTION_NAME_PH' | translate" class="md-input-transparent text-title-medium">
                           <button class="icon-btn error" (click)="vm.removeMenuSection(sIdx)">
                               <lucide-icon name="x" [size]="16"></lucide-icon>
                           </button>

@@ -324,7 +324,8 @@
         "UPLOAD_BTN": "Upload image",
         "SAVE_SUCCESS": "Dish saved successfully",
         "DELETE_SUCCESS": "Dish deleted successfully",
-        "LOADING": "Loading menu..."
+        "LOADING": "Loading menu...",
+        "SECTION_NAME_PH": "E.g.: Main Course"
     },
     "STORE_CONFIG": {
         "TITLE": "Store Configuration",
@@ -380,7 +381,9 @@
         "THEME_EMERALD": "Green",
         "THEME_OCEAN": "Blue",
         "NEW_PRINTER_NAME": "New Printer",
-        "DEFAULT_TIP_DESC": "Tip is optional"
+        "DEFAULT_TIP_DESC": "Tip is optional",
+        "INSTAGRAM_PH": "@username",
+        "TIP_DESC_PH": "E.g.: Tip is optional"
     },
     "WAITER": {
         "PANEL": "Waiter Panel",

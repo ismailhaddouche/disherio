@@ -113,7 +113,7 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
                   <label class="text-label-medium">Instagram</label>
                   <div class="input-with-icon-md3">
                     <lucide-icon name="instagram" [size]="18" class="opacity-60"></lucide-icon>
-                    <input type="text" [ngModel]="vm.config().socials?.instagram" (ngModelChange)="vm.updateSocial('instagram', $event)" class="md-input" placeholder="@usuario">
+                    <input type="text" [ngModel]="vm.config().socials?.instagram" (ngModelChange)="vm.updateSocial('instagram', $event)" class="md-input" [placeholder]="'STORE_CONFIG.INSTAGRAM_PH' | translate">
                   </div>
                 </div>
 
@@ -224,7 +224,7 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
                            [ngModel]="vm.config().billing?.tipDescription" 
                            (ngModelChange)="vm.updateBilling('tipDescription', $event)" 
                            class="md-input" 
-                           placeholder="Ej: La propina es opcional">
+                           [placeholder]="'STORE_CONFIG.TIP_DESC_PH' | translate">
                   </div>
                 </div>
               }
