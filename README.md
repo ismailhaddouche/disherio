@@ -28,7 +28,7 @@ Todo esto ocurre **simultáneamente y en tiempo real**. Si un cliente añade un 
 
 | Módulo | ¿Qué hace? |
 |--------|-----------|
-| **Carta Digital con QR** | Tus clientes ven el menú y piden desde su propio móvil. Sin apps, sin descargas. |
+| **Carta Digital con QR** | Cada mesa es una sesión compartida: los comensales escanean el QR, ven la carta en su móvil y piden individualmente o en grupo. Cada plato queda asociado a quien lo pidió. Sin apps, sin descargas. |
 | **Pantalla de Cocina (KDS)** | La cocina gestiona los pedidos en una pantalla táctil: pendientes → preparando → listos. |
 | **Vista de Camarero** | El personal de sala ve las mesas en tiempo real, toma comandas y sabe qué platos servir. |
 | **Caja Registradora (TPV)** | Cobros con desglose por persona, tickets con IVA, historial y cierre de caja. |
