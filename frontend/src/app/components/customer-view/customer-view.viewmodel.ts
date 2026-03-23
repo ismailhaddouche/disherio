@@ -50,6 +50,58 @@ export class CustomerViewModel {
         return [...new Set(names)] as string[];
     });
 
+    private ordersCallback = (order: any) => {
+        const s = this.session();
+        if (!s) return;
+        const matchesSession = s.sessionId && order.sessionId === s.sessionId;
+        const matchesTable = !s.sessionId && order.tableNumber === s.tableNumber;
+        if (matchesSession || matchesTable) {
+            this.session.update(prev => prev ? { ...prev, activeOrder: order } : prev);
+        }
+    };
+
+    private menuCallback = (updatedItem: any) => {
+        this.menu.update(prev => {
+            if (updatedItem?.deleted) {
+                return prev.filter(item => item._id !== updatedItem.deleted);
+            }
+            const normalized = { ...updatedItem, image: this.resolveItemImage(updatedItem?.image) };
+            const index = prev.findIndex(item => item._id === normalized._id);
+            if (index === -1) return [normalized, ...prev];
+            const next = [...prev];
+            next[index] = normalized;
+            return next;
+        });
+    };
+
+    private configCallback = (config: any) => {
+        if (config.name) this.restaurantName.set(config.name);
+    };
+
+    private sessionEndCallback = (data: any) => {
+        const current = this.session();
+        if (current && (data.sessionId === current.sessionId || data.totemId === current.totemId || data.tableNumber === current.tableNumber)) {
+            console.log('[SECURITY] Table session ended. Clearing local data.');
+            this.cart.set([]);
+            if (current.sessionId) localStorage.removeItem(`disher_cart_${current.sessionId}`);
+            localStorage.removeItem(STORAGE_KEYS.CURRENT_SESSION);
+            this.comms.userName.set('Comensal');
+            localStorage.removeItem(STORAGE_KEYS.USER_NAME);
+            this.session.update(s => s ? { ...s, activeOrder: null, sessionId: undefined } : s);
+            this.notify.infoKey('CUSTOMER.SESSION_ENDED');
+        }
+    };
+
+    private systemResetCallback = () => {
+        console.log('[SECURITY] Global system reset (Cierre de Caja). Clearing all sessions.');
+        this.cart.set([]);
+        this.comms.userName.set('Comensal');
+        localStorage.removeItem(STORAGE_KEYS.USER_NAME);
+        localStorage.removeItem(STORAGE_KEYS.CURRENT_SESSION);
+        this.session.set(null);
+        this.router.navigate(['/'], { replaceUrl: true });
+    };
+
     private resetSessionState() {
         this.loading.set(true);
         this.error.set(null);
@@ -81,6 +133,13 @@ export class CustomerViewModel {
                 void this.initSession();
             });
         this.setupTableListeners();
+        this.destroyRef.onDestroy(() => {
+            this.comms.unsubscribeFromOrders(this.ordersCallback);
+            this.comms.unsubscribeFromMenu(this.menuCallback);
+            this.comms.unsubscribeFromConfig(this.configCallback);
+            this.comms.unsubscribeFromSessionEnd(this.sessionEndCallback);
+            this.comms.unsubscribeFromSystemReset(this.systemResetCallback);
+        });
     }
 
     private async initSession() {
@@ -170,70 +229,15 @@ export class CustomerViewModel {
     }
 
     private setupTableListeners() {
-        this.comms.subscribeToOrders((order: any) => {
-            const s = this.session();
-            if (!s) return;
-            const matchesSession = s.sessionId && order.sessionId === s.sessionId;
-            const matchesTable = !s.sessionId && order.tableNumber === s.tableNumber;
-            if (matchesSession || matchesTable) {
-                this.session.update(prev => prev ? { ...prev, activeOrder: order } : prev);
-            }
-        });
+        this.comms.subscribeToOrders(this.ordersCallback);
+        this.comms.subscribeToMenu(this.menuCallback);
+        this.comms.subscribeToConfig(this.configCallback);
+        this.comms.subscribeToSessionEnd(this.sessionEndCallback);
+        this.comms.subscribeToSystemReset(this.systemResetCallback);
 
         this.comms.conflictDetected$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
             this.notify.warningKey('CUSTOMER.CONFLICT_WARNING');
             this.loadTableState();
-        });
-
-        this.comms.subscribeToMenu((updatedItem: any) => {
-            this.menu.update(prev => {
-                if (updatedItem?.deleted) {
-                    return prev.filter(item => item._id !== updatedItem.deleted);
-                }
-
-                const normalized = {
-                    ...updatedItem,
-                    image: this.resolveItemImage(updatedItem?.image)
-                };
-                const index = prev.findIndex(item => item._id === normalized._id);
-
-                if (index === -1) {
-                    return [normalized, ...prev];
-                }
-
-                const next = [...prev];
-                next[index] = normalized;
-                return next;
-            });
-        });
-
-        this.comms.subscribeToConfig((config: any) => {
-            if (config.name) this.restaurantName.set(config.name);
-        });
-
-        this.comms.subscribeToSessionEnd((data: any) => {
-            const current = this.session();
-            if (current && (data.sessionId === current.sessionId || data.totemId === current.totemId || data.tableNumber === current.tableNumber)) {
-                console.log('[SECURITY] Table session ended. Clearing local data.');
-
-                this.cart.set([]);
-                if (current.sessionId) localStorage.removeItem(`disher_cart_${current.sessionId}`);
-                localStorage.removeItem(STORAGE_KEYS.CURRENT_SESSION);
-                this.comms.userName.set('Comensal');
-                localStorage.removeItem(STORAGE_KEYS.USER_NAME);
-                this.session.update(s => s ? { ...s, activeOrder: null, sessionId: undefined } : s);
-                this.notify.infoKey('CUSTOMER.SESSION_ENDED');
-            }
-        });
-
-        this.comms.subscribeToSystemReset(() => {
-            console.log('[SECURITY] Global system reset (Cierre de Caja). Clearing all sessions.');
-            this.cart.set([]);
-            this.comms.userName.set('Comensal');
-            localStorage.removeItem(STORAGE_KEYS.USER_NAME);
-            localStorage.removeItem(STORAGE_KEYS.CURRENT_SESSION);
-            this.session.set(null);
-            this.router.navigate(['/'], { replaceUrl: true });
         });
     }
 
