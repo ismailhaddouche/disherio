@@ -38,7 +38,11 @@
         "TICKET_CALCULATION_ERROR": "Error en el cálculo del importe del ticket.",
         "TOTEM_DELETED_SUCCESSFULLY": "Tótem eliminado correctamente",
         "TICKET_DELETED_SUCCESSFULLY": "Ticket eliminado correctamente",
-        "ITEMS_WITHOUT_OWNER": "Existen platos sin comensal asignado. Asígnalos a un nombre antes de cobrar individualmente."
+        "ITEMS_WITHOUT_OWNER": "Existen platos sin comensal asignado. Asígnalos a un nombre antes de cobrar individualmente.",
+        "IMAGE_PROCESS_ERROR": "Error al procesar la imagen",
+        "MENU_ITEM_NOT_FOUND": "Plato del menú no encontrado",
+        "MENU_ITEM_DELETED": "Plato del menú eliminado",
+        "KITCHEN_CATEGORY_RESTRICTED": "El rol de cocina solo puede gestionar platos de la categoría 'Fuera de Carta'"
     },
     "AUTH": {
         "REQ_USERNAME": "El nombre de usuario es obligatorio",

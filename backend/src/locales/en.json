@@ -38,7 +38,11 @@
         "TICKET_CALCULATION_ERROR": "Error while calculating the ticket amount.",
         "TOTEM_DELETED_SUCCESSFULLY": "Totem deleted successfully",
         "TICKET_DELETED_SUCCESSFULLY": "Ticket deleted successfully",
-        "ITEMS_WITHOUT_OWNER": "There are items without an assigned guest. Please assign them before charging individually."
+        "ITEMS_WITHOUT_OWNER": "There are items without an assigned guest. Please assign them before charging individually.",
+        "IMAGE_PROCESS_ERROR": "Error processing the image",
+        "MENU_ITEM_NOT_FOUND": "Menu item not found",
+        "MENU_ITEM_DELETED": "Menu item deleted",
+        "KITCHEN_CATEGORY_RESTRICTED": "Kitchen role can only manage items in the 'Fuera de Carta' category"
     },
     "AUTH": {
         "REQ_USERNAME": "Username is required",

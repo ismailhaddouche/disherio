@@ -9,7 +9,7 @@ class MenuController {
     }
 
     async uploadImage(req, res) {
-        if (!req.file) return res.error('No se proporcionó ninguna imagen', 400);
+        if (!req.file) return res.error(req.t('ERRORS.NO_IMAGE_PROVIDED'), 400);
 
         try {
             const fileUrl = await MenuService.processImage(req.file);
@@ -22,7 +22,7 @@ class MenuController {
             res.success({ url: fileUrl });
         } catch (error) {
             console.error('Error processing image:', error);
-            res.error('Error al procesar la imagen', 500);
+            res.error(req.t('ERRORS.IMAGE_PROCESS_ERROR'), 500);
         }
     }
 
@@ -31,14 +31,14 @@ class MenuController {
 
         if (_id) {
             if (req.user.role === ROLES.KITCHEN && data.category !== 'Fuera de Carta') {
-                return res.error('La cocina no puede mover platos fuera de "Fuera de Carta"', 403);
+                return res.error(req.t('ERRORS.KITCHEN_CATEGORY_RESTRICTED'), 403);
             }
         }
 
         const result = await MenuService.createOrUpdateItem(_id, data, req.user.role);
         
         if (!result) {
-            return res.error('Menu item not found', 404);
+            return res.error(req.t('ERRORS.MENU_ITEM_NOT_FOUND'), 404);
         }
 
         const { item, oldItem, isNew } = result;
@@ -65,7 +65,7 @@ class MenuController {
     async delete(req, res) {
         const item = await MenuService.deleteItem(req.params.id);
         if (!item) {
-            return res.error('Menu item not found', 404);
+            return res.error(req.t('ERRORS.MENU_ITEM_NOT_FOUND'), 404);
         }
 
         await AuditService.log(req, 'MENU_ITEM_DELETED', {
@@ -76,13 +76,13 @@ class MenuController {
         const io = req.app.get('io');
         if (io) io.emit(SOCKET_EVENTS.MENU_UPDATE, { deleted: item._id });
 
-        res.success({ message: 'Menu item deleted' });
+        res.success({ message: req.t('ERRORS.MENU_ITEM_DELETED') });
     }
 
     async toggleAvailability(req, res) {
         const result = await MenuService.toggleAvailability(req.params.productId);
         if (!result) {
-            return res.error('Menu item not found', 404);
+            return res.error(req.t('ERRORS.MENU_ITEM_NOT_FOUND'), 404);
         }
 
         const { item, previousStatus } = result;
