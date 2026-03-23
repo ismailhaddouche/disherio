@@ -19,7 +19,7 @@ export function verifyToken(req, res, next) {
         if (process.env.NODE_ENV !== 'production') {
             console.log('[AUTH] No token found in cookies or headers');
         }
-        return res.status(403).json({ error: req.t('ERRORS.NO_TOKEN_PROVIDED') });
+        return res.error(req.t('ERRORS.NO_TOKEN_PROVIDED'), 401);
     }
 
     jwt.verify(token, JWT_SECRET, (err, decoded) => {

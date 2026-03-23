@@ -67,13 +67,16 @@ io.use((socket, next) => {
         const token = cookies[COOKIE_NAME] || socket.handshake.auth?.token;
 
         if (!token) {
-            return next(new Error('UNAUTHORIZED'));
+            // Allow anonymous connections as customer role (QR scan users have no JWT)
+            socket.data.user = { role: 'customer', username: 'guest' };
+            return next();
         }
 
         const payload = jwt.verify(token, process.env.JWT_SECRET);
         socket.data.user = payload;
         return next();
     } catch (error) {
+        // Invalid or expired token — reject to avoid privilege escalation
         console.error('[SOCKET] Auth error:', error.message);
         return next(new Error('UNAUTHORIZED'));
     }

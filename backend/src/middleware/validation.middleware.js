@@ -73,6 +73,7 @@ export const orderPlacementSchema = Joi.object({
     tableNumber: Joi.string().max(10).optional(),
     totemId: Joi.number().integer().optional(),
     sessionId: Joi.string().max(100).optional(),
+    totalAmount: Joi.number().min(0).optional(), // frontend sends this; backend recalculates it
     __v: Joi.number().optional()
 }).unknown(false);
 

@@ -32,7 +32,7 @@ class AuthController {
     logout(req, res) {
         const options = { ...getCookieOptions() };
         delete options.maxAge;
-        res.clearCookie(COOKIE_NAME, { path: options.path || '/' });
+        res.clearCookie(COOKIE_NAME, options);
         res.success({ message: req.t('ERRORS.LOGGED_OUT') });
     }
 }
