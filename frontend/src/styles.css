@@ -51,6 +51,13 @@
   --md-sys-color-surface-4: color-mix(in srgb, var(--md-sys-color-primary) 12%, var(--md-sys-color-surface));
   --md-sys-color-surface-5: color-mix(in srgb, var(--md-sys-color-primary) 14%, var(--md-sys-color-surface));
 
+  /* MD3 Surface Container Levels */
+  --md-sys-color-surface-container-lowest: #0f0d13;
+  --md-sys-color-surface-container-low: color-mix(in srgb, var(--md-sys-color-primary) 4%, var(--md-sys-color-surface));
+  --md-sys-color-surface-container: color-mix(in srgb, var(--md-sys-color-primary) 8%, var(--md-sys-color-surface));
+  --md-sys-color-surface-container-high: color-mix(in srgb, var(--md-sys-color-primary) 12%, var(--md-sys-color-surface));
+  --md-sys-color-surface-container-highest: color-mix(in srgb, var(--md-sys-color-primary) 16%, var(--md-sys-color-surface));
+
   /* ─────────────────────────────────────────────────────────────────────────────
      SHAPES & SPACING (Strict MD3 tokens)
      ───────────────────────────────────────────────────────────────────────────── */
@@ -215,6 +222,373 @@ button, .btn {
 .chip.primary { background: var(--md-sys-color-primary-container); color: var(--md-sys-color-on-primary-container); }
 .chip.error { background: var(--md-sys-color-error-container); color: var(--md-sys-color-on-error-container); }
 .chip.success { background: rgba(176, 255, 198, 0.15); color: #b0ffc6; }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   MD3 FORM COMPONENTS
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* Form Grid Layout */
+.md-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 20px;
+}
+
+/* Field Wrapper */
+.md-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.md-field > label {
+  color: var(--md-sys-color-on-surface-variant);
+  padding-left: 4px;
+}
+
+/* Standard Input */
+.md-input,
+.md-input-readonly {
+  width: 100%;
+  height: 48px;
+  padding: 0 16px;
+  font-family: 'Instrument Sans', sans-serif;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--md-sys-color-on-surface);
+  background: var(--md-sys-color-surface-container-high);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--radius-md);
+  outline: none;
+  transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+}
+
+.md-input::placeholder {
+  color: var(--md-sys-color-on-surface-variant);
+  opacity: 0.5;
+}
+
+.md-input:hover {
+  border-color: var(--md-sys-color-on-surface-variant);
+}
+
+.md-input:focus {
+  border-color: var(--md-sys-color-primary);
+  background: var(--md-sys-color-surface-container-highest);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--md-sys-color-primary) 25%, transparent);
+}
+
+/* Readonly Input */
+.md-input-readonly {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background: var(--md-sys-color-surface-container);
+}
+
+/* Small Input (printers, compact rows) */
+.md-input-sm {
+  width: 100%;
+  height: 40px;
+  padding: 0 12px;
+  font-family: 'Instrument Sans', sans-serif;
+  font-size: 13px;
+  color: var(--md-sys-color-on-surface);
+  background: var(--md-sys-color-surface-container-high);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--radius-sm);
+  outline: none;
+  transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+}
+
+.md-input-sm:focus {
+  border-color: var(--md-sys-color-primary);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--md-sys-color-primary) 25%, transparent);
+}
+
+/* Transparent Input (inline editing, e.g. printer names) */
+.md-borderless-input,
+.md-input-transparent {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  color: var(--md-sys-color-on-surface);
+  font-family: 'Instrument Sans', sans-serif;
+  font-size: inherit;
+  outline: none;
+  width: 100%;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.md-borderless-input:hover,
+.md-input-transparent:hover {
+  background: var(--md-sys-color-surface-container-high);
+}
+
+.md-borderless-input:focus,
+.md-input-transparent:focus {
+  border-color: var(--md-sys-color-primary);
+  background: var(--md-sys-color-surface-container-high);
+}
+
+/* Textarea inherits from md-input */
+textarea.md-input {
+  height: auto;
+  min-height: 80px;
+  padding: 12px 16px;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+/* Select Dropdowns */
+.md-select,
+.md-select-sm {
+  width: 100%;
+  height: 48px;
+  padding: 0 16px;
+  font-family: 'Instrument Sans', sans-serif;
+  font-size: 14px;
+  color: var(--md-sys-color-on-surface);
+  background: var(--md-sys-color-surface-container-high);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--radius-md);
+  outline: none;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23938f99' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 40px;
+  transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+}
+
+.md-select:hover,
+.md-select-sm:hover {
+  border-color: var(--md-sys-color-on-surface-variant);
+}
+
+.md-select:focus,
+.md-select-sm:focus {
+  border-color: var(--md-sys-color-primary);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--md-sys-color-primary) 25%, transparent);
+}
+
+.md-select option,
+.md-select-sm option {
+  background: var(--md-sys-color-surface-container);
+  color: var(--md-sys-color-on-surface);
+}
+
+.md-select-sm {
+  height: 40px;
+  font-size: 13px;
+  border-radius: var(--radius-sm);
+}
+
+/* Input with leading icon */
+.input-with-icon-md3 {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.input-with-icon-md3 > lucide-icon {
+  position: absolute;
+  left: 14px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.input-with-icon-md3 > .md-input {
+  padding-left: 42px;
+}
+
+/* Input with trailing suffix (%, €) */
+.input-with-suffix-md3 {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-with-suffix-md3 > .md-input {
+  padding-right: 44px;
+}
+
+.input-with-suffix-md3 > .suffix {
+  position: absolute;
+  right: 16px;
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: 14px;
+  font-weight: 500;
+  pointer-events: none;
+}
+
+/* MD3 Switch Toggle */
+.md-switch {
+  position: relative;
+  display: inline-block;
+  width: 52px;
+  height: 32px;
+  flex-shrink: 0;
+}
+
+.md-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.md-switch .slider {
+  position: absolute;
+  inset: 0;
+  background: var(--md-sys-color-surface-variant);
+  border-radius: 16px;
+  cursor: pointer;
+  transition: background 0.3s;
+  border: 2px solid var(--md-sys-color-outline);
+}
+
+.md-switch .slider::before {
+  content: '';
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  left: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--md-sys-color-outline);
+  border-radius: 50%;
+  transition: all 0.3s cubic-bezier(0.2, 0, 0, 1);
+}
+
+.md-switch input:checked + .slider {
+  background: var(--md-sys-color-primary);
+  border-color: var(--md-sys-color-primary);
+}
+
+.md-switch input:checked + .slider::before {
+  transform: translateY(-50%) translateX(20px);
+  background: var(--md-sys-color-on-primary);
+  width: 24px;
+  height: 24px;
+  left: 2px;
+}
+
+/* Switch Row (label + toggle) */
+.md-switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 0;
+}
+
+.md-switch-row .switch-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+/* Icon buttons used in forms */
+.icon-btn-md3 {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--md-sys-color-on-surface-variant);
+  cursor: pointer;
+  transition: background 0.2s;
+  padding: 0;
+}
+
+.icon-btn-md3:hover {
+  background: var(--md-sys-color-surface-container-highest);
+}
+
+.icon-btn-md3.tonal {
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+}
+
+.icon-btn-md3.tonal:hover {
+  background: color-mix(in srgb, var(--md-sys-color-secondary-container), white 8%);
+}
+
+.icon-btn-md3.error-tonal-sm {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  border-radius: var(--radius-sm);
+  background: var(--md-sys-color-error-container);
+  color: var(--md-sys-color-on-error-container);
+}
+
+.icon-btn-md3.error-tonal-sm:hover {
+  background: color-mix(in srgb, var(--md-sys-color-error-container), white 12%);
+}
+
+/* Alert styles */
+.md-alert-success {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, #34d399 12%, var(--md-sys-color-surface));
+  color: #6ee7b7;
+  font-size: 14px;
+}
+
+.md-alert-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 20px 24px;
+  border-radius: var(--radius-md);
+  background: var(--md-sys-color-error-container);
+  color: var(--md-sys-color-on-error-container);
+}
+
+.md-alert-error .alert-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Misc form utilities */
+.md-input-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.btn-sm {
+  height: 32px;
+  padding: 0 16px;
+  font-size: 13px;
+}
+
+.inline-icon {
+  vertical-align: -3px;
+  margin-right: 4px;
+}
+
+.mb-4 { margin-bottom: 4px; }
+.mb-20 { margin-bottom: 20px; }
+.mb-24 { margin-bottom: 24px; }
+.opacity-60 { opacity: 0.6; }
+
+/* Surface container levels (needed by many components) */
+.md-sys-color-surface-container-high {
+  background: var(--md-sys-color-surface-container-high);
+}
 
 /* ─────────────────────────────────────────────────────────────────────────────
    LAYOUT UTILITIES
