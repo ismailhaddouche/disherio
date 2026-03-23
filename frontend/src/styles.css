@@ -585,9 +585,65 @@ textarea.md-input {
 .mb-24 { margin-bottom: 24px; }
 .opacity-60 { opacity: 0.6; }
 
-/* Surface container levels (needed by many components) */
-.md-sys-color-surface-container-high {
-  background: var(--md-sys-color-surface-container-high);
+/* ─────────────────────────────────────────────────────────────────────────────
+   MD3 MODAL / DIALOG
+   ───────────────────────────────────────────────────────────────────────────── */
+.md-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.md-modal-dialog {
+  background: var(--md-sys-color-surface-container);
+  border-radius: var(--radius-xl);
+  width: 100%;
+  max-width: 480px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: var(--md-sys-elevation-3);
+  animation: dialogIn 0.25s cubic-bezier(0.2, 0, 0, 1);
+}
+
+@keyframes dialogIn {
+  from { opacity: 0; transform: scale(0.95) translateY(8px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.md-form-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.md-form-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 24px 24px 16px;
+}
+
+.md-form-panel-body {
+  padding: 8px 24px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.md-form-panel-footer {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 24px;
+  border-top: 1px solid var(--md-sys-color-outline-variant);
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
