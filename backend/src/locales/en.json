@@ -45,7 +45,7 @@
         "KITCHEN_CATEGORY_RESTRICTED": "Kitchen role can only manage items in the 'Fuera de Carta' category",
         "ACCESS_DENIED_ROLE": "Access denied for this role",
         "INTERNAL_SERVER_ERROR": "Internal server error",
-        "ROUTE_NOT_FOUND": "Route not found",
+        "ROUTE_NOT_FOUND": "Route not found: {{route}}",
         "UNAUTHORIZED": "Unauthorized"
     },
     "AUTH": {

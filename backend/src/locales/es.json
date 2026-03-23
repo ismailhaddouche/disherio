@@ -45,7 +45,7 @@
         "KITCHEN_CATEGORY_RESTRICTED": "El rol de cocina solo puede gestionar platos de la categoría 'Fuera de Carta'",
         "ACCESS_DENIED_ROLE": "Acceso denegado para este rol",
         "INTERNAL_SERVER_ERROR": "Error interno del servidor",
-        "ROUTE_NOT_FOUND": "Ruta no encontrada",
+        "ROUTE_NOT_FOUND": "Ruta no encontrada: {{route}}",
         "UNAUTHORIZED": "No autorizado"
     },
     "AUTH": {
