@@ -478,6 +478,14 @@
         "completed": "Completado",
         "cancelled": "Anulado"
     },
+    "ALLERGENS": {
+        "Gluten": "Gluten",
+        "Lácteos": "Lácteos",
+        "Frutos Secos": "Frutos Secos",
+        "Huevo": "Huevo",
+        "Pescado": "Pescado",
+        "Soja": "Soja"
+    },
     "AUTH": {
         "LOGIN_INVALID": "Credenciales incorrectas",
         "LOGIN_SUCCESS": "¡Bienvenido de nuevo!",

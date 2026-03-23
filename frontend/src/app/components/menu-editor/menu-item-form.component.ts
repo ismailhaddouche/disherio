@@ -90,7 +90,7 @@ import { MenuSectionEditorComponent } from './menu-section-editor.component';
                           [class.is-active]="item.allergens.includes(alg)"
                           (click)="vm.toggleAllergen(alg)">
                     <lucide-icon name="alert-circle" [size]="14" *ngIf="item.allergens.includes(alg)"></lucide-icon>
-                    {{ alg }}
+                    {{ 'ALLERGENS.' + alg | translate }}
                   </button>
                 }
               </div>
