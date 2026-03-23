@@ -38,7 +38,7 @@ Todo esto ocurre **simultáneamente y en tiempo real**. Si un cliente añade un 
 ### ¿Por qué Disher.io y no otro sistema?
 
 - **Gratis y Open Source** — Sin cuotas mensuales, sin comisiones, sin letra pequeña. El código es tuyo.
-- **Funciona sin internet** — Una vez instalado en tu red local, tus clientes y camareros operan conectados al WiFi del local. No dependes de la nube.
+- **Con o sin internet** — Puedes instalarlo en un servidor en la nube (accesible desde cualquier lugar) o en un equipo dentro de tu local (funciona solo con el WiFi, sin necesidad de conexión a internet).
 - **Tú controlas tus datos** — Todo se almacena en tu propio servidor. Nadie más tiene acceso a la información de tu negocio.
 - **Se adapta a cualquier hardware** — Funciona desde una Raspberry Pi de 40€ en la barra hasta un servidor en la nube.
 - **Bilingüe** — Interfaz completa en Español e Inglés, para locales con clientela internacional.
