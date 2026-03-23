@@ -1,22 +1,62 @@
-# Disher.io — Sistema Integral para la Gestión de Restaurantes
+# Disher.io — Todo lo que tu restaurante necesita, en una sola plataforma
 
-Disher.io es una plataforma de gestión para el sector de la hostelería, diseñada bajo una arquitectura de inquilino único (single-tenant) y optimizada para entornos de producción. El sistema permite la sincronización en tiempo real de pedidos entre comensales, personal de sala y cocina, operando desde un despliegue unificado y altamente eficiente.
-
----
-
-## 1. Descripción del Proyecto
-
-Disher.io moderniza la operativa de establecimientos gastronómicos mediante la digitalización completa del ciclo de pedido y cobro. La plataforma elimina la necesidad de sistemas de comunicación analógicos y puntos de venta desconectados, centralizando toda la información en una infraestructura auto-alojada que garantiza la soberanía de los datos.
-
-### Características Principales
-- **Sincronización en Tiempo Real**: Uso intensivo de WebSockets para una actualización instantánea del estado de los pedidos en todos los terminales.
-- **Arquitectura Adaptativa**: Capacidad de ejecución tanto en hardware de recursos limitados (Raspberry Pi/ARM64) como en servidores de alto rendimiento (AMD64).
-- **Independencia Tecnológica**: Al ser una solución auto-alojada, el establecimiento no depende de suscripciones a terceros ni de conectividad externa constante para operaciones locales.
-- **Production-Ready**: El sistema incluye mecanismos de auditoría, control de concurrencia optimista y gestión de errores global.
+Disher.io es un sistema completo y gratuito que digitaliza toda la operativa de tu restaurante: desde que el cliente escanea un QR en la mesa hasta que paga la cuenta, pasando por la cocina y la caja registradora. Todo conectado en tiempo real, sin cuotas mensuales y funcionando en tu propio servidor.
 
 ---
 
-## 2. Stack Tecnológico
+## 1. ¿Qué problema resuelve?
+
+Si gestionas un restaurante, bar o cafetería, probablemente reconoces alguna de estas situaciones:
+
+- Los camareros van y vienen entre la mesa y la cocina con comandas en papel.
+- La cocina no sabe qué mesas tienen prioridad ni qué platos están pendientes.
+- El cobro se hace a ojo, sin un registro claro de quién pidió qué.
+- Pagas una suscripción mensual por un TPV que no se adapta a tu forma de trabajar.
+
+**Disher.io elimina todo eso.** Es una plataforma que conecta a tus clientes, camareros, cocina y caja en una sola pantalla, en tiempo real.
+
+### ¿Cómo funciona en la práctica?
+
+1. **El cliente** escanea un código QR en su mesa, ve la carta en su móvil y hace su pedido directamente.
+2. **La cocina** recibe el pedido al instante en su pantalla (KDS), sin esperar al camarero, y marca cada plato cuando está listo.
+3. **El camarero** ve en su móvil qué mesas necesitan atención, qué platos están listos para servir y puede tomar comandas adicionales.
+4. **La caja** tiene el desglose completo de cada mesa: quién pidió qué, propinas, y puede cobrar por persona, a partes iguales o la cuenta entera.
+
+Todo esto ocurre **simultáneamente y en tiempo real**. Si un cliente añade un plato, la cocina lo ve al segundo.
+
+### ¿Qué incluye?
+
+| Módulo | ¿Qué hace? |
+|--------|-----------|
+| **Carta Digital con QR** | Tus clientes ven el menú y piden desde su propio móvil. Sin apps, sin descargas. |
+| **Pantalla de Cocina (KDS)** | La cocina gestiona los pedidos en una pantalla táctil: pendientes → preparando → listos. |
+| **Vista de Camarero** | El personal de sala ve las mesas en tiempo real, toma comandas y sabe qué platos servir. |
+| **Caja Registradora (TPV)** | Cobros con desglose por persona, tickets con IVA, historial y cierre de caja. |
+| **Panel de Administración** | Gestiona el menú, precios, alérgenos, usuarios, impresoras y configuración del local. |
+| **Gestión de Mesas y Tótems** | Crea mesas físicas y temporales (terraza, barra extra) con códigos QR únicos. |
+
+### ¿Por qué Disher.io y no otro sistema?
+
+- **Gratis y Open Source** — Sin cuotas mensuales, sin comisiones, sin letra pequeña. El código es tuyo.
+- **Funciona sin internet** — Una vez instalado en tu red local, tus clientes y camareros operan conectados al WiFi del local. No dependes de la nube.
+- **Tú controlas tus datos** — Todo se almacena en tu propio servidor. Nadie más tiene acceso a la información de tu negocio.
+- **Se adapta a cualquier hardware** — Funciona desde una Raspberry Pi de 40€ en la barra hasta un servidor en la nube.
+- **Bilingüe** — Interfaz completa en Español e Inglés, para locales con clientela internacional.
+- **Instalación en 5 minutos** — Un solo comando instala y configura todo el sistema automáticamente.
+
+---
+
+## 2. Detalles Técnicos
+
+> *Esta sección es para desarrolladores y personal técnico. Si eres hostelero, puedes saltar directamente a la [Guía de Inicio Rápido](./docs/QUICK_START.md).*
+
+### Características Técnicas
+- **Sincronización en Tiempo Real**: WebSockets (Socket.io) para actualización instantánea del estado en todos los terminales.
+- **Arquitectura Adaptativa**: Ejecución en hardware de recursos limitados (Raspberry Pi/ARM64) y servidores de alto rendimiento (AMD64).
+- **Independencia Tecnológica**: Solución auto-alojada sin dependencia de servicios externos ni suscripciones a terceros.
+- **Production-Ready**: Auditoría de acciones, control de concurrencia optimista y gestión de errores global.
+
+### Stack Tecnológico
 
 El proyecto se sustenta sobre un stack moderno, escalable y 100% basado en TypeScript de extremo a extremo:
 
@@ -32,9 +72,7 @@ El proyecto se sustenta sobre un stack moderno, escalable y 100% basado en TypeS
 | **i18n** | ngx-translate | Soporte completo bilingüe (Español / Inglés) |
 | **Testing** | Jest + Supertest | Tests de integración con MongoDB en memoria (`mongodb-memory-server`) |
 
----
-
-## 3. Arquitectura del Sistema
+### Arquitectura del Sistema
 
 Disher.io sigue los principios de **Clean Architecture**, separando claramente las responsabilidades entre la capa de presentación, la lógica de negocio y la persistencia de datos.
 
@@ -55,7 +93,7 @@ La aplicación Angular se organiza en módulos funcionales especializados:
 
 ---
 
-## 4. Guía de Inicio Rápido
+## 3. Guía de Inicio Rápido
 
 El sistema incluye un script de instalación automatizado que gestiona el aprovisionamiento de la infraestructura.
 
@@ -85,9 +123,9 @@ sudo ./show-dns.sh
 
 ---
 
-## 5. Procedimientos de Mantenimiento y Operaciones
+## 4. Procedimientos de Mantenimiento y Operaciones
 
-### 5.1 Actualización desde una Instalación Existente
+### 4.1 Actualización desde una Instalación Existente
 
 El script de instalación también actúa como actualizador. Conserva los datos y reconstruye las imágenes con el nuevo código.
 
@@ -99,7 +137,7 @@ git pull origin main
 sudo ./install.sh
 ```
 
-### 5.2 Copia de Seguridad de la Base de Datos
+### 4.2 Copia de Seguridad de la Base de Datos
 
 Usa el script automatizado incluido en la raíz del proyecto para crear copias de seguridad consistentes y comprimidas.
 
@@ -112,7 +150,7 @@ El script genera `backups/disher_backup_YYYY-MM-DD_HH-MM-SS.tar.gz` y retiene la
 
 Para restaurar un backup o configurar backups automáticos por cron, consulta la [Guía de Mantenimiento](./docs/MAINTENANCE.md).
 
-### 5.3 Detención Estándar (Conserva los Datos)
+### 4.3 Detención Estándar (Conserva los Datos)
 
 Detiene todos los contenedores preservando intactos los volúmenes (base de datos, imágenes y configuración).
 
@@ -122,7 +160,7 @@ docker compose down
 
 *Para reiniciar el sistema: `docker compose up -d`*
 
-### 5.4 Eliminación Total e Infraestructura (Purge Completo de Docker)
+### 4.4 Eliminación Total e Infraestructura (Purge Completo de Docker)
 
 > **Acción destructiva e irreversible.** Elimina contenedores, redes, imágenes compiladas, volúmenes y todos los datos persistidos.
 
@@ -140,7 +178,7 @@ cd ..
 sudo rm -rf disherio
 ```
 
-### 5.5 Resolución de Instalación Corrupta
+### 4.5 Resolución de Instalación Corrupta
 
 En caso de corrupción del estado (apagón crítico, modificación manual de volúmenes, corrupción del demonio Docker), ejecuta la siguiente secuencia de reseteo forzado completo:
 
@@ -167,7 +205,7 @@ sudo ./install.sh
 
 ---
 
-## 6. Apertura de Puertos en Servidores Cloud
+## 5. Apertura de Puertos en Servidores Cloud
 
 Cuando Disher.io se instala en un VPS o instancia cloud, el proveedor dispone de un **firewall de red propio**, independiente del sistema operativo del servidor. Aunque la aplicación esté corriendo correctamente en el interior del servidor, el acceso externo quedará bloqueado hasta que se abran los puertos necesarios desde el panel del proveedor.
 
@@ -226,7 +264,7 @@ gcloud compute firewall-rules create allow-disher \
 
 ---
 
-## 7. Documentación Técnica
+## 6. Documentación Técnica
 
 Para información detallada sobre aspectos específicos del sistema, consulte los siguientes documentos en la carpeta `/docs`:
 
@@ -240,7 +278,7 @@ Para información detallada sobre aspectos específicos del sistema, consulte lo
 
 ---
 
-## 8. Seguridad y Resiliencia
+## 7. Seguridad y Resiliencia
 
 - **Gestión Global de Errores**: Implementación de un `GlobalErrorHandler` en el frontend para la captura y notificación centralizada de excepciones.
 - **Sistema de Notificaciones MD3**: Basado en Material Design 3, integrado con el sistema de mensajería para alertas críticas y de éxito.
@@ -249,6 +287,6 @@ Para información detallada sobre aspectos específicos del sistema, consulte lo
 
 ---
 
-## 9. Licencia
+## 8. Licencia
 
 Este proyecto se distribuye bajo la licencia **MIT**. Para más detalles, consulte el archivo `LICENSE` en la raíz del repositorio.
