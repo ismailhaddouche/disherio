@@ -9,36 +9,34 @@ services:
       - disherio_net
     environment:
       MONGO_INITDB_DATABASE: disherio
-    ports:
-      - "27017:27017"
     healthcheck:
       test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
       interval: 10s
       timeout: 5s
       retries: 10
       start_period: 60s
-    labels:
-      - "app=disherio"
-      - "service=mongodb"
 
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
     container_name: disherio_backend
+    hostname: backend
+    networks:
+      disherio_net:
+        aliases:
+          - backend
     restart: unless-stopped
     depends_on:
       mongo:
         condition: service_healthy
-    networks:
-      - disherio_net
     environment:
       NODE_ENV: production
       PORT: 3000
       MONGODB_URI: mongodb://mongo:27017/disherio
-      JWT_SECRET: ${JWT_SECRET:-changeme_in_production}
-      JWT_EXPIRES: 8h
-      FRONTEND_URL: ${FRONTEND_URL:-http://localhost}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES: ${JWT_EXPIRES:-8h}
+      FRONTEND_URL: ${FRONTEND_URL}
     expose:
       - "3000"
     volumes:
@@ -49,18 +47,18 @@ services:
       timeout: 5s
       retries: 6
       start_period: 30s
-    labels:
-      - "app=disherio"
-      - "service=backend"
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
     container_name: disherio_frontend
-    restart: unless-stopped
+    hostname: frontend
     networks:
-      - disherio_net
+      disherio_net:
+        aliases:
+          - frontend
+    restart: unless-stopped
     expose:
       - "4200"
     healthcheck:
@@ -69,9 +67,6 @@ services:
       timeout: 5s
       retries: 6
       start_period: 30s
-    labels:
-      - "app=disherio"
-      - "service=frontend"
 
   caddy:
     image: caddy:2-alpine
@@ -82,8 +77,6 @@ services:
         condition: service_healthy
       frontend:
         condition: service_healthy
-    # Esperar a que los servicios estén realmente listos
-    entrypoint: ["/bin/sh", "-c", "sleep 5 && caddy run --config /etc/caddy/Caddyfile --adapter caddyfile"]
     ports:
       - "${PORT:-80}:${PORT:-80}"
       - "${HTTPS_PORT:-443}:443"
@@ -100,9 +93,6 @@ services:
       timeout: 5s
       retries: 6
       start_period: 10s
-    labels:
-      - "app=disherio"
-      - "service=proxy"
 
 networks:
   disherio_net:

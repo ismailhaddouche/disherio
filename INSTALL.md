@@ -6,6 +6,7 @@
 - Acceso root o usuario con `sudo`
 - Conexión a internet
 - **Puertos libres:** 80 (HTTP) y 443 (HTTPS)
+- **RAM mínima:** 2GB recomendada (1GB puede funcionar pero es lento)
 
 ## Requisitos de Red (Cloud)
 
@@ -85,7 +86,18 @@ El instalador te guiará por los siguientes pasos:
 
 Al finalizar se mostrará la URL de acceso y las credenciales de administrador.
 
-### 4. Verificar instalación (IMPORTANTE)
+### 4. Credenciales por defecto
+
+Si el seed se ejecutó correctamente, las credenciales por defecto son:
+
+```
+Email:    admin@disherio.com
+Password: admin1234
+```
+
+**IMPORTANTE:** Cambia la contraseña después del primer login.
+
+### 5. Verificar instalación
 
 Después de la instalación, ejecuta:
 
@@ -98,6 +110,7 @@ Este script verificará:
 - ✅ Conectividad de red
 - ✅ Acceso HTTP desde internet
 - ✅ Estado de MongoDB
+- ✅ API respondiendo correctamente
 
 ## Scripts adicionales
 
@@ -120,24 +133,68 @@ Si recibes error 502 al acceder:
    sudo docker ps
    ```
 
-2. Reiniciar Caddy (resuelve problemas de DNS interno):
+2. Reiniciar Caddy:
    ```bash
    sudo docker restart disherio_caddy
    ```
 
-3. Verificar firewall (en cloud):
+3. Verificar logs:
    ```bash
-   sudo ./scripts/verify.sh
+   sudo docker logs disherio_caddy --tail 20
+   sudo docker logs disherio_backend --tail 20
    ```
 
-### MongoDB unhealthy
+### Backend unhealthy o reiniciándose
 
-El healthcheck de MongoDB puede tardar en iniciar. Es normal ver "unhealthy" durante los primeros 30-60 segundos. Si persiste:
+Si el backend no se mantiene estable:
 
-```bash
-sudo docker logs disherio_mongo --tail 20
-```
+1. Verificar memoria disponible:
+   ```bash
+   free -h
+   ```
+   
+   Si tienes menos de 1GB de RAM disponible, la VM puede estar matando el contenedor.
+
+2. Verificar logs del backend:
+   ```bash
+   sudo docker logs disherio_backend --tail 50
+   ```
+
+3. Recrear el backend:
+   ```bash
+   cd /home/ubuntu/disherio
+   sudo docker-compose stop backend
+   sudo docker-compose rm backend
+   sudo docker-compose up -d backend
+   ```
+
+### No se puede hacer login
+
+Si el login falla con "Invalid credentials":
+
+1. Verificar que el seed se ejecutó:
+   ```bash
+   sudo docker exec disherio_backend node /app/dist/seeders/index.js
+   ```
+
+2. Las credenciales por defecto son:
+   - Email: `admin@disherio.com`
+   - Password: `admin1234`
 
 ### Puerto 80 en uso
 
-Si el puerto 80 está ocupado, el instalador detectará el conflicto y mostrará opciones.
+Si el puerto 80 está ocupado, el instalador detectará el conflicto. Puedes:
+- Detener el servicio que usa el puerto 80
+- O usar un puerto diferente editando el archivo `.env`
+
+### Problemas de DNS entre contenedores
+
+Si Caddy no puede conectar al backend:
+
+```bash
+# Verificar que los contenedores están en la misma red
+sudo docker network inspect disherio_disherio_net
+
+# Reiniciar Caddy para que reconozca los hostnames
+sudo docker restart disherio_caddy
+```
