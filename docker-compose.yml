@@ -15,8 +15,11 @@ services:
       test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
       interval: 10s
       timeout: 5s
-      retries: 6
-      start_period: 20s
+      retries: 10
+      start_period: 60s
+    labels:
+      - "app=disherio"
+      - "service=mongodb"
 
   backend:
     build:
@@ -46,6 +49,9 @@ services:
       timeout: 5s
       retries: 6
       start_period: 30s
+    labels:
+      - "app=disherio"
+      - "service=backend"
 
   frontend:
     build:
@@ -63,6 +69,9 @@ services:
       timeout: 5s
       retries: 6
       start_period: 30s
+    labels:
+      - "app=disherio"
+      - "service=frontend"
 
   caddy:
     image: caddy:2-alpine
@@ -73,6 +82,8 @@ services:
         condition: service_healthy
       frontend:
         condition: service_healthy
+    # Esperar a que los servicios estén realmente listos
+    entrypoint: ["/bin/sh", "-c", "sleep 5 && caddy run --config /etc/caddy/Caddyfile --adapter caddyfile"]
     ports:
       - "${PORT:-80}:${PORT:-80}"
       - "${HTTPS_PORT:-443}:443"
@@ -83,13 +94,27 @@ services:
       - caddy_config:/config
     networks:
       - disherio_net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:80 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+    labels:
+      - "app=disherio"
+      - "service=proxy"
 
 networks:
   disherio_net:
     driver: bridge
+    name: disherio_disherio_net
 
 volumes:
   mongo_data:
+    name: disherio_mongo_data
   disherio_uploads:
+    name: disherio_uploads
   caddy_data:
+    name: disherio_caddy_data
   caddy_config:
+    name: disherio_caddy_config
