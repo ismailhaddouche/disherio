@@ -1,24 +1,16 @@
 import { Request, Response } from 'express';
+import { asyncHandler, createError } from '../utils/async-handler';
 import * as RestaurantService from '../services/restaurant.service';
 
-export async function getMyRestaurant(req: Request, res: Response): Promise<void> {
-  try {
-    const restaurant = await RestaurantService.getRestaurantById(req.user!.restaurantId);
-    if (!restaurant) {
-      res.status(404).json({ error: 'Restaurant not found' });
-      return;
-    }
-    res.json(restaurant);
-  } catch {
-    res.status(500).json({ error: 'Server error' });
+export const getMyRestaurant = asyncHandler(async (req: Request, res: Response): Promise<void => {
+  const restaurant = await RestaurantService.getRestaurantById(req.user!.restaurantId);
+  if (!restaurant) {
+    throw createError.notFound('Restaurant not found');
   }
-}
+  res.json(restaurant);
+});
 
-export async function updateMyRestaurant(req: Request, res: Response): Promise<void> {
-  try {
-    const restaurant = await RestaurantService.updateRestaurant(req.user!.restaurantId, req.body);
-    res.json(restaurant);
-  } catch {
-    res.status(500).json({ error: 'Server error' });
-  }
-}
+export const updateMyRestaurant = asyncHandler(async (req: Request, res: Response): Promise<void => {
+  const restaurant = await RestaurantService.updateRestaurant(req.user!.restaurantId, req.body);
+  res.json(restaurant);
+});

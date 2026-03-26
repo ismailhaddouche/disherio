@@ -3,7 +3,15 @@
 # DisherIo - Full Installer
 # Interactive installer with multi-language support and robust healthchecks.
 # =============================================================================
-set -uo pipefail
+# VALIDACIÓN: Fallar en errores críticos
+set -euo pipefail
+
+# Función para manejar errores
+error_exit() {
+  echo -e "${RED}❌ ERROR: $1${NC}" | tee -a "$LOG_FILE"
+  echo -e "${RED}Revisa el log: $LOG_FILE${NC}"
+  exit 1
+}
 
 # ── Styles ──────────────────────────────────────────────────────────────────
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
@@ -194,18 +202,27 @@ install_dependencies() {
     if ! docker compose version &>/dev/null; then NEED_INSTALL=true; fi
 
     if [ "$NEED_INSTALL" = true ]; then
-        apt-get update -qq >/dev/null 2>&1 || true
+        echo -e "${BLUE}📦 Actualizando paquetes...${NC}" | tee -a "$LOG_FILE"
+        apt-get update -qq >/dev/null 2>&1 || error_exit "Failed to run apt-get update"
+        
         for pkg in curl wget ufw openssl; do
             if ! command -v "$pkg" &>/dev/null; then
-                apt-get install -y -qq "$pkg" </dev/null >/dev/null 2>&1 || true
+                echo -e "${BLUE}📦 Instalando $pkg...${NC}" | tee -a "$LOG_FILE"
+                apt-get install -y -qq "$pkg" </dev/null >/dev/null 2>&1 || error_exit "Failed to install $pkg"
             fi
         done
+        
         if ! command -v docker &>/dev/null; then
-            apt-get install -y -qq docker.io </dev/null >/dev/null 2>&1 || true
+            echo -e "${BLUE}🐳 Instalando Docker...${NC}" | tee -a "$LOG_FILE"
+            apt-get install -y -qq docker.io </dev/null >/dev/null 2>&1 || error_exit "Failed to install Docker"
         fi
+        
         if ! docker compose version &>/dev/null; then
-            apt-get install -y -qq docker-compose-plugin </dev/null >/dev/null 2>&1 || true
+            echo -e "${BLUE}🐳 Instalando Docker Compose...${NC}" | tee -a "$LOG_FILE"
+            apt-get install -y -qq docker-compose-plugin </dev/null >/dev/null 2>&1 || error_exit "Failed to install Docker Compose"
         fi
+        
+        echo -e "${GREEN}✅ Dependencias instaladas correctamente${NC}" | tee -a "$LOG_FILE"
     fi
 
     # Firewall setup
@@ -281,7 +298,10 @@ build_and_start() {
     docker compose build --no-cache 2>&1 | tee -a "$LOG_FILE" | grep -E "^(Step|#|ERROR|error)" || true
 
     echo -e "\n${CYAN}${MSG_STEP5}${NC}"
-    docker compose up -d 2>&1 | tee -a "$LOG_FILE" | grep -v "^$" || true
+    docker compose up -d 2>&1 | tee -a "$LOG_FILE" | grep -v "^$" || {
+        echo -e "${RED}ERROR: Falló al iniciar los servicios Docker${NC}"
+        exit 1
+    }
 }
 
 # ── 6. Healthcheck & Seed ────────────────────────────────────────────────────
@@ -375,3 +395,4 @@ main() {
 }
 
 main "$@"
+"$@"

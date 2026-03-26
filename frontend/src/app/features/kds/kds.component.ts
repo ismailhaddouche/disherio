@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { kdsStore } from '../../store/kds.store';
@@ -62,7 +62,7 @@ import { environment } from '../../../environments/environment';
     </div>
   `,
 })
-export class KdsComponent implements OnInit {
+export class KdsComponent implements OnInit, OnDestroy {
   private socketService = inject(SocketService);
   private http = inject(HttpClient);
 
@@ -76,6 +76,10 @@ export class KdsComponent implements OnInit {
       next: (items) => kdsStore.setItems(items),
       error: () => { /* already connected, silently skip if token expired */ },
     });
+  }
+
+  ngOnDestroy() {
+    this.socketService.disconnect();
   }
 
   prepareItem(itemId: string) {

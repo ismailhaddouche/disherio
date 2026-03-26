@@ -67,7 +67,7 @@ run_healthchecks() {
   echo ""
 
   local port="${PORT:-80}"
-  local api_url="http://localhost:${port}/api/health"
+  local api_url="http://localhost:${port}/health"
   local all_ok=true
 
   # MongoDB

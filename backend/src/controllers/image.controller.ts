@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import multer from 'multer';
+import { asyncHandler, createError } from '../utils/async-handler';
 import * as ImageService from '../services/image.service';
 
 // Filter for only allow specific image types
@@ -23,47 +24,26 @@ export const uploadMiddleware = multer({
   limits: { fileSize: 10 * 1024 * 1024 } // Max 10MB
 });
 
-export async function uploadDishImage(req: Request, res: Response): Promise<void> {
-  try {
-    if (!req.file) {
-      res.status(400).json({ error: 'NO_FILE_UPLOADED' });
-      return;
-    }
-    const publicUrl = await ImageService.processAndSaveImage(req.file, 'dishes');
-    res.status(201).json({ url: publicUrl });
-  } catch (err: any) {
-    if (err.message === 'INVALID_FILE_TYPE') {
-      res.status(400).json({ error: 'FILE_TYPE_NOT_SUPPORTED' });
-    } else if (err.message.includes('unsupported image')) {
-      res.status(400).json({ error: 'INVALID_IMAGE_FORMAT' });
-    } else {
-      res.status(500).json({ error: 'Error processing image' });
-    }
+export const uploadDishImage = asyncHandler(async (req: Request, res: Response): Promise<void => {
+  if (!req.file) {
+    throw createError.badRequest('NO_FILE_UPLOADED');
   }
-}
+  const publicUrl = await ImageService.processAndSaveImage(req.file, 'dishes');
+  res.status(201).json({ url: publicUrl });
+});
 
-export async function uploadCategoryImage(req: Request, res: Response): Promise<void> {
-  try {
-    if (!req.file) {
-      res.status(400).json({ error: 'NO_FILE_UPLOADED' });
-      return;
-    }
-    const publicUrl = await ImageService.processAndSaveImage(req.file, 'categories');
-    res.status(201).json({ url: publicUrl });
-  } catch (err: any) {
-    res.status(500).json({ error: 'Error processing image' });
+export const uploadCategoryImage = asyncHandler(async (req: Request, res: Response): Promise<void => {
+  if (!req.file) {
+    throw createError.badRequest('NO_FILE_UPLOADED');
   }
-}
+  const publicUrl = await ImageService.processAndSaveImage(req.file, 'categories');
+  res.status(201).json({ url: publicUrl });
+});
 
-export async function uploadRestaurantLogo(req: Request, res: Response): Promise<void> {
-  try {
-    if (!req.file) {
-      res.status(400).json({ error: 'NO_FILE_UPLOADED' });
-      return;
-    }
-    const publicUrl = await ImageService.processAndSaveImage(req.file, 'restaurants');
-    res.status(201).json({ url: publicUrl });
-  } catch (err: any) {
-    res.status(500).json({ error: 'Error processing image' });
+export const uploadRestaurantLogo = asyncHandler(async (req: Request, res: Response): Promise<void => {
+  if (!req.file) {
+    throw createError.badRequest('NO_FILE_UPLOADED');
   }
-}
+  const publicUrl = await ImageService.processAndSaveImage(req.file, 'restaurants');
+  res.status(201).json({ url: publicUrl });
+});

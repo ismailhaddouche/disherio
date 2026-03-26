@@ -1,96 +1,62 @@
 import { Request, Response } from 'express';
+import { asyncHandler, createError } from '../utils/async-handler';
 import * as DishService from '../services/dish.service';
 
-export async function listDishes(req: Request, res: Response): Promise<void> {
-  try {
-    const dishes = await DishService.getDishesByRestaurant(req.user!.restaurantId, req.lang);
-    res.json(dishes);
-  } catch {
-    res.status(500).json({ error: 'Server error' });
-  }
-}
+export const listDishes = asyncHandler(async (req: Request, res: Response): Promise<void => {
+  const dishes = await DishService.getDishesByRestaurant(req.user!.restaurantId, req.lang);
+  res.json(dishes);
+});
 
-export async function createDish(req: Request, res: Response): Promise<void> {
-  try {
-    const dish = await DishService.createDish({ ...req.body, restaurant_id: req.user!.restaurantId });
-    res.status(201).json(dish);
-  } catch {
-    res.status(500).json({ error: 'Server error' });
-  }
-}
+export const createDish = asyncHandler(async (req: Request, res: Response): Promise<void => {
+  const dish = await DishService.createDish({ ...req.body, restaurant_id: req.user!.restaurantId });
+  res.status(201).json(dish);
+});
 
-export async function updateDish(req: Request, res: Response): Promise<void> {
-  try {
-    const dish = await DishService.updateDish(String(req.params.id), req.body);
-    if (!dish) { res.status(404).json({ error: 'Not found' }); return; }
-    res.json(dish);
-  } catch {
-    res.status(500).json({ error: 'Server error' });
+export const updateDish = asyncHandler(async (req: Request, res: Response): Promise<void => {
+  const dish = await DishService.updateDish(String(req.params.id), req.body);
+  if (!dish) {
+    throw createError.notFound('Dish not found');
   }
-}
+  res.json(dish);
+});
 
-export async function deleteDish(req: Request, res: Response): Promise<void> {
-  try {
-    await DishService.deleteDish(String(req.params.id));
-    res.status(204).end();
-  } catch {
-    res.status(500).json({ error: 'Server error' });
-  }
-}
+export const deleteDish = asyncHandler(async (req: Request, res: Response): Promise<void => {
+  await DishService.deleteDish(String(req.params.id));
+  res.status(204).end();
+});
 
-export async function toggleDishStatus(req: Request, res: Response): Promise<void> {
-  try {
-    const dish = await DishService.toggleDishStatus(String(req.params.id));
-    res.json(dish);
-  } catch (err: any) {
-    if (err.message === 'DISH_NOT_FOUND') { res.status(404).json({ error: 'Not found' }); return; }
-    res.status(500).json({ error: 'Server error' });
-  }
-}
+export const toggleDishStatus = asyncHandler(async (req: Request, res: Response): Promise<void => {
+  const dish = await DishService.toggleDishStatus(String(req.params.id));
+  res.json(dish);
+});
 
-export async function listCategories(req: Request, res: Response): Promise<void> {
-  try {
-    const categories = await DishService.getCategoriesByRestaurant(req.user!.restaurantId);
-    res.json(categories);
-  } catch {
-    res.status(500).json({ error: 'Server error' });
-  }
-}
+export const listCategories = asyncHandler(async (req: Request, res: Response): Promise<void => {
+  const categories = await DishService.getCategoriesByRestaurant(req.user!.restaurantId);
+  res.json(categories);
+});
 
-export async function getCategory(req: Request, res: Response): Promise<void> {
-  try {
-    const category = await DishService.getCategoryById(String(req.params.id));
-    if (!category) { res.status(404).json({ error: 'Not found' }); return; }
-    res.json(category);
-  } catch {
-    res.status(500).json({ error: 'Server error' });
+export const getCategory = asyncHandler(async (req: Request, res: Response): Promise<void => {
+  const category = await DishService.getCategoryById(String(req.params.id));
+  if (!category) {
+    throw createError.notFound('Category not found');
   }
-}
+  res.json(category);
+});
 
-export async function createCategory(req: Request, res: Response): Promise<void> {
-  try {
-    const category = await DishService.createCategory({ ...req.body, restaurant_id: req.user!.restaurantId });
-    res.status(201).json(category);
-  } catch {
-    res.status(500).json({ error: 'Server error' });
-  }
-}
+export const createCategory = asyncHandler(async (req: Request, res: Response): Promise<void => {
+  const category = await DishService.createCategory({ ...req.body, restaurant_id: req.user!.restaurantId });
+  res.status(201).json(category);
+});
 
-export async function updateCategory(req: Request, res: Response): Promise<void> {
-  try {
-    const category = await DishService.updateCategory(String(req.params.id), req.body);
-    if (!category) { res.status(404).json({ error: 'Not found' }); return; }
-    res.json(category);
-  } catch {
-    res.status(500).json({ error: 'Server error' });
+export const updateCategory = asyncHandler(async (req: Request, res: Response): Promise<void => {
+  const category = await DishService.updateCategory(String(req.params.id), req.body);
+  if (!category) {
+    throw createError.notFound('Category not found');
   }
-}
+  res.json(category);
+});
 
-export async function deleteCategory(req: Request, res: Response): Promise<void> {
-  try {
-    await DishService.deleteCategory(String(req.params.id));
-    res.status(204).end();
-  } catch {
-    res.status(500).json({ error: 'Server error' });
-  }
-}
+export const deleteCategory = asyncHandler(async (req: Request, res: Response): Promise<void => {
+  await DishService.deleteCategory(String(req.params.id));
+  res.status(204).end();
+});
