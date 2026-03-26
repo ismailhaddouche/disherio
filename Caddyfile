@@ -4,66 +4,19 @@
 }
 
 :80 {
-    # Security headers for all responses
-    header {
-        X-Content-Type-Options "nosniff"
-        X-Frame-Options "DENY"
-        X-XSS-Protection "1; mode=block"
-        # Uncomment for HTTPS:
-        # Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
-        -Server
-    }
-
-    # WebSocket upgrade for Socket.io
-    @socketio {
-        path /socket.io/*
-    }
-    handle @socketio {
-        reverse_proxy backend:3000 {
-            # WebSocket support headers
-            header_up Host {host}
-            header_up X-Real-IP {remote}
-            header_up X-Forwarded-For {remote}
-            header_up X-Forwarded-Proto {scheme}
-            # Enable WebSocket upgrade
-            header_up Connection "Upgrade"
-            header_up Upgrade "websocket"
-        }
-    }
-
-    # API routes to Node.js backend
     handle /api/* {
-        reverse_proxy backend:3000 {
-            header_up Host {host}
-            header_up X-Real-IP {remote}
-            header_up X-Forwarded-For {remote}
-            header_up X-Forwarded-Proto {scheme}
-        }
-    }
-
-    # Health check endpoint
-    handle /health {
         reverse_proxy backend:3000
     }
 
-    # Serve uploaded images statically
-    handle /uploads/* {
-        root * /srv/uploads
-        file_server
-    }
-
-    # Everything else goes to Angular frontend
-    handle {
-        reverse_proxy frontend:4200 {
-            header_up Host {host}
-            header_up X-Real-IP {remote}
-            header_up X-Forwarded-For {remote}
-            header_up X-Forwarded-Proto {scheme}
+    handle /socket.io/* {
+        reverse_proxy backend:3000 {
+            transport http {
+                versions h1
+            }
         }
     }
 
-    log {
-        output stdout
-        format json
+    handle {
+        reverse_proxy frontend:4200
     }
 }
