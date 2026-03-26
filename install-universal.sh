@@ -186,19 +186,28 @@ LOG_LEVEL=info
 EOF
     
     # Crear Caddyfile para IP local
-    cat > Caddyfile <<EOF
+    cat > Caddyfile <<'EOF'
 {
     admin off
     auto_https off
 }
+
 :80 {
-    handle /api/* { reverse_proxy backend:3000 }
+    handle /api/* {
+        reverse_proxy backend:3000
+    }
+
     handle /socket.io/* {
         reverse_proxy backend:3000 {
-            transport http { versions h1 }
+            transport http {
+                versions h1
+            }
         }
     }
-    handle { reverse_proxy frontend:4200 }
+
+    handle {
+        reverse_proxy frontend:4200
+    }
 }
 EOF
     
