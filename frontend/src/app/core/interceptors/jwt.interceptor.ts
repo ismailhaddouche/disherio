@@ -8,12 +8,17 @@ export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
   const router = inject(Router);
   const token = authStore.token();
   
+  console.log('[JWT Interceptor] URL:', req.url, 'Token exists:', !!token);
+  
   if (token) {
     req = req.clone({ setHeaders: { Authorization: `Bearer ${token}` } });
+  } else {
+    console.warn('[JWT Interceptor] No token available for request:', req.url);
   }
   
   return next(req).pipe(
     catchError((error: HttpErrorResponse) => {
+      console.error('[JWT Interceptor] Error:', error.status, error.message, 'URL:', req.url);
       if (error.status === 401) {
         authStore.clearAuth();
         router.navigate(['/login']);

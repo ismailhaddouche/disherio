@@ -4,6 +4,7 @@ import { RouterModule } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
 import { LocalizePipe } from '../../../shared/pipes/localize.pipe';
+import { authStore } from '../../../store/auth.store';
 
 @Component({
   selector: 'app-category-list',
@@ -73,14 +74,27 @@ import { LocalizePipe } from '../../../shared/pipes/localize.pipe';
 export class CategoryListComponent implements OnInit {
   private http = inject(HttpClient);
   categories = signal<any[]>([]);
+  error = signal<string>('');
 
   ngOnInit() {
+    // Only load if authenticated
+    if (!authStore.isAuthenticated()) {
+      console.warn('[CategoryList] Not authenticated, skipping load');
+      return;
+    }
     this.loadCategories();
   }
 
   loadCategories() {
-    this.http.get<any[]>(`${environment.apiUrl}/dishes/categories`).subscribe(res => {
-      this.categories.set(res);
+    this.error.set('');
+    this.http.get<any[]>(`${environment.apiUrl}/dishes/categories`).subscribe({
+      next: (res) => {
+        this.categories.set(res);
+      },
+      error: (err) => {
+        console.error('[CategoryList] Error loading categories:', err);
+        this.error.set('Error loading categories. Please try again.');
+      }
     });
   }
 

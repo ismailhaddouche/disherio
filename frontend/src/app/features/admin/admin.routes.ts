@@ -10,6 +10,10 @@ export const ADMIN_ROUTES: Routes = [
       
       // Dishes
       { 
+        path: 'dishes', 
+        loadComponent: () => import('./dishes/dish-list.component').then(m => m.DishListComponent) 
+      },
+      { 
         path: 'dishes/new', 
         loadComponent: () => import('./dishes/dish-form.component').then(m => m.DishFormComponent) 
       },
