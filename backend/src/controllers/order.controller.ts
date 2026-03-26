@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { asyncHandler, createError } from '../utils/async-handler';
+import { asyncHandler } from '../utils/async-handler';
 import * as OrderService from '../services/order.service';
 
 export const createOrder = asyncHandler(async (req: Request, res: Response): Promise<void> => {
