@@ -34,7 +34,9 @@ export function defineAbilityFor(user: AuthUser): AppAbility {
 
   if (perms.has('TAS')) {
     can('read', 'Totem');
-    can('manage', 'Totem', { totem_type: 'TEMPORARY' });
+    can('create', 'Totem');
+    can('update', 'Totem');
+    can('delete', 'Totem');
     can('create', 'TotemSession');
     can('update', 'TotemSession');
     can('read', 'Order');

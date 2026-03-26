@@ -1,4 +1,4 @@
-import { signal, computed, Signal, ComputedSignal } from '@angular/core';
+import { signal, computed, Signal } from '@angular/core';
 
 export interface AuthUser {
   staffId: string;
@@ -12,7 +12,7 @@ export interface AuthStore {
   user: Signal<AuthUser | null>;
   token: Signal<string | null>;
   isAuthenticated: Signal<boolean>;
-  hasPermission: (perm: string) => ComputedSignal<boolean>;
+  hasPermission: (perm: string) => Signal<boolean>;
   setAuth: (token: string, user: AuthUser) => void;
   clearAuth: () => void;
 }
