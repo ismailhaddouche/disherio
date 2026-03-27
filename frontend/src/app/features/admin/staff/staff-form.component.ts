@@ -98,15 +98,19 @@ import type { Role as RoleType } from '../../../services/staff.service';
             formControlName="role_id"
             class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent"
             [class.border-red-500]="staffForm.get('role_id')?.invalid && staffForm.get('role_id')?.touched"
+            [disabled]="loadingRoles()"
           >
-            <option value="">Selecciona un rol</option>
+            <option value="">{{ loadingRoles() ? 'Cargando roles...' : 'Selecciona un rol' }}</option>
             <option *ngFor="let role of roles()" [value]="role._id">{{ role.role_name }}</option>
           </select>
-          <div *ngIf="staffForm.get('role_id')?.invalid && staffForm.get('role_id')?.touched" class="text-red-500 text-sm mt-1">
+          <div *ngIf="staffForm.get('role_id')?.invalid && staffForm.get('role_id')?.touched && !loadingRoles()" class="text-red-500 text-sm mt-1">
             Selecciona un rol
           </div>
           <div *ngIf="roles().length === 0 && !loadingRoles()" class="text-amber-600 text-sm mt-1">
             No hay roles disponibles. Contacta al administrador.
+          </div>
+          <div *ngIf="roles().length > 0" class="text-green-600 text-sm mt-1">
+            {{ roles().length }} rol(es) disponible(s): {{ roles().map(r => r.role_name).join(', ') }}
           </div>
         </div>
 
@@ -171,14 +175,16 @@ export class StaffFormComponent implements OnInit {
 
   ngOnInit(): void {
     this.initForm();
-    this.loadRoles();
     
     this.staffId = this.route.snapshot.paramMap.get('id');
     this.isEditMode = !!this.staffId;
 
-    if (this.isEditMode && this.staffId) {
-      this.loadStaff(this.staffId);
-    }
+    // Cargar roles primero, luego el staff para evitar condición de carrera
+    this.loadRoles().then(() => {
+      if (this.isEditMode && this.staffId) {
+        this.loadStaff(this.staffId);
+      }
+    });
   }
 
   initForm(): void {
@@ -194,24 +200,21 @@ export class StaffFormComponent implements OnInit {
     });
   }
 
-  loadRoles(): void {
-    this.loadingRoles.set(true);
-    this.staffService.getRoles().subscribe({
-      next: (roles) => {
-        this.roles.set(roles);
-        this.loadingRoles.set(false);
-        // Si estamos en modo edición y ya tenemos datos del staff, re-patch para asegurar que el rol se seleccione
-        if (this.isEditMode && this.staffForm.get('staff_name')?.value) {
-          const currentRoleId = this.staffForm.get('role_id')?.value;
-          if (currentRoleId) {
-            this.staffForm.patchValue({ role_id: currentRoleId });
-          }
+  loadRoles(): Promise<void> {
+    return new Promise((resolve) => {
+      this.loadingRoles.set(true);
+      this.staffService.getRoles().subscribe({
+        next: (roles) => {
+          this.roles.set(roles);
+          this.loadingRoles.set(false);
+          resolve();
+        },
+        error: () => {
+          this.error.set('Error al cargar roles');
+          this.loadingRoles.set(false);
+          resolve(); // Resolvemos igual para no bloquear el flujo
         }
-      },
-      error: () => {
-        this.error.set('Error al cargar roles');
-        this.loadingRoles.set(false);
-      }
+      });
     });
   }
 
