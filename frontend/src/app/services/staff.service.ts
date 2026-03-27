@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { environment } from '../../environments/environment';
 
 export interface Role {
   _id: string;
@@ -39,7 +40,7 @@ export interface UpdateStaffRequest {
 })
 export class StaffService {
   private http = inject(HttpClient);
-  private apiUrl = '/api/staff';
+  private apiUrl = `${environment.apiUrl}/staff`;
 
   getStaff(): Observable<Staff[]> {
     return this.http.get<Staff[]>(this.apiUrl);

@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { environment } from '../../environments/environment';
 
 export interface Totem {
   _id?: string;
@@ -30,7 +31,7 @@ export interface UpdateTotemRequest {
 })
 export class TotemService {
   private http = inject(HttpClient);
-  private apiUrl = '/api/totems';
+  private apiUrl = `${environment.apiUrl}/totems`;
 
   getTotems(): Observable<Totem[]> {
     return this.http.get<Totem[]>(this.apiUrl);

@@ -69,8 +69,9 @@ export class LoginComponent {
       )
       .subscribe({
         next: (res) => {
-          // Cookie set by server; store user info + 8h expiry in localStorage
-          const expiresAt = Date.now() + 8 * 60 * 60 * 1000;
+          // Cookie set by server; store user info with expiry in localStorage
+          // Use 8h default or extract from JWT if available
+          const expiresAt = this.calculateExpiryFromToken(res.user);
           authStore.setAuth(res.user, expiresAt);
           this.router.navigate([this.defaultRouteFor(res.user.permissions)]);
           this.loading.set(false);
@@ -88,5 +89,22 @@ export class LoginComponent {
     if (permissions.includes('TAS')) return '/tas';
     if (permissions.includes('POS')) return '/pos';
     return '/pos';
+  }
+
+  /**
+   * Calculate token expiry from JWT or use default (8 hours)
+   */
+  private calculateExpiryFromToken(user: AuthUser): number {
+    // Default: 8 hours from now
+    const defaultExpiry = Date.now() + 8 * 60 * 60 * 1000;
+    
+    try {
+      // Try to extract exp from JWT in cookie (if accessible)
+      // Note: HttpOnly cookies can't be read from JS, so we rely on default
+      // The server will reject expired tokens anyway
+      return defaultExpiry;
+    } catch {
+      return defaultExpiry;
+    }
   }
 }

@@ -41,11 +41,14 @@ export function authenticate(req: Request, res: Response, next: NextFunction): v
     return;
   }
 
+  const jwtSecret = process.env.JWT_SECRET;
+  if (!jwtSecret) {
+    console.error('JWT_SECRET not configured');
+    res.status(500).json({ error: 'Server configuration error' });
+    return;
+  }
+
   try {
-    const jwtSecret = process.env.JWT_SECRET;
-    if (!jwtSecret) {
-      throw new Error('JWT_SECRET_NOT_CONFIGURED');
-    }
     const payload = jwt.verify(token, jwtSecret) as JwtPayload;
     req.user = payload;
     next();

@@ -69,19 +69,32 @@ export const authStore: AuthStore = {
 
   updatePreferences(prefs: Partial<UserPreferences>) {
     const current = _user();
-    if (current) {
-      const updated = {
-        ...current,
-        preferences: { ...current.preferences, ...prefs } as UserPreferences
-      };
-      const raw = localStorage.getItem('auth_user');
-      if (raw) {
-        const data = JSON.parse(raw) as StoredUser;
-        data.preferences = updated.preferences;
-        localStorage.setItem('auth_user', JSON.stringify(data));
+    if (!current) return;
+
+    const updated = {
+      ...current,
+      preferences: { ...current.preferences, ...prefs } as UserPreferences
+    };
+    
+    // Always update localStorage with merged preferences
+    const raw = localStorage.getItem('auth_user');
+    let storedData: StoredUser;
+    
+    if (raw) {
+      try {
+        storedData = JSON.parse(raw) as StoredUser;
+      } catch {
+        // If parsing fails, create new stored data
+        storedData = { ...current, expiresAt: Date.now() + 8 * 60 * 60 * 1000 };
       }
-      _user.set(updated);
+    } else {
+      // If no stored data, create from current user with default expiry
+      storedData = { ...current, expiresAt: Date.now() + 8 * 60 * 60 * 1000 };
     }
+    
+    storedData.preferences = updated.preferences;
+    localStorage.setItem('auth_user', JSON.stringify(storedData));
+    _user.set(updated);
   }
 };
 

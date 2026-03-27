@@ -18,6 +18,7 @@ export interface KdsStore {
   setItems: (items: KdsItem[]) => void;
   addItem: (item: KdsItem) => void;
   updateItemState: (itemId: string, newState: KdsItem['item_state']) => void;
+  removeItem: (itemId: string) => void;
 }
 
 const _items = signal<KdsItem[]>([]);
@@ -40,5 +41,9 @@ export const kdsStore: KdsStore = {
     _items.update((current: KdsItem[]) =>
       current.map((i: KdsItem) => (i._id === itemId ? { ...i, item_state: newState } : i))
     );
+  },
+
+  removeItem(itemId: string) {
+    _items.update((current: KdsItem[]) => current.filter((i: KdsItem) => i._id !== itemId));
   },
 };
