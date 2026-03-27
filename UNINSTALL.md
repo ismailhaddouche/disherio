@@ -1,41 +1,37 @@
-# Desinstalación
+# Uninstallation
 
-> **Advertencia:** Este proceso elimina todos los datos de la aplicación de forma permanente. Haz una copia de seguridad antes de continuar.
+Warning: this process permanently deletes all application data including the database. Back up first.
 
-## Copia de seguridad previa (recomendado)
+## 1. Back up the database (recommended)
 
 ```bash
-sudo ./backup.sh
+sudo ./scripts/backup.sh
 ```
 
-## Pasos
+Backups are stored in `/var/backups/disherio/`.
 
-### 1. Detener y eliminar los contenedores
-
-```bash
-docker compose down
-```
-
-### 2. Eliminar contenedores, imágenes, volúmenes y redes (purga completa)
+## 2. Stop and remove all containers, images, volumes, and networks
 
 ```bash
+cd disherio
 docker compose down --rmi all --volumes --remove-orphans
 ```
 
-Esto elimina:
-- Contenedores: `disherio_backend`, `disherio_frontend`, `disherio_mongo`, `disherio_caddy`
-- Imágenes construidas localmente
-- Volúmenes: `mongo_data`, `caddy_data`, `caddy_config` (incluye todos los datos de la base de datos)
-- Red: `disherio_net`
+This removes:
 
-### 3. Eliminar la carpeta del proyecto
+- Containers: `disherio_backend`, `disherio_frontend`, `disherio_mongo`, `disherio_caddy`
+- Locally built images
+- Volumes: `mongo_data`, `disherio_uploads`, `caddy_data`, `caddy_config`
+- Network: `disherio_net`
+
+## 3. Delete the project directory
 
 ```bash
 cd ..
 rm -rf disherio
 ```
 
-## Desinstalación completa en un solo bloque
+## Complete uninstall in one block
 
 ```bash
 cd disherio
@@ -44,12 +40,10 @@ cd ..
 rm -rf disherio
 ```
 
-## Limpiar recursos Docker huérfanos (opcional)
-
-Si quieres limpiar otros recursos Docker no usados en el sistema:
+## Optional: remove unused Docker resources system-wide
 
 ```bash
 docker system prune -af --volumes
 ```
 
-> **Nota:** Este último comando afecta a todos los recursos Docker del sistema, no solo a los de disherio.
+Note: this command affects all Docker resources on the system, not only DisherIo ones. Do not run it if other Docker projects are active on the same machine.

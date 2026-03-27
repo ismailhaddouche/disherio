@@ -49,7 +49,7 @@ services:
       NODE_ENV: production
       PORT: 3000
       MONGODB_URI: mongodb://mongo:27017/disherio
-      JWT_SECRET: ${JWT_SECRET:-changeme_in_production}
+      JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRES: 8h
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost}
       LOG_LEVEL: ${LOG_LEVEL:-info}

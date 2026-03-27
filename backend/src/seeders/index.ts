@@ -8,18 +8,30 @@ import { logger } from '../config/logger';
 async function seed() {
   const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017/disherio';
   await mongoose.connect(uri);
-  logger.info('Connected for seeding');
+
+  const adminUsername = process.env.ADMIN_USERNAME || 'admin';
+  const adminPassword = process.env.ADMIN_PASSWORD;
+  const adminPin      = process.env.ADMIN_PIN;
+  const appLang       = process.env.APP_LANG       || 'es';
+
+  if (!adminPassword) {
+    logger.error('ADMIN_PASSWORD env var is required');
+    process.exit(1);
+  }
+  if (!adminPin) {
+    logger.error('ADMIN_PIN env var is required');
+    process.exit(1);
+  }
 
   // Create default restaurant
-  let restaurant = await Restaurant.findOne({ restaurant_name: 'DisherIo Demo' });
+  let restaurant = await Restaurant.findOne({ restaurant_name: 'DisherIo' });
   if (!restaurant) {
     restaurant = await Restaurant.create({
-      restaurant_name: 'DisherIo Demo',
+      restaurant_name: 'DisherIo',
       tax_rate: 10,
       currency: 'EUR',
-      language: 'es',
+      language: appLang,
     });
-    logger.info('Restaurant created');
   }
 
   // Create admin role
@@ -30,40 +42,32 @@ async function seed() {
       role_name: 'Admin',
       permissions: ['ADMIN'],
     });
-    logger.info('Admin role created');
   }
 
-  // Create admin user
-  const existing = await Staff.findOne({ username: 'admin', restaurant_id: restaurant._id });
+  // Create or update admin user
+  const existing = await Staff.findOne({ username: adminUsername, restaurant_id: restaurant._id });
+  const password_hash  = await bcrypt.hash(adminPassword, 12);
+  const pin_code_hash  = await bcrypt.hash(adminPin, 12);
+
   if (!existing) {
-    const password = 'admin1234';
-    const password_hash = await bcrypt.hash(password, 12);
-    const pin_code_hash = await bcrypt.hash('0000', 12);
-    
     await Staff.create({
       restaurant_id: restaurant._id,
       role_id: adminRole._id,
       staff_name: 'Administrador',
-      username: 'admin',
+      username: adminUsername,
       password_hash,
       pin_code_hash,
     });
-    
-    // IMPORTANT: Log credentials for first login
-    logger.info('========================================');
-    logger.info('ADMIN USER CREATED');
-    logger.info('Usuario: admin');
-    logger.info('Password: ' + password);
-    logger.info('PIN: 0000');
-    logger.info('========================================');
+    logger.info(`Admin user created: ${adminUsername}`);
   } else {
-    logger.info('Admin user already exists');
-    logger.info('Usuario: admin');
-    logger.info('If you forgot the password, run: npm run seed:reset');
+    await Staff.updateOne(
+      { _id: existing._id },
+      { $set: { password_hash, pin_code_hash } }
+    );
+    logger.info(`Admin user updated: ${adminUsername}`);
   }
 
   await mongoose.disconnect();
-  logger.info('Seeding complete');
 }
 
 seed().catch((err) => { logger.error(err); process.exit(1); });

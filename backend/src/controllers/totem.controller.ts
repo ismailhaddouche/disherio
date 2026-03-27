@@ -14,7 +14,7 @@ export const getTotem = asyncHandler(async (req: Request, res: Response): Promis
     throw createError.notFound('Tótem no encontrado');
   }
   // Verify totem belongs to user's restaurant
-  if ((totem as any).restaurant_id.toString() !== req.user!.restaurantId) {
+  if (totem.restaurant_id.toString() !== req.user!.restaurantId) {
     throw createError.forbidden('Acceso denegado');
   }
   res.json(totem);
@@ -59,7 +59,7 @@ export const getMenuDishes = asyncHandler(async (req: Request, res: Response): P
   if (!totem) {
     throw createError.notFound('Tótem no encontrado');
   }
-  const restaurantId = (totem as any).restaurant_id.toString();
+  const restaurantId = totem.restaurant_id.toString();
   const [categories, dishes] = await Promise.all([
     DishService.getCategoriesByRestaurant(restaurantId),
     DishService.getDishesByRestaurant(restaurantId),

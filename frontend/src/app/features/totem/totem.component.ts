@@ -7,6 +7,26 @@ import { LocalizePipe } from '../../shared/pipes/localize.pipe';
 import { CurrencyFormatPipe } from '../../shared/pipes/currency-format.pipe';
 import { environment } from '../../../environments/environment';
 
+interface LocalizedString {
+  es: string;
+  en: string;
+  fr?: string;
+  ar?: string;
+}
+
+interface Category {
+  _id: string;
+  category_name: LocalizedString;
+}
+
+interface Dish {
+  _id: string;
+  disher_name: LocalizedString;
+  disher_price: number;
+  disher_url_image?: string;
+  category_id: string | { _id: string };
+}
+
 @Component({
   selector: 'app-totem',
   standalone: true,
@@ -105,8 +125,8 @@ export class TotemComponent implements OnInit {
   private http = inject(HttpClient);
 
   restaurantName = signal('Cargando...');
-  categories = signal<any[]>([]);
-  dishes = signal<any[]>([]);
+  categories = signal<Category[]>([]);
+  dishes = signal<Dish[]>([]);
   selectedCategory = signal<string | null>(null);
   showCart = signal(false);
 
@@ -126,7 +146,7 @@ export class TotemComponent implements OnInit {
     if (qr) {
       // BUG-10: was calling GET /api/dishes which requires auth — totem is a public QR page.
       // Now calls the dedicated public endpoint GET /api/totems/menu/:qr/dishes
-      this.http.get<{ categories: any[]; dishes: any[] }>(`${environment.apiUrl}/totems/menu/${qr}/dishes`)
+      this.http.get<{ categories: Category[]; dishes: Dish[] }>(`${environment.apiUrl}/totems/menu/${qr}/dishes`)
         .subscribe(({ categories, dishes }) => {
           if (categories.length) this.restaurantName.set('Menú');
           this.categories.set(categories);
@@ -139,7 +159,7 @@ export class TotemComponent implements OnInit {
     this.selectedCategory.set(catId);
   }
 
-  addToCart(dish: any) {
+  addToCart(dish: Dish) {
     cartStore.addItem({
       dishId: dish._id,
       name: dish.disher_name?.es || dish.disher_name?.en || '',

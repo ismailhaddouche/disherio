@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
-import { authStore, decodeJwt } from '../../store/auth.store';
+import { authStore, AuthUser } from '../../store/auth.store';
 import { environment } from '../../../environments/environment';
 
 @Component({
@@ -63,19 +63,16 @@ export class LoginComponent {
     this.loading.set(true);
     this.error.set('');
     this.http
-      .post<{ token: string; staff: { id: string; name: string; role: string } }>(
+      .post<{ user: AuthUser }>(
         `${environment.apiUrl}/auth/login`,
         { username: this.username.toLowerCase().trim(), password: this.password }
       )
       .subscribe({
         next: (res) => {
-          const user = decodeJwt(res.token);
-          if (user) {
-            authStore.setAuth(res.token, user);
-            this.router.navigate([this.defaultRouteFor(user.permissions)]);
-          } else {
-            this.error.set('Error procesando credenciales');
-          }
+          // Cookie set by server; store user info + 8h expiry in localStorage
+          const expiresAt = Date.now() + 8 * 60 * 60 * 1000;
+          authStore.setAuth(res.user, expiresAt);
+          this.router.navigate([this.defaultRouteFor(res.user.permissions)]);
           this.loading.set(false);
         },
         error: (err) => {

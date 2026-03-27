@@ -1,5 +1,6 @@
 import { Types, UpdateQuery, Model, Document } from 'mongoose';
 import { AppError } from '../utils/async-handler';
+import { logger } from '../config/logger';
 
 // Simple filter type for mongoose queries
 type SimpleFilter = Record<string, unknown>;
@@ -58,7 +59,7 @@ function handleMongoError(err: any, operation: string): never {
   }
 
   // Loggear error inesperado y relanzar como error 500
-  console.error(`[BaseRepository] Error in ${operation}:`, err);
+  logger.error({ err, operation }, 'Unexpected database error');
   throw new AppError(`DATABASE_ERROR: ${err.message || 'Unknown error'}`, 500);
 }
 

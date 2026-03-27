@@ -1,103 +1,110 @@
-# Resumen Ejecutivo - Arquitectura DisherIO Refactor
+# Architecture
 
-## Visión General
+DisherIo uses a layered architecture with clear separation between HTTP handling, business logic, and data access.
 
-Se propone una arquitectura **Clean Architecture** con separación clara de capas:
+---
+
+## Layers
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│  PRESENTATION (Controllers / Components)                │
-│  - HTTP routes / Angular components                     │
-│  - Input validation                                     │
-├─────────────────────────────────────────────────────────┤
-│  BUSINESS (Services)                                    │
-│  - Lógica de negocio                                    │
-│  - Orquestación                                         │
-├─────────────────────────────────────────────────────────┤
-│  DATA (Repositories)                                    │
-│  - Acceso a MongoDB                                     │
-│  - Queries complejas                                    │
-├─────────────────────────────────────────────────────────┤
-│  DOMAIN (Entities / Enums)                              │
-│  - Tipos puros                                          │
-│  - Reglas de negocio inmutables                         │
-└─────────────────────────────────────────────────────────┘
+Controllers / Routes
+      |
+   Services          (business logic, orchestration)
+      |
+  Repositories       (MongoDB queries only)
+      |
+    Models           (Mongoose schemas)
 ```
 
-## Decisiones Clave
+**Rule:** each layer only talks to the one directly below it. Controllers never touch models directly; services never import Mongoose directly.
 
-### 1. Repository Pattern (ADR-002)
-- **Motivación:** Testing aislado, cambio de BD posible
-- **Implementación:** Interfaces + Implementaciones MongoDB
-- **Beneficio:** Cada capa es testable independientemente
+---
 
-### 2. Signals para Estado (ADR-003)
-- **Motivación:** Simplicidad vs NgRx, performance nativa
-- **Implementación:** Stores con signals + computed
-- **Beneficio:** Menos código, mejor performance, no memory leaks
+## Backend structure
 
-### 3. Shared Package (ADR-004)
-- **Motivación:** Consistencia FE/BE, eliminar duplicación
-- **Implementación:** Tipos, Zod schemas, enums compartidos
-- **Beneficio:** Cambios centralizados, autocomplete perfecto
-
-## Estructura de Carpetas
-
-### Backend
 ```
-src/
-├── domain/          # Entidades y enums
-├── repositories/    # Contratos + Implementaciones Mongo
-├── services/        # Lógica de negocio
-├── controllers/     # HTTP handlers
-├── middlewares/     # Auth, validation, rate-limit
-└── config/          # DB, logger, env validation
+backend/src/
+  config/           Database, Socket.IO, logger, i18n
+  controllers/      HTTP request handlers (thin — delegate to services)
+  routes/           Route definitions and middleware chains
+  services/         Business logic and orchestration
+  repositories/     MongoDB query implementations
+  models/           Mongoose schemas and interfaces
+  middlewares/      Auth, RBAC, validation, rate limiting, error handling
+  sockets/          Socket.IO event handlers (KDS, POS)
+  abilities/        CASL permission definitions
+  schemas/          Zod validation schemas
+  utils/            Tax calculator, async handler wrapper
+  seeders/          Database seeder (admin user, restaurant, role)
+  __tests__/        Unit and integration tests
 ```
 
-### Frontend
+---
+
+## Frontend structure
+
 ```
-src/app/
-├── core/            # Guards, interceptors, singletons
-├── features/        # Módulos por feature (lazy)
-├── shared/          # Components, pipes, utils
-└── state/           # Signal stores globales
+frontend/src/app/
+  core/
+    casl/           Ability factory
+    guards/         Auth guard, role guard
+    interceptors/   HTTP interceptor (withCredentials)
+  features/
+    admin/          Administrative dashboard
+    kds/            Kitchen Display System
+    login/          Login page
+    pos/            Point of Sale
+    tas/            Table Assistance Service
+    totem/          Self-service QR ordering
+    unauthorized/   403 page
+  shared/
+    components/     Image uploader
+    directives/     CASL permission directive
+    pipes/          Localize, currency format
+  services/
+    socket/         Socket.IO client wrapper
+    staff/          Staff API calls
+    totem/          Totem API calls
+  store/
+    auth.store.ts   Authentication state (Angular Signals)
+    cart.store.ts   Shopping cart state
+    kds.store.ts    Kitchen items state
+    theme.store.ts  Theme preference
+  app.routes.ts     Route definitions with lazy loading and guards
+  app.config.ts     Application configuration and providers
 ```
 
-## Bugs Críticos Resueltos por Arquitectura
+---
 
-| Bug | Solución | Ubicación |
-|-----|----------|-----------|
-| BUG-01 | Validación ObjectId en repositorios | `repositories/` + `shared/utils/objectid.ts` |
-| BUG-02 | Naming consistente 'allergen' | `shared/schemas/dish.schemas.ts` |
-| BUG-03 | Permiso KTS consistente | `shared/enums/permissions.enum.ts` |
-| SEC-01 | JWT sin fallback | `config/env.ts` validación estricta |
-| SMELL-01 | Eliminar any | `tsconfig.json` strict mode |
-| SMELL-02 | CASL compartido | `shared/abilities/` |
-| SMELL-03 | Enums vs strings | `shared/enums/` |
+## Key decisions
 
-## Tecnologías
+### Authentication: HttpOnly cookies
 
-| Capa | Tecnología |
-|------|------------|
-| Backend | Express 5 + TypeScript |
-| Frontend | Angular 21 + Signals |
-| Validación | Zod (shared) |
-| Auth | JWT (sin fallback) |
-| Base de Datos | MongoDB + Mongoose |
-| Tests | Jest |
+JWTs are stored in HttpOnly cookies set by the server on login. JavaScript never has access to the raw token, eliminating XSS-based token theft. CORS is configured with `credentials: true` and a strict `origin` list. Socket.IO connections receive the cookie automatically when `withCredentials: true` is set.
 
-## Próximos Pasos
+The frontend stores user information (role, permissions, name) in `localStorage` for persistence across page reloads, but the token itself stays in the cookie.
 
-1. **Backend Dev:** Implementar repositorios con validación ObjectId
-2. **Frontend Dev:** Migrar a Signals, eliminar any types
-3. **Shared:** Publicar paquete compartido
-4. **Security Review:** Verificar SEC-01, SEC-02
-5. **CI/CD:** Pipeline GitHub Actions
+### State management: Angular Signals
 
-## Métricas de Éxito
+Global state is managed with Angular Signals and computed values. No external state library is used. The `authStore`, `kdsStore`, and `cartStore` are module-level singleton objects exported directly, avoiding the overhead of an Angular service while remaining testable.
 
-- [ ] 0 bugs críticos
-- [ ] 0 `any` types
-- [ ] 100% validaciones Zod
-- [ ] Tests unitarios > 80% coverage
-- [ ] TypeScript strict sin errores
+### Repository pattern
+
+Every model has a corresponding repository class that encapsulates all queries. Services import repositories, not models. This makes unit-testing services straightforward (swap the repository with a mock) and isolates any future database migration to the repository layer.
+
+### Validation: Zod
+
+All incoming HTTP request bodies are validated with Zod schemas in a `validate` middleware before reaching the controller. The `shared/` package contains Zod schemas that are reused between backend and frontend where applicable.
+
+### RBAC: CASL
+
+Route-level authorization uses `requirePermission(action, subject)` middleware backed by CASL. Permission definitions live in `abilities/`. The permission strings embedded in the JWT (`ADMIN`, `POS`, `TAS`, `KTS`) map directly to CASL abilities.
+
+---
+
+## Architecture Decision Records
+
+- [ADR-001](ADR-001-folder-structure.md) — Folder structure
+- [ADR-002](ADR-002-repository-pattern.md) — Repository pattern
+- [ADR-003](ADR-003-state-management.md) — Frontend state management
+- [ADR-004](ADR-004-validation-types.md) — Shared validation and types

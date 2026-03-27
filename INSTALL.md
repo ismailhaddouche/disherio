@@ -1,200 +1,156 @@
-# Instalación
+# Installation Guide
 
-## Requisitos
+## Requirements
 
-- Sistema operativo: Ubuntu / Debian
-- Acceso root o usuario con `sudo`
-- Conexión a internet
-- **Puertos libres:** 80 (HTTP) y 443 (HTTPS)
-- **RAM mínima:** 2GB recomendada (1GB puede funcionar pero es lento)
+- Ubuntu 20.04+ or Debian 11+
+- Root access or `sudo`
+- Ports 80 and 443 available
+- 2 GB RAM recommended
 
-## Requisitos de Red (Cloud)
+## Steps
 
-### Google Cloud Platform (GCP)
-
-Si despliegas en GCP, debes crear reglas de firewall:
-
-```bash
-# HTTP
-gcloud compute firewall-rules create allow-http \
-  --direction=INGRESS \
-  --priority=1000 \
-  --network=default \
-  --action=ALLOW \
-  --rules=tcp:80 \
-  --source-ranges=0.0.0.0/0 \
-  --target-tags=http-server
-
-# HTTPS
-gcloud compute firewall-rules create allow-https \
-  --direction=INGRESS \
-  --priority=1000 \
-  --network=default \
-  --action=ALLOW \
-  --rules=tcp:443 \
-  --source-ranges=0.0.0.0/0 \
-  --target-tags=https-server
-```
-
-Y asignar las etiquetas a tu instancia:
-```bash
-gcloud compute instances add-tags INSTANCE_NAME \
-  --tags=http-server,https-server \
-  --zone=ZONE
-```
-
-### AWS
-Configurar Security Group para permitir tráfico en puertos 80 y 443 desde 0.0.0.0/0.
-
-### Azure
-Configurar Network Security Group (NSG) para permitir tráfico HTTP/HTTPS.
-
-## Pasos
-
-### 1. Clonar el repositorio
+### 1. Clone the repository
 
 ```bash
 git clone https://github.com/ismailhaddouche/disherio.git
 cd disherio
 ```
 
-### 2. Dar permisos al instalador
-
-```bash
-chmod +x scripts/install.sh
-```
-
-### 3. Ejecutar el instalador
+### 2. Run the installer
 
 ```bash
 sudo ./scripts/install.sh
 ```
 
-El instalador te guiará por los siguientes pasos:
+The installer will:
 
-- Selección de idioma
-- Instalación de dependencias (Docker, UFW, curl)
-- Modo de red:
-  - Dominio público con HTTPS (Let's Encrypt)
-  - Dominio local
-  - IP pública
-  - IP local
-- Generación de contraseña de administrador
-- Construcción e inicio de contenedores
-- Carga de datos iniciales (seed)
-- Comprobación de salud
+1. Ask how to expose the application (public domain, public IP, or local IP)
+2. Install Docker and Docker Compose if not present
+3. Configure the firewall (ports 22, 80, 443)
+4. Generate a random `JWT_SECRET` and admin password
+5. Write `.env` and `Caddyfile`
+6. Build Docker images
+7. Start all services
+8. Create the admin user in the database
+9. Print the access URL and credentials
 
-Al finalizar se mostrará la URL de acceso y las credenciales de administrador.
+### 3. Output
 
-### 4. Credenciales por defecto
-
-Si el seed se ejecutó correctamente, las credenciales por defecto son:
+When installation completes you will see:
 
 ```
-Email:    admin@disherio.com
-Password: admin1234
+URL         :  http://1.2.3.4
+Admin user  :  admin
+Password    :  <randomly generated>
 ```
 
-**IMPORTANTE:** Cambia la contraseña después del primer login.
+Save the password. It is not stored anywhere in plain text after this point.
 
-### 5. Verificar instalación
+---
 
-Después de la instalación, ejecuta:
+## Cloud Provider Network Rules
+
+Open ports 80 and 443 before running the installer.
+
+### Google Cloud Platform
 
 ```bash
-sudo ./scripts/verify.sh
+gcloud compute firewall-rules create allow-http \
+  --direction=INGRESS --rules=tcp:80 \
+  --source-ranges=0.0.0.0/0 --target-tags=http-server
+
+gcloud compute firewall-rules create allow-https \
+  --direction=INGRESS --rules=tcp:443 \
+  --source-ranges=0.0.0.0/0 --target-tags=https-server
+
+gcloud compute instances add-tags INSTANCE_NAME \
+  --tags=http-server,https-server --zone=ZONE
 ```
 
-Este script verificará:
-- ✅ Contenedores en ejecución
-- ✅ Conectividad de red
-- ✅ Acceso HTTP desde internet
-- ✅ Estado de MongoDB
-- ✅ API respondiendo correctamente
+### AWS
 
-## Scripts adicionales
+Add an inbound rule to the Security Group allowing TCP 80 and 443 from `0.0.0.0/0`.
 
-| Script | Descripción |
-|---|---|
-| `sudo ./scripts/configure.sh` | Reconfigurar red, dominio, contraseña o idioma |
-| `sudo ./scripts/backup.sh` | Crear copia de seguridad de la base de datos |
-| `sudo ./scripts/restart.sh` | Reiniciar todos los servicios |
-| `sudo ./scripts/info.sh` | Ver IP, dominio, DNS y estado de los contenedores |
-| `sudo ./scripts/verify.sh` | **Verificar instalación y conectividad** |
+### Azure
 
-## Solución de Problemas
+Add inbound rules to the Network Security Group for ports 80 and 443.
 
-### Error 502 Bad Gateway
+---
 
-Si recibes error 502 al acceder:
+## Access Modes
 
-1. Verificar que los contenedores están corriendo:
-   ```bash
-   sudo docker ps
-   ```
+### Public domain with HTTPS
 
-2. Reiniciar Caddy:
-   ```bash
-   sudo docker restart disherio_caddy
-   ```
+Choose option 1 and enter your domain (e.g. `app.example.com`). Caddy will obtain and renew a Let's Encrypt certificate automatically.
 
-3. Verificar logs:
-   ```bash
-   sudo docker logs disherio_caddy --tail 20
-   sudo docker logs disherio_backend --tail 20
-   ```
+DNS records required before the installer runs:
 
-### Backend unhealthy o reiniciándose
+```
+A   @    <server public IP>
+A   www  <server public IP>
+```
 
-Si el backend no se mantiene estable:
+### Public IP
 
-1. Verificar memoria disponible:
-   ```bash
-   free -h
-   ```
-   
-   Si tienes menos de 1GB de RAM disponible, la VM puede estar matando el contenedor.
+Choose option 2. The app is served over HTTP on port 80 using the detected public IP.
 
-2. Verificar logs del backend:
-   ```bash
-   sudo docker logs disherio_backend --tail 50
-   ```
+### Local IP
 
-3. Recrear el backend:
-   ```bash
-   cd /home/ubuntu/disherio
-   sudo docker-compose stop backend
-   sudo docker-compose rm backend
-   sudo docker-compose up -d backend
-   ```
+Choose option 3. The app is served over HTTP on port 80 using the machine's LAN IP. Suitable for local network deployments.
 
-### No se puede hacer login
+---
 
-Si el login falla con "Invalid credentials":
+## Post-Installation Management
 
-1. Verificar que el seed se ejecutó:
-   ```bash
-   sudo docker exec disherio_backend node /app/dist/seeders/index.js
-   ```
+| Script | Purpose |
+|--------|---------|
+| `sudo ./scripts/configure.sh` | Change domain, port, or admin password |
+| `sudo ./scripts/backup.sh` | Back up the database |
+| `sudo ./scripts/info.sh` | Show service status and access URLs |
 
-2. Las credenciales por defecto son:
-   - Email: `admin@disherio.com`
-   - Password: `admin1234`
+---
 
-### Puerto 80 en uso
+## Troubleshooting
 
-Si el puerto 80 está ocupado, el instalador detectará el conflicto. Puedes:
-- Detener el servicio que usa el puerto 80
-- O usar un puerto diferente editando el archivo `.env`
-
-### Problemas de DNS entre contenedores
-
-Si Caddy no puede conectar al backend:
+### Backend does not start
 
 ```bash
-# Verificar que los contenedores están en la misma red
-sudo docker network inspect disherio_disherio_net
-
-# Reiniciar Caddy para que reconozca los hostnames
-sudo docker restart disherio_caddy
+sudo docker logs disherio_backend --tail 50
 ```
+
+Common cause: `JWT_SECRET` missing or too short. Check `.env`.
+
+### HTTP 502 Bad Gateway
+
+```bash
+sudo docker ps                         # verify all containers are running
+sudo docker restart disherio_caddy     # reload the proxy
+sudo docker logs disherio_caddy --tail 20
+```
+
+### Cannot log in
+
+Verify the admin user exists:
+
+```bash
+sudo docker compose exec mongo mongosh disherio \
+  --eval "db.staffs.find({ username: 'admin' }).pretty()"
+```
+
+Reset the admin password:
+
+```bash
+sudo ./scripts/configure.sh
+# Select option 3: Reset admin password
+```
+
+### Low memory (under 1 GB available)
+
+The backend container may be killed by the OS. Check:
+
+```bash
+free -h
+sudo docker logs disherio_backend --tail 50
+```
+
+Consider upgrading the server or reducing other running processes.

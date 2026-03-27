@@ -1,5 +1,6 @@
 import { getIO } from '../config/socket';
 import * as TaxUtils from '../utils/tax';
+import { IVariant, IExtra } from '../models/dish.model';
 import {
   OrderRepository,
   ItemOrderRepository,
@@ -48,9 +49,9 @@ export async function addItemToOrder(
   if (dish.disher_status !== 'ACTIVATED') throw new Error('DISH_NOT_AVAILABLE');
 
   const variant = variantId
-    ? (dish.variants as any[]).find((v: any) => v._id.toString() === variantId)
+    ? dish.variants.find((v: IVariant) => v._id.toString() === variantId)
     : null;
-  const extraItems = (dish.extras as any[]).filter((e: any) =>
+  const extraItems = dish.extras.filter((e: IExtra) =>
     extras.includes(e._id.toString())
   );
 
@@ -154,10 +155,10 @@ export async function calculateSessionTotal(
 
   // The prices in items already INCLUDE tax (PVP)
   const totalWithTax = items.reduce((acc, item) => {
-    const variantPrice = (item.item_disher_variant as any)?.price || 0;
+    const variantPrice = item.item_disher_variant?.price || 0;
     const extrasTotal =
-      ((item.item_disher_extras as any[]) || []).reduce(
-        (s: number, e: any) => s + e.price,
+      (item.item_disher_extras || []).reduce(
+        (s: number, e) => s + e.price,
         0
       );
     return acc + item.item_base_price + variantPrice + extrasTotal;
@@ -225,13 +226,13 @@ async function buildByUserTickets(sessionId: string, _total: number) {
   > = {};
 
   for (const item of items) {
-    const cId = (item.customer_id as any)?.toString() || 'unknown';
+    const cId = item.customer_id?.toString() || 'unknown';
     // Note: customer name lookup would require Customer model
     if (!byCustomer[cId]) byCustomer[cId] = { name: `Customer ${cId.slice(-4)}`, amount: 0 };
-    const variantPrice = (item.item_disher_variant as any)?.price || 0;
+    const variantPrice = item.item_disher_variant?.price || 0;
     const extrasTotal =
-      ((item.item_disher_extras as any[]) || []).reduce(
-        (s: number, e: any) => s + e.price,
+      (item.item_disher_extras || []).reduce(
+        (s: number, e) => s + e.price,
         0
       );
     byCustomer[cId].amount += item.item_base_price + variantPrice + extrasTotal;

@@ -6,7 +6,7 @@ export interface JwtPayload {
   restaurantId: string;
   role: string;
   permissions: string[];
-  name?: string; // BUG-15: added after auth.service now includes name in JWT payload
+  name: string;
 }
 
 declare global {
@@ -17,18 +17,30 @@ declare global {
   }
 }
 
+function extractToken(req: Request): string | null {
+  // Prefer HttpOnly cookie
+  const cookieHeader = req.headers.cookie;
+  if (cookieHeader) {
+    const match = cookieHeader.match(/(?:^|;\s*)auth_token=([^;]+)/);
+    if (match) return decodeURIComponent(match[1]);
+  }
+  // Fallback: Bearer header (non-browser clients)
+  const authHeader = req.headers.authorization;
+  if (authHeader?.startsWith('Bearer ')) return authHeader.slice(7);
+  return null;
+}
+
 export function authMiddleware(req: Request, res: Response, next: NextFunction): void {
   authenticate(req, res, next);
 }
 
 export function authenticate(req: Request, res: Response, next: NextFunction): void {
-  const authHeader = req.headers.authorization;
-  if (!authHeader?.startsWith('Bearer ')) {
+  const token = extractToken(req);
+  if (!token) {
     res.status(401).json({ error: 'Unauthorized' });
     return;
   }
 
-  const token = authHeader.slice(7);
   try {
     const jwtSecret = process.env.JWT_SECRET;
     if (!jwtSecret) {

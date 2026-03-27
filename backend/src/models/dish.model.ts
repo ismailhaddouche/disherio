@@ -58,6 +58,22 @@ const ExtraSubSchema = new Schema(
   { _id: true }
 );
 
+export interface IVariant {
+  _id: Types.ObjectId;
+  variant_name: { es: string; en: string; fr: string; ar: string };
+  variant_description?: { es: string; en: string; fr: string; ar: string };
+  variant_url_image?: string;
+  variant_price: number;
+}
+
+export interface IExtra {
+  _id: Types.ObjectId;
+  extra_name: { es: string; en: string; fr: string; ar: string };
+  extra_description?: { es: string; en: string; fr: string; ar: string };
+  extra_price: number;
+  extra_url_image?: string;
+}
+
 export interface IDish extends Document {
   restaurant_id: Types.ObjectId;
   category_id: Types.ObjectId;
@@ -69,8 +85,8 @@ export interface IDish extends Document {
   disher_type: 'KITCHEN' | 'SERVICE';
   disher_alergens: Types.ObjectId[];
   disher_variant: boolean;
-  variants: any[];
-  extras: any[];
+  variants: IVariant[];
+  extras: IExtra[];
 }
 
 const DishSchema = new Schema<IDish>(

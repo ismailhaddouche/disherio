@@ -1,21 +1,12 @@
 #!/usr/bin/env bash
 # =============================================================================
-# DisherIo - Full Installer
-# Interactive installer with multi-language support and robust healthchecks.
+# DisherIo — Instalador
+# Uso: sudo ./scripts/install.sh
 # =============================================================================
-# VALIDACIÓN: Fallar en errores críticos
 set -euo pipefail
 
-# Función para manejar errores
-error_exit() {
-  echo -e "${RED}❌ ERROR: $1${NC}" | tee -a "$LOG_FILE"
-  echo -e "${RED}Revisa el log: $LOG_FILE${NC}"
-  exit 1
-}
-
-# ── Styles ──────────────────────────────────────────────────────────────────
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
-BLUE='\033[0;34m'; CYAN='\033[0;36m'; BOLD='\033[1m'; NC='\033[0m'; RESET='\033[0m'
+BLUE='\033[0;34m'; CYAN='\033[0;36m'; BOLD='\033[1m'; NC='\033[0m'
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(dirname "$SCRIPT_DIR")"
@@ -23,263 +14,170 @@ ENV_FILE="$ROOT_DIR/.env"
 CADDYFILE="$ROOT_DIR/Caddyfile"
 LOG_FILE="/var/log/disherio_install.log"
 
-# Initial checks
-if [ "$EUID" -ne 0 ]; then
-  echo -e "${RED}Por favor, ejecuta el script como root (sudo ./scripts/install.sh)${NC}"
-  echo -e "${RED}Please run as root (sudo ./scripts/install.sh)${NC}"
-  exit 1
-fi
+# ── Verificar root ────────────────────────────────────────────────────────────
+[[ $EUID -eq 0 ]] || { echo -e "${RED}Ejecuta como root: sudo ./scripts/install.sh${NC}"; exit 1; }
+
+err() { echo -e "${RED}❌ $*${NC}" | tee -a "$LOG_FILE"; exit 1; }
+ok()  { echo -e "${GREEN}✓${NC} $*" | tee -a "$LOG_FILE"; }
+log() { echo -e "${BLUE}▶${NC} $*" | tee -a "$LOG_FILE"; }
 
 banner() {
   echo -e "${CYAN}"
-  echo "  ██████╗ ██╗███████╗██╗  ██╗███████╗██████╗ ██╗ ██████╗ "
+  echo "  ██████╗ ██╗███████╗██╗  ██╗███████╗██████╗ ██╗ ██████╗"
   echo "  ██╔══██╗██║██╔════╝██║  ██║██╔════╝██╔══██╗██║██╔═══██╗"
   echo "  ██║  ██║██║███████╗███████║█████╗  ██████╔╝██║██║   ██║"
   echo "  ██║  ██║██║╚════██║██╔══██║██╔══╝  ██╔══██╗██║██║   ██║"
   echo "  ██████╔╝██║███████║██║  ██║███████╗██║  ██║██║╚██████╔╝"
-  echo "  ╚═════╝ ╚═╝╚══════╝╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝╚═╝ ╚═════╝ "
+  echo "  ╚═════╝ ╚═╝╚══════╝╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝╚═╝ ╚═════╝"
   echo -e "${NC}"
-  echo -e "${BOLD}  Instalador v2.0 — Sistema de gestión de restaurantes${NC}"
+  echo -e "  ${BOLD}Instalador — Sistema de gestión de restaurantes${NC}"
   echo ""
 }
 
-# ── 1. Language Selection ─────────────────────────────────────────────────────
-select_language() {
-    echo -e "\nSelecciona el idioma / Select language:"
-    echo -e "1) Español"
-    echo -e "2) English"
-    read -p "Opcion [1-2] (default: 1): " LANG_OPT
-
-    if [ "${LANG_OPT:-1}" = "2" ]; then
-        APP_LANG="en"
-        MSG_STEP1="[1/6] Access Configuration"
-        MSG_DOM_TYPE="Select access type:"
-        MSG_TYPE_DOM="1) Domain (recommended)"
-        MSG_TYPE_IP="2) IP Address"
-        MSG_DOM_OPT="Select domain type:"
-        MSG_DOM_LOC="1) Local domain (disherio.local)"
-        MSG_DOM_CUS="2) Custom domain"
-        MSG_DOM_PROMPT="Enter your domain (e.g. app.disher.io): "
-        MSG_IP_OPT="Select IP type:"
-        MSG_IP_LOC="1) Local IP"
-        MSG_IP_PUB="2) Public IP"
-        MSG_STEP2="[2/6] Security & Dependencies"
-        MSG_STEP3="[3/6] Writing Configuration..."
-        MSG_STEP4="[4/6] Building Images..."
-        MSG_STEP5="[5/6] Starting Services..."
-        MSG_STEP6="[6/6] Healthcheck & Seeding..."
-        MSG_INST_OK="DISHER.IO INSTALLED SUCCESSFULLY"
-        MSG_CRED="--- Initial Credentials ---"
-        MSG_ACCESS="Access URL: "
-        MSG_PORT_STEP="[1.5/6] Port Configuration"
-        MSG_PORT_PROMPT="HTTP Port (default 80): "
-        MSG_PORT_BUSY="Port is already in use!"
-        MSG_HEALTH="Waiting for backend to be ready..."
-        MSG_SEEDING="Seeding initial data..."
-    else
-        APP_LANG="es"
-        MSG_STEP1="[1/6] Configuración de Acceso"
-        MSG_DOM_TYPE="Selecciona el tipo de acceso:"
-        MSG_TYPE_DOM="1) Dominio (recomendado)"
-        MSG_TYPE_IP="2) Dirección IP"
-        MSG_DOM_OPT="Selecciona el tipo de dominio:"
-        MSG_DOM_LOC="1) Dominio local (disherio.local)"
-        MSG_DOM_CUS="2) Dominio personalizado"
-        MSG_DOM_PROMPT="Introduce tu dominio (ej: app.disher.io): "
-        MSG_IP_OPT="Selecciona el tipo de IP:"
-        MSG_IP_LOC="1) IP Local"
-        MSG_IP_PUB="2) IP Pública"
-        MSG_STEP2="[2/6] Seguridad y Dependencias"
-        MSG_STEP3="[3/6] Guardando Configuración..."
-        MSG_STEP4="[4/6] Construyendo Imágenes..."
-        MSG_STEP5="[5/6] Levantando Servicios..."
-        MSG_STEP6="[6/6] Verificación y Seeding..."
-        MSG_INST_OK="DISHER.IO INSTALADO CORRECTAMENTE"
-        MSG_CRED="--- Credenciales Iniciales ---"
-        MSG_ACCESS="URL de Acceso: "
-        MSG_PORT_STEP="[1.5/6] Configuración de Puerto"
-        MSG_PORT_PROMPT="Puerto HTTP (defecto 80): "
-        MSG_PORT_BUSY="El puerto ya está en uso!"
-        MSG_HEALTH="Esperando que el backend esté listo..."
-        MSG_SEEDING="Cargando datos iniciales..."
-    fi
-}
-
-# ── 2. Access Configuration ──────────────────────────────────────────────────
+# ── 1. Configuración de acceso ────────────────────────────────────────────────
 configure_access() {
-    echo -e "\n${CYAN}${MSG_STEP1}${NC}"
-    while true; do
-        echo -e "${MSG_DOM_TYPE}"
-        echo -e "${MSG_TYPE_DOM}"
-        echo -e "${MSG_TYPE_IP}"
-        read -p "Opcion [1-2] (default: 1): " ACCESS_OPT
-        ACCESS_OPT=${ACCESS_OPT:-1}
+  echo -e "${CYAN}[1/5] Configuración de acceso${NC}"
 
-        LOCAL_IP=$(ip route get 1.1.1.1 2>/dev/null | awk '{print $7; exit}' || hostname -I 2>/dev/null | awk '{print $1}' || echo "127.0.0.1")
-        # Multi-cloud public IP detection: AWS IMDSv2 → Azure → GCP → ifconfig.me
-        PUBLIC_IP=""
-        # AWS IMDSv2
-        if [ -z "$PUBLIC_IP" ]; then
-            TOKEN=$(curl -s --max-time 2 -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 10" 2>/dev/null)
-            if [ -n "$TOKEN" ]; then
-                PUBLIC_IP=$(curl -s --max-time 2 -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null)
-            fi
-        fi
-        # Azure IMDS
-        if [ -z "$PUBLIC_IP" ]; then
-            PUBLIC_IP=$(curl -s --max-time 2 -H "Metadata:true" "http://169.254.169.254/metadata/instance/network/interface/0/ipAddress/0/publicIpAddress?api-version=2021-02-01&format=text" 2>/dev/null)
-        fi
-        # GCP metadata
-        if [ -z "$PUBLIC_IP" ]; then
-            PUBLIC_IP=$(curl -s --max-time 2 -H "Metadata-Flavor: Google" "http://metadata.google.internal/computeMetadata/v1/instance/network-interfaces/0/access-configs/0/external-ip" 2>/dev/null)
-        fi
-        # Fallback: external service
-        if [ -z "$PUBLIC_IP" ]; then
-            PUBLIC_IP=$(curl -s --max-time 5 https://api.ipify.org 2>/dev/null || curl -s --max-time 5 ifconfig.me 2>/dev/null || echo "")
-        fi
+  LOCAL_IP=$(ip route get 1.1.1.1 2>/dev/null | awk '{print $7; exit}' || hostname -I | awk '{print $1}' || echo "127.0.0.1")
 
-        if [ "$ACCESS_OPT" = "1" ]; then
-            while true; do
-                echo -e "\n${MSG_DOM_OPT}"
-                echo -e "${MSG_DOM_LOC}"
-                echo -e "${MSG_DOM_CUS}"
-                read -p "Opcion [1-2] (default: 1): " DOM_OPT
-                DOM_OPT=${DOM_OPT:-1}
+  # Detectar IP pública (AWS → Azure → GCP → fallback)
+  PUBLIC_IP=""
+  TOKEN=$(curl -s --max-time 2 -X PUT "http://169.254.169.254/latest/api/token" \
+    -H "X-aws-ec2-metadata-token-ttl-seconds: 10" 2>/dev/null || true)
+  [[ -n "$TOKEN" ]] && PUBLIC_IP=$(curl -s --max-time 2 \
+    -H "X-aws-ec2-metadata-token: $TOKEN" \
+    http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || true)
+  [[ -z "$PUBLIC_IP" ]] && PUBLIC_IP=$(curl -s --max-time 2 \
+    -H "Metadata:true" \
+    "http://169.254.169.254/metadata/instance/network/interface/0/ipAddress/0/publicIpAddress?api-version=2021-02-01&format=text" 2>/dev/null || true)
+  [[ -z "$PUBLIC_IP" ]] && PUBLIC_IP=$(curl -s --max-time 2 \
+    -H "Metadata-Flavor: Google" \
+    "http://metadata.google.internal/computeMetadata/v1/instance/network-interfaces/0/access-configs/0/external-ip" 2>/dev/null || true)
+  [[ -z "$PUBLIC_IP" ]] && PUBLIC_IP=$(curl -s --max-time 5 https://api.ipify.org 2>/dev/null || \
+    curl -s --max-time 5 ifconfig.me 2>/dev/null || echo "")
 
-                if [ "$DOM_OPT" = "1" ]; then
-                    CADDY_DOMAIN="disherio.local"
-                    IS_PUBLIC_DOMAIN="false"
-                    break 2
-                elif [ "$DOM_OPT" = "2" ]; then
-                    read -p "${MSG_DOM_PROMPT}" CADDY_DOMAIN
-                    [[ -z "$CADDY_DOMAIN" ]] && continue
-                    IS_PUBLIC_DOMAIN="true"
-                    break 2
-                fi
-            done
-        else
-            while true; do
-                echo -e "\n${MSG_IP_OPT}"
-                echo -e "${MSG_IP_LOC}"
-                echo -e "${MSG_IP_PUB}"
-                read -p "Opcion [1-2] (default: 1): " IP_OPT
-                IP_OPT=${IP_OPT:-1}
-                
-                if [ "$IP_OPT" = "2" ]; then
-                    [[ -z "$PUBLIC_IP" ]] && echo "Error detecting Public IP" && continue
-                    CADDY_DOMAIN="$PUBLIC_IP"
-                else
-                    CADDY_DOMAIN="$LOCAL_IP"
-                fi
-                IS_PUBLIC_DOMAIN="false"
-                break 2
-            done
-        fi
-    done
+  echo ""
+  echo "  Tipo de acceso:"
+  echo "  1) Dominio público con HTTPS  (ej: mi-restaurante.com)"
+  echo "  2) IP pública                 ${PUBLIC_IP:+(detectada: $PUBLIC_IP)}"
+  echo "  3) IP local                   (detectada: $LOCAL_IP)"
+  echo ""
+  read -rp "  Opción [2]: " ACCESS_OPT
+  ACCESS_OPT="${ACCESS_OPT:-2}"
 
-    echo -e "\n${CYAN}${MSG_PORT_STEP}${NC}"
-    while true; do
-        read -p "${MSG_PORT_PROMPT}" PORT
-        PORT=${PORT:-80}
-        if ss -tlnp | grep -q ":${PORT} "; then
-            echo -e "${RED}${MSG_PORT_BUSY}${NC}"
-        else
-            break
-        fi
-    done
+  IS_PUBLIC_DOMAIN="false"
+
+  case "$ACCESS_OPT" in
+    1)
+      read -rp "  Introduce tu dominio (ej: app.disherio.com): " CADDY_DOMAIN
+      [[ -z "$CADDY_DOMAIN" ]] && err "Dominio requerido"
+      IS_PUBLIC_DOMAIN="true"
+      ACCESS_URL="https://${CADDY_DOMAIN}"
+      ;;
+    3)
+      CADDY_DOMAIN="$LOCAL_IP"
+      ACCESS_URL="http://${CADDY_DOMAIN}"
+      ;;
+    *)
+      [[ -z "$PUBLIC_IP" ]] && err "No se pudo detectar la IP pública. Usa opción 3 (IP local) o 1 (dominio)."
+      CADDY_DOMAIN="$PUBLIC_IP"
+      ACCESS_URL="http://${CADDY_DOMAIN}"
+      ;;
+  esac
+
+  ok "Acceso configurado: ${ACCESS_URL}"
 }
 
-# ── 3. Security & Dependencies ───────────────────────────────────────────────
+# ── 2. Instalar dependencias ──────────────────────────────────────────────────
 install_dependencies() {
-    echo -e "\n${CYAN}${MSG_STEP2}${NC}"
+  echo ""
+  echo -e "${CYAN}[2/5] Dependencias${NC}"
 
-    # Check if we actually need to install anything before running apt-get update
-    NEED_INSTALL=false
-    for pkg in curl wget ufw openssl; do
-        if ! command -v "$pkg" &>/dev/null; then NEED_INSTALL=true; break; fi
+  if ! command -v docker &>/dev/null || ! docker compose version &>/dev/null; then
+    log "Actualizando paquetes..."
+    apt-get update -qq >/dev/null 2>&1 || err "apt-get update falló"
+
+    for pkg in curl wget ufw openssl ca-certificates gnupg; do
+      command -v "$pkg" &>/dev/null || apt-get install -y -qq "$pkg" </dev/null >/dev/null 2>&1
     done
-    if ! command -v docker &>/dev/null; then NEED_INSTALL=true; fi
-    if ! docker compose version &>/dev/null; then NEED_INSTALL=true; fi
 
-    if [ "$NEED_INSTALL" = true ]; then
-        echo -e "${BLUE}📦 Actualizando paquetes...${NC}" | tee -a "$LOG_FILE"
-        apt-get update -qq >/dev/null 2>&1 || error_exit "Failed to run apt-get update"
-        
-        for pkg in curl wget ufw openssl; do
-            if ! command -v "$pkg" &>/dev/null; then
-                echo -e "${BLUE}📦 Instalando $pkg...${NC}" | tee -a "$LOG_FILE"
-                apt-get install -y -qq "$pkg" </dev/null >/dev/null 2>&1 || error_exit "Failed to install $pkg"
-            fi
-        done
-        
-        if ! command -v docker &>/dev/null; then
-            echo -e "${BLUE}🐳 Instalando Docker...${NC}" | tee -a "$LOG_FILE"
-            apt-get install -y -qq docker.io </dev/null >/dev/null 2>&1 || error_exit "Failed to install Docker"
-        fi
-        
-        if ! docker compose version &>/dev/null; then
-            echo -e "${BLUE}🐳 Instalando Docker Compose...${NC}" | tee -a "$LOG_FILE"
-            apt-get install -y -qq docker-compose-plugin </dev/null >/dev/null 2>&1 || error_exit "Failed to install Docker Compose"
-        fi
-        
-        echo -e "${GREEN}✅ Dependencias instaladas correctamente${NC}" | tee -a "$LOG_FILE"
+    if ! command -v docker &>/dev/null || ! docker compose version &>/dev/null; then
+      log "Instalando Docker (repositorio oficial)..."
+      # Add Docker's official GPG key and repo
+      install -m 0755 -d /etc/apt/keyrings
+      curl -fsSL https://download.docker.com/linux/debian/gpg \
+        | gpg --dearmor -o /etc/apt/keyrings/docker.gpg >/dev/null 2>&1
+      chmod a+r /etc/apt/keyrings/docker.gpg
+      echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
+https://download.docker.com/linux/debian $(. /etc/os-release && echo "$VERSION_CODENAME") stable" \
+        > /etc/apt/sources.list.d/docker.list
+      apt-get update -qq >/dev/null 2>&1
+      apt-get install -y -qq \
+        docker-ce docker-ce-cli containerd.io \
+        docker-buildx-plugin docker-compose-plugin \
+        </dev/null >/dev/null 2>&1 || err "Error instalando Docker"
+      systemctl enable docker >/dev/null 2>&1 || true
+      systemctl start  docker >/dev/null 2>&1 || true
     fi
+  fi
 
-    # Firewall setup
-    if command -v ufw &>/dev/null; then
-        ufw allow 22/tcp >/dev/null 2>&1 || true
-        ufw allow "$PORT/tcp" >/dev/null 2>&1 || true
-        ufw allow 443/tcp >/dev/null 2>&1 || true
-        ufw --force enable >/dev/null 2>&1 || true
-    fi
+  ok "Docker $(docker --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)"
+  ok "Docker Compose $(docker compose version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)"
 
-    JWT_SECRET=$(openssl rand -base64 32)
-    ADMIN_EMAIL="admin@disherio.com"
-    ADMIN_PASS=$(openssl rand -base64 12 | tr -dc 'a-zA-Z0-9' | head -c 12)
+  # Firewall
+  if command -v ufw &>/dev/null; then
+    ufw allow 22/tcp  >/dev/null 2>&1 || true
+    ufw allow 80/tcp  >/dev/null 2>&1 || true
+    ufw allow 443/tcp >/dev/null 2>&1 || true
+    ufw --force enable >/dev/null 2>&1 || true
+  fi
+
+  # Generate secrets
+  JWT_SECRET=$(openssl rand -base64 48 | tr -d '\n')
+  ADMIN_USER="admin"
+  ADMIN_PASS=$(openssl rand -base64 32 | tr -dc 'A-Za-z0-9@#%&*' | head -c 20)
+  ADMIN_PIN=$(openssl rand -hex 4 | tr -dc '0-9' | head -c 4)
+  # Ensure PIN is exactly 4 digits (pad with zeros if needed)
+  ADMIN_PIN=$(printf '%04d' "$((10#${ADMIN_PIN:-0000} % 10000))")
 }
 
-# ── 4. Save Configuration ───────────────────────────────────────────────────
+# ── 3. Escribir configuración ─────────────────────────────────────────────────
 write_config() {
-    echo -e "\n${CYAN}${MSG_STEP3}${NC}"
-    # BUG-13: FRONTEND_URL must match the public-facing origin so the backend's CORS allows requests
-    if [ "$IS_PUBLIC_DOMAIN" = "true" ]; then
-        FRONTEND_URL="https://${CADDY_DOMAIN}"
-    elif [ "$PORT" = "80" ]; then
-        FRONTEND_URL="http://${CADDY_DOMAIN}"
-    else
-        FRONTEND_URL="http://${CADDY_DOMAIN}:${PORT}"
-    fi
+  echo ""
+  echo -e "${CYAN}[3/5] Configuración${NC}"
 
-    cat > "$ENV_FILE" <<EOF
+  FRONTEND_URL="$ACCESS_URL"
+
+  cat > "$ENV_FILE" <<EOF
 NODE_ENV=production
-PORT=${PORT}
+PORT=80
 HTTPS_PORT=443
-BACKEND_PORT=3000
 MONGODB_URI=mongodb://mongo:27017/disherio
 JWT_SECRET=${JWT_SECRET}
 JWT_EXPIRES=8h
-ADMIN_EMAIL=${ADMIN_EMAIL}
-APP_LANG=${APP_LANG}
 FRONTEND_URL=${FRONTEND_URL}
+ADMIN_USERNAME=${ADMIN_USER}
+ADMIN_PASSWORD=${ADMIN_PASS}
+ADMIN_PIN=${ADMIN_PIN}
 EOF
-    chmod 600 "$ENV_FILE"
+  chmod 600 "$ENV_FILE"
 
-    if [ "$IS_PUBLIC_DOMAIN" = "true" ]; then
-        cat > "$CADDYFILE" <<EOF
-$CADDY_DOMAIN {
-    handle /api/* { reverse_proxy backend:3000 }
+  if [[ "$IS_PUBLIC_DOMAIN" == "true" ]]; then
+    cat > "$CADDYFILE" <<EOF
+${CADDY_DOMAIN} {
+    handle /api/*       { reverse_proxy backend:3000 }
     handle /socket.io/* { reverse_proxy backend:3000 }
-    handle { reverse_proxy frontend:4200 }
+    handle              { reverse_proxy frontend:4200 }
 }
 EOF
-    else
-        cat > "$CADDYFILE" <<EOF
+  else
+    cat > "$CADDYFILE" <<EOF
 {
     admin off
     auto_https off
 }
-:${PORT} {
-    handle /api/* { reverse_proxy backend:3000 }
+:80 {
+    handle /api/*       { reverse_proxy backend:3000 }
     handle /socket.io/* {
         reverse_proxy backend:3000 {
             transport http { versions h1 }
@@ -288,111 +186,106 @@ EOF
     handle { reverse_proxy frontend:4200 }
 }
 EOF
-    fi
+  fi
+
+  ok ".env y Caddyfile escritos"
 }
 
-# ── 5. Build & Start ─────────────────────────────────────────────────────────
+# ── 4. Build y arranque ───────────────────────────────────────────────────────
 build_and_start() {
-    echo -e "\n${CYAN}${MSG_STEP4}${NC}"
-    cd "$ROOT_DIR"
-    docker compose build --no-cache 2>&1 | tee -a "$LOG_FILE" | grep -E "^(Step|#|ERROR|error)" || true
+  echo ""
+  echo -e "${CYAN}[4/5] Build e inicio de servicios${NC}"
+  cd "$ROOT_DIR"
 
-    echo -e "\n${CYAN}${MSG_STEP5}${NC}"
-    docker compose up -d 2>&1 | tee -a "$LOG_FILE" | grep -v "^$" || {
-        echo -e "${RED}ERROR: Falló al iniciar los servicios Docker${NC}"
-        exit 1
-    }
+  log "Construyendo imágenes (puede tardar unos minutos)..."
+  docker compose build --no-cache >> "$LOG_FILE" 2>&1 || err "Build fallido. Revisa: $LOG_FILE"
+  ok "Imágenes construidas"
+
+  log "Levantando servicios..."
+  docker compose up -d >> "$LOG_FILE" 2>&1 || err "docker compose up falló. Revisa: $LOG_FILE"
+  ok "Servicios iniciados"
 }
 
-# ── 6. Healthcheck & Seed ────────────────────────────────────────────────────
+# ── 5. Healthcheck y seed ─────────────────────────────────────────────────────
 healthcheck_and_seed() {
-    echo -e "\n${CYAN}${MSG_STEP6}${NC}"
-    echo -e "${YELLOW}${MSG_HEALTH}${NC}"
-    MAX_WAIT=120
-    WAITED=0
-    BACKEND_READY=false
-    until docker compose exec -T backend wget -qO- http://127.0.0.1:3000/health >/dev/null 2>&1; do
-        sleep 5
-        WAITED=$((WAITED + 5))
-        echo -e "  ... ${WAITED}s/${MAX_WAIT}s"
-        if [ $WAITED -ge $MAX_WAIT ]; then
-            echo -e "${RED}Backend timeout — últimos logs:${NC}"
-            docker compose logs --tail=30 backend 2>&1 || true
-            echo -e "${RED}Mongo logs:${NC}"
-            docker compose logs --tail=10 mongo 2>&1 || true
-            break
-        fi
-    done && BACKEND_READY=true
+  echo ""
+  echo -e "${CYAN}[5/5] Healthcheck y datos iniciales${NC}"
+  cd "$ROOT_DIR"
 
-    echo -e "${YELLOW}${MSG_SEEDING}${NC}"
-    docker compose run --rm \
-        -e MONGODB_URI=mongodb://mongo:27017/disherio \
-        -e JWT_SECRET="${JWT_SECRET}" \
-        backend node -e "
-const mongoose = require('mongoose');
-const bcrypt   = require('bcryptjs');
-async function seed() {
-  await mongoose.connect(process.env.MONGODB_URI);
-  const R = mongoose.models.Restaurant || mongoose.model('Restaurant', new mongoose.Schema({ restaurant_name: String, tax_rate: Number, currency: String, language: String }, { strict: false }));
-  const Ro = mongoose.models.Role || mongoose.model('Role', new mongoose.Schema({ restaurant_id: mongoose.Schema.Types.ObjectId, role_name: String, permissions: [String] }, { strict: false }));
-  const S = mongoose.models.Staff || mongoose.model('Staff', new mongoose.Schema({ restaurant_id: mongoose.Schema.Types.ObjectId, role_id: mongoose.Schema.Types.ObjectId, staff_name: String, email: String, password_hash: String, pin_code: String }, { strict: false }));
-  
-  let rest = await R.findOne({ restaurant_name: 'DisherIo' });
-  if (!rest) rest = await R.create({ restaurant_name: 'DisherIo', tax_rate: 0, currency: 'EUR', language: '${APP_LANG}' });
-  
-  let role = await Ro.findOne({ restaurant_id: rest._id, role_name: 'Admin' });
-  if (!role) role = await Ro.create({ restaurant_id: rest._id, role_name: 'Admin', permissions: ['ADMIN'] });
-  
-  if (!await S.findOne({ email: '${ADMIN_EMAIL}' })) {
-    const hash = await bcrypt.hash('${ADMIN_PASS}', 12);
-    await S.create({ 
-      restaurant_id: rest._id, 
-      role_id: role._id, 
-      staff_name: 'Admin', 
-      email: '${ADMIN_EMAIL}', 
-      password_hash: hash,
-      pin_code: '0000'
-    });
-  }
-  await mongoose.disconnect();
-}
-seed().catch(e => { console.error(e); process.exit(1); });
-"
+  log "Esperando al backend..."
+  MAX_WAIT=120; WAITED=0
+  until docker compose exec -T backend wget -qO- http://127.0.0.1:3000/health >/dev/null 2>&1; do
+    sleep 5; WAITED=$((WAITED + 5))
+    echo -e "  ... ${WAITED}s / ${MAX_WAIT}s"
+    if [[ $WAITED -ge $MAX_WAIT ]]; then
+      echo -e "${YELLOW}Backend tardando — logs:${NC}"
+      docker compose logs --tail=30 backend 2>&1 || true
+      err "Backend no respondió tras ${MAX_WAIT}s"
+    fi
+  done
+  ok "Backend listo"
+
+  log "Creando usuario administrador..."
+  docker compose run --rm \
+    -e MONGODB_URI=mongodb://mongo:27017/disherio \
+    -e JWT_SECRET="${JWT_SECRET}" \
+    -e ADMIN_USERNAME="${ADMIN_USER}" \
+    -e ADMIN_PASSWORD="${ADMIN_PASS}" \
+    -e ADMIN_PIN="${ADMIN_PIN}" \
+    backend node dist/seeders/index.js >> "$LOG_FILE" 2>&1 \
+    || err "Seed falló. Revisa: $LOG_FILE"
+  ok "Usuario administrador creado"
 }
 
-# ── Summary ──────────────────────────────────────────────────────────────────
+# ── Resumen final ─────────────────────────────────────────────────────────────
 print_summary() {
-    ACCESS_URL="http://${CADDY_DOMAIN}:${PORT}"
-    [[ "$IS_PUBLIC_DOMAIN" == "true" ]] && ACCESS_URL="https://${CADDY_DOMAIN}"
+  # Save credentials to a protected file so they can be retrieved later
+  CREDS_FILE="$ROOT_DIR/.admin-credentials"
+  cat > "$CREDS_FILE" <<EOF
+# DisherIo — Admin credentials (generated $(date -u '+%Y-%m-%d %H:%M UTC'))
+URL=${ACCESS_URL}
+Username=${ADMIN_USER}
+Password=${ADMIN_PASS}
+PIN=${ADMIN_PIN}
+EOF
+  chmod 600 "$CREDS_FILE"
 
-    echo ""
-    echo -e "${GREEN}╔══════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${GREEN}║           ${MSG_INST_OK}               ║${NC}"
-    echo -e "${GREEN}╠══════════════════════════════════════════════════════════════╣${NC}"
-    echo -e "${GREEN}║${NC}  ${MSG_ACCESS}   : ${BOLD}${ACCESS_URL}${NC}"
-    echo -e "${GREEN}║${NC}  Admin email     : ${BOLD}${ADMIN_EMAIL}${NC}"
-    echo -e "${GREEN}║${NC}  Admin password  : ${BOLD}${ADMIN_PASS}${NC}  ${YELLOW}(guarda esto ahora)${NC}"
-    echo -e "${GREEN}║${NC}  Idioma          : ${BOLD}${APP_LANG}${NC}"
-    echo -e "${GREEN}╠══════════════════════════════════════════════════════════════╣${NC}"
-    echo -e "${GREEN}║${NC}  Estado de servicios:"
-    docker compose ps --format "table {{.Name}}\t{{.Status}}" 2>/dev/null | tail -n +2 | while read -r line; do
-        echo -e "${GREEN}║${NC}    $line"
-    done
-    echo -e "${GREEN}╚══════════════════════════════════════════════════════════════╝${NC}"
-    echo ""
+  echo ""
+  echo -e "${GREEN}╔══════════════════════════════════════════════════════════════╗${NC}"
+  echo -e "${GREEN}║           DISHERIO INSTALLED SUCCESSFULLY                    ║${NC}"
+  echo -e "${GREEN}╠══════════════════════════════════════════════════════════════╣${NC}"
+  echo -e "${GREEN}║${NC}  Access URL   :  ${BOLD}${ACCESS_URL}${NC}"
+  echo -e "${GREEN}╠══════════════════════════════════════════════════════════════╣${NC}"
+  echo -e "${GREEN}║${NC}                                                              "
+  echo -e "${YELLOW}║  ADMIN CREDENTIALS — COPY NOW, THEY WILL NOT BE SHOWN AGAIN  ${NC}"
+  echo -e "${GREEN}║${NC}                                                              "
+  echo -e "${GREEN}║${NC}  Username  :  ${BOLD}${ADMIN_USER}${NC}"
+  echo -e "${GREEN}║${NC}  Password  :  ${BOLD}${ADMIN_PASS}${NC}"
+  echo -e "${GREEN}║${NC}  PIN       :  ${BOLD}${ADMIN_PIN}${NC}"
+  echo -e "${GREEN}║${NC}                                                              "
+  echo -e "${GREEN}╠══════════════════════════════════════════════════════════════╣${NC}"
+  echo -e "${GREEN}║${NC}  Quick links:"
+  echo -e "${GREEN}║${NC}    Admin panel  →  ${ACCESS_URL}/admin"
+  echo -e "${GREEN}║${NC}    POS          →  ${ACCESS_URL}/pos"
+  echo -e "${GREEN}║${NC}    KDS          →  ${ACCESS_URL}/kds"
+  echo -e "${GREEN}╠══════════════════════════════════════════════════════════════╣${NC}"
+  echo -e "${GREEN}║${NC}  Credentials saved to: ${CREDS_FILE}"
+  echo -e "${GREEN}║${NC}  Full log:             ${LOG_FILE}"
+  echo -e "${GREEN}║${NC}  Reconfigure:          sudo ./scripts/configure.sh"
+  echo -e "${GREEN}╚══════════════════════════════════════════════════════════════╝${NC}"
+  echo ""
 }
 
-# ── Main ───────────────────────────────────────────────────────────────────────
+# ── Main ──────────────────────────────────────────────────────────────────────
 main() {
-    banner
-    select_language
-    configure_access
-    install_dependencies
-    write_config
-    build_and_start
-    healthcheck_and_seed
-    print_summary
+  : > "$LOG_FILE"
+  banner
+  configure_access
+  install_dependencies
+  write_config
+  build_and_start
+  healthcheck_and_seed
+  print_summary
 }
 
 main "$@"
-"$@"

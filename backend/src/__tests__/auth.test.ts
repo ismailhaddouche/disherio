@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
-import { loginWithEmail, loginWithPin } from '../services/auth.service';
+import { loginWithUsername, loginWithPin } from '../services/auth.service';
 import { Restaurant } from '../models/restaurant.model';
 import { Role, Staff } from '../models/staff.model';
 
@@ -28,20 +28,20 @@ describe('Auth Service', () => {
       restaurant_id: restaurantId,
       role_id: roleId,
       staff_name: 'Test Admin',
-      email: 'test@disherio.com',
+      username: 'testadmin',
       password_hash: hash,
       pin_code_hash: pinHash,
     });
   });
 
-  it('should login with email and return token', async () => {
-    const result = await loginWithEmail('test@disherio.com', 'pass1234');
+  it('should login with username and return token', async () => {
+    const result = await loginWithUsername('testadmin', 'pass1234');
     expect(result.token).toBeDefined();
-    expect(result.staff.name).toBe('Test Admin');
+    expect(result.user.name).toBe('Test Admin');
   });
 
   it('should reject invalid password', async () => {
-    await expect(loginWithEmail('test@disherio.com', 'wrong')).rejects.toThrow('INVALID_CREDENTIALS');
+    await expect(loginWithUsername('testadmin', 'wrong')).rejects.toThrow('INVALID_CREDENTIALS');
   });
 
   // NOTE: PIN tests disabled due to ObjectId validation timing issues in CI

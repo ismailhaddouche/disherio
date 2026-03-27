@@ -148,8 +148,8 @@ change_port() {
 # ── Resetear contraseña admin ──────────────────────────────────────────────────
 reset_admin_password() {
   step "Resetear contraseña del administrador"
-  read -rp "  Email del admin [admin@disherio.com]: " admin_email
-  admin_email="${admin_email:-admin@disherio.com}"
+  read -rp "  Usuario admin [admin]: " admin_user
+  admin_user="${admin_user:-admin}"
 
   read -rsp "  Nueva contraseña (vacío = generar aleatoriamente): " new_pass
   echo ""
@@ -161,13 +161,13 @@ reset_admin_password() {
   cd "$ROOT_DIR"
   docker compose exec -T backend node -e "
     const mongoose = require('mongoose');
-    const bcrypt = require('bcrypt');
+    const bcrypt = require('bcryptjs');
     async function run() {
       await mongoose.connect(process.env.MONGODB_URI);
-      const Staff = mongoose.model('Staff', new mongoose.Schema({ email: String, password_hash: String }, { strict: false }));
+      const Staff = mongoose.model('Staff', new mongoose.Schema({ username: String, password_hash: String }, { strict: false }));
       const hash = await bcrypt.hash('${new_pass}', 12);
-      const result = await Staff.updateOne({ email: '${admin_email}' }, { \$set: { password_hash: hash } });
-      if (result.matchedCount === 0) { console.error('Usuario no encontrado'); process.exit(1); }
+      const result = await Staff.updateOne({ username: '${admin_user}' }, { \$set: { password_hash: hash } });
+      if (result.matchedCount === 0) { console.error('Usuario no encontrado: ${admin_user}'); process.exit(1); }
       console.log('Contraseña actualizada');
       await mongoose.disconnect();
     }
@@ -175,7 +175,7 @@ reset_admin_password() {
   " || err "No se pudo actualizar la contraseña. Verifica que el contenedor backend esté corriendo."
 
   echo ""
-  echo -e "  ${GREEN}Contraseña actualizada para${RESET} ${BOLD}${admin_email}${RESET}"
+  echo -e "  ${GREEN}Contraseña actualizada para${RESET} ${BOLD}${admin_user}${RESET}"
   echo -e "  ${YELLOW}Nueva contraseña: ${BOLD}${new_pass}${RESET}  (guárdala ahora)"
 }
 

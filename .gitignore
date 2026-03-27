@@ -9,13 +9,14 @@ dist/
 build/
 *.tsbuildinfo
 
-# Environment
+# Environment and secrets
 .env
 .env.local
 .env.*.local
 .env.development
 .env.test
 .env.production
+.admin-credentials
 
 # Logs
 logs/

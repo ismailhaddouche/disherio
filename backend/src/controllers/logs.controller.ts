@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { ItemOrder, IItemOrder } from '../models/order.model';
 import { Types } from 'mongoose';
+import { logger } from '../config/logger';
 
 interface LogEntry {
   id: string;
@@ -124,7 +125,7 @@ export async function getLogs(req: Request, res: Response): Promise<void> {
     });
 
   } catch (error) {
-    console.error('[Logs] Error getting logs:', error);
+    logger.error({ err: error }, 'Error getting logs');
     res.status(500).json({ error: 'Error al obtener logs' });
   }
 }
@@ -181,7 +182,7 @@ export async function getLogUsers(req: Request, res: Response): Promise<void> {
     res.json({ users });
 
   } catch (error) {
-    console.error('[Logs] Error getting users:', error);
+    logger.error({ err: error }, 'Error getting log users');
     res.status(500).json({ error: 'Error al obtener usuarios' });
   }
 }

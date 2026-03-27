@@ -1,106 +1,58 @@
-# ADR-002: Patrón Repository vs Service
+# ADR-002: Repository Pattern
 
-## Status
-Accepted
+**Status:** Implemented
 
 ## Context
-Actualmente la lógica de acceso a datos está mezclada con lógica de negocio en los servicios. Esto dificulta:
-- Testing (necesita MongoDB real)
-- Cambiar la base de datos
-- Reutilizar lógica de negocio
+
+Direct Mongoose model usage scattered across service functions made unit testing difficult (every test required a live MongoDB connection) and made it hard to reason about which queries existed for a given entity.
 
 ## Decision
-Implementar **Repository Pattern** con las siguientes reglas:
 
-### Capa Repository (Acceso a Datos)
+Every Mongoose model has a corresponding repository class that encapsulates all queries for that model. Services only import repositories, never models directly.
+
+### Repository structure
+
 ```typescript
-// repositories/interfaces/user.repository.interface.ts
-export interface IUserRepository {
-  findById(id: string): Promise<User | null>;
-  findByEmail(email: string): Promise<User | null>;
-  create(data: CreateUserDto): Promise<User>;
-  update(id: string, data: UpdateUserDto): Promise<User | null>;
-  delete(id: string): Promise<boolean>;
-}
-
-// repositories/implementations/user.repository.mongo.ts
-export class UserRepositoryMongo implements IUserRepository {
-  constructor(private readonly model: Model<UserDocument>) {}
-  
-  async findById(id: string): Promise<User | null> {
-    // BUG-01 fix: Validar ObjectId antes de usar
-    if (!isValidObjectId(id)) {
-      throw new ValidationError('Invalid user ID format');
-    }
-    return this.model.findById(id).lean();
+// repositories/user.repository.ts
+export class UserRepository {
+  async findByUsername(username: string): Promise<IStaff | null> {
+    if (!Types.ObjectId.isValid(username)) { /* ... */ }
+    return Staff.findOne({ username }).lean();
   }
-  // ...
+
+  async findByRestaurantId(restaurantId: string): Promise<IStaff[]> {
+    return Staff.find({ restaurant_id: restaurantId }).lean();
+  }
+
+  async createUser(data: CreateUserData): Promise<IStaff> {
+    return Staff.create(data);
+  }
 }
 ```
 
-### Capa Service (Lógica de Negocio)
+### Service usage
+
 ```typescript
 // services/auth.service.ts
-export class AuthService {
-  constructor(
-    private readonly userRepository: IUserRepository,
-    private readonly jwtService: IJwtService,
-    private readonly logger: ILogger
-  ) {}
-  
-  async login(email: string, password: string): Promise<AuthResult> {
-    // Solo lógica de negocio, no queries directas
-    const user = await this.userRepository.findByEmail(email);
-    if (!user) {
-      this.logger.warn(`Login attempt for non-existent user: ${email}`);
-      throw new UnauthorizedError('Invalid credentials');
-    }
-    // ...
-  }
+const userRepo = new UserRepository();
+
+export async function loginWithUsername(username: string, password: string) {
+  const staff = await userRepo.findByUsername(username);
+  if (!staff) throw new Error('INVALID_CREDENTIALS');
+  // ... business logic only, no Mongoose calls
 }
 ```
 
-### Reglas de Oro
-1. **Repositories solo hacen queries** - No lógica de negocio
-2. **Services no acceden a modelos directamente** - Usan repositories
-3. **Validaciones de entrada van en middleware** - Zod schemas
-4. **Validaciones de negocio van en services** - Duplicados, estado, etc.
-5. **Controladores solo orquestan** - 5 líneas máximo por método
+### Rules
 
-### Inyección de Dependencias
-```typescript
-// config/container.ts (simple DI sin frameworks pesados)
-export const container = {
-  userRepository: new UserRepositoryMongo(UserModel),
-  authService: new AuthService(
-    container.userRepository,
-    container.jwtService,
-    container.logger
-  )
-};
-
-// controllers/auth.controller.ts
-export class AuthController {
-  constructor(private readonly authService: AuthService) {}
-  
-  async login(req: Request, res: Response) {
-    const result = await this.authService.login(req.body.email, req.body.password);
-    res.json(result);
-  }
-}
-```
+1. Repositories only contain queries — no business logic.
+2. Services never import or call Mongoose models directly.
+3. ObjectId validation happens inside repository methods before any query is executed.
+4. Repository methods return plain objects (`.lean()`) where possible.
 
 ## Consequences
 
-### Positive
-- Testing: podemos mockear repositories fácilmente
-- Cambio de BD: solo reimplementamos repositories
-- Código más limpio y testable
-
-### Negative
-- Más archivos (interfaces + implementaciones)
-- Necesita inyección de dependencias
-
-## References
-- Repository Pattern - Martin Fowler
-- Dependency Inversion Principle (SOLID)
+- Services are unit-testable by substituting the repository with a simple in-memory object
+- All queries for a given entity are in one file, making optimization straightforward
+- Adding a new query means one addition in the repository with no changes to other layers
+- Slightly more files than putting queries directly in services

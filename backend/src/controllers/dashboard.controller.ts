@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { ItemOrder, Payment } from '../models/order.model';
 import { Dish } from '../models/dish.model';
 import { Types } from 'mongoose';
+import { logger } from '../config/logger';
 
 /**
  * Get dashboard statistics for the authenticated restaurant
@@ -160,7 +161,7 @@ export async function getDashboardStats(req: Request, res: Response): Promise<vo
     });
 
   } catch (error) {
-    console.error('[Dashboard] Error getting stats:', error);
+    logger.error({ err: error }, 'Error getting dashboard stats');
     res.status(500).json({ error: 'Error al obtener estadísticas del dashboard' });
   }
 }

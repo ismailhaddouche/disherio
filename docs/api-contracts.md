@@ -1,552 +1,490 @@
-# Contratos de API - DisherIO Refactor
+# API Reference
 
-> **Versión:** 1.0  
-> **Fecha:** 2026-03-26  
-> **Base URL:** `/api/v1`
+**Base URL:** `/api`
 
----
+All protected endpoints require a valid session. Authentication is cookie-based: the server sets an `auth_token` HttpOnly cookie on login. Browsers send it automatically. Non-browser clients may fall back to an `Authorization: Bearer <token>` header.
 
-## Índice
-
-1. [Autenticación](#autenticación)
-2. [Restaurantes](#restaurantes)
-3. [Platos (Dishes)](#platos-dishes)
-4. [Órdenes](#órdenes)
-5. [Kitchen Display System (KDS)](#kitchen-display-system-kds)
-6. [Totems](#totems)
-7. [Usuarios](#usuarios)
+Rate limiting applies globally (100 req / 15 min per IP). Auth endpoints have a stricter limit (10 req / 15 min). Public QR endpoints are limited to 30 req / min.
 
 ---
 
-## Autenticación
+## Authentication
 
-### POST `/auth/login`
-Login de usuario con email/password.
+### POST /auth/login
 
-**Request:**
-```typescript
-interface LoginRequest {
-  email: string;      // email válido
-  password: string;   // min 6 chars
-}
-```
+Login with username and password.
 
-**Response 200:**
-```typescript
-interface LoginResponse {
-  user: {
-    id: string;
-    email: string;
-    name: string;
-    permissions: Permission[];
-    restaurantId: string;
-  };
-  token: string;  // JWT
-}
-```
+**Request**
 
-**Errors:**
-- `400` - Validation error
-- `401` - Invalid credentials
-- `429` - Too many requests (SEC-02)
-
----
-
-### POST `/auth/login-pin`
-Login de staff con PIN.
-
-**Request:**
-```typescript
-interface LoginPinRequest {
-  restaurantId: string;  // ObjectId validado
-  pin: string;           // 4-6 dígitos
-}
-```
-
-**Response 200:** `LoginResponse`
-
-**Errors:**
-- `400` - Invalid PIN format
-- `401` - Invalid PIN
-- `429` - Too many attempts
-
----
-
-### POST `/auth/logout`
-Logout (invalida token).
-
-**Headers:**
-- `Authorization: Bearer {token}`
-
-**Response 200:**
-```typescript
-{ success: true }
-```
-
----
-
-### GET `/auth/me`
-Obtener usuario actual.
-
-**Headers:**
-- `Authorization: Bearer {token}`
-
-**Response 200:** `User`
-
----
-
-## Restaurantes
-
-### GET `/restaurants/:id`
-Obtener restaurante por ID.
-
-**Params:**
-- `id` - ObjectId válido (BUG-01 fix)
-
-**Response 200:**
-```typescript
-interface Restaurant {
-  id: string;
-  name: string;
-  address: string;
-  phone: string;
-  config: {
-    taxRate: number;
-    currency: string;
-    languages: string[];
-  };
-  active: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-```
-
----
-
-### GET `/restaurants/:id/config`
-Obtener configuración pública del restaurante (para totems).
-
-**Response 200:**
-```typescript
-interface RestaurantConfig {
-  taxRate: number;
-  currency: string;
-  languages: string[];
-  theme?: {
-    primaryColor: string;
-    logoUrl?: string;
-  };
-}
-```
-
----
-
-### PATCH `/restaurants/:id/config`
-Actualizar configuración.
-
-**Auth:** Admin o Manager del restaurante
-
-**Request:** `Partial<RestaurantConfig>`
-
-**Response 200:** `RestaurantConfig`
-
----
-
-## Platos (Dishes)
-
-### GET `/restaurants/:restaurantId/dishes`
-Listar platos activos de un restaurante.
-
-**Query Params:**
-- `categoryId` (optional) - Filtrar por categoría
-- `includeInactive` (optional) - boolean, default false
-
-**Response 200:**
-```typescript
-interface DishListResponse {
-  dishes: Dish[];
-  categories: Category[];
-}
-
-interface Dish {
-  id: string;
-  name: string;
-  description?: string;
-  price: number;
-  categoryId: string;
-  categoryName: string;
-  imageUrl?: string;
-  variants: DishVariant[];
-  extras: Extra[];
-  allergens: Allergen[];  // BUG-02: 'allergen' consistente
-  disherStatus: 'active' | 'inactive';
-}
-```
-
----
-
-### GET `/dishes/:id`
-Obtener plato por ID.
-
-**Params:**
-- `id` - ObjectId válido
-
-**Response 200:** `Dish`
-
-**Errors:**
-- `404` - Dish not found
-
----
-
-### POST `/restaurants/:restaurantId/dishes`
-Crear nuevo plato.
-
-**Auth:** Admin, Manager
-
-**Request:** `CreateDishDto` (from shared/schemas)
-
-**Response 201:** `Dish`
-
----
-
-### PATCH `/dishes/:id`
-Actualizar plato.
-
-**Auth:** Admin, Manager
-
-**Request:** `Partial<CreateDishDto>`
-
-**Response 200:** `Dish`
-
----
-
-### DELETE `/dishes/:id`
-Eliminar plato (soft delete).
-
-**Auth:** Admin, Manager
-
-**Response 204:** No content
-
----
-
-## Órdenes
-
-### GET `/restaurants/:restaurantId/orders`
-Listar órdenes del restaurante.
-
-**Query Params:**
-- `status` (optional) - Filtrar por estado
-- `from` (optional) - Fecha inicio (ISO)
-- `to` (optional) - Fecha fin (ISO)
-- `page` (optional) - Número de página (MEJ-02)
-- `limit` (optional) - Items por página, default 20
-
-**Response 200:**
-```typescript
-interface OrderListResponse {
-  orders: OrderSummary[];
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-  };
-}
-
-interface OrderSummary {
-  id: string;
-  tableNumber?: number;
-  status: OrderStatus;  // Enum
-  total: number;
-  itemCount: number;
-  createdAt: string;
-}
-```
-
----
-
-### GET `/orders/:id`
-Obtener orden completa.
-
-**Response 200:**
-```typescript
-interface Order {
-  id: string;
-  restaurantId: string;
-  tableNumber?: number;
-  status: OrderStatus;
-  items: OrderItem[];
-  total: number;
-  taxAmount: number;
-  createdAt: string;
-  updatedAt: string;
-  createdBy?: string;  // User o Totem
-}
-
-interface OrderItem {
-  id: string;
-  dishId: string;
-  dishName: string;
-  quantity: number;
-  unitPrice: number;
-  totalPrice: number;
-  extras: {
-    name: string;
-    price: number;
-  }[];
-  state: ItemState;  // Enum, no magic string
-  notes?: string;
-}
-```
-
----
-
-### POST `/restaurants/:restaurantId/orders`
-Crear nueva orden.
-
-**Auth:** Totem, Waiter, Admin, Manager
-
-**Request:** `CreateOrderDto` (from shared/schemas)
-
-**Response 201:** `Order`
-
-**Errors:**
-- `400` - Invalid data (Zod validation)
-- `404` - Dish not found
-
----
-
-### POST `/orders/:orderId/items`
-Agregar item a orden existente.
-
-**Request:**
-```typescript
-interface AddItemRequest {
-  dishId: string;       // ObjectId validado
-  quantity: number;
-  variantId?: string;
-  extras?: string[];    // IDs de extras validados
-  notes?: string;
-}
-```
-
-**Response 200:** `Order`
-
-**Errors:**
-- `400` - Invalid dish or extras (BUG-07 fix)
-- `404` - Order not found
-
----
-
-## Kitchen Display System (KDS)
-
-### WebSocket Events
-
-#### Conexión
-```javascript
-const socket = io('/kds', {
-  auth: { token: 'JWT_TOKEN' }
-});
-```
-
-#### Eventos Emitidos (Client → Server)
-
-##### `kds:join`
-Unirse a la sala del restaurante.
-```typescript
-{ restaurantId: string }
-```
-
-##### `kds:item:update`
-Actualizar estado de un item.
-```typescript
-interface UpdateItemStateEvent {
-  itemId: string;
-  newState: ItemState;  // 'ON_PREPARE' | 'READY' | 'DELIVERED'
-}
-```
-
-##### `kds:items:claim`
-Tomar items para preparar.
-```typescript
-{ itemIds: string[] }
-```
-
-#### Eventos Recibidos (Server → Client)
-
-##### `kds:items:list`
-Lista inicial de items pendientes.
-```typescript
-interface KitchenItem {
-  id: string;
-  orderId: string;
-  dishName: string;
-  quantity: number;
-  extras: string[];
-  state: ItemState;
-  notes?: string;
-  createdAt: string;
-  priority: 'normal' | 'high' | 'urgent';
-}
-```
-
-##### `kds:item:updated`
-Un item fue actualizado.
-```typescript
+```json
 {
-  item: KitchenItem;
-  updatedBy: string;  // User ID
-  timestamp: string;
+  "username": "admin",
+  "password": "your-password"
 }
 ```
 
-##### `kds:item:new`
-Nuevo item ingresado a cocina.
-```typescript
-{ item: KitchenItem }
-```
+**Response 200**
 
-##### `kds:error`
-Error en operación.
-```typescript
+Sets `auth_token` HttpOnly cookie. Returns the user object.
+
+```json
 {
-  code: string;
-  message: string;
+  "user": {
+    "staffId": "64a...",
+    "restaurantId": "64b...",
+    "role": "Admin",
+    "permissions": ["ADMIN"],
+    "name": "Administrador"
+  }
 }
 ```
 
-### Auth KDS (BUG-03 fix)
-```typescript
-// Permiso requerido: Permission.KTS
-// (antes era 'KITCHEN', ahora consistente)
+**Errors**
+
+| Code | Reason |
+|------|--------|
+| 400 | Validation error (missing fields) |
+| 401 | Invalid credentials |
+| 429 | Too many attempts |
+
+---
+
+### POST /auth/pin
+
+Login with a 4-digit PIN code.
+
+**Request**
+
+```json
+{
+  "pin_code": "1234",
+  "restaurant_id": "64b..."
+}
 ```
+
+**Response 200** — same as `/auth/login`
+
+---
+
+### POST /auth/logout
+
+Clear the session cookie.
+
+**Response 200**
+
+```json
+{ "message": "Logged out" }
+```
+
+---
+
+## Dishes
+
+### GET /dishes
+
+List all dishes and categories for the authenticated staff's restaurant.
+
+**Auth:** Required
+
+**Response 200**
+
+```json
+{
+  "categories": [
+    { "_id": "...", "category_name": { "es": "Entrantes" } }
+  ],
+  "dishes": [
+    {
+      "_id": "...",
+      "dish_name": { "es": "Ensalada", "en": "Salad" },
+      "dish_base_price": 8.5,
+      "category_id": "...",
+      "variants": [],
+      "extras": [],
+      "allergens": []
+    }
+  ]
+}
+```
+
+---
+
+### POST /dishes/categories
+
+Create a category.
+
+**Auth:** Required (ADMIN)
+
+**Request**
+
+```json
+{
+  "category_name": { "es": "Postres", "en": "Desserts" }
+}
+```
+
+**Response 201** — created category object
+
+---
+
+### POST /dishes
+
+Create a dish.
+
+**Auth:** Required (ADMIN)
+
+**Request** — validated by Zod dish schema
+
+---
+
+## Orders
+
+### POST /orders
+
+Create a new order linked to a totem session.
+
+**Auth:** Required
+
+**Request**
+
+```json
+{
+  "session_id": "64c...",
+  "customer_id": "64d..."
+}
+```
+
+**Response 201** — order object
+
+---
+
+### POST /orders/items
+
+Add an item to an existing order.
+
+**Auth:** Required
+
+**Request**
+
+```json
+{
+  "order_id": "64e...",
+  "dish_id": "64f...",
+  "item_quantity": 2,
+  "item_base_price": 8.5,
+  "item_name_snapshot": { "es": "Ensalada" },
+  "variant_id": null,
+  "extras": []
+}
+```
+
+**Response 201** — created item order object
+
+---
+
+### PATCH /orders/items/:id/state
+
+Advance the state of an order item.
+
+**Auth:** Required
+
+**Item state machine**
+
+```
+ORDERED -> ON_PREPARE -> SERVED
+                      -> CANCELED (from any state)
+```
+
+**Request**
+
+```json
+{ "state": "ON_PREPARE" }
+```
+
+**Response 200** — updated item order object
+
+**Errors**
+
+| Code | Reason |
+|------|--------|
+| 400 | Invalid state transition |
+| 404 | Item not found |
+
+---
+
+### GET /orders/kitchen
+
+List all active kitchen items (state `ORDERED` or `ON_PREPARE`) for the restaurant.
+
+**Auth:** Required (KTS)
+
+**Response 200** — array of item order objects
+
+---
+
+### POST /orders/payments
+
+Record a payment for an order.
+
+**Auth:** Required (POS)
+
+**Request**
+
+```json
+{
+  "order_id": "64e...",
+  "payment_method": "CASH",
+  "amount_paid": 20.00
+}
+```
+
+**Response 201** — payment object
 
 ---
 
 ## Totems
 
-### POST `/totems/validate-qr`
-Validar QR de totem.
+### GET /totems
 
-**Request:**
-```typescript
-interface ValidateQrRequest {
-  qrCode: string;
+List all totems for the restaurant.
+
+**Auth:** Required (ADMIN)
+
+---
+
+### POST /totems
+
+Create a totem. A unique QR token is generated automatically.
+
+**Auth:** Required (ADMIN)
+
+**Request**
+
+```json
+{
+  "totem_name": "Table 5"
 }
 ```
 
-**Response 200:**
-```typescript
-interface TotemSession {
-  sessionId: string;
-  restaurantId: string;
-  tableNumber?: number;
-  token: string;  // JWT de sesión de totem
+**Response 201** — totem object including `totem_qr`
+
+---
+
+### PATCH /totems/:id
+
+Update a totem.
+
+**Auth:** Required (ADMIN)
+
+---
+
+### DELETE /totems/:id
+
+Delete a totem. All active sessions are closed before deletion.
+
+**Auth:** Required (ADMIN)
+
+**Response 204**
+
+---
+
+### POST /totems/:id/regenerate-qr
+
+Generate a new QR token, invalidating the previous one.
+
+**Auth:** Required (ADMIN)
+
+**Response 200**
+
+```json
+{ "qr": "new-uuid-token" }
+```
+
+---
+
+### POST /totems/:totemId/session
+
+Start a totem session. If an active session already exists it is returned.
+
+**Auth:** Required
+
+**Response 201** — session object
+
+---
+
+### GET /totems/menu/:qr
+
+Get totem info by QR token. Public, no auth required.
+
+**Rate limit:** 10 req / 15 min per IP (brute-force protection)
+
+**Response 200** — totem object
+
+**Errors**
+
+| Code | Reason |
+|------|--------|
+| 404 | QR token not found |
+| 429 | Too many requests |
+
+---
+
+### GET /totems/menu/:qr/dishes
+
+Get the full menu (categories + dishes) for the restaurant linked to a QR token. Public, no auth required.
+
+**Rate limit:** 30 req / min per IP
+
+**Response 200**
+
+```json
+{
+  "categories": [...],
+  "dishes": [...]
 }
 ```
 
-**Errors:**
-- `400` - Invalid QR code
-- `429` - Too many attempts (SEC-02)
+---
+
+## Restaurant
+
+### GET /restaurant
+
+Get the restaurant configuration for the authenticated user's restaurant.
+
+**Auth:** Required
 
 ---
 
-### POST `/totems/:totemId/session`
-Crear sesión de totem (después de validar QR).
+### POST /restaurant
 
-**Response 201:** `TotemSession`
+Update restaurant configuration.
 
----
-
-## Usuarios
-
-### GET `/users`
-Listar usuarios del restaurante.
-
-**Auth:** Admin, Manager
-
-**Response 200:** `User[]`
+**Auth:** Required (ADMIN)
 
 ---
 
-### GET `/users/:id`
-Obtener usuario.
+## Staff
 
-**Response 200:** `User`
+### GET /staff
 
----
+List staff members.
 
-### POST `/restaurants/:restaurantId/users`
-Crear usuario.
-
-**Auth:** Admin, Manager
-
-**Request:** `CreateUserDto`
-
-**Response 201:** `User`
+**Auth:** Required (ADMIN)
 
 ---
 
-### PATCH `/users/:id`
-Actualizar usuario.
+### POST /staff
 
-**Auth:** Admin, Manager (solo de su restaurante), el propio usuario
+Create a staff member.
 
-**Request:** `Partial<CreateUserDto>`
+**Auth:** Required (ADMIN)
 
-**Response 200:** `User`
+**Request**
 
----
-
-### DELETE `/users/:id`
-Eliminar usuario.
-
-**Auth:** Admin
-
-**Response 204:** No content
-
----
-
-## Errores Globales
-
-### Formato de Error
-```typescript
-interface ApiError {
-  status: number;
-  code: string;         // Código de error machine-readable
-  message: string;      // Mensaje human-readable
-  details?: unknown;    // Detalles adicionales (solo en dev)
-  requestId: string;    // Para trackeo (MEJ-07)
+```json
+{
+  "staff_name": "Maria",
+  "username": "maria",
+  "password": "secure-password",
+  "pin_code": "5678",
+  "role_id": "64a..."
 }
 ```
 
-### Códigos Comunes
-- `INVALID_INPUT` - Datos de entrada inválidos
-- `NOT_FOUND` - Recurso no encontrado
-- `UNAUTHORIZED` - No autenticado
-- `FORBIDDEN` - Sin permisos
-- `VALIDATION_ERROR` - Error de validación Zod
-- `RATE_LIMITED` - Demasiadas peticiones
-- `INTERNAL_ERROR` - Error interno (sin detalles en prod)
+**Response 201** — staff object (password fields omitted)
 
 ---
 
-## Autenticación
+## Dashboard
 
-Todas las rutas protegidas requieren header:
-```
-Authorization: Bearer {jwt_token}
-```
+### GET /dashboard
 
-El token se obtiene en `/auth/login` o `/auth/login-pin`.
+Returns revenue, order counts, and top dishes for the restaurant.
+
+**Auth:** Required (ADMIN)
 
 ---
 
-## Changelog
+## Uploads
 
-### v1.0 (2026-03-26)
-- Definición inicial de contratos
-- Fix BUG-01: Validación de ObjectId en parámetros
-- Fix BUG-03: Permisos consistentes (KTS)
-- Fix BUG-02: Naming consistente de allergens
-- SEC-02: Rate limiting en auth endpoints
+### POST /uploads
+
+Upload an image file. Accepted formats: JPEG, PNG, WebP. The file is resized and stored under `/uploads/`.
+
+**Auth:** Required
+
+**Content-Type:** `multipart/form-data`
+
+**Response 200**
+
+```json
+{ "url": "/uploads/abc123.webp" }
+```
+
+---
+
+## Health
+
+### GET /health
+
+Returns the server status. Does not require auth.
+
+**Response 200**
+
+```json
+{ "status": "ok" }
+```
+
+---
+
+## Global Error Format
+
+All errors follow this structure:
+
+```json
+{
+  "error": "Human-readable message"
+}
+```
+
+| HTTP Code | Meaning |
+|-----------|---------|
+| 400 | Validation error |
+| 401 | Not authenticated or token expired |
+| 403 | Authenticated but insufficient permissions |
+| 404 | Resource not found |
+| 429 | Rate limit exceeded |
+| 500 | Internal server error |
+
+---
+
+## WebSocket — KDS
+
+Connect to Socket.IO with `withCredentials: true`. The `auth_token` cookie is sent automatically during the handshake.
+
+The KDS namespace requires the `KTS` permission.
+
+### Client-to-server events
+
+| Event | Payload | Description |
+|-------|---------|-------------|
+| `kds:join` | `sessionId: string` | Subscribe to a session room |
+| `kds:item_prepare` | `{ itemId: string }` | Transition item to `ON_PREPARE` |
+| `kds:item_serve` | `{ itemId: string }` | Transition item to `SERVED` |
+
+### Server-to-client events
+
+| Event | Payload | Description |
+|-------|---------|-------------|
+| `kds:joined` | `{ sessionId }` | Room join confirmed |
+| `kds:new_item` | item object | New item entered the kitchen |
+| `item:state_changed` | `{ itemId, newState }` | An item's state changed |
+| `kds:error` | `{ message, ... }` | Error from a previous action |
+
+### POS client-to-server events
+
+| Event | Payload | Description |
+|-------|---------|-------------|
+| `pos:join` | `sessionId: string` | Subscribe to session updates |
+| `pos:leave` | `sessionId: string` | Unsubscribe |

@@ -1,4 +1,5 @@
 import rateLimit from 'express-rate-limit';
+import { logger } from '../config/logger';
 
 export const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -38,7 +39,7 @@ export const qrBruteForceLimiter = rateLimit({
   message: { error: 'Too many attempts, QR code may be invalid.' },
   handler: (req, res, _next, options) => {
     // Loggear intentos sospechosos
-    console.warn(`[RateLimit] QR brute force detected from IP: ${req.ip}`);
+    logger.warn({ ip: req.ip }, 'QR brute force attempt detected');
     res.status(429).json(options.message);
   },
 });

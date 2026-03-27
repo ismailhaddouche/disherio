@@ -2,6 +2,11 @@ import { Request, Response, NextFunction } from 'express';
 import { logger } from '../config/logger';
 import { AppError } from '../utils/async-handler';
 
+interface MongoServerError extends Error {
+  code?: number;
+  keyValue?: Record<string, unknown>;
+}
+
 /**
  * Middleware de error global
  * Debe ser registrado AL FINAL de todas las rutas
@@ -25,7 +30,7 @@ export function errorHandler(
     // Errores de Mongoose
     statusCode = 400;
     errorMessage = err.message;
-  } else if (err.name === 'MongoServerError' && (err as any).code === 11000) {
+  } else if (err.name === 'MongoServerError' && (err as MongoServerError).code === 11000) {
     // Error de duplicado en MongoDB
     statusCode = 409;
     errorMessage = 'El recurso ya existe';
