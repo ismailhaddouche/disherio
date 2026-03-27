@@ -15,6 +15,7 @@ type Subjects =
   | 'ItemOrder'
   | 'Payment'
   | 'KDS'
+  | 'Customer'
   | 'all';
 
 export type AppAbility = MongoAbility<[Actions, Subjects]>;
@@ -60,6 +61,9 @@ export function defineAbilityFor(user: JwtPayload): AppAbility {
     can('update', 'ItemOrder');
     can('delete', 'ItemOrder');
     can('create', 'Payment');
+    can('read', 'Customer');
+    can('create', 'Customer');
+    can('delete', 'Customer');
   }
 
   // KTS

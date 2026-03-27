@@ -31,6 +31,18 @@ export class SocketService implements OnDestroy {
     this.socket?.emit(event, data);
   }
 
+  on(event: string, callback: (data: any) => void): void {
+    this.socket?.on(event, callback);
+  }
+
+  off(event: string, callback?: (data: any) => void): void {
+    if (callback) {
+      this.socket?.off(event, callback);
+    } else {
+      this.socket?.off(event);
+    }
+  }
+
   disconnect(): void {
     this.socket?.disconnect();
     this.socket = null;

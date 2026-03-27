@@ -18,6 +18,7 @@ import uploadRoutes from './routes/image.routes';
 import restaurantRoutes from './routes/restaurant.routes';
 import dashboardRoutes from './routes/dashboard.routes';
 import staffRoutes from './routes/staff.routes';
+import customerRoutes from './routes/customer.routes';
 
 const PORT = process.env.PORT || 3000;
 
@@ -52,6 +53,7 @@ async function bootstrap() {
   app.use('/api/restaurant', restaurantRoutes);
   app.use('/api/dashboard', dashboardRoutes);
   app.use('/api/staff', staffRoutes);
+  app.use('/api/customers', customerRoutes);
 
   app.get('/health', (_req, res) => res.json({ status: 'ok' }));
 

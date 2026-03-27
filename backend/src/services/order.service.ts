@@ -263,3 +263,51 @@ export async function markTicketPaid(paymentId: string, ticketPart: number) {
 
   return updated;
 }
+
+export async function deleteItem(itemId: string, requesterPerms: string[]) {
+  const item = await itemOrderRepo.findById(itemId);
+  if (!item) throw new Error('ITEM_NOT_FOUND');
+  
+  // Only ORDERED items can be deleted
+  if (item.item_state !== 'ORDERED') {
+    throw new Error('CANNOT_DELETE_ITEM_NOT_ORDERED');
+  }
+  
+  // TAS can only cancel their own items; POS/ADMIN can cancel any
+  const canDelete = requesterPerms.some((p) => ['ADMIN', 'POS', 'TAS'].includes(p));
+  if (!canDelete) throw new Error('REQUIRES_AUTHORIZATION');
+
+  const deleted = await itemOrderRepo.deleteItem(itemId);
+  if (!deleted) throw new Error('ITEM_NOT_FOUND_OR_ALREADY_PROCESSED');
+
+  // Notify via WebSocket
+  getIO().to(`session:${item.session_id.toString()}`).emit('item:deleted', {
+    itemId: item._id,
+  });
+
+  return deleted;
+}
+
+export async function assignItemToCustomer(itemId: string, customerId: string | null) {
+  const item = await itemOrderRepo.findById(itemId);
+  if (!item) throw new Error('ITEM_NOT_FOUND');
+  
+  const updated = await itemOrderRepo.assignItemToCustomer(itemId, customerId);
+  if (!updated) throw new Error('UPDATE_FAILED');
+
+  getIO().to(`session:${item.session_id.toString()}`).emit('item:customer_assigned', {
+    itemId: item._id,
+    customerId,
+  });
+
+  return updated;
+}
+
+export async function getServiceItems(restaurantId: string) {
+  const totems = await totemRepo.findByRestaurantIdSelectId(restaurantId);
+  const totemIds = totems.map((t) => t._id.toString());
+  const sessions = await totemSessionRepo.findByTotemIdsAndState(totemIds, 'STARTED');
+  const sessionIds = sessions.map((s) => s._id.toString());
+
+  return itemOrderRepo.findServiceItemsBySessionIds(sessionIds);
+}

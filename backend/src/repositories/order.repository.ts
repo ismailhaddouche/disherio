@@ -117,6 +117,40 @@ export class ItemOrderRepository extends BaseRepository<IItemOrder> {
       .lean()
       .exec();
   }
+
+  async deleteItem(itemId: string): Promise<IItemOrder | null> {
+    validateObjectId(itemId, 'item_id');
+    // Only allow deletion if item is in ORDERED state
+    return this.model.findOneAndDelete({
+      _id: new Types.ObjectId(itemId),
+      item_state: 'ORDERED',
+    }).exec();
+  }
+
+  async assignItemToCustomer(itemId: string, customerId: string | null): Promise<IItemOrder | null> {
+    validateObjectId(itemId, 'item_id');
+    validateObjectIdOptional(customerId, 'customer_id');
+    return this.model.findByIdAndUpdate(
+      itemId,
+      { customer_id: customerId ? new Types.ObjectId(customerId) : null },
+      { new: true }
+    ).exec();
+  }
+
+  async findServiceItemsBySessionIds(sessionIds: string[]): Promise<IItemOrder[]> {
+    const validIds = sessionIds.filter((id) => Types.ObjectId.isValid(id));
+    if (validIds.length === 0) return [];
+
+    return this.model
+      .find({
+        session_id: { $in: validIds.map((id) => new Types.ObjectId(id)) },
+        item_disher_type: 'SERVICE',
+        item_state: { $in: ['ORDERED', 'ON_PREPARE'] },
+      })
+      .sort({ createdAt: 1 })
+      .lean()
+      .exec();
+  }
 }
 
 export class PaymentRepository extends BaseRepository<IPayment> {

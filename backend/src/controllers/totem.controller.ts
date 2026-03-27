@@ -66,3 +66,8 @@ export const getMenuDishes = asyncHandler(async (req: Request, res: Response): P
   ]);
   res.json({ categories, dishes });
 });
+
+export const getActiveSessions = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  const sessions = await TotemService.getActiveSessionsByRestaurant(req.user!.restaurantId);
+  res.json(sessions);
+});

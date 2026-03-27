@@ -60,6 +60,31 @@ export class TotemSessionRepository extends BaseRepository<ITotemSession> {
     super(TotemSession);
   }
 
+  async findActiveByRestaurantId(restaurantId: string): Promise<Array<any>> {
+    validateObjectId(restaurantId, 'restaurant_id');
+    // First get all totems for this restaurant
+    const totems = await Totem.find({ restaurant_id: new Types.ObjectId(restaurantId) }).lean().exec();
+    const totemIds = totems.map(t => t._id.toString());
+    
+    if (totemIds.length === 0) return [];
+    
+    // Then get active sessions for these totems
+    const sessions = await this.model
+      .find({
+        totem_id: { $in: totemIds.map(id => new Types.ObjectId(id)) },
+        totem_state: 'STARTED',
+      })
+      .sort({ session_date_start: -1 })
+      .lean()
+      .exec();
+    
+    // Attach totem info to each session
+    return sessions.map(session => {
+      const totem = totems.find(t => t._id.toString() === (session.totem_id as Types.ObjectId).toString());
+      return { ...session, totem };
+    });
+  }
+
   async findByTotemId(totemId: string): Promise<ITotemSession[]> {
     validateObjectId(totemId, 'totem_id');
     return this.model

@@ -7,7 +7,7 @@ const userRepo = new UserRepository();
 const roleRepo = new RoleRepository();
 
 const JWT_SECRET: string = process.env.JWT_SECRET || '';
-const JWT_EXPIRES = process.env.JWT_EXPIRES || '8h';
+const JWT_EXPIRES: string = process.env.JWT_EXPIRES || '8h';
 
 // SEC-01: JWT_SECRET must be defined - no fallback
 if (!JWT_SECRET) {

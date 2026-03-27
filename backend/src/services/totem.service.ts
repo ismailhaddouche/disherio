@@ -51,3 +51,7 @@ export async function deleteTotem(totemId: string) {
   }
   return totemRepo.deleteTotem(totemId);
 }
+
+export async function getActiveSessionsByRestaurant(restaurantId: string) {
+  return totemSessionRepo.findActiveByRestaurantId(restaurantId);
+}

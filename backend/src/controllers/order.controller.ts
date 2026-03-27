@@ -46,3 +46,19 @@ export const markTicketPaid = asyncHandler(async (req: Request, res: Response): 
   const payment = await OrderService.markTicketPaid(String(req.params.id), ticket_part);
   res.json(payment);
 });
+
+export const deleteItem = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  await OrderService.deleteItem(String(req.params.id), req.user!.permissions);
+  res.status(204).end();
+});
+
+export const assignItemToCustomer = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  const { customer_id } = req.body;
+  const item = await OrderService.assignItemToCustomer(String(req.params.id), customer_id);
+  res.json(item);
+});
+
+export const getServiceItems = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  const items = await OrderService.getServiceItems(req.user!.restaurantId);
+  res.json(items);
+});
