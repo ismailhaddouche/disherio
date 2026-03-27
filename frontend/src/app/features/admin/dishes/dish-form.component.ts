@@ -76,6 +76,33 @@ import { ImageUploaderComponent } from '../../../shared/components/image-uploade
             }
           </div>
         </section>
+
+        <!-- Extras Section (Toppings) -->
+        <section class="border-t border-gray-100 dark:border-gray-700 pt-4">
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="font-bold text-lg">Extras (Toppings)</h2>
+            <button (click)="addExtra()" class="text-primary text-sm font-bold">+ Añadir Extra</button>
+          </div>
+          <p class="text-xs text-gray-500 mb-3">Extras que se pueden añadir al plato, como toppings o complementos.</p>
+          <div class="flex flex-col gap-3">
+            @for (e of dish().extras; track $index; let i = $index) {
+              <div class="flex items-end gap-2 bg-amber-50 dark:bg-amber-900/20 p-3 rounded-xl border border-amber-100 dark:border-amber-800">
+                <div class="flex-1 flex flex-col gap-1">
+                  <label class="text-xs text-gray-400">Nombre</label>
+                  <input [(ngModel)]="e.extra_name.es" class="input-style-sm" placeholder="Ej: Queso extra" />
+                </div>
+                <div class="w-24 flex flex-col gap-1">
+                  <label class="text-xs text-gray-400">Precio</label>
+                  <input type="number" [(ngModel)]="e.extra_price" class="input-style-sm" placeholder="0.00" />
+                </div>
+                <button (click)="removeExtra(i)" class="text-red-500 mb-2"><span class="material-symbols-outlined">delete</span></button>
+              </div>
+            }
+          </div>
+          @if (dish().extras.length === 0) {
+            <p class="text-sm text-gray-400 italic">Sin extras configurados</p>
+          }
+        </section>
       </div>
     </div>
   `,
@@ -131,6 +158,20 @@ export class DishFormComponent implements OnInit {
     this.dish.update(d => ({
       ...d,
       variants: d.variants.filter((_: any, i: number) => i !== index)
+    }));
+  }
+
+  addExtra() {
+    this.dish.update(d => ({
+      ...d,
+      extras: [...d.extras, { extra_name: { es: '' }, extra_price: 0 }]
+    }));
+  }
+
+  removeExtra(index: number) {
+    this.dish.update(d => ({
+      ...d,
+      extras: d.extras.filter((_: any, i: number) => i !== index)
     }));
   }
 
