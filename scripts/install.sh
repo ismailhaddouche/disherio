@@ -618,18 +618,34 @@ async function seed() {
     console.log('Restaurante creado');
   }
   
-  // Crear rol admin
-  let role = await mongoose.connection.collection('roles').findOne({ restaurant_id: restaurant._id, role_name: 'Admin' });
-  if (!role) {
-    const result = await mongoose.connection.collection('roles').insertOne({
-      restaurant_id: restaurant._id,
-      role_name: 'Admin',
-      permissions: ['ADMIN'],
-      createdAt: new Date(),
-      updatedAt: new Date()
+  // Crear roles por defecto
+  const defaultRoles = [
+    { role_name: 'Admin', permissions: ['ADMIN'] },
+    { role_name: 'KTS', permissions: ['KTS'] },
+    { role_name: 'POS', permissions: ['POS'] },
+    { role_name: 'TAS', permissions: ['TAS'] }
+  ];
+  
+  let adminRole = null;
+  for (const roleData of defaultRoles) {
+    let role = await mongoose.connection.collection('roles').findOne({ 
+      restaurant_id: restaurant._id, 
+      role_name: roleData.role_name 
     });
-    role = await mongoose.connection.collection('roles').findOne({ _id: result.insertedId });
-    console.log('Rol Admin creado');
+    if (!role) {
+      const result = await mongoose.connection.collection('roles').insertOne({
+        restaurant_id: restaurant._id,
+        role_name: roleData.role_name,
+        permissions: roleData.permissions,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      });
+      role = await mongoose.connection.collection('roles').findOne({ _id: result.insertedId });
+      console.log('Rol ' + roleData.role_name + ' creado');
+    }
+    if (roleData.role_name === 'Admin') {
+      adminRole = role;
+    }
   }
   
   // Crear usuario admin
@@ -640,7 +656,7 @@ async function seed() {
     
     await mongoose.connection.collection('staffs').insertOne({
       restaurant_id: restaurant._id,
-      role_id: role._id,
+      role_id: adminRole._id,
       staff_name: 'Administrator',
       username: 'admin',
       password_hash: passwordHash,
@@ -679,7 +695,7 @@ NODE_SCRIPT
     -e DEFAULT_TAX_RATE="$DEFAULT_TAX_RATE" \
     -e DEFAULT_CURRENCY="$DEFAULT_CURRENCY" \
     node:20-alpine sh -c "npm install --silent && node seed.js" >> "$LOG_FILE" 2>&1; then
-    ok "Usuario administrador creado"
+    ok "Usuario administrador y roles creados (Admin, KTS, POS, TAS)"
     rm -rf "$seed_dir"
   else
     rm -rf "$seed_dir"
