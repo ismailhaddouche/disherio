@@ -29,7 +29,7 @@ ADMIN_PASS=""
 ADMIN_PIN=""
 IS_DOMAIN=false
 DEFAULT_LANGUAGE="es"    # es | en
-DEFAULT_THEME="light"    # light | dark | system
+DEFAULT_THEME="dark"     # light | dark
 DEFAULT_TAX_RATE="10"    # porcentaje
 DEFAULT_CURRENCY="EUR"   # EUR | USD | GBP
 
@@ -234,15 +234,13 @@ configure_access() {
   echo "  Selecciona el tema por defecto:"
   echo "    1) Claro (Light)"
   echo "    2) Oscuro (Dark)"
-  echo "    3) Sistema (System - usa preferencia del navegador)"
   echo ""
   while true; do
-    read -rp "  Opción [1]: " theme_choice
-    theme_choice="${theme_choice:-1}"
+    read -rp "  Opción [2]: " theme_choice
+    theme_choice="${theme_choice:-2}"
     case "$theme_choice" in
       1) DEFAULT_THEME="light"; break;;
       2) DEFAULT_THEME="dark"; break;;
-      3) DEFAULT_THEME="system"; break;;
       *) echo "Opción inválida";;
     esac
   done
