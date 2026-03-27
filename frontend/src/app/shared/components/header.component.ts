@@ -1,8 +1,9 @@
-import { Component, inject, computed, HostListener } from '@angular/core';
+import { Component, inject, computed, HostListener, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { I18nService, Language } from '../../core/services/i18n.service';
 import { ThemeService } from '../../core/services/theme.service';
+import { RestaurantService } from '../../core/services/restaurant.service';
 import { authStore } from '../../store/auth.store';
 import { TranslatePipe } from '../pipes/translate.pipe';
 
@@ -109,9 +110,10 @@ import { TranslatePipe } from '../pipes/translate.pipe';
     </header>
   `
 })
-export class HeaderComponent {
+export class HeaderComponent implements OnInit {
   protected readonly i18n = inject(I18nService);
   protected readonly themeService = inject(ThemeService);
+  private readonly restaurantService = inject(RestaurantService);
   private readonly router = inject(Router);
 
   showLanguageMenu = false;
@@ -128,10 +130,11 @@ export class HeaderComponent {
     return lang === 'es' ? 'ES' : 'EN';
   });
 
-  readonly restaurantName = computed(() => {
-    // TODO: Get from a restaurant store/service
-    return 'DisherIO Restaurant';
-  });
+  readonly restaurantName = computed(() => this.restaurantService.restaurantName());
+
+  ngOnInit() {
+    this.restaurantService.loadRestaurant();
+  }
 
   @HostListener('document:click', ['$event'])
   onDocumentClick(event: MouseEvent): void {
