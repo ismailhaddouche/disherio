@@ -489,8 +489,25 @@ seed_database() {
   
   cd "$ROOT_DIR"
   
-  # Crear script de seed temporal con credenciales
-  local seed_script=$(cat <<'NODE_SCRIPT'
+  log "Instalando dependencias para seed..."
+  
+  # Crear directorio temporal para el seed
+  local seed_dir=$(mktemp -d)
+  
+  # Crear package.json temporal
+  cat > "$seed_dir/package.json" <<'PKG'
+{
+  "name": "disherio-seed",
+  "version": "1.0.0",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "mongoose": "^8.0.0"
+  }
+}
+PKG
+
+  # Crear script de seed
+  cat > "$seed_dir/seed.js" <<NODE_SCRIPT
 const bcrypt = require('bcryptjs');
 const mongoose = require('mongoose');
 
@@ -561,15 +578,21 @@ seed().catch(e => {
   process.exit(1);
 });
 NODE_SCRIPT
-)
-  
-  # Ejecutar seed con variables de entorno temporales
-  if docker compose exec -T backend sh -c "echo '$seed_script' | node -" \
-    MONGODB_URI="mongodb://mongo:27017/disherio" \
-    SEED_ADMIN_PASSWORD="$ADMIN_PASS" \
-    SEED_ADMIN_PIN="$ADMIN_PIN" >> "$LOG_FILE" 2>&1; then
+
+  # Ejecutar seed usando un contenedor temporal de Node
+  log "Ejecutando seed en contenedor temporal..."
+  if docker run --rm \
+    --network disherio_disherio_net \
+    -v "$seed_dir:/seed" \
+    -w /seed \
+    -e MONGODB_URI="mongodb://mongo:27017/disherio" \
+    -e SEED_ADMIN_PASSWORD="$ADMIN_PASS" \
+    -e SEED_ADMIN_PIN="$ADMIN_PIN" \
+    node:20-alpine sh -c "npm install --silent && node seed.js" >> "$LOG_FILE" 2>&1; then
     ok "Usuario administrador creado"
+    rm -rf "$seed_dir"
   else
+    rm -rf "$seed_dir"
     err "Error creando usuario administrador. Ver $LOG_FILE"
   fi
 }
