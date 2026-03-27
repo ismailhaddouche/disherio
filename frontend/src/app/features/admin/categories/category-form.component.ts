@@ -13,9 +13,9 @@ import { ImageUploaderComponent } from '../../../shared/components/image-uploade
   template: `
     <div class="max-w-3xl mx-auto flex flex-col gap-6">
       <header class="flex items-center justify-between">
-        <h1 class="text-2xl font-bold">{{ isEdit ? 'Editar Categoría' : 'Nueva Categoría' }}</h1>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ isEdit ? 'Editar Categoría' : 'Nueva Categoría' }}</h1>
         <div class="flex gap-2">
-          <button (click)="cancel()" class="px-4 py-2 text-gray-500 font-medium">Cancelar</button>
+          <button (click)="cancel()" class="px-4 py-2 text-gray-500 dark:text-gray-400 font-medium hover:text-gray-700 dark:hover:text-gray-200">Cancelar</button>
           <button (click)="save()" class="bg-primary text-white rounded-lg px-6 py-2 font-bold active:scale-95 transition-transform">
             Guardar
           </button>
@@ -36,15 +36,15 @@ import { ImageUploaderComponent } from '../../../shared/components/image-uploade
         <!-- Basic Info -->
         <div class="grid grid-cols-1 gap-4">
           <div class="flex flex-col gap-1">
-            <label class="text-sm text-gray-500">Nombre (ES)</label>
+            <label class="text-sm text-gray-500 dark:text-gray-400">Nombre (ES)</label>
             <input [(ngModel)]="category().category_name.es" class="input-style" />
           </div>
           <div class="flex flex-col gap-1">
-            <label class="text-sm text-gray-500">Orden de visualización</label>
+            <label class="text-sm text-gray-500 dark:text-gray-400">Orden de visualización</label>
             <input type="number" [(ngModel)]="category().category_order" class="input-style" />
           </div>
           <div class="flex flex-col gap-1">
-            <label class="text-sm text-gray-500">Descripción (ES)</label>
+            <label class="text-sm text-gray-500 dark:text-gray-400">Descripción (ES)</label>
             <textarea [(ngModel)]="category().category_description.es" class="input-style" rows="3"></textarea>
           </div>
         </div>

@@ -12,7 +12,7 @@ import { authStore } from '../../../store/auth.store';
   template: `
     <div class="flex flex-col gap-6">
       <header class="flex items-center justify-between">
-        <h1 class="text-2xl font-bold">Platos</h1>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Platos</h1>
         <a 
           routerLink="new" 
           class="bg-primary text-white rounded-lg px-4 py-2 font-bold flex items-center gap-1 active:scale-95 transition-transform"
@@ -22,7 +22,7 @@ import { authStore } from '../../../store/auth.store';
       </header>
 
       @if (error()) {
-        <div class="bg-red-100 text-red-700 p-4 rounded-lg">{{ error() }}</div>
+        <div class="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 p-4 rounded-lg border border-red-400 dark:border-red-600">{{ error() }}</div>
       }
 
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -42,7 +42,7 @@ import { authStore } from '../../../store/auth.store';
             </div>
             
             <div class="p-4 flex flex-col gap-1">
-              <h3 class="font-bold text-lg">{{ dish.disher_name }}</h3>
+              <h3 class="font-bold text-lg text-gray-900 dark:text-white">{{ dish.disher_name }}</h3>
               <p class="text-sm text-gray-500">{{ dish.disher_description || 'Sin descripción' }}</p>
               <p class="text-lg font-bold text-primary">{{ dish.disher_price | currency:'EUR' }}</p>
               
@@ -66,9 +66,9 @@ import { authStore } from '../../../store/auth.store';
           </div>
         }
         @if (dishes().length === 0) {
-          <div class="col-span-full py-20 flex flex-col items-center justify-center text-gray-400">
+          <div class="col-span-full py-20 flex flex-col items-center justify-center text-gray-400 dark:text-gray-500">
             <span class="material-symbols-outlined text-6xl mb-2">inventory_2</span>
-            <p>No hay platos creados aún</p>
+            <p class="dark:text-gray-400">No hay platos creados aún</p>
           </div>
         }
       </div>
