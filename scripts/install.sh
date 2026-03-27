@@ -356,7 +356,7 @@ ${CADDY_DOMAIN}:${HTTP_PORT} {
     handle /socket.io/* {
         reverse_proxy backend:${BACKEND_PORT} {
             transport http {
-                versions h1
+                versions 1.1
             }
         }
     }
@@ -380,7 +380,7 @@ EOF
     handle /socket.io/* {
         reverse_proxy backend:${BACKEND_PORT} {
             transport http {
-                versions h1
+                versions 1.1
             }
         }
     }
