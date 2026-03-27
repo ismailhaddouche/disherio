@@ -6,7 +6,7 @@ import { SocketService } from '../../services/socket/socket.service';
 import { tasStore, TotemSession, ItemOrder, Customer } from '../../store/tas.store';
 import { LocalizePipe } from '../../shared/pipes/localize.pipe';
 import { CurrencyFormatPipe } from '../../shared/pipes/currency-format.pipe';
-import { authStore } from '../../store/auth.store';
+import { ThemeService } from '../../core/services/theme.service';
 
 @Component({
   selector: 'app-tas',
@@ -18,9 +18,27 @@ import { authStore } from '../../store/auth.store';
       <aside class="w-80 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col">
         <!-- Header -->
         <header class="p-4 border-b border-gray-200 dark:border-gray-700">
-          <div class="flex items-center gap-2 mb-3">
-            <span class="material-symbols-outlined text-2xl text-primary">room_service</span>
-            <h1 class="text-lg font-bold">Servicio de Mesa</h1>
+          <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-2">
+              <span class="material-symbols-outlined text-2xl text-primary">room_service</span>
+              <h1 class="text-lg font-bold text-gray-900 dark:text-white">Servicio de Mesa</h1>
+            </div>
+            <!-- Theme Toggle -->
+            <button 
+              (click)="themeService.toggleTheme()"
+              class="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+              title="Cambiar tema"
+            >
+              @if (themeService.isDark()) {
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
+                </svg>
+              } @else {
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
+                </svg>
+              }
+            </button>
           </div>
           
           <!-- New Temporary Totem -->
@@ -43,10 +61,10 @@ import { authStore } from '../../store/auth.store';
 
         <!-- Active Sessions -->
         <div class="flex-1 overflow-auto p-3">
-          <h2 class="text-xs font-semibold text-gray-500 uppercase mb-2">Sesiones Activas</h2>
+          <h2 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-2">Sesiones Activas</h2>
           
           @if (activeSessions().length === 0) {
-            <p class="text-sm text-gray-400 text-center py-4">No hay sesiones activas</p>
+            <p class="text-sm text-gray-500 dark:text-gray-400 text-center py-4">No hay sesiones activas</p>
           }
           
           @for (session of activeSessions(); track session._id) {
@@ -61,7 +79,7 @@ import { authStore } from '../../store/auth.store';
               [class.dark:border-gray-600]="selectedSession()?._id !== session._id"
             >
               <div class="flex items-center justify-between">
-                <span class="font-medium">{{ session.totem?.totem_name || 'Mesa' }}</span>
+                <span class="font-medium text-gray-900 dark:text-white">{{ session.totem?.totem_name || 'Mesa' }}</span>
                 <span 
                   class="text-xs px-2 py-1 rounded-full"
                   [class.bg-yellow-100]="session.totem?.totem_type === 'TEMPORARY'"
@@ -81,11 +99,11 @@ import { authStore } from '../../store/auth.store';
 
         <!-- Available Totems (no active session) -->
         <div class="p-3 border-t border-gray-200 dark:border-gray-700 max-h-48 overflow-auto">
-          <h2 class="text-xs font-semibold text-gray-500 uppercase mb-2">Mesas Disponibles</h2>
+          <h2 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-2">Mesas Disponibles</h2>
           
           @for (totem of availableTotems(); track totem._id) {
             <div class="flex items-center justify-between p-2 rounded-lg bg-gray-50 dark:bg-gray-700 mb-1">
-              <span class="text-sm">{{ totem.totem_name }}</span>
+              <span class="text-sm text-gray-900 dark:text-white">{{ totem.totem_name }}</span>
               <button
                 (click)="startSession(totem._id)"
                 class="text-xs px-2 py-1 bg-green-500 text-white rounded"
@@ -96,7 +114,7 @@ import { authStore } from '../../store/auth.store';
           }
           
           @if (availableTotems().length === 0) {
-            <p class="text-xs text-gray-400 text-center">Todas las mesas están ocupadas</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400 text-center">Todas las mesas están ocupadas</p>
           }
         </div>
       </aside>
@@ -351,7 +369,7 @@ import { authStore } from '../../store/auth.store';
             }
 
             @if (filteredItems().length === 0) {
-              <div class="text-center py-8 text-gray-400">
+              <div class="text-center py-8 text-gray-500 dark:text-gray-400">
                 <span class="material-symbols-outlined text-4xl mb-2">restaurant_menu</span>
                 <p>No hay items en esta sesión</p>
               </div>
@@ -370,7 +388,7 @@ import { authStore } from '../../store/auth.store';
           </div>
         } @else {
           <!-- No Session Selected -->
-          <div class="flex-1 flex flex-col items-center justify-center text-gray-400">
+          <div class="flex-1 flex flex-col items-center justify-center text-gray-500 dark:text-gray-400">
             <span class="material-symbols-outlined text-6xl mb-4">table_restaurant</span>
             <p class="text-lg">Selecciona una mesa para ver los pedidos</p>
           </div>
@@ -545,6 +563,7 @@ import { authStore } from '../../store/auth.store';
 export class TasComponent implements OnInit, OnDestroy {
   private tasService = inject(TasService);
   private socketService = inject(SocketService);
+  themeService = inject(ThemeService);
 
   // Local state signals
   newTotemName = signal('');
