@@ -30,6 +30,8 @@ ADMIN_PIN=""
 IS_DOMAIN=false
 DEFAULT_LANGUAGE="es"    # es | en
 DEFAULT_THEME="light"    # light | dark | system
+DEFAULT_TAX_RATE="10"    # porcentaje
+DEFAULT_CURRENCY="EUR"   # EUR | USD | GBP
 
 # ── Utilidades ───────────────────────────────────────────────────────────────
 [[ $EUID -eq 0 ]] || { echo -e "${RED}Ejecuta como root: sudo ./scripts/install.sh${NC}"; exit 1; }
@@ -246,6 +248,34 @@ configure_access() {
   done
   ok "Tema seleccionado: $DEFAULT_THEME"
   
+  # Configurar impuestos y moneda
+  echo ""
+  log "Configuración de impuestos y moneda:"
+  
+  # Tax rate
+  read -rp "  Tasa de impuestos por defecto [%] [10]: " tax_rate
+  DEFAULT_TAX_RATE="${tax_rate:-10}"
+  ok "Impuestos: ${DEFAULT_TAX_RATE}%"
+  
+  # Currency
+  echo ""
+  echo "  Selecciona la moneda por defecto:"
+  echo "    1) EUR (€) - Euro"
+  echo "    2) USD ($) - Dólar"
+  echo "    3) GBP (£) - Libra"
+  echo ""
+  while true; do
+    read -rp "  Opción [1]: " currency_choice
+    currency_choice="${currency_choice:-1}"
+    case "$currency_choice" in
+      1) DEFAULT_CURRENCY="EUR"; break;;
+      2) DEFAULT_CURRENCY="USD"; break;;
+      3) DEFAULT_CURRENCY="GBP"; break;;
+      *) echo "Opción inválida";;
+    esac
+  done
+  ok "Moneda seleccionada: $DEFAULT_CURRENCY"
+  
   # Verificar que los puertos no estén en uso
   for port in "$HTTP_PORT" "$HTTPS_PORT"; do
     if ss -tuln | grep -q ":$port "; then
@@ -363,6 +393,8 @@ FRONTEND_URL=${ACCESS_URL}
 LOG_LEVEL=info
 DEFAULT_LANGUAGE=${DEFAULT_LANGUAGE}
 DEFAULT_THEME=${DEFAULT_THEME}
+DEFAULT_TAX_RATE=${DEFAULT_TAX_RATE}
+DEFAULT_CURRENCY=${DEFAULT_CURRENCY}
 EOF
   chmod 600 "$ENV_FILE"
   chown root:root "$ENV_FILE" 2>/dev/null || true
@@ -562,14 +594,16 @@ async function seed() {
   const adminPin = process.env.SEED_ADMIN_PIN;
   const defaultLanguage = process.env.DEFAULT_LANGUAGE || 'es';
   const defaultTheme = process.env.DEFAULT_THEME || 'light';
+  const defaultTaxRate = parseInt(process.env.DEFAULT_TAX_RATE) || 10;
+  const defaultCurrency = process.env.DEFAULT_CURRENCY || 'EUR';
   
   // Crear restaurante
   let restaurant = await mongoose.connection.collection('restaurants').findOne({ restaurant_name: 'DisherIO Restaurant' });
   if (!restaurant) {
     const result = await mongoose.connection.collection('restaurants').insertOne({
       restaurant_name: 'DisherIO Restaurant',
-      tax_rate: 10,
-      currency: 'EUR',
+      tax_rate: defaultTaxRate,
+      currency: defaultCurrency,
       default_language: defaultLanguage,
       default_theme: defaultTheme,
       tips_state: false,
@@ -577,7 +611,11 @@ async function seed() {
       createdAt: new Date(),
       updatedAt: new Date()
     });
-    console.log('Restaurante creado con idioma:', defaultLanguage, 'y tema:', defaultTheme);
+    console.log('Restaurante creado:');
+    console.log('  - Idioma:', defaultLanguage);
+    console.log('  - Tema:', defaultTheme);
+    console.log('  - Impuestos:', defaultTaxRate + '%');
+    console.log('  - Moneda:', defaultCurrency);
     restaurant = await mongoose.connection.collection('restaurants').findOne({ _id: result.insertedId });
     console.log('Restaurante creado');
   }
@@ -640,6 +678,8 @@ NODE_SCRIPT
     -e SEED_ADMIN_PIN="$ADMIN_PIN" \
     -e DEFAULT_LANGUAGE="$DEFAULT_LANGUAGE" \
     -e DEFAULT_THEME="$DEFAULT_THEME" \
+    -e DEFAULT_TAX_RATE="$DEFAULT_TAX_RATE" \
+    -e DEFAULT_CURRENCY="$DEFAULT_CURRENCY" \
     node:20-alpine sh -c "npm install --silent && node seed.js" >> "$LOG_FILE" 2>&1; then
     ok "Usuario administrador creado"
     rm -rf "$seed_dir"
