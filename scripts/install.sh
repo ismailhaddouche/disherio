@@ -442,7 +442,7 @@ verify_installation() {
     fi
   done
   
-  # Verificar backend (health endpoint)
+  # Verificar backend (health endpoint via localhost)
   log "Verificando backend..."
   local attempts=0
   local max_attempts=30  # 2.5 minutos (5s * 30)
@@ -453,9 +453,8 @@ verify_installation() {
     attempts=$((attempts + 1))
     echo -ne "  Intento $attempts/$max_attempts...\r"
     
-    # Intentar con curl primero, luego con wget
-    if curl -s --max-time 5 "http://127.0.0.1:${BACKEND_PORT}/health" >/dev/null 2>&1 || \
-       wget -qO- --timeout=5 "http://127.0.0.1:${BACKEND_PORT}/health" >/dev/null 2>&1; then
+    # Verificar usando localhost (el puerto está mapeado al host)
+    if curl -s --max-time 3 "http://localhost:${BACKEND_PORT}/health" >/dev/null 2>&1; then
       backend_ok=true
       break
     fi
@@ -463,16 +462,16 @@ verify_installation() {
   echo ""
   
   if [[ "$backend_ok" == "true" ]]; then
-    ok "Backend respondiendo correctamente"
+    ok "Backend respondiendo correctamente en puerto ${BACKEND_PORT}"
   else
-    warn "Backend no respondió. Mostrando logs:"
+    warn "Backend no responde en puerto ${BACKEND_PORT}. Mostrando logs:"
     docker compose logs --tail=50 backend 2>&1 || true
     err "Backend no respondió tras ${max_attempts} intentos"
   fi
   
   # Verificar conectividad externa
   log "Verificando conectividad..."
-  if curl -s --max-time 10 -o /dev/null -w "%{http_code}" "http://127.0.0.1:${HTTP_PORT}" | grep -qE "^(200|301|302|307)"; then
+  if curl -s --max-time 10 -o /dev/null -w "%{http_code}" "http://localhost:${HTTP_PORT}" | grep -qE "^(200|301|302|307)"; then
     ok "Caddy respondiendo en puerto $HTTP_PORT"
   else
     warn "Caddy no responde en puerto $HTTP_PORT (puede ser normal al inicio)"
