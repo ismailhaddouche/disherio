@@ -445,21 +445,30 @@ verify_installation() {
   # Verificar backend (health endpoint)
   log "Verificando backend..."
   local attempts=0
-  local max_attempts=24  # 2 minutos (5s * 24)
+  local max_attempts=30  # 2.5 minutos (5s * 30)
+  local backend_ok=false
   
-  until wget -qO- "http://127.0.0.1:${BACKEND_PORT}/health" >/dev/null 2>&1; do
+  while [[ $attempts -lt $max_attempts ]]; do
     sleep 5
     attempts=$((attempts + 1))
     echo -ne "  Intento $attempts/$max_attempts...\r"
-    if [[ $attempts -ge $max_attempts ]]; then
-      echo ""
-      warn "Backend no responde. Mostrando logs:"
-      docker compose logs --tail=50 backend 2>&1 || true
-      err "Backend no respondió tras ${max_attempts} intentos"
+    
+    # Intentar con curl primero, luego con wget
+    if curl -s --max-time 5 "http://127.0.0.1:${BACKEND_PORT}/health" >/dev/null 2>&1 || \
+       wget -qO- --timeout=5 "http://127.0.0.1:${BACKEND_PORT}/health" >/dev/null 2>&1; then
+      backend_ok=true
+      break
     fi
   done
   echo ""
-  ok "Backend respondiendo correctamente"
+  
+  if [[ "$backend_ok" == "true" ]]; then
+    ok "Backend respondiendo correctamente"
+  else
+    warn "Backend no respondió. Mostrando logs:"
+    docker compose logs --tail=50 backend 2>&1 || true
+    err "Backend no respondió tras ${max_attempts} intentos"
+  fi
   
   # Verificar conectividad externa
   log "Verificando conectividad..."
