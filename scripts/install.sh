@@ -453,8 +453,8 @@ verify_installation() {
     attempts=$((attempts + 1))
     echo -ne "  Intento $attempts/$max_attempts...\r"
     
-    # Verificar usando localhost (el puerto está mapeado al host)
-    if curl -s --max-time 3 "http://localhost:${BACKEND_PORT}/health" >/dev/null 2>&1; then
+    # Verificar usando docker exec (el puerto no está expuesto al host, todo pasa por Caddy)
+    if docker exec disherio_backend wget -qO- http://localhost:3000/health >/dev/null 2>&1; then
       backend_ok=true
       break
     fi
@@ -462,11 +462,11 @@ verify_installation() {
   echo ""
   
   if [[ "$backend_ok" == "true" ]]; then
-    ok "Backend respondiendo correctamente en puerto ${BACKEND_PORT}"
+    ok "Backend respondiendo correctamente (interno puerto ${BACKEND_PORT})"
   else
-    warn "Backend no responde en puerto ${BACKEND_PORT}. Mostrando logs:"
+    warn "Backend no responde internamente en puerto ${BACKEND_PORT}. Mostrando logs:"
     docker compose logs --tail=50 backend 2>&1 || true
-    err "Backend no respondió tras ${max_attempts} intentos"
+    err "Backend no respondió tras ${max_attempts} intentos. Verifica 'docker logs disherio_backend'"
   fi
   
   # Verificar conectividad externa
