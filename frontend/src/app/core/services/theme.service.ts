@@ -103,14 +103,10 @@ export class ThemeService {
   }
   
   toggleTheme(): void {
+    // Toggle solo entre light y dark (sin system)
     const current = this._currentTheme();
-    if (current === 'light') {
-      this.setTheme('dark');
-    } else if (current === 'dark') {
-      this.setTheme('system');
-    } else {
-      this.setTheme('light');
-    }
+    const newTheme = current === 'dark' || (current === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'light' : 'dark';
+    this.setTheme(newTheme);
   }
   
   getThemeLabel(theme: Theme): string {

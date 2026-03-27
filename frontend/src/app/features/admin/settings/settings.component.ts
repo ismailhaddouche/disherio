@@ -5,7 +5,6 @@ import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
 import { I18nService, type Language } from '../../../core/services/i18n.service';
 import { ThemeService, type Theme } from '../../../core/services/theme.service';
-import { authStore } from '../../../store/auth.store';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 
 interface RestaurantSettings {
@@ -134,52 +133,6 @@ interface RestaurantSettings {
             </div>
           </div>
 
-          <!-- User Personal Preferences -->
-          <div class="bg-blue-50 dark:bg-blue-900/20 rounded-xl shadow-sm p-6">
-            <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-              {{ 'common.profile' | translate }} - {{ 'common.settings' | translate }}
-            </h2>
-            <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
-              Your personal preferences. These override the restaurant defaults.
-            </p>
-            
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <!-- User Language -->
-              <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  {{ 'common.language' | translate }}
-                </label>
-                <select
-                  [ngModel]="userLanguage()"
-                  (ngModelChange)="setUserLanguage($event)"
-                  class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                >
-                  <option [value]="null">Use restaurant default ({{ settings().default_language }})</option>
-                  @for (lang of availableLanguages; track lang.code) {
-                    <option [value]="lang.code">{{ lang.flag }} {{ lang.name }}</option>
-                  }
-                </select>
-              </div>
-              
-              <!-- User Theme -->
-              <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  {{ 'common.theme' | translate }}
-                </label>
-                <select
-                  [ngModel]="userTheme()"
-                  (ngModelChange)="setUserTheme($event)"
-                  class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                >
-                  <option [value]="null">Use restaurant default ({{ settings().default_theme }})</option>
-                  <option value="light">☀️ {{ 'common.light' | translate }}</option>
-                  <option value="dark">🌙 {{ 'common.dark' | translate }}</option>
-                  <option value="system">💻 {{ 'common.system' | translate }}</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
           <!-- Save Button -->
           <div class="flex justify-end gap-3">
             @if (saveSuccess()) {
@@ -206,7 +159,6 @@ interface RestaurantSettings {
 export class SettingsComponent implements OnInit {
   private http = inject(HttpClient);
   private i18n = inject(I18nService);
-  private theme = inject(ThemeService);
 
   settings = signal<RestaurantSettings>({
     _id: '',
@@ -225,10 +177,6 @@ export class SettingsComponent implements OnInit {
   saveSuccess = signal(false);
 
   readonly availableLanguages = this.i18n.getAvailableLanguages();
-
-  // User personal preferences from auth store
-  userLanguage = () => authStore.preferences()?.language || null;
-  userTheme = () => authStore.preferences()?.theme || null;
 
   ngOnInit() {
     this.loadSettings();
@@ -276,25 +224,5 @@ export class SettingsComponent implements OnInit {
         this.error.set(this.i18n.translate('error.saving'));
       }
     });
-  }
-
-  setUserLanguage(lang: Language | null) {
-    if (lang) {
-      this.i18n.setLanguage(lang);
-    } else {
-      // Reset to restaurant default
-      const defaultLang = this.settings().default_language;
-      this.i18n.setLanguage(defaultLang);
-    }
-  }
-
-  setUserTheme(theme: Theme | null) {
-    if (theme) {
-      this.theme.setTheme(theme);
-    } else {
-      // Reset to restaurant default
-      const defaultTheme = this.settings().default_theme;
-      this.theme.setTheme(defaultTheme);
-    }
   }
 }
