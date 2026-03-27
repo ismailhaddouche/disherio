@@ -56,6 +56,10 @@ export const updateRestaurantSettings = asyncHandler(async (req: Request, res: R
   }
   
   const restaurant = await RestaurantService.updateRestaurant(req.user!.restaurantId, updates);
+  if (!restaurant) {
+    res.status(404).json({ message: 'Restaurant not found' });
+    return;
+  }
   res.json({
     message: 'Settings updated successfully',
     settings: {
