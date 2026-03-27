@@ -200,6 +200,13 @@ export class StaffFormComponent implements OnInit {
       next: (roles) => {
         this.roles.set(roles);
         this.loadingRoles.set(false);
+        // Si estamos en modo edición y ya tenemos datos del staff, re-patch para asegurar que el rol se seleccione
+        if (this.isEditMode && this.staffForm.get('staff_name')?.value) {
+          const currentRoleId = this.staffForm.get('role_id')?.value;
+          if (currentRoleId) {
+            this.staffForm.patchValue({ role_id: currentRoleId });
+          }
+        }
       },
       error: () => {
         this.error.set('Error al cargar roles');
@@ -212,9 +219,13 @@ export class StaffFormComponent implements OnInit {
     this.staffService.getStaffMember(id).subscribe({
       next: (staff) => {
         // role_id puede ser string o objeto poblado (Role)
-        const roleId = typeof staff.role_id === 'string' 
-          ? staff.role_id 
-          : (staff.role_id as RoleType)._id;
+        // Asegurar que siempre sea string para el formulario
+        let roleId = '';
+        if (typeof staff.role_id === 'string') {
+          roleId = staff.role_id;
+        } else if (staff.role_id && typeof staff.role_id === 'object') {
+          roleId = (staff.role_id as RoleType)._id?.toString() || '';
+        }
         
         this.staffForm.patchValue({
           staff_name: staff.staff_name,
