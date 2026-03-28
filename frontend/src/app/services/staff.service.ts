@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 import type { Staff, Role } from '../types';
+export type { Staff, Role };
 
 export interface CreateStaffRequest {
   staff_name: string;

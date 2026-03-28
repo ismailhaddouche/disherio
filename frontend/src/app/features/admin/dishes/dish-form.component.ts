@@ -31,7 +31,7 @@ interface DishForm extends Omit<Dish, 'restaurant_id' | 'disher_status' | 'dishe
 
 const INITIAL_DISH: DishForm = {
   category_id: '',
-  disher_name: { es: '', en: '' },
+  disher_name: { es: '', en: '', fr: '', ar: '' },
   disher_price: 0,
   disher_type: 'KITCHEN',
   variants: [],
@@ -137,8 +137,6 @@ export class DishFormComponent implements OnInit, OnDestroy {
     disher_name: { es: '', en: '', fr: '', ar: '' },  // Include all languages
   });
   categories = signal<Category[]>([]);
-  categories = signal<Category[]>([]);
->>>>>>> fa2220c10c338f918f61834cf1c2dd9c95620df0
 
   get pageTitle(): string {
     return this.isEdit ? 'Editar Plato' : 'Nuevo Plato';

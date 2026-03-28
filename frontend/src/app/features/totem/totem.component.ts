@@ -9,7 +9,7 @@ import { LocalizePipe } from '../../shared/pipes/localize.pipe';
 import { CurrencyFormatPipe } from '../../shared/pipes/currency-format.pipe';
 import { ThemeService } from '../../core/services/theme.service';
 import { environment } from '../../../environments/environment';
-import type { Dish, Category } from '../../types';
+import type { Dish, Category, LocalizedString } from '../../types';
 
 @Component({
   selector: 'app-totem',
@@ -56,7 +56,7 @@ import type { Dish, Category } from '../../types';
       <nav class="flex gap-2 overflow-x-auto px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
         @for (cat of categories(); track cat._id) {
           <button
-            (click)="selectCategory(cat._id)"
+            (click)="selectCategory(cat._id!)"
             class="whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium border transition-all active:scale-95"
             [class.bg-primary]="selectedCategory() === cat._id"
             [class.text-white]="selectedCategory() === cat._id"
@@ -168,7 +168,7 @@ export class TotemComponent implements OnInit, OnDestroy {
     const cat = this.selectedCategory();
     const all = this.dishes();
     return cat ? all.filter((d) => {
-      const catId = typeof d.category_id === 'string' ? d.category_id : d.category_id?._id;
+      const catId = d.category_id;
       return catId === cat;
     }) : all;
   });
@@ -211,7 +211,7 @@ export class TotemComponent implements OnInit, OnDestroy {
               || dish.disher_name?.en 
               || '';
     cartStore.addItem({
-      dishId: dish._id,
+      dishId: dish._id!,
       name,
       price: dish.disher_price,
       extras: [],

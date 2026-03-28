@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 import type { Totem } from '../types';
+export type { Totem };
 
 export interface CreateTotemRequest {
   totem_name: string;
