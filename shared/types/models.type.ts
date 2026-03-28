@@ -57,6 +57,7 @@ export interface Totem {
   totem_name: string;
   totem_qr: string;
   totem_type: 'STANDARD' | 'TEMPORARY';
+  totem_start_date?: string;
 }
 
 // Totem Session

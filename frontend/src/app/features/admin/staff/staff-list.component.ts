@@ -84,7 +84,7 @@ import { StaffService, Staff, Role } from '../../../services/staff.service';
                       <span class="material-symbols-outlined text-sm">edit</span>
                     </a>
                     <button 
-                      (click)="deleteStaff(member._id, member.staff_name)"
+                      (click)="deleteStaff(member._id!, member.staff_name)"
                       [disabled]="deleting() === member._id"
                       class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/30"
                       title="Eliminar"
