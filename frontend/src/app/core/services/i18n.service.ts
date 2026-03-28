@@ -264,6 +264,7 @@ export class I18nService {
   
   readonly isSpanish = computed(() => this._currentLang() === 'es');
   readonly isEnglish = computed(() => this._currentLang() === 'en');
+  readonly isFrench = computed(() => this._currentLang() === 'fr');
   
   constructor() {
     // Load language from user preferences or localStorage
@@ -353,7 +354,8 @@ export class I18nService {
   getAvailableLanguages(): { code: Language; name: string; flag: string }[] {
     return [
       { code: 'es', name: 'Español', flag: '🇪🇸' },
-      { code: 'en', name: 'English', flag: '🇬🇧' }
+      { code: 'en', name: 'English', flag: '🇬🇧' },
+      { code: 'fr', name: 'Français', flag: '🇫🇷' }
     ];
   }
 }

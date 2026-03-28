@@ -7,20 +7,22 @@ import { takeUntil } from 'rxjs/operators';
 import { environment } from '../../../../environments/environment';
 import { authStore } from '../../../store/auth.store';
 import { LocalizePipe } from '../../../shared/pipes/localize.pipe';
+import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
+import { I18nService } from '../../../core/services/i18n.service';
 
 @Component({
   selector: 'app-dish-list',
   standalone: true,
-  imports: [CommonModule, RouterModule, LocalizePipe],
+  imports: [CommonModule, RouterModule, LocalizePipe, TranslatePipe],
   template: `
     <div class="flex flex-col gap-6">
       <header class="flex items-center justify-between">
-        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Platos</h1>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ 'admin.menu.dishes' | translate }}</h1>
         <a 
           routerLink="new" 
           class="bg-primary text-white rounded-lg px-4 py-2 font-bold flex items-center gap-1 active:scale-95 transition-transform"
         >
-          <span class="material-symbols-outlined">add</span> Nuevo Plato
+          <span class="material-symbols-outlined">add</span> {{ 'dish.new_dish' | translate }}
         </a>
       </header>
 
@@ -40,13 +42,13 @@ import { LocalizePipe } from '../../../shared/pipes/localize.pipe';
                 </div>
               }
               <div class="absolute top-2 right-2 {{ dish.disher_status === 'ACTIVATED' ? 'bg-green-500' : 'bg-gray-500' }} text-white text-xs px-2 py-1 rounded-full">
-                {{ dish.disher_status === 'ACTIVATED' ? 'Activo' : 'Inactivo' }}
+                {{ dish.disher_status === 'ACTIVATED' ? ('common.active' | translate) : ('common.inactive' | translate) }}
               </div>
             </div>
             
             <div class="p-4 flex flex-col gap-1">
               <h3 class="font-bold text-lg text-gray-900 dark:text-white">{{ dish.disher_name | localize }}</h3>
-              <p class="text-sm text-gray-500">{{ dish.disher_description || 'Sin descripción' }}</p>
+              <p class="text-sm text-gray-500">{{ dish.disher_description || ('dish.no_description' | translate) }}</p>
               <p class="text-lg font-bold text-primary">{{ dish.disher_price | currency:'EUR' }}</p>
               
               <div class="flex gap-2 mt-4 pt-4 border-t border-gray-50 dark:border-gray-700">
@@ -54,7 +56,7 @@ import { LocalizePipe } from '../../../shared/pipes/localize.pipe';
                   [routerLink]="[dish._id]" 
                   class="flex-1 bg-gray-100 dark:bg-gray-700 text-center py-2 rounded-lg font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                 >
-                  Editar
+                  {{ 'common.edit' | translate }}
                 </a>
                 <button 
                   (click)="toggleStatus(dish._id!)"
@@ -71,7 +73,7 @@ import { LocalizePipe } from '../../../shared/pipes/localize.pipe';
         @if (dishes().length === 0) {
           <div class="col-span-full py-20 flex flex-col items-center justify-center text-gray-400 dark:text-gray-500">
             <span class="material-symbols-outlined text-6xl mb-2">inventory_2</span>
-            <p class="dark:text-gray-400">No hay platos creados aún</p>
+            <p class="dark:text-gray-400">{{ 'dish.no_dishes' | translate }}</p>
           </div>
         }
       </div>
@@ -80,6 +82,7 @@ import { LocalizePipe } from '../../../shared/pipes/localize.pipe';
 })
 export class DishListComponent implements OnInit, OnDestroy {
   private http = inject(HttpClient);
+  private i18n = inject(I18nService);
   private destroy$ = new Subject<void>();
   dishes = signal<any[]>([]);
   error = signal<string>('');
@@ -102,7 +105,7 @@ export class DishListComponent implements OnInit, OnDestroy {
         },
         error: (err) => {
           console.error('[DishList] Error loading dishes:', err);
-          this.error.set('Error loading dishes. Please try again.');
+          this.error.set(this.i18n.translate('errors.LOADING_ERROR'));
         }
       });
   }
@@ -114,7 +117,7 @@ export class DishListComponent implements OnInit, OnDestroy {
         next: () => this.loadDishes(),
         error: (err) => {
           console.error('[DishList] Error toggling status:', err);
-          alert('Error al cambiar el estado del plato');
+          alert(this.i18n.translate('dish.toggle_status_error'));
         }
       });
   }

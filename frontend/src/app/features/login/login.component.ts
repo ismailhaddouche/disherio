@@ -5,11 +5,13 @@ import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { authStore, AuthUser } from '../../store/auth.store';
 import { environment } from '../../../environments/environment';
+import { TranslatePipe } from '../../shared/pipes/translate.pipe';
+import { I18nService } from '../../core/services/i18n.service';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, TranslatePipe],
   template: `
     <div class="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900">
       <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-8 w-full max-w-sm">
@@ -20,14 +22,14 @@ import { environment } from '../../../environments/environment';
 
         <form (ngSubmit)="login()" class="flex flex-col gap-4">
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Usuario</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ 'auth.login.username' | translate }}</label>
             <input
               [(ngModel)]="username" name="username" type="text" required autocomplete="username"
               class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Contraseña</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ 'auth.login.password' | translate }}</label>
             <input
               [(ngModel)]="password" name="password" type="password" required autocomplete="current-password"
               class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary"
@@ -43,7 +45,7 @@ import { environment } from '../../../environments/environment';
             [disabled]="loading()"
             class="bg-primary text-white rounded-lg py-2 font-bold disabled:opacity-50 active:scale-95 transition-transform"
           >
-            {{ loading() ? 'Accediendo...' : 'Acceder' }}
+            {{ loading() ? ('common.logging_in' | translate) : ('auth.login.submit' | translate) }}
           </button>
         </form>
       </div>
@@ -53,6 +55,7 @@ import { environment } from '../../../environments/environment';
 export class LoginComponent {
   private http = inject(HttpClient);
   private router = inject(Router);
+  protected i18n = inject(I18nService);
 
   username = '';
   password = '';
@@ -77,7 +80,7 @@ export class LoginComponent {
           this.loading.set(false);
         },
         error: (err) => {
-          this.error.set(err.status === 401 ? 'Credenciales incorrectas' : 'Error del servidor');
+          this.error.set(err.status === 401 ? this.i18n.translate('errors.INVALID_CREDENTIALS') : this.i18n.translate('errors.SERVER_ERROR'));
           this.loading.set(false);
         },
       });

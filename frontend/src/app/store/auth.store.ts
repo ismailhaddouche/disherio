@@ -1,7 +1,7 @@
 import { signal, computed, Signal } from '@angular/core';
 import { Router } from '@angular/router';
 
-export type Language = 'es' | 'en';
+export type Language = 'es' | 'en' | 'fr';
 export type Theme = 'light' | 'dark';
 
 export interface UserPreferences {

@@ -8,25 +8,26 @@ import { SocketService } from '../../services/socket/socket.service';
 import { LocalizePipe } from '../../shared/pipes/localize.pipe';
 import { ThemeService } from '../../core/services/theme.service';
 import { environment } from '../../../environments/environment';
+import { TranslatePipe } from '../../shared/pipes/translate.pipe';
 
 @Component({
   selector: 'app-kds',
   standalone: true,
-  imports: [CommonModule, LocalizePipe],
+  imports: [CommonModule, LocalizePipe, TranslatePipe],
   template: `
     <div class="h-screen bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-white p-4 overflow-hidden">
       <header class="flex items-center justify-between mb-4">
         <div class="flex items-center gap-2">
           <span class="material-symbols-outlined text-3xl text-primary">restaurant</span>
-          <h1 class="text-2xl font-bold">Cocina</h1>
+          <h1 class="text-2xl font-bold">{{ 'kds.title' | translate }}</h1>
         </div>
         <div class="flex items-center gap-4">
-          <span class="text-sm text-gray-600 dark:text-gray-400">{{ ordered().length + onPrepare().length }} pendientes</span>
+          <span class="text-sm text-gray-600 dark:text-gray-400">{{ ordered().length + onPrepare().length }} {{ 'kds.pending' | translate }}</span>
           <!-- Theme Toggle -->
           <button 
             (click)="themeService.toggleTheme()"
             class="p-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-            title="Cambiar tema"
+            [title]="'common.theme' | translate"
           >
             @if (themeService.isDark()) {
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -45,7 +46,7 @@ import { environment } from '../../../environments/environment';
         <!-- ORDERED -->
         <div class="flex flex-col gap-2">
           <h2 class="text-lg font-semibold text-yellow-600 dark:text-yellow-400 flex items-center gap-1">
-            <span class="material-symbols-outlined">pending</span> Nuevos ({{ ordered().length }})
+            <span class="material-symbols-outlined">pending</span> {{ 'kds.new_orders' | translate }} ({{ ordered().length }})
           </h2>
           @for (item of ordered(); track item._id) {
             <div class="bg-white dark:bg-gray-800 rounded-lg p-3 border-l-4 border-yellow-400 shadow-sm">
@@ -55,7 +56,7 @@ import { environment } from '../../../environments/environment';
                 (click)="prepareItem(item._id!)"
                 class="mt-2 w-full bg-yellow-500 hover:bg-yellow-600 text-black rounded py-2 font-bold active:scale-95 transition-transform flex items-center justify-center gap-1"
               >
-                <span class="material-symbols-outlined text-sm">check_circle</span> Preparar
+                <span class="material-symbols-outlined text-sm">check_circle</span> {{ 'kds.prepare' | translate }}
               </button>
             </div>
           }
@@ -64,7 +65,7 @@ import { environment } from '../../../environments/environment';
         <!-- ON_PREPARE -->
         <div class="flex flex-col gap-2">
           <h2 class="text-lg font-semibold text-green-600 dark:text-green-400 flex items-center gap-1">
-            <span class="material-symbols-outlined">cooking</span> En preparación ({{ onPrepare().length }})
+            <span class="material-symbols-outlined">cooking</span> {{ 'kds.in_preparation' | translate }} ({{ onPrepare().length }})
           </h2>
           @for (item of onPrepare(); track item._id) {
             <div class="bg-white dark:bg-gray-800 rounded-lg p-3 border-l-4 border-green-400 shadow-sm">
@@ -74,7 +75,7 @@ import { environment } from '../../../environments/environment';
                 (click)="serveItem(item._id!)"
                 class="mt-2 w-full bg-green-500 hover:bg-green-600 text-white rounded py-2 font-bold active:scale-95 transition-transform flex items-center justify-center gap-1"
               >
-                <span class="material-symbols-outlined text-sm">done_all</span> Servido
+                <span class="material-symbols-outlined text-sm">done_all</span> {{ 'kds.serve' | translate }}
               </button>
             </div>
           }

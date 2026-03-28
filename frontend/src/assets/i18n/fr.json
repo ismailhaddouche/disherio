@@ -5,7 +5,9 @@
     "delete": "Supprimer",
     "edit": "Modifier",
     "create": "Créer",
+    "new": "Nouveau",
     "loading": "Chargement...",
+    "logging_in": "Connexion...",
     "confirm": "Confirmer",
     "back": "Retour",
     "search": "Rechercher",
@@ -15,12 +17,16 @@
     "error": "Erreur",
     "success": "Succès",
     "warning": "Avertissement",
-    "info": "Information"
+    "info": "Information",
+    "theme": "Thème",
+    "logout": "Déconnexion",
+    "unknown": "Inconnu",
+    "active": "Actif",
+    "inactive": "Inactif"
   },
   "auth": {
     "login": "Connexion",
-    "logout": "Déconnexion",
-    "email": "Email",
+    "username": "Utilisateur",
     "password": "Mot de passe",
     "pin": "PIN",
     "error_invalid": "Identifiants incorrects",
@@ -34,6 +40,8 @@
     "FORBIDDEN": "Accès refusé",
     "NOT_FOUND": "Ressource introuvable",
     "SERVER_ERROR": "Erreur interne du serveur",
+    "VALIDATION_ERROR": "Erreur de validation",
+    "INVALID_TOKEN": "Token invalide ou expiré",
     "DISH_NOT_FOUND": "Plat introuvable",
     "DISH_NOT_AVAILABLE": "Plat indisponible",
     "SESSION_NOT_ACTIVE": "La session n'est pas active",
@@ -51,6 +59,11 @@
     "ITEM_NOT_FOUND_OR_ALREADY_PROCESSED": "Article introuvable ou déjà traité",
     "UPDATE_FAILED": "Échec de la mise à jour",
     "CATEGORY_HAS_DISHES": "La catégorie contient des plats associés",
+    "CATEGORY_NOT_FOUND": "Catégorie introuvable",
+    "STAFF_NOT_FOUND": "Employé introuvable",
+    "USER_NOT_FOUND": "Utilisateur introuvable",
+    "USER_ALREADY_EXISTS": "L'utilisateur existe déjà",
+    "LOADING_ERROR": "Erreur de chargement. Veuillez réessayer.",
     "FILE_TOO_LARGE": "Fichier trop volumineux",
     "INVALID_FILE_TYPE": "Type de fichier invalide",
     "UPLOAD_FAILED": "Échec du téléchargement",
@@ -61,15 +74,33 @@
     "UPDATED": "Mis à jour avec succès",
     "DELETED": "Supprimé avec succès",
     "ORDER_CREATED": "Commande créée avec succès",
-    "PAYMENT_PROCESSED": "Paiement traité avec succès"
+    "PAYMENT_PROCESSED": "Paiement traité avec succès",
+    "PREFERENCES_UPDATED": "Préférences mises à jour",
+    "SETTINGS_UPDATED": "Paramètres mis à jour avec succès"
+  },
+  "admin": {
+    "title": "Admin",
+    "dashboard": "Tableau de bord",
+    "dishes": "Plats",
+    "categories": "Catégories",
+    "totems": "Totems",
+    "staff": "Personnel",
+    "logs": "Logs",
+    "settings": "Paramètres",
+    "restaurant_info": "Informations du restaurant",
+    "tax_settings": "Paramètres de taxe",
+    "tip_settings": "Paramètres de pourboire",
+    "appearance": "Apparence"
   },
   "kds": {
     "title": "Cuisine",
+    "kitchen_display": "Affichage Cuisine",
+    "pending": "en attente",
     "new_orders": "Nouveau",
     "in_preparation": "En préparation",
-    "served": "Servi",
     "prepare": "Préparer",
     "serve": "Servi",
+    "served": "Servis",
     "cancel": "Annuler",
     "time": "Temps",
     "order": "Commande",
@@ -77,9 +108,18 @@
   },
   "pos": {
     "title": "Caisse",
+    "point_of_sale": "Point de Vente",
     "tables": "Tables",
     "new_table": "Nouvelle Table",
+    "no_active_sessions": "Aucune session active",
+    "select_table": "Sélectionnez une table pour voir les commandes",
     "cart": "Panier",
+    "ticket": "Ticket",
+    "empty_cart": "Panier vide",
+    "subtotal": "Sous-total (hors taxe)",
+    "tax": "Taxe",
+    "tip": "Pourboire",
+    "discount": "Remise",
     "total": "Total",
     "charge": "Encaisser",
     "payment_type": {
@@ -87,14 +127,21 @@
       "by_user": "Par personne",
       "shared": "Partager également"
     },
-    "subtotal": "Sous-total",
-    "tax": "Taxe",
-    "tip": "Pourboire",
-    "discount": "Remise",
     "print_receipt": "Imprimer le reçu",
     "send_receipt": "Envoyer le reçu"
   },
+  "tas": {
+    "title": "Service de Table",
+    "table_service": "Service de Table",
+    "new_temporary_table": "Nouvelle table temporaire...",
+    "active_sessions": "Sessions Actives",
+    "no_active_sessions": "Aucune session active",
+    "table": "Table",
+    "temporary": "Temp",
+    "standard": "Std"
+  },
   "totem": {
+    "title": "Menu",
     "my_order": "Ma commande",
     "add_to_cart": "Ajouter",
     "place_order": "Commander",
@@ -103,20 +150,14 @@
     "welcome": "Bienvenue",
     "order_summary": "Résumé de la commande",
     "total_to_pay": "Total à payer",
-    "continue": "Continuer"
-  },
-  "admin": {
-    "dishes": "Plats",
-    "categories": "Catégories",
-    "totems": "Totems",
-    "staff": "Personnel",
-    "settings": "Paramètres",
-    "restaurant_info": "Informations du restaurant",
-    "tax_settings": "Paramètres de taxe",
-    "tip_settings": "Paramètres de pourboire",
-    "appearance": "Apparence"
+    "continue": "Continuer",
+    "no_dishes_available": "Aucun plat disponible"
   },
   "dish": {
+    "title": "Plats",
+    "dish": "Plat",
+    "new_dish": "Nouveau Plat",
+    "edit_dish": "Modifier le Plat",
     "name": "Nom",
     "description": "Description",
     "price": "Prix",
@@ -125,11 +166,47 @@
     "type_kitchen": "Cuisine",
     "type_service": "Bar/Service",
     "status": "Statut",
-    "status_active": "Actif",
-    "status_inactive": "Inactif",
+    "active": "Actif",
+    "inactive": "Inactif",
     "image": "Image",
+    "dish_image": "Image du Plat",
     "variants": "Variantes",
-    "extras": "Extras"
+    "extras": "Extras",
+    "no_description": "Pas de description",
+    "no_dishes": "Aucun plat créé",
+    "base_price": "Prix de Base (TTC)",
+    "toggle_status_error": "Erreur lors du changement de statut"
+  },
+  "category": {
+    "title": "Catégories",
+    "category": "Catégorie",
+    "new_category": "Nouvelle Catégorie",
+    "edit_category": "Modifier la Catégorie",
+    "name": "Nom",
+    "no_categories": "Aucune catégorie créée"
+  },
+  "totem_config": {
+    "title": "Totems",
+    "totem": "Totem",
+    "new_totem": "Nouveau Totem",
+    "edit_totem": "Modifier le Totem",
+    "name": "Nom",
+    "type": "Type",
+    "qr_code": "Code QR",
+    "regenerate_qr": "Régénérer QR",
+    "access_denied": "Accès refusé"
+  },
+  "staff": {
+    "title": "Personnel",
+    "staff_member": "Membre du personnel",
+    "new_staff": "Nouveau Personnel",
+    "edit_staff": "Modifier le Personnel",
+    "name": "Nom",
+    "username": "Utilisateur",
+    "role": "Rôle",
+    "password": "Mot de passe",
+    "pin_code": "Code PIN",
+    "preferences": "Préférences"
   },
   "table": {
     "number": "Numéro",
@@ -138,5 +215,13 @@
     "status_free": "Libre",
     "status_occupied": "Occupée",
     "status_reserved": "Réservée"
+  },
+  "logs": {
+    "title": "Logs",
+    "ordered": "Plat Commandé",
+    "on_prepare": "Préparation Commencée",
+    "served": "Plat Servi",
+    "canceled": "Plat Annulé",
+    "unknown_action": "Action Inconnue"
   }
 }

@@ -5,7 +5,9 @@
     "delete": "Delete",
     "edit": "Edit",
     "create": "Create",
+    "new": "New",
     "loading": "Loading...",
+    "logging_in": "Logging in...",
     "confirm": "Confirm",
     "back": "Back",
     "search": "Search",
@@ -15,12 +17,16 @@
     "error": "Error",
     "success": "Success",
     "warning": "Warning",
-    "info": "Information"
+    "info": "Information",
+    "theme": "Theme",
+    "logout": "Logout",
+    "unknown": "Unknown",
+    "active": "Active",
+    "inactive": "Inactive"
   },
   "auth": {
     "login": "Login",
-    "logout": "Logout",
-    "email": "Email",
+    "username": "Username",
     "password": "Password",
     "pin": "PIN",
     "error_invalid": "Invalid credentials",
@@ -34,6 +40,8 @@
     "FORBIDDEN": "Access denied",
     "NOT_FOUND": "Resource not found",
     "SERVER_ERROR": "Internal server error",
+    "VALIDATION_ERROR": "Validation error",
+    "INVALID_TOKEN": "Invalid or expired token",
     "DISH_NOT_FOUND": "Dish not found",
     "DISH_NOT_AVAILABLE": "Dish not available",
     "SESSION_NOT_ACTIVE": "Session is not active",
@@ -51,6 +59,11 @@
     "ITEM_NOT_FOUND_OR_ALREADY_PROCESSED": "Item not found or already processed",
     "UPDATE_FAILED": "Update failed",
     "CATEGORY_HAS_DISHES": "Category has associated dishes",
+    "CATEGORY_NOT_FOUND": "Category not found",
+    "STAFF_NOT_FOUND": "Staff member not found",
+    "USER_NOT_FOUND": "User not found",
+    "USER_ALREADY_EXISTS": "User already exists",
+    "LOADING_ERROR": "Error loading. Please try again.",
     "FILE_TOO_LARGE": "File too large",
     "INVALID_FILE_TYPE": "Invalid file type",
     "UPLOAD_FAILED": "Upload failed",
@@ -61,15 +74,33 @@
     "UPDATED": "Updated successfully",
     "DELETED": "Deleted successfully",
     "ORDER_CREATED": "Order created successfully",
-    "PAYMENT_PROCESSED": "Payment processed successfully"
+    "PAYMENT_PROCESSED": "Payment processed successfully",
+    "PREFERENCES_UPDATED": "Preferences updated",
+    "SETTINGS_UPDATED": "Settings updated successfully"
+  },
+  "admin": {
+    "title": "Admin",
+    "dashboard": "Dashboard",
+    "dishes": "Dishes",
+    "categories": "Categories",
+    "totems": "Totems",
+    "staff": "Staff",
+    "logs": "Logs",
+    "settings": "Settings",
+    "restaurant_info": "Restaurant information",
+    "tax_settings": "Tax settings",
+    "tip_settings": "Tip settings",
+    "appearance": "Appearance"
   },
   "kds": {
     "title": "Kitchen",
+    "kitchen_display": "Kitchen Display",
+    "pending": "pending",
     "new_orders": "New",
     "in_preparation": "In preparation",
-    "served": "Served",
     "prepare": "Prepare",
     "serve": "Served",
+    "served": "Served",
     "cancel": "Cancel",
     "time": "Time",
     "order": "Order",
@@ -77,9 +108,18 @@
   },
   "pos": {
     "title": "POS",
+    "point_of_sale": "Point of Sale",
     "tables": "Tables",
     "new_table": "New Table",
+    "no_active_sessions": "No active sessions",
+    "select_table": "Select a table to view orders",
     "cart": "Cart",
+    "ticket": "Ticket",
+    "empty_cart": "Empty cart",
+    "subtotal": "Subtotal (excl. tax)",
+    "tax": "Tax",
+    "tip": "Tip",
+    "discount": "Discount",
     "total": "Total",
     "charge": "Charge",
     "payment_type": {
@@ -87,14 +127,21 @@
       "by_user": "Per person",
       "shared": "Split equally"
     },
-    "subtotal": "Subtotal",
-    "tax": "Tax",
-    "tip": "Tip",
-    "discount": "Discount",
     "print_receipt": "Print receipt",
     "send_receipt": "Send receipt"
   },
+  "tas": {
+    "title": "Table Service",
+    "table_service": "Table Service",
+    "new_temporary_table": "New temporary table...",
+    "active_sessions": "Active Sessions",
+    "no_active_sessions": "No active sessions",
+    "table": "Table",
+    "temporary": "Temp",
+    "standard": "Std"
+  },
   "totem": {
+    "title": "Menu",
     "my_order": "My order",
     "add_to_cart": "Add",
     "place_order": "Order",
@@ -103,20 +150,14 @@
     "welcome": "Welcome",
     "order_summary": "Order summary",
     "total_to_pay": "Total to pay",
-    "continue": "Continue"
-  },
-  "admin": {
-    "dishes": "Dishes",
-    "categories": "Categories",
-    "totems": "Totems",
-    "staff": "Staff",
-    "settings": "Settings",
-    "restaurant_info": "Restaurant information",
-    "tax_settings": "Tax settings",
-    "tip_settings": "Tip settings",
-    "appearance": "Appearance"
+    "continue": "Continue",
+    "no_dishes_available": "No dishes available"
   },
   "dish": {
+    "title": "Dishes",
+    "dish": "Dish",
+    "new_dish": "New Dish",
+    "edit_dish": "Edit Dish",
     "name": "Name",
     "description": "Description",
     "price": "Price",
@@ -125,11 +166,47 @@
     "type_kitchen": "Kitchen",
     "type_service": "Bar/Service",
     "status": "Status",
-    "status_active": "Active",
-    "status_inactive": "Inactive",
+    "active": "Active",
+    "inactive": "Inactive",
     "image": "Image",
+    "dish_image": "Dish Image",
     "variants": "Variants",
-    "extras": "Extras"
+    "extras": "Extras",
+    "no_description": "No description",
+    "no_dishes": "No dishes created yet",
+    "base_price": "Base Price (Tax Inc.)",
+    "toggle_status_error": "Error changing dish status"
+  },
+  "category": {
+    "title": "Categories",
+    "category": "Category",
+    "new_category": "New Category",
+    "edit_category": "Edit Category",
+    "name": "Name",
+    "no_categories": "No categories created"
+  },
+  "totem_config": {
+    "title": "Totems",
+    "totem": "Totem",
+    "new_totem": "New Totem",
+    "edit_totem": "Edit Totem",
+    "name": "Name",
+    "type": "Type",
+    "qr_code": "QR Code",
+    "regenerate_qr": "Regenerate QR",
+    "access_denied": "Access denied"
+  },
+  "staff": {
+    "title": "Staff",
+    "staff_member": "Staff member",
+    "new_staff": "New Staff",
+    "edit_staff": "Edit Staff",
+    "name": "Name",
+    "username": "Username",
+    "role": "Role",
+    "password": "Password",
+    "pin_code": "PIN Code",
+    "preferences": "Preferences"
   },
   "table": {
     "number": "Number",
@@ -138,5 +215,13 @@
     "status_free": "Free",
     "status_occupied": "Occupied",
     "status_reserved": "Reserved"
+  },
+  "logs": {
+    "title": "Logs",
+    "ordered": "Dish Ordered",
+    "on_prepare": "Preparation Started",
+    "served": "Dish Served",
+    "canceled": "Dish Cancelled",
+    "unknown_action": "Unknown Action"
   }
 }

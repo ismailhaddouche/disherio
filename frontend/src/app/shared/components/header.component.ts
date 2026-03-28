@@ -126,12 +126,14 @@ export class HeaderComponent implements OnInit {
   
   readonly currentLanguageFlag = computed(() => {
     const lang = this.i18n.currentLang();
-    return lang === 'es' ? '🇪🇸' : '🇬🇧';
+    const flags: Record<string, string> = { es: '🇪🇸', en: '🇬🇧', fr: '🇫🇷' };
+    return flags[lang] || '🇪🇸';
   });
 
   readonly currentLanguageName = computed(() => {
     const lang = this.i18n.currentLang();
-    return lang === 'es' ? 'ES' : 'EN';
+    const names: Record<string, string> = { es: 'ES', en: 'EN', fr: 'FR' };
+    return names[lang] || 'ES';
   });
 
   readonly restaurantName = computed(() => this.restaurantService.restaurantName());
