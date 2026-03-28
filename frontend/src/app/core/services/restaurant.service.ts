@@ -1,17 +1,7 @@
 import { Injectable, inject, signal, computed } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
-
-export interface Restaurant {
-  _id: string;
-  restaurant_name: string;
-  restaurant_url?: string;
-  logo_image_url?: string;
-  tax_rate: number;
-  currency: string;
-  default_language: 'es' | 'en';
-  default_theme: 'light' | 'dark' | 'system';
-}
+import type { Restaurant } from '../../types';
 
 @Injectable({
   providedIn: 'root'

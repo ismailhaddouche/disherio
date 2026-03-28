@@ -2,22 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
-
-export interface Role {
-  _id: string;
-  role_name: string;
-  permissions: string[];
-}
-
-export interface Staff {
-  _id: string;
-  restaurant_id: string;
-  role_id: string | Role;  // Puede ser string (ID) o Role poblado
-  staff_name: string;
-  username: string;
-  createdAt?: string;
-  updatedAt?: string;
-}
+import type { Staff, Role } from '../types';
 
 export interface CreateStaffRequest {
   staff_name: string;

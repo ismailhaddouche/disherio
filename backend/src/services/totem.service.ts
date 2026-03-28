@@ -1,22 +1,11 @@
 import crypto from 'crypto';
 import { TotemRepository, TotemSessionRepository } from '../repositories/totem.repository';
 import { ITotem, ITotemSession } from '../models/totem.model';
+import { CreateTotemData, UpdateTotemData } from '@disherio/shared';
 
 // Repository instances
 const totemRepo = new TotemRepository();
 const totemSessionRepo = new TotemSessionRepository();
-
-// Type definitions
-export interface CreateTotemData {
-  restaurant_id: string;
-  totem_name: string;
-  totem_type: 'STANDARD' | 'TEMPORARY';
-}
-
-export interface UpdateTotemData {
-  totem_name?: string;
-  totem_type?: 'STANDARD' | 'TEMPORARY';
-}
 
 export async function getTotemByQR(qrToken: string): Promise<ITotem | null> {
   return totemRepo.findByQR(qrToken);
