@@ -35,9 +35,22 @@ export class TotemRepository extends BaseRepository<ITotem> {
     });
   }
 
-  async updateTotem(id: string, data: Partial<ITotem>): Promise<ITotem | null> {
+  async updateTotem(
+    id: string,
+    data: Omit<Partial<ITotem>, 'restaurant_id'> & { restaurant_id?: string }
+  ): Promise<ITotem | null> {
     validateObjectId(id, 'totem_id');
-    return this.model.findByIdAndUpdate(id, data, { new: true }).exec();
+    const { restaurant_id, ...rest } = data;
+    return this.model
+      .findByIdAndUpdate(
+        id,
+        {
+          ...rest,
+          ...(restaurant_id !== undefined && { restaurant_id: new Types.ObjectId(restaurant_id) }),
+        },
+        { new: true }
+      )
+      .exec();
   }
 
   async deleteTotem(id: string): Promise<ITotem | null> {

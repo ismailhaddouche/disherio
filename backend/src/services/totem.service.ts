@@ -1,5 +1,4 @@
 import crypto from 'crypto';
-import { Types } from 'mongoose';
 import { TotemRepository, TotemSessionRepository } from '../repositories/totem.repository';
 import { ITotem, ITotemSession } from '../models/totem.model';
 import { CreateTotemData, UpdateTotemData } from '@disherio/shared';
@@ -38,11 +37,7 @@ export async function createTotem(data: CreateTotemData): Promise<ITotem> {
 }
 
 export async function updateTotem(totemId: string, data: UpdateTotemData): Promise<ITotem | null> {
-  const { restaurant_id, ...rest } = data;
-  return totemRepo.updateTotem(totemId, {
-    ...rest,
-    ...(restaurant_id !== undefined && { restaurant_id: new Types.ObjectId(restaurant_id) }),
-  });
+  return totemRepo.updateTotem(totemId, data);
 }
 
 export async function regenerateQr(totemId: string): Promise<string> {
