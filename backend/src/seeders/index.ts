@@ -30,7 +30,8 @@ async function seed() {
       restaurant_name: 'DisherIo',
       tax_rate: 10,
       currency: 'EUR',
-      language: appLang,
+      default_language: appLang,
+      default_theme: 'light',
     });
   }
 

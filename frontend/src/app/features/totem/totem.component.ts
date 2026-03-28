@@ -163,9 +163,15 @@ export class TotemComponent implements OnInit {
   }
 
   addToCart(dish: Dish) {
+    // Obtener nombre localizado según preferencia del navegador
+    const lang = navigator.language?.split('-')[0] ?? 'es';
+    const name = dish.disher_name?.[lang as keyof LocalizedString] 
+              || dish.disher_name?.es 
+              || dish.disher_name?.en 
+              || '';
     cartStore.addItem({
       dishId: dish._id,
-      name: dish.disher_name?.es || dish.disher_name?.en || '',
+      name,
       price: dish.disher_price,
       extras: [],
     });

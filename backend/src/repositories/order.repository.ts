@@ -141,11 +141,13 @@ export class ItemOrderRepository extends BaseRepository<IItemOrder> {
     const validIds = sessionIds.filter((id) => Types.ObjectId.isValid(id));
     if (validIds.length === 0) return [];
 
+    // SERVICE items (drinks) only have ORDERED and SERVED states
+    // They skip ON_PREPARE since they don't need kitchen preparation
     return this.model
       .find({
         session_id: { $in: validIds.map((id) => new Types.ObjectId(id)) },
         item_disher_type: 'SERVICE',
-        item_state: { $in: ['ORDERED', 'ON_PREPARE'] },
+        item_state: { $in: ['ORDERED'] },  // SERVICE items are only ORDERED before served
       })
       .sort({ createdAt: 1 })
       .lean()

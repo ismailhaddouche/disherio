@@ -4,11 +4,12 @@ import { RouterModule } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
 import { authStore } from '../../../store/auth.store';
+import { LocalizePipe } from '../../../shared/pipes/localize.pipe';
 
 @Component({
   selector: 'app-dish-list',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, LocalizePipe],
   template: `
     <div class="flex flex-col gap-6">
       <header class="flex items-center justify-between">
@@ -29,8 +30,8 @@ import { authStore } from '../../../store/auth.store';
         @for (dish of dishes(); track dish._id) {
           <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden flex flex-col">
             <div class="h-32 bg-gray-100 dark:bg-gray-700 relative">
-              @if (dish.disher_image_url) {
-                <img [src]="dish.disher_image_url" class="w-full h-full object-cover" />
+              @if (dish.disher_url_image) {
+                <img [src]="dish.disher_url_image" class="w-full h-full object-cover" />
               } @else {
                 <div class="w-full h-full flex items-center justify-center text-gray-400">
                   <span class="material-symbols-outlined text-4xl">restaurant</span>
@@ -42,7 +43,7 @@ import { authStore } from '../../../store/auth.store';
             </div>
             
             <div class="p-4 flex flex-col gap-1">
-              <h3 class="font-bold text-lg">{{ dish.disher_name }}</h3>
+              <h3 class="font-bold text-lg">{{ dish.disher_name | localize }}</h3>
               <p class="text-sm text-gray-500">{{ dish.disher_description || 'Sin descripción' }}</p>
               <p class="text-lg font-bold text-primary">{{ dish.disher_price | currency:'EUR' }}</p>
               

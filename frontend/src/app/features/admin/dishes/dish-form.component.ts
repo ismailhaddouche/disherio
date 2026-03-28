@@ -91,7 +91,7 @@ export class DishFormComponent implements OnInit {
 
   isEdit = false;
   dish = signal<any>({
-    disher_name: { es: '' },
+    disher_name: { es: '', en: '', fr: '', ar: '' },
     disher_price: 0,
     disher_type: 'KITCHEN',
     variants: [],
@@ -123,7 +123,7 @@ export class DishFormComponent implements OnInit {
   addVariant() {
     this.dish.update(d => ({
       ...d,
-      variants: [...d.variants, { variant_name: { es: '' }, variant_price: 0 }]
+      variants: [...d.variants, { variant_name: { es: '', en: '', fr: '', ar: '' }, variant_price: 0 }]
     }));
   }
 

@@ -93,8 +93,12 @@ export async function updateItemState(
   const item = await itemOrderRepo.findById(itemId);
   if (!item) throw new Error('ITEM_NOT_FOUND');
 
+  // SERVICE items (drinks) go directly from ORDERED to SERVED
+  // KITCHEN items go through ORDERED -> ON_PREPARE -> SERVED
   const validTransitions: Record<string, string[]> = {
-    ORDERED: ['ON_PREPARE', 'CANCELED'],
+    ORDERED: item.item_disher_type === 'SERVICE' 
+      ? ['SERVED', 'CANCELED']  // SERVICE: skip ON_PREPARE
+      : ['ON_PREPARE', 'CANCELED'],  // KITCHEN: normal flow
     ON_PREPARE: ['SERVED', 'CANCELED'],
     SERVED: [],
     CANCELED: [],
@@ -196,6 +200,11 @@ export async function createPayment(
 ) {
   const { total } = await calculateSessionTotal(sessionId, customTip);
 
+  // Validar que haya items en la sesión antes de crear el pago
+  if (total <= 0) {
+    throw new Error('NO_ITEMS_TO_PAY');
+  }
+
   const tickets =
     paymentType === 'BY_USER'
       ? await buildByUserTickets(sessionId, total)
@@ -273,7 +282,7 @@ export async function deleteItem(itemId: string, requesterPerms: string[]) {
     throw new Error('CANNOT_DELETE_ITEM_NOT_ORDERED');
   }
   
-  // TAS can only cancel their own items; POS/ADMIN can cancel any
+  // TAS can cancel ORDERED items; POS/ADMIN can cancel any ORDERED item
   const canDelete = requesterPerms.some((p) => ['ADMIN', 'POS', 'TAS'].includes(p));
   if (!canDelete) throw new Error('REQUIRES_AUTHORIZATION');
 

@@ -33,9 +33,26 @@ export function registerKdsHandlers(io: Server, socket: AuthenticatedSocket): vo
         return;
       }
 
+      // Get item first to check type
+      const itemToUpdate = await ItemOrder.findById(itemId);
+      if (!itemToUpdate) {
+        socket.emit('kds:error', { message: 'ITEM_NOT_FOUND', itemId });
+        return;
+      }
+
+      // KDS only handles KITCHEN items
+      if (itemToUpdate.item_disher_type === 'SERVICE') {
+        socket.emit('kds:error', { 
+          message: 'INVALID_ITEM_TYPE', 
+          itemId,
+          details: 'SERVICE items do not go through kitchen preparation'
+        });
+        return;
+      }
+
       // Atomic update to prevent race conditions
       const item = await ItemOrder.findOneAndUpdate(
-        { _id: itemId, item_state: 'ORDERED' },
+        { _id: itemId, item_state: 'ORDERED', item_disher_type: 'KITCHEN' },
         { item_state: 'ON_PREPARE' },
         { new: true }
       );
@@ -75,19 +92,31 @@ export function registerKdsHandlers(io: Server, socket: AuthenticatedSocket): vo
         return;
       }
 
+      // Get item to determine valid previous states
+      const itemToUpdate = await ItemOrder.findById(itemId);
+      if (!itemToUpdate) {
+        socket.emit('kds:error', { message: 'ITEM_NOT_FOUND', itemId });
+        return;
+      }
+
+      // KITCHEN items must be ON_PREPARE, SERVICE items can be ORDERED
+      const validPreviousState = itemToUpdate.item_disher_type === 'SERVICE' 
+        ? 'ORDERED' 
+        : 'ON_PREPARE';
+
       // Atomic update to prevent race conditions
       const item = await ItemOrder.findOneAndUpdate(
-        { _id: itemId, item_state: 'ON_PREPARE' },
+        { _id: itemId, item_state: validPreviousState },
         { item_state: 'SERVED' },
         { new: true }
       );
 
       if (!item) {
-        logger.warn({ itemId, userId: user.staffId }, 'Item not found or not in ON_PREPARE state');
+        logger.warn({ itemId, userId: user.staffId }, `Item not found or not in ${validPreviousState} state`);
         socket.emit('kds:error', { 
           message: 'ITEM_NOT_FOUND_OR_INVALID_STATE', 
           itemId,
-          details: 'Item may not exist or is not in ON_PREPARE state'
+          details: `Item may not exist or is not in ${validPreviousState} state`
         });
         return;
       }

@@ -155,7 +155,7 @@ interface DashboardData {
             <div class="flex items-center gap-2">
               <div class="w-3 h-3 rounded-full bg-red-500"></div>
               <span class="text-sm text-gray-700 dark:text-gray-300">
-                {{ 'kds.served' | translate }}: {{ data()?.orderStatus?.canceled }}
+                {{ 'common.cancel' | translate }}: {{ data()?.orderStatus?.canceled }}
               </span>
             </div>
           </div>
