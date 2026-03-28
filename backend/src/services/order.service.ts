@@ -270,26 +270,14 @@ export async function createPayment(
 ) {
   const { total } = await calculateSessionTotal(sessionId, customTip);
 
-<<<<<<< HEAD
   // Validar que haya items en la sesión antes de crear el pago
   if (total <= 0) {
     throw new Error('NO_ITEMS_TO_PAY');
   }
 
-  const tickets =
-    paymentType === 'BY_USER'
-      ? await buildByUserTickets(sessionId, total)
-      : TaxUtils.splitAmount(total, parts).map((amount, i) => ({
-          ticket_part: i + 1,
-          ticket_total_parts: parts,
-          ticket_amount: amount,
-          paid: false,
-        }));
-=======
   const tickets = paymentType === 'BY_USER'
     ? await buildByUserTickets(sessionId)
     : buildSharedTickets(total, parts);
->>>>>>> fa2220c10c338f918f61834cf1c2dd9c95620df0
 
   const payment = await paymentRepo.createPayment({
     session_id: sessionId,
@@ -366,15 +354,9 @@ export async function deleteItem(itemId: string, requesterPerms: string[]) {
     throw new Error('CANNOT_DELETE_ITEM_NOT_ORDERED');
   }
   
-<<<<<<< HEAD
-  // TAS can cancel ORDERED items; POS/ADMIN can cancel any ORDERED item
-  const canDelete = requesterPerms.some((p) => ['ADMIN', 'POS', 'TAS'].includes(p));
-  if (!canDelete) throw new Error('REQUIRES_AUTHORIZATION');
-=======
   if (!canDelete(requesterPerms)) {
     throw new Error('REQUIRES_AUTHORIZATION');
   }
->>>>>>> fa2220c10c338f918f61834cf1c2dd9c95620df0
 
   const deleted = await itemOrderRepo.deleteItem(itemId);
   if (!deleted) throw new Error('ITEM_NOT_FOUND_OR_ALREADY_PROCESSED');
