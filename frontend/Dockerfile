@@ -1,16 +1,15 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
 
-# Copy and build shared package FIRST (required for npm install)
+# Copy and build shared package FIRST
 COPY shared ./shared
 RUN cd shared && npm install && npm run build
 
-# Copy frontend package.json and install (shared is now available)
+# Install frontend dependencies
 COPY frontend/package*.json ./
 RUN npm install --legacy-peer-deps
 
-# Copy rest of frontend
-COPY frontend/ .
+COPY frontend/ ./
 RUN npm run build -- --configuration production --output-path=dist/disherio
 
 FROM caddy:2-alpine AS runner
