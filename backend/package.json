@@ -33,7 +33,8 @@
     "pino-http": "^11.0.0",
     "sharp": "^0.34.5",
     "socket.io": "^4.8.3",
-    "zod": "^4.3.6"
+    "zod": "^4.3.6",
+    "@disherio/shared": "file:../shared"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",

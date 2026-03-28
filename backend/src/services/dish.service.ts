@@ -1,69 +1,7 @@
 import { DishRepository, CategoryRepository } from '../repositories/dish.repository';
 import { IDish, ICategory } from '../models/dish.model';
 import { cache, CacheKeys } from './cache.service';
-import { Types } from 'mongoose';
-
-// Local types (previously from @disherio/shared)
-interface LocalizedString {
-  es: string;
-  en: string;
-  fr?: string;
-  ar?: string;
-}
-
-interface VariantInput {
-  variant_name: LocalizedString;
-  variant_price: number;
-  variant_description?: LocalizedString;
-  variant_url_image?: string;
-}
-
-interface ExtraInput {
-  extra_name: LocalizedString;
-  extra_price: number;
-  extra_description?: LocalizedString;
-  extra_url_image?: string;
-}
-
-export interface CreateDishData {
-  restaurant_id: string;
-  category_id: string;
-  disher_name: LocalizedString;
-  disher_description?: LocalizedString;
-  disher_price: number;
-  disher_type: 'KITCHEN' | 'SERVICE';
-  disher_url_image?: string;
-  variants?: VariantInput[];
-  extras?: ExtraInput[];
-}
-
-export interface UpdateDishData {
-  restaurant_id?: string;
-  category_id?: string;
-  disher_name?: LocalizedString;
-  disher_description?: LocalizedString;
-  disher_price?: number;
-  disher_type?: 'KITCHEN' | 'SERVICE';
-  disher_url_image?: string;
-  variants?: VariantInput[];
-  extras?: ExtraInput[];
-}
-
-export interface CreateCategoryData {
-  restaurant_id: string;
-  category_name: LocalizedString;
-  category_description?: LocalizedString;
-  category_order?: number;
-  category_image_url?: string;
-}
-
-export interface UpdateCategoryData {
-  restaurant_id?: string;
-  category_name?: LocalizedString;
-  category_description?: LocalizedString;
-  category_order?: number;
-  category_image_url?: string;
-}
+import { CreateDishData, UpdateDishData, CreateCategoryData, UpdateCategoryData } from '@disherio/shared';
 
 // Repository instances
 const dishRepo = new DishRepository();
