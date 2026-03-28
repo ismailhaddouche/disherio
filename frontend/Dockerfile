@@ -1,14 +1,23 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
 
-# Copy and build shared package FIRST
+# Copy and build shared package first
 COPY shared ./shared
 RUN cd shared && npm install && npm run build
 
-# Install frontend dependencies
+# Copy frontend package files
 COPY frontend/package*.json ./
-RUN npm install --legacy-peer-deps
 
+# Remove @disherio/shared from package.json temporarily and install deps
+RUN node -e "const pkg=require('./package.json'); delete pkg.dependencies['@disherio/shared']; require('fs').writeFileSync('package.json', JSON.stringify(pkg, null, 2))" && \
+    npm install --legacy-peer-deps
+
+# Manually install the shared package by copying it
+RUN mkdir -p node_modules/@disherio/shared && \
+    cp -r shared/dist node_modules/@disherio/shared/ && \
+    cp shared/package.json node_modules/@disherio/shared/
+
+# Copy frontend source and build
 COPY frontend/ ./
 RUN npm run build -- --configuration production --output-path=dist/disherio
 
