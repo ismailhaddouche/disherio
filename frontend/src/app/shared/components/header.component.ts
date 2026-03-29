@@ -17,7 +17,7 @@ import { TranslatePipe } from '../pipes/translate.pipe';
       <div class="flex h-14 items-center justify-between px-4 lg:px-6">
         <!-- Logo y Nombre -->
         <div class="flex items-center gap-3">
-          <a routerLink="/admin/dashboard" class="flex items-center gap-2">
+          <a routerLink="/login" class="flex items-center gap-2">
             <div class="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg">
               D
             </div>
