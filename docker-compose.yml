@@ -75,8 +75,8 @@ services:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/health || exit 1"]
       interval: 10s
       timeout: 5s
-      retries: 6
-      start_period: 30s
+      retries: 30
+      start_period: 120s
 
   frontend:
     build:
@@ -148,7 +148,7 @@ services:
         max-size: "10m"
         max-file: "3"
     healthcheck:
-      test: ["CMD", "caddy", "version"]
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:80 || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 6

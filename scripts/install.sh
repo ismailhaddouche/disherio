@@ -524,23 +524,21 @@ build_and_start() {
   ok "Imágenes construidas correctamente"
   
   echo ""
-  log "Iniciando servicios..."
-  docker compose up -d 2>&1 | tee -a "$LOG_FILE" || err "No se pudieron iniciar los servicios"
-  ok "Servicios iniciados"
+  log "=== FASE 1: Iniciando MongoDB ==="
+  docker compose up -d mongo --wait 2>&1 | tee -a "$LOG_FILE" || err "No se pudo iniciar MongoDB"
+  ok "MongoDB iniciado y saludable"
   
-  # Esperar a que MongoDB esté listo
   echo ""
-  log "Esperando a que MongoDB esté listo..."
-  local count=0
-  until docker compose exec -T mongo mongosh --quiet --eval "db.adminCommand('ping')" >/dev/null 2>&1; do
-    sleep 2
-    count=$((count + 1))
-    echo -e "  ${BLUE}⏳ Esperando MongoDB... ($count segundos)${NC}"
-    if [[ $count -gt 30 ]]; then
-      err "MongoDB no respondió tras 60 segundos"
-    fi
-  done
-  ok "MongoDB está listo y respondiendo"
+  log "=== FASE 2: Iniciando Backend y Frontend ==="
+  docker compose up -d backend frontend --wait 2>&1 | tee -a "$LOG_FILE" || err "No se pudieron iniciar Backend y Frontend"
+  ok "Backend y Frontend iniciados y saludables"
+  
+  echo ""
+  log "=== FASE 3: Iniciando Caddy (Proxy) ==="
+  docker compose up -d caddy --wait 2>&1 | tee -a "$LOG_FILE" || err "No se pudo iniciar Caddy"
+  ok "Caddy iniciado y saludable"
+  
+  ok "Todos los servicios iniciados correctamente"
 }
 
 # ── Paso 6: Healthcheck y Verificación ───────────────────────────────────────
