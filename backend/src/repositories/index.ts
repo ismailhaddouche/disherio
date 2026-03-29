@@ -17,7 +17,6 @@ export {
 export {
   DishRepository,
   CategoryRepository,
-  AllergenRepository,
 } from './dish.repository';
 
 export {

@@ -1,5 +1,5 @@
 import { Types } from 'mongoose';
-import { Dish, IDish, Category, ICategory, Allergen, IAllergen } from '../models/dish.model';
+import { Dish, IDish, Category, ICategory } from '../models/dish.model';
 import { BaseRepository, validateObjectId } from './base.repository';
 import { CreateDishData, UpdateDishData, CreateCategoryData, UpdateCategoryData } from '@disherio/shared';
 
@@ -24,7 +24,6 @@ export class DishRepository extends BaseRepository<IDish> {
     return this.model
       .find(filter)
       .populate('category_id')
-      .populate('disher_alergens')
       .lean()
       .exec();
   }
@@ -45,7 +44,6 @@ export class DishRepository extends BaseRepository<IDish> {
         disher_status: 'ACTIVATED',
       })
       .populate('category_id')
-      .populate('disher_alergens')
       .skip(skip)
       .limit(limit)
       .lean()
@@ -66,7 +64,6 @@ export class DishRepository extends BaseRepository<IDish> {
     validateObjectId(id, 'dish_id');
     return this.model
       .findById(id)
-      .populate('disher_alergens')
       .lean()
       .exec();
   }
@@ -89,7 +86,7 @@ export class DishRepository extends BaseRepository<IDish> {
       ...data,
       restaurant_id: new Types.ObjectId(data.restaurant_id),
       category_id: new Types.ObjectId(data.category_id),
-      disher_alergens: (data.disher_alergens ?? []).map(id => new Types.ObjectId(id)),
+      disher_alergens: data.disher_alergens ?? [],
     } as unknown as Partial<IDish>);
   }
 
@@ -103,7 +100,7 @@ export class DishRepository extends BaseRepository<IDish> {
         ...(restaurant_id !== undefined && { restaurant_id: new Types.ObjectId(restaurant_id) }),
         ...(category_id !== undefined && { category_id: new Types.ObjectId(category_id) }),
         ...(disher_alergens !== undefined && {
-          disher_alergens: disher_alergens.map(id => new Types.ObjectId(id)),
+          disher_alergens: disher_alergens,
         }),
       } as Partial<IDish>,
       { new: true }
@@ -196,17 +193,3 @@ export class CategoryRepository extends BaseRepository<ICategory> {
   }
 }
 
-export class AllergenRepository extends BaseRepository<IAllergen> {
-  constructor() {
-    super(Allergen);
-  }
-
-  async findByIds(ids: string[]): Promise<IAllergen[]> {
-    const validIds = ids.filter((id) => Types.ObjectId.isValid(id));
-    if (validIds.length === 0) return [];
-    return this.model
-      .find({ _id: { $in: validIds.map((id) => new Types.ObjectId(id)) } })
-      .lean()
-      .exec();
-  }
-}

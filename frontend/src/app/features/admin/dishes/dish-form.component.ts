@@ -31,6 +31,8 @@ interface DishForm extends Omit<Dish, 'restaurant_id' | 'disher_status' | 'dishe
   extras: ExtraForm[];
 }
 
+const ALLERGEN_CODES = ['GLUTEN','CRUSTACEANS','EGGS','FISH','PEANUTS','SOY','MILK','NUTS','CELERY','MUSTARD','SESAME','SULPHITES','LUPINE','MOLLUSCS'] as const;
+
 const INITIAL_DISH: DishForm = {
   category_id: '',
   disher_name: { es: '', en: '', fr: '', ar: '' },
@@ -102,6 +104,29 @@ const INITIAL_EXTRA: ExtraForm = { extra_name: { es: '', en: '', fr: '', ar: '' 
           </select>
         </div>
 
+        <!-- Allergens Section -->
+        <section class="border-t border-gray-100 dark:border-gray-700 pt-4">
+          <h2 class="font-bold text-gray-900 dark:text-white mb-3">{{ 'dish.allergens' | translate }}</h2>
+          <div class="flex flex-wrap gap-2">
+            @for (code of allergenCodes; track code) {
+              <label class="flex items-center gap-1.5 px-3 py-1.5 rounded-full border cursor-pointer text-sm transition-colors"
+                [class.bg-amber-100]="hasAllergen(code)"
+                [class.dark:bg-amber-900]="hasAllergen(code)"
+                [class.border-amber-400]="hasAllergen(code)"
+                [class.text-amber-800]="hasAllergen(code)"
+                [class.dark:text-amber-200]="hasAllergen(code)"
+                [class.bg-gray-50]="!hasAllergen(code)"
+                [class.dark:bg-gray-700]="!hasAllergen(code)"
+                [class.border-gray-200]="!hasAllergen(code)"
+                [class.dark:border-gray-600]="!hasAllergen(code)"
+              >
+                <input type="checkbox" class="hidden" [checked]="hasAllergen(code)" (change)="toggleAllergen(code)" />
+                {{ 'allergen.' + code | translate }}
+              </label>
+            }
+          </div>
+        </section>
+
         <!-- Variants Section -->
         <app-dish-option-list
           [title]="'dish.variants' | translate"
@@ -134,6 +159,8 @@ export class DishFormComponent implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
   private i18n = inject(I18nService);
   private destroy$ = new Subject<void>();
+
+  readonly allergenCodes = ALLERGEN_CODES;
 
   isEdit = false;
   dish = signal<DishForm>({
@@ -179,6 +206,18 @@ export class DishFormComponent implements OnInit, OnDestroy {
 
   onImageUploaded(url: string): void {
     this.dish.update((d) => ({ ...d, disher_url_image: url }));
+  }
+
+  hasAllergen(code: string): boolean {
+    return (this.dish().disher_alergens ?? []).includes(code);
+  }
+
+  toggleAllergen(code: string): void {
+    const current = this.dish().disher_alergens ?? [];
+    const updated = current.includes(code)
+      ? current.filter(a => a !== code)
+      : [...current, code];
+    this.dish.update(d => ({ ...d, disher_alergens: updated }));
   }
 
   addVariant(): void {

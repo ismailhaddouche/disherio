@@ -7,16 +7,6 @@ const LocalizedStringSchema = {
   ar: { type: String, default: '' },
 };
 
-export interface IAllergen extends Document {
-  allergen_name: { es: string; en: string; fr: string; ar: string };
-}
-
-const AllergenSchema = new Schema<IAllergen>({
-  allergen_name: LocalizedStringSchema,
-});
-
-export const Allergen = model<IAllergen>('Allergen', AllergenSchema);
-
 export interface ICategory extends Document {
   restaurant_id: Types.ObjectId;
   category_name: { es: string; en: string; fr: string; ar: string };
@@ -83,7 +73,7 @@ export interface IDish extends Document {
   disher_status: 'ACTIVATED' | 'DESACTIVATED';
   disher_price: number;
   disher_type: 'KITCHEN' | 'SERVICE';
-  disher_alergens: Types.ObjectId[];
+  disher_alergens: string[];
   disher_variant: boolean;
   variants: IVariant[];
   extras: IExtra[];
@@ -99,7 +89,7 @@ const DishSchema = new Schema<IDish>(
     disher_status: { type: String, enum: ['ACTIVATED', 'DESACTIVATED'], default: 'ACTIVATED' },
     disher_price: { type: Number, required: true, min: 0 },
     disher_type: { type: String, enum: ['KITCHEN', 'SERVICE'], required: true },
-    disher_alergens: [{ type: Schema.Types.ObjectId, ref: 'Allergen' }],
+    disher_alergens: [{ type: String }],
     disher_variant: { type: Boolean, default: false },
     variants: [VariantSubSchema],
     extras: [ExtraSubSchema],
