@@ -31,6 +31,11 @@
     # Compress responses
     encode gzip zstd
 
+    handle /uploads/* {
+        root * /srv
+        file_server
+    }
+
     handle /api/* {
         reverse_proxy backend:3000
     }

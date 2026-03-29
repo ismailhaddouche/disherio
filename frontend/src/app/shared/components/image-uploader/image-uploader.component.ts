@@ -1,4 +1,4 @@
-import { Component, input, output, inject, signal } from '@angular/core';
+import { Component, input, output, inject, signal, effect } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
 import { environment } from '../../../../environments/environment';
@@ -46,9 +46,13 @@ export class ImageUploaderComponent {
   uploading = signal(false);
 
   constructor() {
-    // Sync initial preview if exists
-    const initial = this.currentImage();
-    if (initial) this.previewUrl.set(initial);
+    // Keep previewUrl in sync with currentImage (handles async load in edit mode)
+    effect(() => {
+      const img = this.currentImage();
+      if (img && !this.uploading()) {
+        this.previewUrl.set(img);
+      }
+    });
   }
 
   onFileSelected(event: Event): void {
