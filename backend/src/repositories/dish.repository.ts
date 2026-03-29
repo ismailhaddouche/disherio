@@ -89,7 +89,7 @@ export class DishRepository extends BaseRepository<IDish> {
       ...data,
       restaurant_id: new Types.ObjectId(data.restaurant_id),
       category_id: new Types.ObjectId(data.category_id),
-      disher_alergens: data.disher_alergens.map(id => new Types.ObjectId(id)),
+      disher_alergens: (data.disher_alergens ?? []).map(id => new Types.ObjectId(id)),
     } as unknown as Partial<IDish>);
   }
 

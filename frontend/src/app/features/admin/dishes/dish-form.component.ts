@@ -25,7 +25,7 @@ interface ExtraForm {
   extra_price: number;
 }
 
-interface DishForm extends Omit<Dish, 'restaurant_id' | 'disher_status' | 'disher_alergens' | 'disher_variant' | 'disher_name' | 'variants' | 'extras'> {
+interface DishForm extends Omit<Dish, 'restaurant_id' | 'disher_status' | 'disher_variant' | 'disher_name' | 'variants' | 'extras'> {
   disher_name: LocalizedFormString;
   variants: VariantForm[];
   extras: ExtraForm[];
@@ -36,6 +36,7 @@ const INITIAL_DISH: DishForm = {
   disher_name: { es: '', en: '', fr: '', ar: '' },
   disher_price: 0,
   disher_type: 'KITCHEN',
+  disher_alergens: [],
   variants: [],
   extras: []
 };
