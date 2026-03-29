@@ -23,7 +23,11 @@ RUN apk add --no-cache wget curl
 
 # Copiar archivos necesarios para producción
 COPY backend/package*.json ./
-RUN npm install --omit=dev
+# npm crea un symlink node_modules/@disherio/shared -> /shared (raíz del sistema)
+# porque file:../shared desde /app resuelve a /shared.
+# Hay que romper ese symlink para que los COPY siguientes creen un directorio real
+# dentro de /app/node_modules, donde Node sí encuentra zod por hoisting.
+RUN npm install --omit=dev && rm -rf ./node_modules/@disherio/shared
 
 # Copiar shared compilado
 COPY --from=builder /app/shared/dist ./node_modules/@disherio/shared/dist
