@@ -5,19 +5,20 @@ import { HttpClient } from '@angular/common/http';
 import { ActivatedRoute, Router } from '@angular/router';
 import { environment } from '../../../../environments/environment';
 import { ImageUploaderComponent } from '../../../shared/components/image-uploader/image-uploader.component';
+import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 
 @Component({
   selector: 'app-category-form',
   standalone: true,
-  imports: [CommonModule, FormsModule, ImageUploaderComponent],
+  imports: [CommonModule, FormsModule, ImageUploaderComponent, TranslatePipe],
   template: `
     <div class="max-w-3xl mx-auto flex flex-col gap-6">
       <header class="flex items-center justify-between">
-        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ isEdit ? 'Editar Categoría' : 'Nueva Categoría' }}</h1>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ isEdit ? ('category.edit' | translate) : ('category.new' | translate) }}</h1>
         <div class="flex gap-2">
-          <button (click)="cancel()" class="px-4 py-2 text-gray-500 dark:text-gray-400 font-medium hover:text-gray-700 dark:hover:text-gray-200">Cancelar</button>
+          <button (click)="cancel()" class="px-4 py-2 text-gray-500 dark:text-gray-400 font-medium hover:text-gray-700 dark:hover:text-gray-200">{{ 'common.cancel' | translate }}</button>
           <button (click)="save()" class="bg-primary text-white rounded-lg px-6 py-2 font-bold active:scale-95 transition-transform">
-            Guardar
+            {{ 'common.save' | translate }}
           </button>
         </div>
       </header>
@@ -25,9 +26,9 @@ import { ImageUploaderComponent } from '../../../shared/components/image-uploade
       <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm flex flex-col gap-6">
         <!-- Image Section -->
         <section class="flex flex-col gap-2">
-          <label class="font-bold">Imagen de la Categoría</label>
-          <app-image-uploader 
-            folder="categories" 
+          <label class="font-bold">{{ 'category.image' | translate }}</label>
+          <app-image-uploader
+            folder="categories"
             [currentImage]="category().category_image_url"
             (imageUploaded)="onImageUploaded($event)"
           />
@@ -36,15 +37,15 @@ import { ImageUploaderComponent } from '../../../shared/components/image-uploade
         <!-- Basic Info -->
         <div class="grid grid-cols-1 gap-4">
           <div class="flex flex-col gap-1">
-            <label class="text-sm text-gray-500 dark:text-gray-400">Nombre (ES)</label>
+            <label class="text-sm text-gray-500 dark:text-gray-400">{{ 'category.name_es' | translate }}</label>
             <input [(ngModel)]="category().category_name.es" class="input-style" />
           </div>
           <div class="flex flex-col gap-1">
-            <label class="text-sm text-gray-500 dark:text-gray-400">Orden de visualización</label>
+            <label class="text-sm text-gray-500 dark:text-gray-400">{{ 'category.display_order' | translate }}</label>
             <input type="number" [(ngModel)]="category().category_order" class="input-style" />
           </div>
           <div class="flex flex-col gap-1">
-            <label class="text-sm text-gray-500 dark:text-gray-400">Descripción (ES)</label>
+            <label class="text-sm text-gray-500 dark:text-gray-400">{{ 'category.description_es' | translate }}</label>
             <textarea [(ngModel)]="category().category_description.es" class="input-style" rows="3"></textarea>
           </div>
         </div>

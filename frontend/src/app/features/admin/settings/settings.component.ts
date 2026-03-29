@@ -116,7 +116,7 @@ interface RestaurantSettings {
               {{ 'settings.general' | translate }} - {{ 'common.settings' | translate }} {{ 'settings.restaurant' | translate }}
             </h2>
             <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
-              These settings will be used as defaults for new staff members
+              {{ 'settings.staff_defaults' | translate }}
             </p>
             
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
