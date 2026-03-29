@@ -8,6 +8,8 @@ import { takeUntil } from 'rxjs/operators';
 import { environment } from '../../../../environments/environment';
 import { ImageUploaderComponent } from '../../../shared/components/image-uploader/image-uploader.component';
 import { DishOptionListComponent, OptionItem } from './dish-option-list.component';
+import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
+import { I18nService } from '../../../core/services/i18n.service';
 import { Dish, Variant, Extra, Category } from '../../../types';
 
 // Form-specific types matching backend requirements (es, en, fr, ar supported)
@@ -44,15 +46,15 @@ const INITIAL_EXTRA: ExtraForm = { extra_name: { es: '', en: '', fr: '', ar: '' 
 @Component({
   selector: 'app-dish-form',
   standalone: true,
-  imports: [CommonModule, FormsModule, ImageUploaderComponent, DishOptionListComponent],
+  imports: [CommonModule, FormsModule, ImageUploaderComponent, DishOptionListComponent, TranslatePipe],
   template: `
     <div class="max-w-3xl mx-auto flex flex-col gap-6">
       <header class="flex items-center justify-between">
-        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ pageTitle }}</h1>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ isEdit ? ('dish.edit_dish' | translate) : ('dish.new_dish' | translate) }}</h1>
         <div class="flex gap-2">
-          <button (click)="cancel()" class="px-4 py-2 text-gray-500 dark:text-gray-400 font-medium hover:text-gray-700 dark:hover:text-gray-200">Cancelar</button>
+          <button (click)="cancel()" class="px-4 py-2 text-gray-500 dark:text-gray-400 font-medium hover:text-gray-700 dark:hover:text-gray-200">{{ 'common.cancel' | translate }}</button>
           <button (click)="save()" class="bg-primary text-white rounded-lg px-6 py-2 font-bold active:scale-95 transition-transform">
-            Guardar
+            {{ 'common.save' | translate }}
           </button>
         </div>
       </header>
@@ -60,9 +62,9 @@ const INITIAL_EXTRA: ExtraForm = { extra_name: { es: '', en: '', fr: '', ar: '' 
       <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm flex flex-col gap-6">
         <!-- Image Section -->
         <section class="flex flex-col gap-2">
-          <label class="font-bold text-gray-900 dark:text-white">Imagen del Plato</label>
-          <app-image-uploader 
-            folder="dishes" 
+          <label class="font-bold text-gray-900 dark:text-white">{{ 'dish.image' | translate }}</label>
+          <app-image-uploader
+            folder="dishes"
             [currentImage]="dish().disher_url_image ?? null"
             (imageUploaded)="onImageUploaded($event)"
           />
@@ -71,27 +73,27 @@ const INITIAL_EXTRA: ExtraForm = { extra_name: { es: '', en: '', fr: '', ar: '' 
         <!-- Basic Info -->
         <div class="grid grid-cols-2 gap-4">
           <div class="flex flex-col gap-1">
-            <label class="text-sm text-gray-500 dark:text-gray-400">Nombre (ES)</label>
+            <label class="text-sm text-gray-500 dark:text-gray-400">{{ 'category.name_es' | translate }}</label>
             <input [(ngModel)]="dish().disher_name.es" class="input-style" />
           </div>
           <div class="flex flex-col gap-1">
-            <label class="text-sm text-gray-500 dark:text-gray-400">Precio Base (IVA Inc.) *</label>
-            <input 
-              type="number" 
-              [(ngModel)]="dish().disher_price" 
+            <label class="text-sm text-gray-500 dark:text-gray-400">{{ 'dish.base_price' | translate }} *</label>
+            <input
+              type="number"
+              [(ngModel)]="dish().disher_price"
               min="0"
               step="0.01"
               class="input-style"
               [class.border-red-500]="dish().disher_price < 0"
             />
             @if (dish().disher_price <= 0) {
-              <span class="text-xs text-red-500">El precio no puede ser negativo</span>
+              <span class="text-xs text-red-500">{{ 'dish.price_negative' | translate }}</span>
             }
           </div>
         </div>
 
         <div class="flex flex-col gap-1">
-          <label class="text-sm text-gray-500 dark:text-gray-400">Categoría</label>
+          <label class="text-sm text-gray-500 dark:text-gray-400">{{ 'dish.category' | translate }}</label>
           <select [(ngModel)]="dish().category_id" class="input-style">
             @for (cat of categories(); track cat._id) {
               <option [value]="cat._id">{{ cat.category_name.es }}</option>
@@ -101,8 +103,8 @@ const INITIAL_EXTRA: ExtraForm = { extra_name: { es: '', en: '', fr: '', ar: '' 
 
         <!-- Variants Section -->
         <app-dish-option-list
-          title="Variantes"
-          emptyMessage="Sin variantes configuradas"
+          [title]="'dish.variants' | translate"
+          [emptyMessage]="'dish.no_variants' | translate"
           [items]="getVariantsAsOptions()"
           (add)="addVariant()"
           (remove)="removeVariant($event)"
@@ -110,9 +112,9 @@ const INITIAL_EXTRA: ExtraForm = { extra_name: { es: '', en: '', fr: '', ar: '' 
 
         <!-- Extras Section -->
         <app-dish-option-list
-          title="Extras (Toppings)"
-          subtitle="Extras que se pueden añadir al plato, como toppings o complementos."
-          emptyMessage="Sin extras configurados"
+          [title]="'dish.extras' | translate"
+          [subtitle]="'dish.extras_desc' | translate"
+          [emptyMessage]="'dish.no_extras' | translate"
           variant="amber"
           [items]="getExtrasAsOptions()"
           (add)="addExtra()"
@@ -129,18 +131,15 @@ export class DishFormComponent implements OnInit, OnDestroy {
   private http = inject(HttpClient);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
+  private i18n = inject(I18nService);
   private destroy$ = new Subject<void>();
 
   isEdit = false;
   dish = signal<DishForm>({
     ...INITIAL_DISH,
-    disher_name: { es: '', en: '', fr: '', ar: '' },  // Include all languages
+    disher_name: { es: '', en: '', fr: '', ar: '' },
   });
   categories = signal<Category[]>([]);
-
-  get pageTitle(): string {
-    return this.isEdit ? 'Editar Plato' : 'Nuevo Plato';
-  }
 
   ngOnInit(): void {
     this.loadCategories();
@@ -171,7 +170,7 @@ export class DishFormComponent implements OnInit, OnDestroy {
         next: (dish) => this.dish.set(dish),
         error: (err) => {
           console.error('[DishForm] Error loading dish:', err);
-          alert('Error al cargar el plato');
+          alert(this.i18n.translate('errors.LOADING_ERROR'));
           this.router.navigate(['/admin/dishes']);
         }
       });
@@ -230,7 +229,7 @@ export class DishFormComponent implements OnInit, OnDestroy {
         next: () => this.router.navigate(['/admin/dishes']),
         error: (err) => {
           console.error('[DishForm] Error saving dish:', err);
-          alert('Error al guardar el plato: ' + (err.error?.message || 'Error desconocido'));
+          alert(this.i18n.translate('errors.SERVER_ERROR') + ': ' + (err.error?.message || ''));
         }
       });
   }

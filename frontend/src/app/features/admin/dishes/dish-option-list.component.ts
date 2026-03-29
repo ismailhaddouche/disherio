@@ -1,6 +1,7 @@
 import { Component, input, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 
 interface LocalizedName {
   es: string;
@@ -14,12 +15,12 @@ export interface OptionItem {
 @Component({
   selector: 'app-dish-option-list',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, TranslatePipe],
   template: `
     <section class="border-t border-gray-100 dark:border-gray-700 pt-4">
       <div class="flex items-center justify-between mb-3">
         <h2 class="font-bold text-lg text-gray-900 dark:text-white">{{ title() }}</h2>
-        <button (click)="add.emit()" class="text-primary text-sm font-bold">+ Añadir</button>
+        <button (click)="add.emit()" class="text-primary text-sm font-bold">+ {{ 'dish.add' | translate }}</button>
       </div>
       
       @if (subtitle()) {
@@ -30,7 +31,7 @@ export interface OptionItem {
         @for (item of items(); track $index; let i = $index) {
           <div [class]="itemClasses()">
             <div class="flex-1 flex flex-col gap-1">
-              <label class="text-xs text-gray-400 dark:text-gray-500">Nombre</label>
+              <label class="text-xs text-gray-400 dark:text-gray-500">{{ 'common.name' | translate }}</label>
               <input 
                 [ngModel]="getName(item)" 
                 (ngModelChange)="setName(item, $event)"
@@ -39,7 +40,7 @@ export interface OptionItem {
               />
             </div>
             <div class="w-24 flex flex-col gap-1">
-              <label class="text-xs text-gray-400 dark:text-gray-500">Precio</label>
+              <label class="text-xs text-gray-400 dark:text-gray-500">{{ 'dish.price' | translate }}</label>
               <input 
                 type="number" 
                 [(ngModel)]="item[priceKey()]" 
