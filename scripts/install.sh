@@ -757,6 +757,8 @@ NODE_SCRIPT
 print_summary() {
   # Save credentials to protected file
   local creds_file="$ROOT_DIR/.credentials"
+  # Remove existing credentials file to ensure fresh credentials
+  rm -f "$creds_file"
   cat > "$creds_file" <<EOF
 # DisherIO — Credenciales de Administrador
 # Generado: $(date -u '+%Y-%m-%d %H:%M:%S UTC')
