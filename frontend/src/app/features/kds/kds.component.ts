@@ -90,8 +90,11 @@ const SPINNER = `<svg class="animate-spin h-3 w-3" viewBox="0 0 24 24"><circle c
                         <p class="font-semibold text-sm text-gray-900 dark:text-white truncate leading-tight">
                           {{ item.item_name_snapshot | localize }}
                         </p>
+                        @if (item.item_disher_variant) {
+                          <p class="text-xs font-medium text-gray-500 dark:text-gray-400 leading-tight">{{ item.item_disher_variant.name }}</p>
+                        }
                         <p class="text-xs text-gray-400 leading-tight mt-0.5 truncate">
-                          @if (item.customer_name) {<span>{{ item.customer_name }} · </span>}{{ item.createdAt | date:'HH:mm' }}@if (item.item_disher_extras?.length) {<span> · +{{ item.item_disher_extras!.length }}</span>}
+                          @if (item.customer_name) {<span>{{ item.customer_name }} · </span>}{{ item.createdAt | date:'HH:mm' }}@if (item.item_disher_extras?.length) {<span> · +{{ item.item_disher_extras!.length }} extra</span>}
                         </p>
                       </div>
                       <div class="flex gap-1 shrink-0">
@@ -158,8 +161,11 @@ const SPINNER = `<svg class="animate-spin h-3 w-3" viewBox="0 0 24 24"><circle c
                         <p class="font-semibold text-sm text-gray-900 dark:text-white truncate leading-tight">
                           {{ item.item_name_snapshot | localize }}
                         </p>
+                        @if (item.item_disher_variant) {
+                          <p class="text-xs font-medium text-gray-500 dark:text-gray-400 leading-tight">{{ item.item_disher_variant.name }}</p>
+                        }
                         <p class="text-xs text-gray-400 leading-tight mt-0.5 truncate">
-                          @if (item.customer_name) {<span>{{ item.customer_name }} · </span>}{{ item.createdAt | date:'HH:mm' }}@if (item.item_disher_extras?.length) {<span> · +{{ item.item_disher_extras!.length }}</span>}
+                          @if (item.customer_name) {<span>{{ item.customer_name }} · </span>}{{ item.createdAt | date:'HH:mm' }}@if (item.item_disher_extras?.length) {<span> · +{{ item.item_disher_extras!.length }} extra</span>}
                         </p>
                       </div>
                       <button (click)="serveItem(item._id!)"

@@ -19,6 +19,7 @@ export interface KdsItem {
   session_id: string;
   customer_name?: string;
   totem_name?: string;
+  item_disher_variant?: { variant_id: string; name: string; price: number } | null;
   item_disher_extras?: { extra_id: string; name: LocalizedName; price: number }[];
 }
 
