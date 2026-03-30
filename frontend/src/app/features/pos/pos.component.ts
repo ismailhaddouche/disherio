@@ -220,8 +220,8 @@ export class PosComponent implements OnInit, OnDestroy {
   );
 
   availableTotems = computed(() => {
-    const activeTotemIds = new Set(this.sessions().map(s => s.totem_id));
-    return this.allTotems().filter(t => t.totem_type === 'STANDARD' && !activeTotemIds.has(t._id));
+    const activeTotemIds = new Set(this.sessions().map(s => s.totem_id?.toString()));
+    return this.allTotems().filter(t => t.totem_type === 'STANDARD' && !activeTotemIds.has(t._id?.toString()));
   });
 
   sessionTotal = computed(() =>

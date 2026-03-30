@@ -33,6 +33,7 @@ export function defineAbilityFor(user: JwtPayload): AppAbility {
   // POS
   if (perms.has('POS')) {
     can('read', 'Totem');
+    can('read', 'TotemSession');
     can('create', 'TotemSession');
     can('update', 'TotemSession');
     can('read', 'Order');
@@ -52,6 +53,7 @@ export function defineAbilityFor(user: JwtPayload): AppAbility {
   if (perms.has('TAS')) {
     can('read', 'Totem');
     can('manage', 'Totem', { totem_type: 'TEMPORARY' } as any);
+    can('read', 'TotemSession');
     can('create', 'TotemSession');
     can('update', 'TotemSession');
     can('read', 'Order');
