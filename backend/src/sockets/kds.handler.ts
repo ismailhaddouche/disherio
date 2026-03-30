@@ -3,8 +3,20 @@ import { ItemOrder } from '../models/order.model';
 import { logger } from '../config/logger';
 import { AuthenticatedSocket } from '../middlewares/socketAuth';
 import { createSocketRateLimiter, rateLimitWrapper } from '../middlewares/socketRateLimit';
+import { getIO } from '../config/socket';
 
-export function registerKdsHandlers(io: Server, socket: AuthenticatedSocket): void {
+/**
+ * KDS (Kitchen Display System) Socket Handler
+ * 
+ * Handles real-time communication for kitchen staff:
+ * - Receives: Item preparation events
+ * - Emits: Item state changes to TAS and general session
+ */
+
+// Track active KDS subscriptions per session
+const kdsSessionSubscriptions = new Map<string, Set<string>>(); // sessionId -> Set of socketIds
+
+export function registerKdsHandlers(_io: Server, socket: AuthenticatedSocket): void {
   // Verify user has kitchen permissions (KTS = Kitchen Table Service)
   const user = socket.user;
   if (!user || !user.permissions.includes('KTS')) {
@@ -14,24 +26,72 @@ export function registerKdsHandlers(io: Server, socket: AuthenticatedSocket): vo
     return;
   }
 
-  // Create rate limiter for this socket connection
+  const staffId = user.staffId;
   const rateLimiter = createSocketRateLimiter();
 
+  logger.info({ socketId: socket.id, staffId }, 'KDS client connected');
+
+  // ==================== SESSION MANAGEMENT ====================
+
+  /**
+   * Join KDS session room
+   * Payload: { sessionId: string }
+   */
   socket.on('kds:join', rateLimitWrapper(rateLimiter, socket, 'kds:join', (sessionId: string) => {
-    // Validate sessionId format
     if (!sessionId || typeof sessionId !== 'string') {
       socket.emit('kds:error', { message: 'INVALID_SESSION_ID' });
       return;
     }
-    
+
+    const roomName = `kitchen:session:${sessionId}`;
+    socket.join(roomName);
     socket.join(`session:${sessionId}`);
-    logger.info({ socketId: socket.id, userId: user.staffId, sessionId }, 'KDS joined session room');
-    socket.emit('kds:joined', { sessionId });
+    
+    // Track subscription
+    if (!kdsSessionSubscriptions.has(sessionId)) {
+      kdsSessionSubscriptions.set(sessionId, new Set());
+    }
+    kdsSessionSubscriptions.get(sessionId)!.add(socket.id);
+
+    logger.info({ socketId: socket.id, staffId, sessionId }, 'KDS joined session');
+    socket.emit('kds:joined', { sessionId, timestamp: new Date().toISOString() });
   }));
 
+  /**
+   * Leave KDS session room
+   * Payload: { sessionId: string }
+   */
+  socket.on('kds:leave', rateLimitWrapper(rateLimiter, socket, 'kds:leave', (sessionId: string) => {
+    if (!sessionId || typeof sessionId !== 'string') {
+      socket.emit('kds:error', { message: 'INVALID_SESSION_ID' });
+      return;
+    }
+
+    const roomName = `kitchen:session:${sessionId}`;
+    socket.leave(roomName);
+    socket.leave(`session:${sessionId}`);
+    
+    // Remove from tracking
+    const subs = kdsSessionSubscriptions.get(sessionId);
+    if (subs) {
+      subs.delete(socket.id);
+      if (subs.size === 0) {
+        kdsSessionSubscriptions.delete(sessionId);
+      }
+    }
+
+    logger.info({ socketId: socket.id, staffId, sessionId }, 'KDS left session');
+    socket.emit('kds:left', { sessionId });
+  }));
+
+  // ==================== ITEM MANAGEMENT ====================
+
+  /**
+   * Mark item as being prepared
+   * Payload: { itemId: string }
+   */
   socket.on('kds:item_prepare', rateLimitWrapper(rateLimiter, socket, 'kds:item_prepare', async ({ itemId }: { itemId: string }) => {
     try {
-      // Validate itemId
       if (!itemId || typeof itemId !== 'string') {
         socket.emit('kds:error', { message: 'INVALID_ITEM_ID', itemId });
         return;
@@ -62,7 +122,7 @@ export function registerKdsHandlers(io: Server, socket: AuthenticatedSocket): vo
       );
 
       if (!item) {
-        logger.warn({ itemId, userId: user.staffId }, 'Item not found or not in ORDERED state');
+        logger.warn({ itemId, staffId }, 'Item not found or not in ORDERED state');
         socket.emit('kds:error', { 
           message: 'ITEM_NOT_FOUND_OR_INVALID_STATE', 
           itemId,
@@ -71,15 +131,38 @@ export function registerKdsHandlers(io: Server, socket: AuthenticatedSocket): vo
         return;
       }
 
-      io.to(`session:${item.session_id.toString()}`).emit('item:state_changed', {
+      const sessionId = item.session_id.toString();
+
+      // Emit to general session
+      emitToSession(sessionId, 'item:state_changed', {
         itemId: item._id,
         newState: 'ON_PREPARE',
+        updatedBy: 'KDS',
+        updatedByStaffId: staffId,
+      });
+
+      // Notify TAS (waiters) about kitchen state change
+      emitToTAS(sessionId, 'tas:kitchen_item_update', {
+        itemId: item._id,
+        itemName: item.item_name_snapshot,
+        newState: 'ON_PREPARE',
+        updatedBy: staffId,
+        updatedByName: user.name,
+        timestamp: new Date().toISOString(),
+      });
+
+      // Notify customers
+      emitToCustomers(sessionId, 'order:item_update', {
+        itemId: item._id,
+        itemName: item.item_name_snapshot,
+        newState: 'ON_PREPARE',
+        timestamp: new Date().toISOString(),
       });
 
       socket.emit('kds:item_prepared', { itemId, newState: 'ON_PREPARE' });
-      logger.info({ itemId, userId: user.staffId }, 'Item marked as ON_PREPARE');
+      logger.info({ itemId, staffId, sessionId }, 'Item marked as ON_PREPARE');
     } catch (err: any) {
-      logger.error({ err, itemId, userId: user.staffId }, 'kds:item_prepare error');
+      logger.error({ err, itemId, staffId }, 'kds:item_prepare error');
       socket.emit('kds:error', { 
         message: 'INTERNAL_ERROR', 
         itemId,
@@ -88,9 +171,12 @@ export function registerKdsHandlers(io: Server, socket: AuthenticatedSocket): vo
     }
   }));
 
+  /**
+   * Mark item as served/ready
+   * Payload: { itemId: string }
+   */
   socket.on('kds:item_serve', rateLimitWrapper(rateLimiter, socket, 'kds:item_serve', async ({ itemId }: { itemId: string }) => {
     try {
-      // Validate itemId
       if (!itemId || typeof itemId !== 'string') {
         socket.emit('kds:error', { message: 'INVALID_ITEM_ID', itemId });
         return;
@@ -116,7 +202,7 @@ export function registerKdsHandlers(io: Server, socket: AuthenticatedSocket): vo
       );
 
       if (!item) {
-        logger.warn({ itemId, userId: user.staffId }, `Item not found or not in ${validPreviousState} state`);
+        logger.warn({ itemId, staffId }, `Item not found or not in ${validPreviousState} state`);
         socket.emit('kds:error', { 
           message: 'ITEM_NOT_FOUND_OR_INVALID_STATE', 
           itemId,
@@ -125,15 +211,38 @@ export function registerKdsHandlers(io: Server, socket: AuthenticatedSocket): vo
         return;
       }
 
-      io.to(`session:${item.session_id.toString()}`).emit('item:state_changed', {
+      const sessionId = item.session_id.toString();
+      
+      // Emit to general session
+      emitToSession(sessionId, 'item:state_changed', {
         itemId: item._id,
         newState: 'SERVED',
+        updatedBy: 'KDS',
+        updatedByStaffId: staffId,
+      });
+
+      // Notify TAS (waiters) about kitchen state change
+      emitToTAS(sessionId, 'tas:kitchen_item_update', {
+        itemId: item._id,
+        itemName: item.item_name_snapshot,
+        newState: 'SERVED',
+        updatedBy: staffId,
+        updatedByName: user.name,
+        timestamp: new Date().toISOString(),
+      });
+
+      // Notify customers
+      emitToCustomers(sessionId, 'order:item_update', {
+        itemId: item._id,
+        itemName: item.item_name_snapshot,
+        newState: 'SERVED',
+        timestamp: new Date().toISOString(),
       });
 
       socket.emit('kds:item_served', { itemId, newState: 'SERVED' });
-      logger.info({ itemId, userId: user.staffId }, 'Item marked as SERVED');
+      logger.info({ itemId, staffId, sessionId }, 'Item marked as SERVED');
     } catch (err: any) {
-      logger.error({ err, itemId, userId: user.staffId }, 'kds:item_serve error');
+      logger.error({ err, itemId, staffId }, 'kds:item_serve error');
       socket.emit('kds:error', { 
         message: 'INTERNAL_ERROR', 
         itemId,
@@ -141,4 +250,95 @@ export function registerKdsHandlers(io: Server, socket: AuthenticatedSocket): vo
       });
     }
   }));
+
+  // ==================== DISCONNECT ====================
+
+  socket.on('disconnect', () => {
+    // Clean up subscriptions
+    for (const [sessionId, socketIds] of kdsSessionSubscriptions.entries()) {
+      if (socketIds.has(socket.id)) {
+        socketIds.delete(socket.id);
+        if (socketIds.size === 0) {
+          kdsSessionSubscriptions.delete(sessionId);
+        }
+        logger.info({ socketId: socket.id, staffId, sessionId }, 'KDS disconnected, removed from session');
+      }
+    }
+  });
 }
+
+// ==================== EXPORTED HELPERS ====================
+
+/**
+ * Emit event to all KDS in a session
+ */
+export function emitToKDS(sessionId: string, event: string, data: any): void {
+  try {
+    const io = getIO();
+    io.to(`kitchen:session:${sessionId}`).emit(event, data);
+    logger.debug({ sessionId, event }, 'Emitted event to KDS');
+  } catch (err) {
+    logger.error({ err, sessionId, event }, 'Failed to emit event to KDS');
+  }
+}
+
+/**
+ * Emit event to general session room
+ */
+function emitToSession(sessionId: string, event: string, data: any): void {
+  try {
+    const io = getIO();
+    io.to(`session:${sessionId}`).emit(event, data);
+    logger.debug({ sessionId, event }, 'Emitted event to session');
+  } catch (err) {
+    logger.error({ err, sessionId, event }, 'Failed to emit event to session');
+  }
+}
+
+/**
+ * Emit event to TAS in a session
+ */
+function emitToTAS(sessionId: string, event: string, data: any): void {
+  try {
+    const io = getIO();
+    io.to(`tas:session:${sessionId}`).emit(event, data);
+    logger.debug({ sessionId, event }, 'Emitted event to TAS');
+  } catch (err) {
+    logger.error({ err, sessionId, event }, 'Failed to emit event to TAS');
+  }
+}
+
+/**
+ * Emit event to customers in a session
+ */
+function emitToCustomers(sessionId: string, event: string, data: any): void {
+  try {
+    const io = getIO();
+    io.to(`customer:session:${sessionId}`).emit(event, data);
+    logger.debug({ sessionId, event }, 'Emitted event to customers');
+  } catch (err) {
+    logger.error({ err, sessionId, event }, 'Failed to emit event to customers');
+  }
+}
+
+/**
+ * Notify KDS of new kitchen items
+ */
+export function notifyKDSNewItem(sessionId: string, itemData: any): void {
+  emitToKDS(sessionId, 'kds:new_item', {
+    ...itemData,
+    timestamp: new Date().toISOString(),
+  });
+}
+
+/**
+ * Notify KDS when item is canceled
+ */
+export function notifyKDSItemCanceled(sessionId: string, itemData: any): void {
+  emitToKDS(sessionId, 'kds:item_canceled', {
+    ...itemData,
+    timestamp: new Date().toISOString(),
+  });
+}
+
+export { kdsSessionSubscriptions };
