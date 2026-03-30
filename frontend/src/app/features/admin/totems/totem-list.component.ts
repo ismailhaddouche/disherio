@@ -4,6 +4,7 @@ import { RouterModule, Router } from '@angular/router';
 import { TotemService, Totem } from '../../../services/totem.service';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../core/services/i18n.service';
+import { NotificationService } from '../../../core/services/notification.service';
 
 @Component({
   selector: 'app-totem-list',
@@ -26,11 +27,6 @@ import { I18nService } from '../../../core/services/i18n.service';
       <div *ngIf="loading()" class="text-center py-8">
         <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         <p class="mt-2 text-gray-600 dark:text-gray-400">{{ 'common.loading' | translate }}</p>
-      </div>
-
-      <!-- Error State -->
-      <div *ngIf="error()" class="bg-red-100 dark:bg-red-900/30 border border-red-400 dark:border-red-600 text-red-700 dark:text-red-400 px-4 py-3 rounded mb-4">
-        {{ error() }}
       </div>
 
       <!-- Empty State -->
@@ -115,6 +111,7 @@ export class TotemListComponent implements OnInit {
   private totemService = inject(TotemService);
   private router = inject(Router);
   private i18n = inject(I18nService);
+  private notify = inject(NotificationService);
 
   totems = signal<Totem[]>([]);
   loading = signal(false);
@@ -136,7 +133,9 @@ export class TotemListComponent implements OnInit {
         this.loading.set(false);
       },
       error: (err) => {
-        this.error.set(err.error?.message || this.i18n.translate('errors.LOADING_ERROR'));
+        const msg = err.error?.message || this.i18n.translate('errors.LOADING_ERROR');
+        this.error.set(msg);
+        this.notify.error(msg);
         this.loading.set(false);
       }
     });
@@ -149,10 +148,11 @@ export class TotemListComponent implements OnInit {
     this.totemService.regenerateQr(id).subscribe({
       next: () => {
         this.regenerating.set(null);
+        this.notify.success(this.i18n.translate('totem.qr_regenerated'));
         this.loadTotems();
       },
       error: (err) => {
-        this.error.set(err.error?.message || 'Error al regenerar QR');
+        this.notify.error(err.error?.message || this.i18n.translate('error.qr_regenerate'));
         this.regenerating.set(null);
       }
     });
@@ -165,10 +165,11 @@ export class TotemListComponent implements OnInit {
     this.totemService.deleteTotem(id).subscribe({
       next: () => {
         this.deleting.set(null);
+        this.notify.success(this.i18n.translate('common.deleted'));
         this.loadTotems();
       },
       error: (err) => {
-        this.error.set(err.error?.message || 'Error al eliminar tótem');
+        this.notify.error(err.error?.message || this.i18n.translate('error.totem_delete'));
         this.deleting.set(null);
       }
     });

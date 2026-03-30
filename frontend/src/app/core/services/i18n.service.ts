@@ -102,6 +102,9 @@ const TRANSLATIONS: Record<Language, Translations> = {
     'dish.no_description': 'Sin descripción',
     'dish.no_dishes': 'No hay platos creados aún',
     'dish.toggle_status_error': 'Error al cambiar el estado del plato',
+    'dish.status_updated': 'Estado del plato actualizado',
+    'dish.created': 'Plato creado correctamente',
+    'dish.updated': 'Plato actualizado correctamente',
     'dish.allergens': 'Alérgenos',
     'dish.no_allergens': 'Sin alérgenos',
     'allergen.GLUTEN': 'Gluten',
@@ -154,8 +157,17 @@ const TRANSLATIONS: Record<Language, Translations> = {
     'tas.state.canceled': 'Cancelado',
     'tas.select_table': 'Selecciona una mesa para ver los pedidos',
     'tas.variant': 'Variante',
+    'tas.totem_created': 'Mesa temporal creada',
+    'tas.session_started': 'Sesión iniciada',
+    'tas.totem_closed': 'Mesa temporal cerrada',
+    'tas.customer_added': 'Cliente añadido',
+    'tas.item_added': 'Item añadido al pedido',
+    'tas.item_deleted': 'Item eliminado',
+    'tas.item_served': 'Item marcado como servido',
+    'tas.item_assigned': 'Item asignado',
     'common.add': 'Añadir',
     'common.total': 'Total',
+    'common.deleted': 'Eliminado correctamente',
 
     // Logs
     'logs.title': 'Logs del Sistema',
@@ -238,6 +250,8 @@ const TRANSLATIONS: Record<Language, Translations> = {
     'category.display_order': 'Orden de visualización',
     'category.description_es': 'Descripción (ES)',
     'category.delete_confirm': '¿Eliminar esta categoría? Los platos asociados podrían quedar sin categoría.',
+    'category.created': 'Categoría creada correctamente',
+    'category.updated': 'Categoría actualizada correctamente',
 
     // Staff
     'staff.title': 'Personal',
@@ -293,6 +307,69 @@ const TRANSLATIONS: Record<Language, Translations> = {
     'totem.updated': 'Tótem actualizado correctamente',
     'totem.created': 'Tótem creado correctamente',
     'totem.qr_regenerated': 'QR regenerado correctamente',
+    'totem.item_added_to_cart': 'Añadido al carrito',
+    'totem.order_sent': 'Pedido enviado correctamente',
+    'totem.order_error': 'Error al enviar el pedido',
+    'totem.menu_error': 'Error al cargar el menú',
+    'totem.session_error': 'Error al conectar con la mesa',
+    'totem.no_dishes': 'No hay platos disponibles',
+    'totem.my_order': 'Mi pedido',
+    'totem.cart_empty': 'Tu carrito está vacío',
+    'totem.sending': 'Enviando...',
+    'totem.place_order': 'Pedir',
+
+    // Image uploader
+    'image_uploader.hint': 'Subir imagen (WebP, JPG, PNG)',
+    'image_uploader.error': 'Error al subir la imagen',
+
+    // Unauthorized
+    'unauthorized.title': 'Acceso denegado',
+    'unauthorized.message': 'No tienes permisos para ver esta página.',
+
+    // Common extras
+    'common.toggle_theme': 'Cambiar tema',
+    'common.delete_item': 'Eliminar item',
+
+    // Staff form placeholders
+    'staff.name_placeholder': 'Ej: Juan Pérez',
+    'staff.username_placeholder': 'juan.perez',
+    'staff.password_placeholder': 'Mínimo 6 caracteres',
+    'staff.pin_placeholder': '4 dígitos numéricos',
+
+    // Totem form
+    'totem.name_placeholder': 'Ej: Tótem Entrada, Mesa 1, Terraza...',
+    'totem.menu': 'Menú',
+
+    // TAS notifications
+    'tas.start_time': 'Inicio:',
+    'tas.close_temporary_table': 'Cerrar mesa temporal',
+    'tas.new_kitchen_item': 'Nuevo pedido de cocina recibido',
+    'tas.item_in_preparation': 'El item está siendo preparado',
+    'tas.item_served_by_kitchen': 'Item listo desde cocina',
+    'tas.item_started_preparation': 'Preparando item',
+    'tas.item_ready_to_serve': 'Item listo para servir',
+    'tas.item_canceled_by_kitchen': 'Item cancelado por cocina',
+    'tas.item_added_by_pos': 'Item añadido desde caja',
+    'tas.item_canceled_by_pos': 'Item cancelado desde caja',
+    'tas.bill_requested_by_pos': 'Cuenta solicitada desde caja',
+    'tas.bill_paid_by_pos': 'Cuenta pagada en caja',
+    'tas.session_closed_by_pos': 'Sesión cerrada desde caja',
+    'tas.session_payment_received': 'Pago recibido',
+    'tas.session_fully_paid': 'Sesión completamente pagada',
+    'tas.ticket_paid': 'Pago parcial recibido',
+    'tas.item_added_by_waiter': 'Item añadido por otro camarero',
+    'tas.item_canceled_by_waiter': 'Item cancelado por otro camarero',
+    'tas.bill_requested_by_waiter': 'Cuenta solicitada por otro camarero',
+    'tas.help_requested': 'Un cliente necesita ayuda',
+    'tas.new_customer_order': 'Nuevo pedido de cliente',
+    'tas.customer_requests_bill': 'El cliente solicita la cuenta',
+    'tas.item_canceled_success': 'Item cancelado',
+    'tas.bill_requested': 'Solicitud de cuenta enviada',
+
+    // Error fallbacks
+    'error.staff_loading': 'Error al cargar el personal',
+    'error.qr_regenerate': 'Error al regenerar QR',
+    'error.totem_delete': 'Error al eliminar tótem',
   },
   en: {
     // Common
@@ -385,6 +462,9 @@ const TRANSLATIONS: Record<Language, Translations> = {
     'dish.no_description': 'No description',
     'dish.no_dishes': 'No dishes created yet',
     'dish.toggle_status_error': 'Error changing dish status',
+    'dish.status_updated': 'Dish status updated',
+    'dish.created': 'Dish created successfully',
+    'dish.updated': 'Dish updated successfully',
     'dish.allergens': 'Allergens',
     'dish.no_allergens': 'No allergens',
     'allergen.GLUTEN': 'Gluten',
@@ -437,8 +517,17 @@ const TRANSLATIONS: Record<Language, Translations> = {
     'tas.state.canceled': 'Cancelled',
     'tas.select_table': 'Select a table to view orders',
     'tas.variant': 'Variant',
+    'tas.totem_created': 'Temporary table created',
+    'tas.session_started': 'Session started',
+    'tas.totem_closed': 'Temporary table closed',
+    'tas.customer_added': 'Customer added',
+    'tas.item_added': 'Item added to order',
+    'tas.item_deleted': 'Item removed',
+    'tas.item_served': 'Item marked as served',
+    'tas.item_assigned': 'Item assigned',
     'common.add': 'Add',
     'common.total': 'Total',
+    'common.deleted': 'Successfully deleted',
 
     // Logs
     'logs.title': 'System Logs',
@@ -521,6 +610,8 @@ const TRANSLATIONS: Record<Language, Translations> = {
     'category.display_order': 'Display order',
     'category.description_es': 'Description (ES)',
     'category.delete_confirm': 'Delete this category? Associated dishes may become uncategorized.',
+    'category.created': 'Category created successfully',
+    'category.updated': 'Category updated successfully',
 
     // Staff
     'staff.title': 'Staff',
@@ -576,6 +667,69 @@ const TRANSLATIONS: Record<Language, Translations> = {
     'totem.updated': 'Totem updated successfully',
     'totem.created': 'Totem created successfully',
     'totem.qr_regenerated': 'QR regenerated successfully',
+    'totem.item_added_to_cart': 'Added to cart',
+    'totem.order_sent': 'Order placed successfully',
+    'totem.order_error': 'Error placing order',
+    'totem.menu_error': 'Error loading menu',
+    'totem.session_error': 'Error connecting to table',
+    'totem.no_dishes': 'No dishes available',
+    'totem.my_order': 'My order',
+    'totem.cart_empty': 'Your cart is empty',
+    'totem.sending': 'Sending...',
+    'totem.place_order': 'Order',
+
+    // Image uploader
+    'image_uploader.hint': 'Upload image (WebP, JPG, PNG)',
+    'image_uploader.error': 'Error uploading image',
+
+    // Unauthorized
+    'unauthorized.title': 'Access denied',
+    'unauthorized.message': 'You do not have permission to view this page.',
+
+    // Common extras
+    'common.toggle_theme': 'Toggle theme',
+    'common.delete_item': 'Delete item',
+
+    // Staff form placeholders
+    'staff.name_placeholder': 'E.g.: John Doe',
+    'staff.username_placeholder': 'john.doe',
+    'staff.password_placeholder': 'Minimum 6 characters',
+    'staff.pin_placeholder': '4 numeric digits',
+
+    // Totem form
+    'totem.name_placeholder': 'E.g.: Entrance Totem, Table 1, Terrace...',
+    'totem.menu': 'Menu',
+
+    // TAS notifications
+    'tas.start_time': 'Start:',
+    'tas.close_temporary_table': 'Close temporary table',
+    'tas.new_kitchen_item': 'New kitchen order received',
+    'tas.item_in_preparation': 'Item is being prepared',
+    'tas.item_served_by_kitchen': 'Item ready from kitchen',
+    'tas.item_started_preparation': 'Started preparing item',
+    'tas.item_ready_to_serve': 'Item ready to serve',
+    'tas.item_canceled_by_kitchen': 'Item canceled by kitchen',
+    'tas.item_added_by_pos': 'Item added by cashier',
+    'tas.item_canceled_by_pos': 'Item canceled by cashier',
+    'tas.bill_requested_by_pos': 'Bill requested from POS',
+    'tas.bill_paid_by_pos': 'Bill paid at POS',
+    'tas.session_closed_by_pos': 'Session closed by POS',
+    'tas.session_payment_received': 'Payment received',
+    'tas.session_fully_paid': 'Session fully paid',
+    'tas.ticket_paid': 'Partial payment received',
+    'tas.item_added_by_waiter': 'Item added by another waiter',
+    'tas.item_canceled_by_waiter': 'Item canceled by another waiter',
+    'tas.bill_requested_by_waiter': 'Bill requested by another waiter',
+    'tas.help_requested': 'Customer needs help',
+    'tas.new_customer_order': 'New order from customer',
+    'tas.customer_requests_bill': 'Customer requests the bill',
+    'tas.item_canceled_success': 'Item canceled',
+    'tas.bill_requested': 'Bill request sent',
+
+    // Error fallbacks
+    'error.staff_loading': 'Error loading staff',
+    'error.qr_regenerate': 'Error regenerating QR',
+    'error.totem_delete': 'Error deleting totem',
   },
   fr: {
     // Common
@@ -668,6 +822,9 @@ const TRANSLATIONS: Record<Language, Translations> = {
     'dish.no_description': 'Sans description',
     'dish.no_dishes': 'Aucun plat créé',
     'dish.toggle_status_error': 'Erreur lors du changement de statut du plat',
+    'dish.status_updated': 'Statut du plat mis à jour',
+    'dish.created': 'Plat créé avec succès',
+    'dish.updated': 'Plat mis à jour avec succès',
     'dish.allergens': 'Allergènes',
     'dish.no_allergens': 'Sans allergènes',
     'allergen.GLUTEN': 'Gluten',
@@ -720,8 +877,17 @@ const TRANSLATIONS: Record<Language, Translations> = {
     'tas.state.canceled': 'Annulé',
     'tas.select_table': 'Sélectionnez une table pour voir les commandes',
     'tas.variant': 'Variante',
+    'tas.totem_created': 'Table temporaire créée',
+    'tas.session_started': 'Session démarrée',
+    'tas.totem_closed': 'Table temporaire fermée',
+    'tas.customer_added': 'Client ajouté',
+    'tas.item_added': 'Article ajouté à la commande',
+    'tas.item_deleted': 'Article supprimé',
+    'tas.item_served': 'Article marqué comme servi',
+    'tas.item_assigned': 'Article assigné',
     'common.add': 'Ajouter',
     'common.total': 'Total',
+    'common.deleted': 'Supprimé avec succès',
 
     // Logs
     'logs.title': 'Logs Système',
@@ -804,6 +970,8 @@ const TRANSLATIONS: Record<Language, Translations> = {
     'category.display_order': "Ordre d'affichage",
     'category.description_es': 'Description (ES)',
     'category.delete_confirm': 'Supprimer cette catégorie ? Les plats associés pourraient se retrouver sans catégorie.',
+    'category.created': 'Catégorie créée avec succès',
+    'category.updated': 'Catégorie mise à jour avec succès',
 
     // Staff
     'staff.title': 'Personnel',
@@ -859,6 +1027,69 @@ const TRANSLATIONS: Record<Language, Translations> = {
     'totem.updated': 'Totem mis à jour avec succès',
     'totem.created': 'Totem créé avec succès',
     'totem.qr_regenerated': 'QR régénéré avec succès',
+    'totem.item_added_to_cart': 'Ajouté au panier',
+    'totem.order_sent': 'Commande envoyée avec succès',
+    'totem.order_error': "Erreur lors de l'envoi de la commande",
+    'totem.menu_error': 'Erreur lors du chargement du menu',
+    'totem.session_error': 'Erreur de connexion à la table',
+    'totem.no_dishes': 'Aucun plat disponible',
+    'totem.my_order': 'Ma commande',
+    'totem.cart_empty': 'Votre panier est vide',
+    'totem.sending': 'Envoi...',
+    'totem.place_order': 'Commander',
+
+    // Image uploader
+    'image_uploader.hint': 'Télécharger image (WebP, JPG, PNG)',
+    'image_uploader.error': "Erreur lors du téléchargement de l'image",
+
+    // Unauthorized
+    'unauthorized.title': 'Accès refusé',
+    'unauthorized.message': "Vous n'avez pas la permission de voir cette page.",
+
+    // Common extras
+    'common.toggle_theme': 'Changer de thème',
+    'common.delete_item': "Supprimer l'article",
+
+    // Staff form placeholders
+    'staff.name_placeholder': 'Ex : Jean Dupont',
+    'staff.username_placeholder': 'jean.dupont',
+    'staff.password_placeholder': 'Minimum 6 caractères',
+    'staff.pin_placeholder': '4 chiffres numériques',
+
+    // Totem form
+    'totem.name_placeholder': 'Ex : Totem Entrée, Table 1, Terrasse...',
+    'totem.menu': 'Menu',
+
+    // TAS notifications
+    'tas.start_time': 'Début :',
+    'tas.close_temporary_table': 'Fermer table temporaire',
+    'tas.new_kitchen_item': 'Nouvelle commande cuisine reçue',
+    'tas.item_in_preparation': 'Article en cours de préparation',
+    'tas.item_served_by_kitchen': 'Article prêt en cuisine',
+    'tas.item_started_preparation': 'Préparation commencée',
+    'tas.item_ready_to_serve': 'Article prêt à servir',
+    'tas.item_canceled_by_kitchen': 'Article annulé par la cuisine',
+    'tas.item_added_by_pos': 'Article ajouté par la caisse',
+    'tas.item_canceled_by_pos': 'Article annulé par la caisse',
+    'tas.bill_requested_by_pos': 'Addition demandée depuis la caisse',
+    'tas.bill_paid_by_pos': 'Addition payée à la caisse',
+    'tas.session_closed_by_pos': 'Session fermée par la caisse',
+    'tas.session_payment_received': 'Paiement reçu',
+    'tas.session_fully_paid': 'Session entièrement payée',
+    'tas.ticket_paid': 'Paiement partiel reçu',
+    'tas.item_added_by_waiter': 'Article ajouté par un autre serveur',
+    'tas.item_canceled_by_waiter': 'Article annulé par un autre serveur',
+    'tas.bill_requested_by_waiter': "Addition demandée par un autre serveur",
+    'tas.help_requested': "Un client a besoin d'aide",
+    'tas.new_customer_order': 'Nouvelle commande client',
+    'tas.customer_requests_bill': "Le client demande l'addition",
+    'tas.item_canceled_success': 'Article annulé',
+    'tas.bill_requested': "Demande d'addition envoyée",
+
+    // Error fallbacks
+    'error.staff_loading': 'Erreur de chargement du personnel',
+    'error.qr_regenerate': 'Erreur de régénération du QR',
+    'error.totem_delete': 'Erreur lors de la suppression du totem',
   }
 };
 

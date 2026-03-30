@@ -5,6 +5,7 @@ import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angula
 import { TotemService, Totem } from '../../../services/totem.service';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../core/services/i18n.service';
+import { NotificationService } from '../../../core/services/notification.service';
 
 @Component({
   selector: 'app-totem-form',
@@ -38,16 +39,6 @@ import { I18nService } from '../../../core/services/i18n.service';
         </div>
       </header>
 
-      <!-- Error Alert -->
-      <div *ngIf="error()" class="bg-red-100 dark:bg-red-900/30 border border-red-400 dark:border-red-600 text-red-700 dark:text-red-400 px-4 py-3 rounded mb-6">
-        {{ error() }}
-      </div>
-
-      <!-- Success Alert -->
-      <div *ngIf="success()" class="bg-green-100 dark:bg-green-900/30 border border-green-400 dark:border-green-600 text-green-700 dark:text-green-400 px-4 py-3 rounded mb-6">
-        {{ success() }}
-      </div>
-
       <form [formGroup]="totemForm" class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
         <!-- Name Field -->
         <div class="mb-6">
@@ -58,7 +49,7 @@ import { I18nService } from '../../../core/services/i18n.service';
             id="totem_name"
             type="text"
             formControlName="totem_name"
-            placeholder="Ej: Tótem Entrada, Mesa 1, Terraza..."
+            [placeholder]="i18n.translate('totem.name_placeholder')"
             class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent"
             [class.border-red-500]="totemForm.get('totem_name')?.invalid && totemForm.get('totem_name')?.touched"
           />
@@ -101,7 +92,7 @@ import { I18nService } from '../../../core/services/i18n.service';
               />
             </div>
             <div class="flex-1">
-              <p class="font-mono text-sm text-gray-600 dark:text-gray-400 break-all">{{ totem()?.totem_qr }}</p>
+              <p class="font-mono text-sm text-gray-600 dark:text-gray-400 break-all">{{ getTotemUrl(totem()!.totem_qr!) }}</p>
               <button
                 type="button"
                 (click)="copyQrUrl()"
@@ -134,7 +125,8 @@ export class TotemFormComponent implements OnInit {
   private totemService = inject(TotemService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
-  private i18n = inject(I18nService);
+  protected i18n = inject(I18nService);
+  private notify = inject(NotificationService);
 
   totemForm!: FormGroup;
   isEditMode = false;
@@ -143,8 +135,6 @@ export class TotemFormComponent implements OnInit {
   totem = signal<Totem | null>(null);
   submitting = signal(false);
   regenerating = signal(false);
-  error = signal<string | null>(null);
-  success = signal<string | null>(null);
 
   ngOnInit(): void {
     this.initForm();
@@ -161,7 +151,7 @@ export class TotemFormComponent implements OnInit {
     this.totemForm = this.fb.group({
       totem_name: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(100)]],
       totem_type: ['STANDARD', Validators.required]
-      // totem_start_date se asigna automáticamente en el servidor
+      // totem_start_date is automatically assigned on the server
     });
   }
 
@@ -172,11 +162,11 @@ export class TotemFormComponent implements OnInit {
         this.totemForm.patchValue({
           totem_name: totem.totem_name,
           totem_type: totem.totem_type
-          // totem_start_date es asignado por el servidor
+          // totem_start_date is assigned by the server
         });
       },
       error: (err) => {
-        this.error.set(err.error?.message || this.i18n.translate('errors.LOADING_ERROR'));
+        this.notify.error(err.error?.message || this.i18n.translate('errors.LOADING_ERROR'));
       }
     });
   }
@@ -188,8 +178,6 @@ export class TotemFormComponent implements OnInit {
     }
 
     this.submitting.set(true);
-    this.error.set(null);
-    this.success.set(null);
 
     const formData = this.totemForm.value;
 
@@ -197,11 +185,11 @@ export class TotemFormComponent implements OnInit {
       this.totemService.updateTotem(this.totemId, formData).subscribe({
         next: () => {
           this.submitting.set(false);
-          this.success.set(this.i18n.translate('totem.updated'));
+          this.notify.success(this.i18n.translate('totem.updated'));
           setTimeout(() => this.router.navigate(['/admin/totems']), 1500);
         },
         error: (err) => {
-          this.error.set(err.error?.message || this.i18n.translate('errors.SERVER_ERROR'));
+          this.notify.error(err.error?.message || this.i18n.translate('errors.SERVER_ERROR'));
           this.submitting.set(false);
         }
       });
@@ -209,11 +197,11 @@ export class TotemFormComponent implements OnInit {
       this.totemService.createTotem(formData).subscribe({
         next: () => {
           this.submitting.set(false);
-          this.success.set(this.i18n.translate('totem.created'));
+          this.notify.success(this.i18n.translate('totem.created'));
           setTimeout(() => this.router.navigate(['/admin/totems']), 1500);
         },
         error: (err) => {
-          this.error.set(err.error?.message || this.i18n.translate('errors.SERVER_ERROR'));
+          this.notify.error(err.error?.message || this.i18n.translate('errors.SERVER_ERROR'));
           this.submitting.set(false);
         }
       });
@@ -227,13 +215,13 @@ export class TotemFormComponent implements OnInit {
     this.totemService.regenerateQr(this.totemId).subscribe({
       next: (response) => {
         this.regenerating.set(false);
-        this.success.set(this.i18n.translate('totem.qr_regenerated'));
+        this.notify.success(this.i18n.translate('totem.qr_regenerated'));
         if (this.totem()) {
           this.totem.set({ ...this.totem()!, totem_qr: response.qr });
         }
       },
       error: (err) => {
-        this.error.set(err.error?.message || 'Error al regenerar QR');
+        this.notify.error(err.error?.message || this.i18n.translate('error.qr_regenerate'));
         this.regenerating.set(false);
       }
     });
@@ -242,14 +230,18 @@ export class TotemFormComponent implements OnInit {
   copyQrUrl(): void {
     const qr = this.totem()?.totem_qr;
     if (qr) {
-      navigator.clipboard.writeText(qr).then(() => {
-        this.success.set(this.i18n.translate('totem.url_copied'));
-        setTimeout(() => this.success.set(null), 2000);
+      navigator.clipboard.writeText(this.getTotemUrl(qr)).then(() => {
+        this.notify.success(this.i18n.translate('totem.url_copied'));
       });
     }
   }
 
+  getTotemUrl(qrData: string): string {
+    return `${window.location.origin}/menu/${qrData}`;
+  }
+
   getQrImageUrl(qrData: string): string {
-    return 'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=' + encodeURIComponent(qrData);
+    const totemUrl = this.getTotemUrl(qrData);
+    return 'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=' + encodeURIComponent(totemUrl);
   }
 }

@@ -33,32 +33,32 @@ export function toObjectId(id: string): Types.ObjectId {
 }
 
 /**
- * Convierte errores de Mongoose a errores HTTP apropiados
+ * Converts Mongoose errors to appropriate HTTP errors
  */
 function handleMongoError(err: any, operation: string): never {
-  // Errores de validación de Mongoose
+  // Mongoose validation errors
   if (err.name === 'ValidationError') {
     const messages = Object.values(err.errors || {}).map((e: any) => e.message).join(', ');
     throw new AppError(`VALIDATION_ERROR: ${messages}`, 400);
   }
-  
-  // Error de ID inválido (CastError)
+
+  // Invalid ID error (CastError)
   if (err.name === 'CastError') {
     throw new AppError(`INVALID_ID_FORMAT: ${err.path}`, 400);
   }
-  
-  // Error de duplicado
+
+  // Duplicate error
   if (err.name === 'MongoServerError' && err.code === 11000) {
     const field = Object.keys(err.keyValue || {}).join(', ');
     throw new AppError(`DUPLICATE_VALUE: ${field} already exists`, 409);
   }
-  
-  // Error de documento no encontrado
+
+  // Document not found error
   if (err.name === 'DocumentNotFoundError') {
     throw new AppError('RESOURCE_NOT_FOUND', 404);
   }
 
-  // Loggear error inesperado y relanzar como error 500
+  // Log unexpected error and rethrow as 500
   logger.error({ err, operation }, 'Unexpected database error');
   throw new AppError(`DATABASE_ERROR: ${err.message || 'Unknown error'}`, 500);
 }

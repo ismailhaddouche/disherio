@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 
 /**
- * AsyncHandler wrapper - elimina la necesidad de try/catch repetitivos en controllers
- * Captura errores de promesas y los pasa al middleware de error global
+ * AsyncHandler wrapper - removes the need for repetitive try/catch in controllers
+ * Catches promise errors and passes them to the global error middleware
  */
 export type AsyncRequestHandler = (
   req: Request,
@@ -17,7 +17,7 @@ export function asyncHandler(fn: AsyncRequestHandler) {
 }
 
 /**
- * Error personalizado para errores HTTP operacionales
+ * Custom error for operational HTTP errors
  */
 export class AppError extends Error {
   statusCode: number;
@@ -32,13 +32,13 @@ export class AppError extends Error {
 }
 
 /**
- * Helper para crear errores comunes
+ * Helper to create common errors
  */
 export const createError = {
   badRequest: (message: string) => new AppError(message, 400),
-  unauthorized: (message: string = 'No autorizado') => new AppError(message, 401),
-  forbidden: (message: string = 'Acceso denegado') => new AppError(message, 403),
-  notFound: (message: string = 'Recurso no encontrado') => new AppError(message, 404),
+  unauthorized: (message: string = 'UNAUTHORIZED') => new AppError(message, 401),
+  forbidden: (message: string = 'FORBIDDEN') => new AppError(message, 403),
+  notFound: (message: string = 'NOT_FOUND') => new AppError(message, 404),
   conflict: (message: string) => new AppError(message, 409),
-  internal: (message: string = 'Error interno del servidor') => new AppError(message, 500),
+  internal: (message: string = 'SERVER_ERROR') => new AppError(message, 500),
 };

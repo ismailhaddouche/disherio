@@ -1,4 +1,5 @@
 import { Server } from 'socket.io';
+import i18next from 'i18next';
 import { ItemOrder, IItemOrder } from '../models/order.model';
 import { logger } from '../config/logger';
 import { AuthenticatedSocket } from '../middlewares/socketAuth';
@@ -373,7 +374,7 @@ export function registerTasHandlers(io: Server, socket: AuthenticatedSocket): vo
         await closeSessionForCustomers(sessionId, {
           closedBy: requestedBy === 'waiter' ? 'waiter' : 'pos',
           closedByName: user.name,
-          reason: `Cuenta solicitada por ${requestedBy === 'waiter' ? 'camarero' : 'cliente'}`,
+          reason: i18next.t(requestedBy === 'waiter' ? 'sockets:BILL_REQUESTED_BY_WAITER' : 'sockets:BILL_REQUESTED_BY_CUSTOMER'),
         });
       }
 
@@ -454,7 +455,7 @@ export function registerTasHandlers(io: Server, socket: AuthenticatedSocket): vo
         emitToCustomers(sessionId, 'waiter:acknowledged', {
           staffId,
           staffName: user.name,
-          message: message || 'A waiter is coming to assist you',
+          message: message || i18next.t('sockets:WAITER_COMING_ASSIST'),
           timestamp: new Date().toISOString(),
         });
 

@@ -1,39 +1,39 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
 
-# Copiar monorepo completo manteniendo estructura
+# Copy full monorepo keeping structure
 COPY shared ./shared
 COPY backend ./backend
 
-# Build shared primero
+# Build shared first
 RUN cd shared && npm install && npm run build
 
-# Instalar y compilar backend (encontrará shared en file:../shared)
+# Install and build backend (will find shared at file:../shared)
 RUN cd backend && npm install && npm run build
 
-# Copiar locales al directorio dist (tsc no copia archivos no-TS)
+# Copy locales to dist directory (tsc does not copy non-TS files)
 RUN cp -r backend/src/locales backend/dist/
 
 FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 
-# Instalar herramientas necesarias para healthchecks
+# Install tools needed for healthchecks
 RUN apk add --no-cache wget curl
 
-# Copiar archivos necesarios para producción
+# Copy files needed for production
 COPY backend/package*.json ./
-# npm crea un symlink node_modules/@disherio/shared -> /shared (raíz del sistema)
-# porque file:../shared desde /app resuelve a /shared.
-# Hay que romper ese symlink para que los COPY siguientes creen un directorio real
-# dentro de /app/node_modules, donde Node sí encuentra zod por hoisting.
+# npm creates a symlink node_modules/@disherio/shared -> /shared (system root)
+# because file:../shared from /app resolves to /shared.
+# We need to break that symlink so the following COPYs create a real directory
+# inside /app/node_modules, where Node finds zod via hoisting.
 RUN npm install --omit=dev && rm -rf ./node_modules/@disherio/shared
 
-# Copiar shared compilado
+# Copy compiled shared
 COPY --from=builder /app/shared/dist ./node_modules/@disherio/shared/dist
 COPY --from=builder /app/shared/package.json ./node_modules/@disherio/shared/package.json
 
-# Copiar backend compilado
+# Copy compiled backend
 COPY --from=builder /app/backend/dist ./dist
 
 EXPOSE 3000

@@ -4,6 +4,7 @@ import { RouterModule, Router } from '@angular/router';
 import { StaffService, Staff, Role } from '../../../services/staff.service';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../core/services/i18n.service';
+import { NotificationService } from '../../../core/services/notification.service';
 
 @Component({
   selector: 'app-staff-list',
@@ -29,11 +30,6 @@ import { I18nService } from '../../../core/services/i18n.service';
       <div *ngIf="loading()" class="text-center py-8">
         <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         <p class="mt-2 text-gray-600 dark:text-gray-400">{{ 'common.loading' | translate }}</p>
-      </div>
-
-      <!-- Error State -->
-      <div *ngIf="error()" class="bg-red-100 dark:bg-red-900/30 border border-red-400 dark:border-red-600 text-red-700 dark:text-red-400 px-4 py-3 rounded mb-4">
-        {{ error() }}
       </div>
 
       <!-- Empty State -->
@@ -107,6 +103,7 @@ export class StaffListComponent implements OnInit {
   private staffService = inject(StaffService);
   private router = inject(Router);
   private i18n = inject(I18nService);
+  private notify = inject(NotificationService);
 
   staff = signal<Staff[]>([]);
   loading = signal(false);
@@ -127,7 +124,9 @@ export class StaffListComponent implements OnInit {
         this.loading.set(false);
       },
       error: (err) => {
-        this.error.set(err.error?.message || 'Error al cargar el personal');
+        const msg = err.error?.message || this.i18n.translate('error.staff_loading');
+        this.error.set(msg);
+        this.notify.error(msg);
         this.loading.set(false);
       }
     });
@@ -140,10 +139,11 @@ export class StaffListComponent implements OnInit {
     this.staffService.deleteStaff(id).subscribe({
       next: () => {
         this.deleting.set(null);
+        this.notify.success(this.i18n.translate('common.deleted'));
         this.loadStaff();
       },
       error: (err) => {
-        this.error.set(err.error?.message || 'Error al eliminar');
+        this.notify.error(err.error?.message || this.i18n.translate('error.deleting'));
         this.deleting.set(null);
       }
     });
@@ -154,7 +154,7 @@ export class StaffListComponent implements OnInit {
   }
 
   getRoleName(member: Staff): string {
-    // role_id puede ser string (solo ID) o objeto Role poblado
+    // role_id can be a string (ID only) or a populated Role object
     if (typeof member.role_id === 'string') {
       return this.i18n.translate('common.loading');
     }

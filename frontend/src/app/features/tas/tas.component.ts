@@ -6,11 +6,13 @@ import { takeUntil } from 'rxjs/operators';
 import { TasService } from '../../services/tas.service';
 import { SocketService } from '../../services/socket/socket.service';
 import { tasStore } from '../../store/tas.store';
+import { authStore } from '../../store/auth.store';
 import type { TotemSession, ItemOrder, Customer, Dish } from '../../types';
 import { LocalizePipe } from '../../shared/pipes/localize.pipe';
 import { CurrencyFormatPipe } from '../../shared/pipes/currency-format.pipe';
 import { TranslatePipe } from '../../shared/pipes/translate.pipe';
 import { I18nService } from '../../core/services/i18n.service';
+import { NotificationService } from '../../core/services/notification.service';
 
 @Component({
   selector: 'app-tas',
@@ -67,7 +69,7 @@ import { I18nService } from '../../core/services/i18n.service';
               [class.dark:border-gray-600]="selectedSession()?._id !== session._id!"
             >
               <div class="flex items-center justify-between">
-                <span class="font-medium text-gray-900 dark:text-white">{{ session.totem?.totem_name || 'Mesa' }}</span>
+                <span class="font-medium text-gray-900 dark:text-white">{{ session.totem?.totem_name || ('tas.table' | translate) }}</span>
                 <span 
                   class="text-xs px-2 py-1 rounded-full"
                   [class.bg-yellow-100]="session.totem?.totem_type === 'TEMPORARY'"
@@ -75,7 +77,7 @@ import { I18nService } from '../../core/services/i18n.service';
                   [class.bg-gray-100]="session.totem?.totem_type === 'STANDARD'"
                   [class.text-gray-800]="session.totem?.totem_type === 'STANDARD'"
                 >
-                  {{ session.totem?.totem_type === 'TEMPORARY' ? 'Temp' : 'Std' }}
+                  {{ session.totem?.totem_type === 'TEMPORARY' ? ('tas.temporary' | translate) : ('tas.standard' | translate) }}
                 </span>
               </div>
               <p class="text-xs text-gray-500 mt-1">
@@ -116,7 +118,7 @@ import { I18nService } from '../../core/services/i18n.service';
               <div>
                 <h2 class="text-xl font-bold">{{ session.totem?.totem_name }}</h2>
                 <p class="text-sm text-gray-500">
-                  Inicio: {{ session.session_date_start | date:'shortTime' }}
+                  {{ 'tas.start_time' | translate }} {{ session.session_date_start | date:'shortTime' }}
                 </p>
               </div>
               <div class="flex items-center gap-3">
@@ -128,7 +130,7 @@ import { I18nService } from '../../core/services/i18n.service';
                   <button
                     (click)="closeTemporaryTotem(session.totem_id)"
                     class="p-2 bg-red-500 text-white rounded-lg"
-                    title="Cerrar mesa temporal"
+                    [title]="i18n.translate('tas.close_temporary_table')"
                   >
                     <span class="material-symbols-outlined">delete</span>
                   </button>
@@ -271,7 +273,7 @@ import { I18nService } from '../../core/services/i18n.service';
                             <button
                               (click)="deleteItem(item._id!)"
                               class="text-red-500 hover:text-red-700"
-                              title="Eliminar item"
+                              [title]="i18n.translate('common.delete_item')"
                             >
                               <span class="material-symbols-outlined text-sm">delete</span>
                             </button>
@@ -321,7 +323,7 @@ import { I18nService } from '../../core/services/i18n.service';
                             (change)="assignItemToCustomer(item._id!, $any($event.target).value || null)"
                             class="text-xs px-2 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700"
                           >
-                            <option value="">Sin asignar</option>
+                            <option value="">{{ 'tas.unassigned' | translate }}</option>
                             @for (customer of customers(); track customer._id!) {
                               <option [value]="customer._id!">{{ customer.customer_name }}</option>
                             }
@@ -343,7 +345,7 @@ import { I18nService } from '../../core/services/i18n.service';
                             <button
                               (click)="deleteItem(item._id!)"
                               class="text-red-500 hover:text-red-700"
-                              title="Eliminar item"
+                              [title]="i18n.translate('common.delete_item')"
                             >
                               <span class="material-symbols-outlined text-sm">delete</span>
                             </button>
@@ -551,8 +553,12 @@ import { I18nService } from '../../core/services/i18n.service';
 export class TasComponent implements OnInit, OnDestroy {
   private tasService = inject(TasService);
   private socketService = inject(SocketService);
-  private i18n = inject(I18nService);
+  protected i18n = inject(I18nService);
+  private notify = inject(NotificationService);
   private destroy$ = new Subject<void>();
+  
+  // Current staff ID from auth store (for comparison in notifications)
+  currentStaffId = authStore.user()?.staffId;
 
   // Local state signals
   newTotemName = signal('');
@@ -627,10 +633,42 @@ export class TasComponent implements OnInit, OnDestroy {
   ngOnDestroy() {
     this.destroy$.next();
     this.destroy$.complete();
+    
+    // Unregister TAS-specific listeners
+    this.socketService.unregisterTasListeners();
+    
+    // Unregister KDS listeners
     this.socketService.off('kds:new_item');
     this.socketService.off('item:state_changed');
+    this.socketService.off('kds:item_canceled');
+    this.socketService.off('tas:kitchen_item_update');
+    
+    // Unregister POS listeners
+    this.socketService.off('pos:item_added');
+    this.socketService.off('pos:item_canceled');
+    this.socketService.off('pos:bill_requested');
+    this.socketService.off('pos:bill_paid');
+    this.socketService.off('pos:session_closed');
+    this.socketService.off('pos:session_paid');
+    this.socketService.off('pos:session_fully_paid');
+    this.socketService.off('pos:ticket_paid');
+    
+    // Unregister TAS session events
+    this.socketService.off('tas:session_closed');
+    this.socketService.off('tas:session_paid');
+    this.socketService.off('tas:session_fully_paid');
+    this.socketService.off('tas:ticket_paid');
+    
+    // Unregister generic listeners
     this.socketService.off('item:deleted');
     this.socketService.off('item:customer_assigned');
+    this.socketService.off('item:added');
+    this.socketService.off('item:canceled');
+    
+    // Leave TAS session if active
+    if (this.selectedSession()?._id) {
+      this.socketService.leaveTasSession(this.selectedSession()!._id!);
+    }
     
     // Release references (store auto-clears when count reaches 0)
     tasStore.releaseReference();
@@ -674,17 +712,180 @@ export class TasComponent implements OnInit, OnDestroy {
   }
 
   private setupSocketListeners() {
-    // Listen for new items
+    // Register TAS-specific listeners
+    this.socketService.registerTasListeners();
+
+    // ========================================
+    // LISTEN TO KDS (Kitchen) EVENTS
+    // ========================================
+
+    // Listen for new items from KDS (when kitchen receives new orders)
     this.socketService.on('kds:new_item', (item: ItemOrder) => {
       if (item.session_id === this.selectedSession()?._id) {
         tasStore.addItem(item);
+        // If it's a kitchen item added by someone else, notify
+        if (item.item_disher_type === 'KITCHEN') {
+          this.notify.info(this.i18n.translate('tas.new_kitchen_item'));
+        }
       }
     });
 
-    // Listen for state changes
-    this.socketService.on('item:state_changed', ({ itemId, newState }: { itemId: string; newState: ItemOrder['item_state'] }) => {
+    // Listen for state changes from KDS (kitchen updates item state)
+    this.socketService.on('item:state_changed', ({ itemId, newState, updatedBy }: { itemId: string; newState: ItemOrder['item_state']; updatedBy?: string }) => {
       tasStore.updateItemState(itemId, newState);
+      
+      // Notify waiter when kitchen updates item
+      if (newState === 'ON_PREPARE') {
+        this.notify.info(this.i18n.translate('tas.item_in_preparation'));
+      } else if (newState === 'SERVED' && updatedBy !== 'TAS') {
+        this.notify.success(this.i18n.translate('tas.item_served_by_kitchen'));
+      }
     });
+
+    // Listen for items canceled by KDS/kitchen
+    this.socketService.on('kds:item_canceled', (data: { itemId: string; itemName?: any; reason?: string }) => {
+      tasStore.updateItemState(data.itemId, 'CANCELED');
+      this.notify.warning(
+        this.i18n.translate('tas.item_canceled_by_kitchen')
+      );
+    });
+
+    // Listen for specific TAS kitchen item updates (detailed notifications from KDS)
+    this.socketService.on('tas:kitchen_item_update', (data: { 
+      itemId: string; 
+      itemName?: any;
+      newState: 'ORDERED' | 'ON_PREPARE' | 'SERVED' | 'CANCELED';
+      updatedBy?: string;
+      updatedByName?: string;
+      timestamp: string;
+    }) => {
+      if (this.selectedSession()) {
+        tasStore.updateItemState(data.itemId, data.newState);
+        
+        const itemName = data.itemName?.es || data.itemName?.en || 'Item';
+        
+        switch (data.newState) {
+          case 'ON_PREPARE':
+            this.notify.info(
+              this.i18n.translate('tas.item_started_preparation')
+            );
+            break;
+          case 'SERVED':
+            this.notify.success(
+              this.i18n.translate('tas.item_ready_to_serve')
+            );
+            break;
+          case 'CANCELED':
+            this.notify.warning(
+              this.i18n.translate('tas.item_canceled_by_kitchen')
+            );
+            break;
+        }
+      }
+    });
+
+    // ========================================
+    // LISTEN TO POS (Cashier) EVENTS
+    // ========================================
+
+    // Listen for items added by POS
+    this.socketService.on('pos:item_added', (data: { item: ItemOrder; addedBy?: string; waiterName?: string }) => {
+      if (data.item.session_id === this.selectedSession()?._id) {
+        tasStore.addItem(data.item);
+        this.notify.info(
+          this.i18n.translate('tas.item_added_by_pos')
+        );
+      }
+    });
+
+    // Listen for items canceled by POS
+    this.socketService.on('pos:item_canceled', (data: { itemId: string; itemName?: any; canceledByName?: string; reason?: string }) => {
+      tasStore.updateItemState(data.itemId, 'CANCELED');
+      this.notify.warning(
+        this.i18n.translate('tas.item_canceled_by_pos')
+      );
+    });
+
+    // Listen for bill requests from POS
+    this.socketService.on('pos:bill_requested', (data: { sessionId: string; requestedBy?: string }) => {
+      if (data.sessionId === this.selectedSession()?._id) {
+        this.notify.info(this.i18n.translate('tas.bill_requested_by_pos'));
+      }
+    });
+
+    // Listen for bill paid from POS
+    this.socketService.on('pos:bill_paid', (data: { sessionId: string; paidBy?: string }) => {
+      if (data.sessionId === this.selectedSession()?._id) {
+        this.notify.success(this.i18n.translate('tas.bill_paid_by_pos'));
+      }
+    });
+
+    // Listen for session closed by POS
+    this.socketService.on('pos:session_closed', (data: { sessionId: string; closedBy?: string; timestamp: string }) => {
+      if (data.sessionId === this.selectedSession()?._id) {
+        this.notify.warning(this.i18n.translate('tas.session_closed_by_pos'));
+        // Clear selected session as it's been closed
+        tasStore.selectSession(null);
+        tasStore.setSessionItems([]);
+        this.socketService.leaveTasSession(data.sessionId);
+      }
+    });
+
+    // Listen for session paid notification from POS
+    this.socketService.on('pos:session_paid', (data: { 
+      sessionId: string; 
+      paymentTotal: number;
+      paymentType: 'ALL' | 'BY_USER' | 'SHARED';
+      paidBy?: string;
+      paidByName?: string;
+      timestamp: string;
+    }) => {
+      if (data.sessionId === this.selectedSession()?._id) {
+        this.notify.success(
+          this.i18n.translate('tas.session_payment_received')
+        );
+      }
+    });
+
+    // Listen for session fully paid (all tickets paid) from POS
+    this.socketService.on('pos:session_fully_paid', (data: { 
+      sessionId: string; 
+      paymentTotal: number;
+      paymentType: 'ALL' | 'BY_USER' | 'SHARED';
+      closedBy?: string;
+      closedByName?: string;
+      timestamp: string;
+    }) => {
+      if (data.sessionId === this.selectedSession()?._id) {
+        this.notify.success(
+          this.i18n.translate('tas.session_fully_paid')
+        );
+        // Session is fully paid and closed
+        tasStore.selectSession(null);
+        tasStore.setSessionItems([]);
+        this.socketService.leaveTasSession(data.sessionId);
+      }
+    });
+
+    // Listen for ticket paid (partial payment) from POS
+    this.socketService.on('pos:ticket_paid', (data: { 
+      sessionId: string; 
+      ticketPart: number;
+      ticketAmount: number;
+      paidBy?: string;
+      remainingAmount?: number;
+      timestamp: string;
+    }) => {
+      if (data.sessionId === this.selectedSession()?._id) {
+        this.notify.info(
+          this.i18n.translate('tas.ticket_paid')
+        );
+      }
+    });
+
+    // ========================================
+    // GENERIC EVENTS
+    // ========================================
 
     // Listen for deleted items
     this.socketService.on('item:deleted', ({ itemId }: { itemId: string }) => {
@@ -694,6 +895,115 @@ export class TasComponent implements OnInit, OnDestroy {
     // Listen for customer assignments
     this.socketService.on('item:customer_assigned', ({ itemId, customerId }: { itemId: string; customerId: string | null }) => {
       tasStore.assignItemToCustomer(itemId, customerId);
+    });
+
+    // Generic item added
+    this.socketService.on('item:added', (data: { item: ItemOrder; sessionId: string }) => {
+      if (data.sessionId === this.selectedSession()?._id) {
+        tasStore.addItem(data.item);
+      }
+    });
+
+    // Generic item canceled
+    this.socketService.on('item:canceled', (data: { itemId: string; sessionId: string }) => {
+      if (data.sessionId === this.selectedSession()?._id) {
+        tasStore.updateItemState(data.itemId, 'CANCELED');
+      }
+    });
+
+    // ========================================
+    // TAS SPECIFIC EVENTS
+    // ========================================
+
+    // TAS: Listen for items added by this or other waiters
+    this.socketService.on('tas:item_added', (data: { item: ItemOrder; sessionId: string; addedBy?: string; addedByName?: string }) => {
+      if (data.sessionId === this.selectedSession()?._id) {
+        // Only add if not already added (avoid duplicates from HTTP response)
+        const existingItem = this.sessionItems().find(i => i._id === data.item._id);
+        if (!existingItem) {
+          tasStore.addItem(data.item);
+        }
+        
+        // Notify if added by another waiter
+        if (data.addedBy && data.addedBy !== this.currentStaffId) {
+          this.notify.info(
+            this.i18n.translate('tas.item_added_by_waiter')
+          );
+        }
+      }
+    });
+
+    // TAS: Listen for service items served
+    this.socketService.on('tas:service_item_served', (data: { itemId: string; sessionId: string; servedBy?: string }) => {
+      if (data.sessionId === this.selectedSession()?._id) {
+        tasStore.updateItemState(data.itemId, 'SERVED');
+      }
+    });
+
+    // TAS: Listen for items canceled
+    this.socketService.on('tas:item_canceled', (data: { itemId: string; sessionId: string; canceledBy?: string; canceledByName?: string; reason?: string }) => {
+      if (data.sessionId === this.selectedSession()?._id) {
+        tasStore.updateItemState(data.itemId, 'CANCELED');
+        
+        // Only notify if canceled by another waiter
+        if (data.canceledBy && data.canceledBy !== this.currentStaffId) {
+          this.notify.info(
+            this.i18n.translate('tas.item_canceled_by_waiter')
+          );
+        }
+      }
+    });
+
+    // TAS: Listen for bill requests
+    this.socketService.on('tas:bill_requested', (data: { sessionId: string; requestedBy: string; requestedByStaff?: string }) => {
+      if (data.sessionId === this.selectedSession()?._id && data.requestedByStaff !== this.currentStaffId) {
+        this.notify.info(this.i18n.translate('tas.bill_requested_by_waiter'));
+      }
+    });
+
+    // TAS: Listen for help requests from customers
+    this.socketService.on('tas:help_requested', (data: { sessionId: string; customerName?: string }) => {
+      if (data.sessionId === this.selectedSession()?._id) {
+        this.notify.warning(
+          this.i18n.translate('tas.help_requested')
+        );
+      }
+    });
+
+    // TAS: Listen for new customer orders (from totem/app)
+    this.socketService.on('tas:new_customer_order', (data: { item: ItemOrder; sessionId: string }) => {
+      if (data.sessionId === this.selectedSession()?._id) {
+        tasStore.addItem(data.item);
+        this.notify.info(this.i18n.translate('tas.new_customer_order'));
+      }
+    });
+
+    // TAS: Listen for customer bill requests
+    this.socketService.on('tas:customer_bill_request', (data: { sessionId: string; customerName?: string }) => {
+      if (data.sessionId === this.selectedSession()?._id) {
+        this.notify.info(
+          this.i18n.translate('tas.customer_requests_bill')
+        );
+      }
+    });
+
+    // TAS: Confirmations
+    this.socketService.on('tas:item_served_confirm', (data: { success: boolean; itemId: string }) => {
+      if (data.success) {
+        this.notify.success(this.i18n.translate('tas.item_served'));
+      }
+    });
+
+    this.socketService.on('tas:item_canceled_confirm', (data: { success: boolean; itemId: string }) => {
+      if (data.success) {
+        this.notify.success(this.i18n.translate('tas.item_canceled_success'));
+      }
+    });
+
+    this.socketService.on('tas:bill_request_confirm', (data: { success: boolean }) => {
+      if (data.success) {
+        this.notify.success(this.i18n.translate('tas.bill_requested'));
+      }
     });
   }
 
@@ -716,8 +1026,9 @@ export class TasComponent implements OnInit, OnDestroy {
         error: (err) => console.error('[TAS] Error loading customers:', err),
       });
 
-    // Join socket room
+    // Join socket rooms
     this.socketService.joinSession(session._id!);
+    this.socketService.joinTasSession(session._id!);
   }
 
   createTemporaryTotem() {
@@ -735,14 +1046,15 @@ export class TasComponent implements OnInit, OnDestroy {
         this.allTotems.update(current => [...current, { ...totem, totem_type: 'TEMPORARY' }]);
         this.newTotemName.set('');
         this.isCreatingTotem.set(false);
-        
+        this.notify.success(this.i18n.translate('tas.totem_created'));
+
         // Auto-start session
         this.startSession(totem._id!);
       },
       error: (err) => {
         console.error('[TAS] Error creating totem:', err);
         this.isCreatingTotem.set(false);
-        alert(this.i18n.translate('errors.SERVER_ERROR'));
+        this.notify.error(this.i18n.translate('errors.SERVER_ERROR'));
       },
     });
   }
@@ -754,10 +1066,11 @@ export class TasComponent implements OnInit, OnDestroy {
         next: (session) => {
           tasStore.setSessions([...this.sessions(), session]);
           this.selectSession(session);
+          this.notify.success(this.i18n.translate('tas.session_started'));
         },
         error: (err) => {
           console.error('[TAS] Error starting session:', err);
-          alert(this.i18n.translate('errors.SERVER_ERROR'));
+          this.notify.error(this.i18n.translate('errors.SERVER_ERROR'));
         },
       });
   }
@@ -772,14 +1085,15 @@ export class TasComponent implements OnInit, OnDestroy {
           // Remove from sessions if active
           tasStore.setSessions(this.sessions().filter(s => s.totem_id !== totemId));
           this.allTotems.update(current => current.filter(t => t._id !== totemId));
-          
+
           if (this.selectedSession()?.totem_id === totemId) {
             tasStore.selectSession(null);
           }
+          this.notify.success(this.i18n.translate('tas.totem_closed'));
         },
         error: (err) => {
           console.error('[TAS] Error closing totem:', err);
-          alert(this.i18n.translate('errors.SERVER_ERROR'));
+          this.notify.error(this.i18n.translate('errors.SERVER_ERROR'));
         },
       });
   }
@@ -795,10 +1109,11 @@ export class TasComponent implements OnInit, OnDestroy {
           tasStore.addCustomer(customer);
           this.newCustomerName.set('');
           this.showAddCustomer.set(false);
+          this.notify.success(this.i18n.translate('tas.customer_added'));
         },
         error: (err) => {
           console.error('[TAS] Error creating customer:', err);
-          alert(this.i18n.translate('errors.SERVER_ERROR'));
+          this.notify.error(this.i18n.translate('errors.SERVER_ERROR'));
         },
       });
   }
@@ -848,6 +1163,28 @@ export class TasComponent implements OnInit, OnDestroy {
     let orderId = existingOrder?.order_id;
 
     const createItem = () => {
+      const itemData = {
+        item_dish_id: dish._id!,
+        item_disher_type: dish.disher_type,
+        item_name_snapshot: dish.disher_name,
+        item_base_price: dish.disher_price,
+        item_disher_variant: this.selectedVariantId() ? {
+          variant_id: this.selectedVariantId()!,
+          name: dish.variants.find(v => v._id === this.selectedVariantId())?.variant_name || {},
+          price: dish.variants.find(v => v._id === this.selectedVariantId())?.variant_price || 0,
+        } : null,
+        item_disher_extras: this.selectedExtras().map(extraId => {
+          const extra = dish.extras.find(e => e._id === extraId);
+          return {
+            extra_id: extraId,
+            name: extra?.extra_name || {},
+            price: extra?.extra_price || 0,
+          };
+        }),
+        customer_id: this.assignToCustomerId(),
+      };
+
+      // Use HTTP to persist, then WebSocket to notify
       this.tasService.addItem({
         order_id: orderId,
         session_id: session._id!,
@@ -860,14 +1197,27 @@ export class TasComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (item) => {
           tasStore.addItem(item);
+          
+          // Emit via WebSocket to notify other waiters and kitchen
+          this.socketService.tasAddItem({
+            sessionId: session._id!,
+            orderId: orderId!,
+            dishId: dish._id!,
+            customerId: this.assignToCustomerId() || undefined,
+            variantId: this.selectedVariantId() || undefined,
+            extras: this.selectedExtras(),
+            itemData: item,
+          });
+          
           this.isAddingItem.set(false);
           this.selectedDish.set(null);
           this.showMenu.set(false);
+          this.notify.info(this.i18n.translate('tas.item_added'));
         },
         error: (err) => {
           console.error('[TAS] Error adding item:', err);
           this.isAddingItem.set(false);
-          alert(this.i18n.translate('errors.SERVER_ERROR'));
+          this.notify.error(this.i18n.translate('errors.SERVER_ERROR'));
         },
       });
     };
@@ -886,7 +1236,7 @@ export class TasComponent implements OnInit, OnDestroy {
           error: (err) => {
             console.error('[TAS] Error creating order:', err);
             this.isAddingItem.set(false);
-            alert(this.i18n.translate('errors.SERVER_ERROR'));
+            this.notify.error(this.i18n.translate('errors.SERVER_ERROR'));
           },
         });
     }
@@ -895,37 +1245,49 @@ export class TasComponent implements OnInit, OnDestroy {
   deleteItem(itemId: string) {
     if (!confirm(this.i18n.translate('common.delete') + '?')) return;
 
+    // Use WebSocket to cancel item (emits to all connected clients)
+    this.socketService.tasCancelItem(itemId, 'Canceled by waiter');
+    
+    // Optimistically update UI
+    tasStore.updateItemState(itemId, 'CANCELED');
+    
+    // Also persist via HTTP
     this.tasService.deleteItem(itemId)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
-        next: () => tasStore.removeItem(itemId),
+        next: () => {
+          this.notify.info(this.i18n.translate('tas.item_deleted'));
+        },
         error: (err) => {
           console.error('[TAS] Error deleting item:', err);
-          alert(this.i18n.translate('errors.SERVER_ERROR'));
+          // Revert on error
+          tasStore.loadSessionItems(this.selectedSession()!._id!);
+          this.notify.error(this.i18n.translate('errors.SERVER_ERROR'));
         },
       });
   }
 
   markServiceItemServed(itemId: string) {
-    this.tasService.updateItemState(itemId, 'SERVED')
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: () => tasStore.updateItemState(itemId, 'SERVED'),
-        error: (err) => {
-          console.error('[TAS] Error marking item served:', err);
-          alert(this.i18n.translate('errors.SERVER_ERROR'));
-        },
-      });
+    // Use WebSocket for real-time update
+    this.socketService.tasServeServiceItem(itemId);
+    
+    // Optimistically update UI
+    tasStore.updateItemState(itemId, 'SERVED');
+    
+    // The confirmation will come via WebSocket (tas:item_served_confirm)
   }
 
   assignItemToCustomer(itemId: string, customerId: string | null) {
     this.tasService.assignItemToCustomer(itemId, customerId)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
-        next: () => tasStore.assignItemToCustomer(itemId, customerId),
+        next: () => {
+          tasStore.assignItemToCustomer(itemId, customerId);
+          this.notify.info(this.i18n.translate('tas.item_assigned'));
+        },
         error: (err) => {
           console.error('[TAS] Error assigning item:', err);
-          alert(this.i18n.translate('errors.SERVER_ERROR'));
+          this.notify.error(this.i18n.translate('errors.SERVER_ERROR'));
         },
       });
   }
@@ -944,6 +1306,13 @@ export class TasComponent implements OnInit, OnDestroy {
       CANCELED: 'tas.state.canceled',
     };
     return keyMap[state] ? this.i18n.translate(keyMap[state]) : state;
+  }
+
+  formatCurrency(amount: number): string {
+    return new Intl.NumberFormat('es-ES', {
+      style: 'currency',
+      currency: 'EUR',
+    }).format(amount);
   }
 
   getSessionItemCount(sessionId: string): number {

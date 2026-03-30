@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # =============================================================================
-# DisherIO — Instalador Mejorado v2.0
-# Instalación segura, verificada y automatizada
-# Uso: sudo ./scripts/install.sh
+# DisherIO — Enhanced Installer v2.0
+# Secure, verified and automated installation
+# Usage: sudo ./scripts/install.sh
 # =============================================================================
 set -euo pipefail
 
@@ -30,10 +30,10 @@ ADMIN_PIN=""
 IS_DOMAIN=false
 DEFAULT_LANGUAGE="es"    # es | en
 DEFAULT_THEME="dark"     # light | dark
-DEFAULT_TAX_RATE="10"    # porcentaje
+DEFAULT_TAX_RATE="10"    # percentage
 DEFAULT_CURRENCY="EUR"   # EUR | USD | GBP
 
-# ── Utilidades ───────────────────────────────────────────────────────────────
+# ── Utilities ───────────────────────────────────────────────────────────────
 [[ $EUID -eq 0 ]] || { echo -e "${RED}Ejecuta como root: sudo ./scripts/install.sh${NC}"; exit 1; }
 
 err() { echo -e "${RED}[ERROR]${NC} $*" | tee -a "$LOG_FILE"; exit 1; }
@@ -42,7 +42,7 @@ log() { echo -e "${BLUE}[INFO]${NC} $*" | tee -a "$LOG_FILE"; }
 warn() { echo -e "${YELLOW}[ADVERTENCIA]${NC} $*" | tee -a "$LOG_FILE"; }
 step() { echo -e "\n${CYAN}=== PASO $1 ===${NC}\n" | tee -a "$LOG_FILE"; }
 
-# Forzar flush del output
+# Force flush output
 flush_output() { true; }
 
 banner() {
@@ -58,18 +58,18 @@ banner() {
   echo ""
 }
 
-# ── Paso 0: Detección de IPs ─────────────────────────────────────────────────
+# ── Step 0: IP Detection ─────────────────────────────────────────────────
 validate_ip() {
   local ip="$1"
-  # Validar formato IPv4
+  # Validate IPv4 format
   [[ "$ip" =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]] && return 0 || return 1
 }
 
 detect_ips() {
-  # IP Local
+  # Local IP
   LOCAL_IP=$(ip route get 1.1.1.1 2>/dev/null | awk '{print $7; exit}' || hostname -I 2>/dev/null | awk '{print $1}' || echo "127.0.0.1")
   
-  # IP Pública (cloud metadata o servicios externos)
+  # Public IP (cloud metadata or external services)
   PUBLIC_IP=""
   local detected_ip=""
   
@@ -96,7 +96,7 @@ detect_ips() {
     validate_ip "$detected_ip" && PUBLIC_IP="$detected_ip"
   fi
   
-  # Fallback a servicios externos
+  # Fallback to external services
   if [[ -z "$PUBLIC_IP" ]]; then
     detected_ip=$(curl -s --max-time 5 https://api.ipify.org 2>/dev/null)
     validate_ip "$detected_ip" && PUBLIC_IP="$detected_ip"
@@ -107,19 +107,19 @@ detect_ips() {
     validate_ip "$detected_ip" && PUBLIC_IP="$detected_ip"
   fi
   
-  # Último fallback
+  # Last fallback
   if [[ -z "$PUBLIC_IP" ]]; then
     detected_ip=$(curl -s --max-time 5 https://icanhazip.com 2>/dev/null)
     validate_ip "$detected_ip" && PUBLIC_IP="$detected_ip"
   fi
 }
 
-# ── Paso 1: Configuración de Acceso ──────────────────────────────────────────
+# ── Step 1: Access Configuration ──────────────────────────────────────────
 configure_access() {
   step "1/7: CONFIGURACION DE ACCESO"
   detect_ips
   
-  # Pequeña pausa para asegurar que el output se muestre
+  # Small pause to ensure output is displayed
   sleep 0.5
   
   cat << 'MENUTXT'
@@ -178,13 +178,13 @@ MENUTXT3
     esac
   done
   
-  # Configurar dominio/IP
+  # Configure domain/IP
   case "$INSTALL_MODE" in
     domain-public|domain-local)
       while true; do
         read -rp "  Introduce el dominio: " CADDY_DOMAIN
         if [[ -n "$CADDY_DOMAIN" ]]; then
-          # Validar formato básico
+          # Validate basic format
           if [[ "$CADDY_DOMAIN" =~ ^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?)*$ ]]; then
             break
           else
@@ -210,7 +210,7 @@ MENUTXT3
       ;;
   esac
   
-  # Configurar puertos
+  # Configure ports
   echo ""
   echo "============================================================"
   echo "  CONFIGURACIÓN DE PUERTOS"
@@ -232,21 +232,21 @@ MENUTXT3
   BACKEND_PORT="${backend_port:-3000}"
   ok "Puerto backend: $BACKEND_PORT"
   
-  # Validar puertos
+  # Validate ports
   for port in "$HTTP_PORT" "$HTTPS_PORT" "$BACKEND_PORT"; do
     if ! [[ "$port" =~ ^[0-9]+$ ]] || [[ "$port" -lt 1 ]] || [[ "$port" -gt 65535 ]]; then
       err "Puerto inválido: $port"
     fi
   done
   
-  # Configurar preferencias de localización
+  # Configure localization preferences
   echo ""
   echo "============================================================"
   echo "  CONFIGURACIÓN DE IDIOMA Y TEMA"
   echo "============================================================"
   echo ""
   
-  # Selección de idioma
+  # Language selection
   echo "------------------------------------------------------------"
   echo "  SELECCIONA EL IDIOMA POR DEFECTO:"
   echo "------------------------------------------------------------"
@@ -264,7 +264,7 @@ MENUTXT3
     esac
   done
   
-  # Selección de tema
+  # Theme selection
   echo ""
   echo "------------------------------------------------------------"
   echo "  SELECCIONA EL TEMA POR DEFECTO:"
@@ -283,7 +283,7 @@ MENUTXT3
     esac
   done
   
-  # Configurar impuestos y moneda
+  # Configure taxes and currency
   echo ""
   echo "============================================================"
   echo "  CONFIGURACIÓN DE IMPUESTOS Y MONEDA"
@@ -316,11 +316,11 @@ MENUTXT3
     esac
   done
   
-  # Verificar que los puertos no estén en uso
+  # Verify that ports are not in use
   for port in "$HTTP_PORT" "$HTTPS_PORT"; do
     if ss -tuln | grep -q ":$port "; then
       warn "El puerto $port está en uso. Deteniendo servicio..."
-      # Intentar detener cualquier servicio en ese puerto (excepto ssh)
+      # Try to stop any service on that port (except ssh)
       if [[ "$port" != "22" ]]; then
         fuser -k "${port}/tcp" 2>/dev/null || true
         sleep 2
@@ -328,7 +328,7 @@ MENUTXT3
     fi
   done
   
-  # Construir URL de acceso
+  # Build access URL
   if [[ "$INSTALL_MODE" == "domain-public" ]]; then
     ACCESS_URL="https://${CADDY_DOMAIN}${HTTPS_PORT:+:${HTTPS_PORT}}"
   elif [[ "$INSTALL_MODE" == "domain-local" ]]; then
@@ -341,23 +341,23 @@ MENUTXT3
   ok "Acceso: $ACCESS_URL"
 }
 
-# ── Paso 2: Dependencias ─────────────────────────────────────────────────────
+# ── Step 2: Dependencies ─────────────────────────────────────────────────────
 install_dependencies() {
   step "2/7: INSTALANDO DEPENDENCIAS"
   
-  # Verificar si Docker ya está instalado
+  # Check if Docker is already installed
   if command -v docker &>/dev/null && docker compose version &>/dev/null; then
     ok "Docker ya instalado: $(docker --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)"
   else
     log "Actualizando repositorios..."
     apt-get update -qq 2>&1 | tee -a "$LOG_FILE" || err "apt-get update falló"
     
-    # Instalar dependencias previas
+    # Install prerequisite dependencies
     for pkg in curl wget ca-certificates gnupg lsb-release; do
       apt-get install -y -qq "$pkg" </dev/null >/dev/null 2>&1 || true
     done
     
-    # Añadir repositorio oficial de Docker
+    # Add official Docker repository
     install -m 0755 -d /etc/apt/keyrings
     curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc 2>/dev/null || \
     curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc 2>/dev/null || \
@@ -394,30 +394,30 @@ https://download.docker.com/linux/${distro:-ubuntu} ${codename:-jammy} stable" \
   fi
 }
 
-# ── Paso 3: Generar Secretos ─────────────────────────────────────────────────
+# ── Step 3: Generate Secrets ─────────────────────────────────────────────────
 generate_secrets() {
   step "3/7: GENERANDO SECRETOS SEGUROS"
   
-  # JWT Secret - 64 caracteres alfanuméricos
+  # JWT Secret - 64 alphanumeric characters
   JWT_SECRET=$(openssl rand -base64 48 | tr -dc 'a-zA-Z0-9' | head -c 64)
   
-  # Admin Password - 20 caracteres con mayúsculas, minúsculas, números y símbolos
+  # Admin Password - 20 characters with uppercase, lowercase, numbers and symbols
   ADMIN_PASS=$(openssl rand -base64 48 | tr -dc 'A-Za-z0-9@#$%^&*' | head -c 20)
   
-  # PIN - 4 dígitos numéricos
+  # PIN - 4 numeric digits
   ADMIN_PIN=$(printf '%04d' $((RANDOM % 10000)))
   
   ok "Secretos generados"
 }
 
-# ── Paso 4: Escribir Configuración ───────────────────────────────────────────
+# ── Step 4: Write Configuration ───────────────────────────────────────────
 write_config() {
   step "4/7: CONFIGURANDO ARCHIVOS"
   
-  # Limpiar archivos previos
+  # Clean up previous files
   rm -f "$ENV_FILE" "$CADDYFILE"
   
-  # Crear .env (sin credenciales de admin, solo configuración del sistema)
+  # Create .env (no admin credentials, only system configuration)
   cat > "$ENV_FILE" <<EOF
 NODE_ENV=production
 PORT=${HTTP_PORT}
@@ -436,7 +436,7 @@ EOF
   chmod 600 "$ENV_FILE"
   chown root:root "$ENV_FILE" 2>/dev/null || true
   
-  # Crear Caddyfile según el modo
+  # Create Caddyfile based on mode
   if [[ "$INSTALL_MODE" == "domain-public" ]]; then
     cat > "$CADDYFILE" <<EOF
 ${CADDY_DOMAIN}:${HTTPS_PORT} {
@@ -507,7 +507,7 @@ EOF
   ok "Configuración escrita"
 }
 
-# ── Paso 5: Build e Inicio ───────────────────────────────────────────────────
+# ── Step 5: Build and Start ───────────────────────────────────────────────────
 build_and_start() {
   step "5/7: CONSTRUYENDO E INICIANDO SERVICIOS"
   cd "$ROOT_DIR"
@@ -551,13 +551,13 @@ build_and_start() {
   ok "Todos los servicios iniciados correctamente"
 }
 
-# ── Paso 6: Healthcheck y Verificación ───────────────────────────────────────
+# ── Step 6: Healthcheck and Verification ───────────────────────────────────────
 verify_installation() {
   step "6/7: VERIFICANDO INSTALACIÓN"
   
   cd "$ROOT_DIR"
   
-  # Verificar contenedores
+  # Verify containers
   log "Verificando contenedores..."
   local containers=("mongo" "backend" "frontend" "caddy")
   for container in "${containers[@]}"; do
@@ -568,7 +568,7 @@ verify_installation() {
     fi
   done
   
-  # Verificar backend (health endpoint via localhost)
+  # Verify backend (health endpoint via localhost)
   log "Verificando backend..."
   local attempts=0
   local max_attempts=30  # 2.5 minutos (5s * 30)
@@ -579,7 +579,7 @@ verify_installation() {
     attempts=$((attempts + 1))
     echo -e "  ${BLUE}⏳ Esperando backend... intento ${attempts}/${max_attempts}${NC}"
     
-    # Verificar usando docker exec (el puerto no está expuesto al host, todo pasa por Caddy)
+    # Verify using docker exec (port is not exposed to host, everything goes through Caddy)
     if docker exec disherio_backend wget -qO- http://localhost:3000/health >/dev/null 2>&1; then
       backend_ok=true
       break
@@ -594,7 +594,7 @@ verify_installation() {
     err "Backend no respondió tras ${max_attempts} intentos. Verifica 'docker logs disherio_backend'"
   fi
   
-  # Verificar conectividad externa
+  # Verify external connectivity
   log "Verificando conectividad..."
   if curl -s --max-time 10 -o /dev/null -w "%{http_code}" "http://localhost:${HTTP_PORT}" | grep -qE "^(200|301|302|307)"; then
     ok "Caddy respondiendo en puerto $HTTP_PORT"
@@ -602,12 +602,12 @@ verify_installation() {
     warn "Caddy no responde en puerto $HTTP_PORT (puede ser normal al inicio)"
   fi
   
-  # Mostrar estado de recursos
+  # Show resource status
   log "Estado de recursos:"
   docker stats --no-stream --format "table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}" 2>/dev/null || true
 }
 
-# ── Paso 7: Seed de Datos ────────────────────────────────────────────────────
+# ── Step 7: Data Seed ────────────────────────────────────────────────────
 seed_database() {
   step "7/7: CREANDO USUARIO ADMINISTRADOR"
   
@@ -615,10 +615,10 @@ seed_database() {
   
   log "Instalando dependencias para seed..."
   
-  # Crear directorio temporal para el seed
+  # Create temporary directory for seed
   local seed_dir=$(mktemp -d)
   
-  # Crear package.json temporal
+  # Create temporary package.json
   cat > "$seed_dir/package.json" <<'PKG'
 {
   "name": "disherio-seed",
@@ -630,7 +630,7 @@ seed_database() {
 }
 PKG
 
-  # Crear script de seed
+  # Create seed script
   cat > "$seed_dir/seed.js" <<NODE_SCRIPT
 const bcrypt = require('bcryptjs');
 const mongoose = require('mongoose');
@@ -645,7 +645,7 @@ async function seed() {
   const defaultTaxRate = parseInt(process.env.DEFAULT_TAX_RATE) || 10;
   const defaultCurrency = process.env.DEFAULT_CURRENCY || 'EUR';
   
-  // Crear restaurante
+  // Create restaurant
   let restaurant = await mongoose.connection.collection('restaurants').findOne({ restaurant_name: 'DisherIO Restaurant' });
   if (!restaurant) {
     const result = await mongoose.connection.collection('restaurants').insertOne({
@@ -668,7 +668,7 @@ async function seed() {
     console.log('Restaurante creado');
   }
   
-  // Crear roles por defecto
+  // Create default roles
   const defaultRoles = [
     { role_name: 'Admin', permissions: ['ADMIN'] },
     { role_name: 'KTS', permissions: ['KTS'] },
@@ -698,7 +698,7 @@ async function seed() {
     }
   }
   
-  // Crear usuario admin
+  // Create admin user
   let staff = await mongoose.connection.collection('staffs').findOne({ username: 'admin' });
   if (!staff) {
     const passwordHash = await bcrypt.hash(adminPassword, 12);
@@ -731,7 +731,7 @@ seed().catch(e => {
 });
 NODE_SCRIPT
 
-  # Ejecutar seed usando un contenedor temporal de Node
+  # Execute seed using a temporary Node container
   log "Ejecutando seed en contenedor temporal..."
   if docker run --rm \
     --network disherio_disherio_net \
@@ -753,9 +753,9 @@ NODE_SCRIPT
   fi
 }
 
-# ── Resumen Final ────────────────────────────────────────────────────────────
+# ── Final Summary ────────────────────────────────────────────────────────────
 print_summary() {
-  # Guardar credenciales en archivo protegido
+  # Save credentials to protected file
   local creds_file="$ROOT_DIR/.credentials"
   cat > "$creds_file" <<EOF
 # DisherIO — Credenciales de Administrador
@@ -776,7 +776,7 @@ EOF
   chmod 600 "$creds_file"
   chown root:root "$creds_file" 2>/dev/null || true
   
-  # Mostrar resumen
+  # Show summary
   echo ""
   echo -e "${GREEN}╔════════════════════════════════════════════════════════════════╗${NC}"
   echo -e "${GREEN}║${NC}              ${BOLD}DISHERIO INSTALADO CORRECTAMENTE${NC}                ${GREEN}║${NC}"
@@ -810,27 +810,27 @@ EOF
 
 # ── Main ─────────────────────────────────────────────────────────────────────
 main() {
-  # Inicializar log
+  # Initialize log
   mkdir -p "$(dirname "$LOG_FILE")"
   echo "=== DisherIO Installer v2.0 - $(date) ===" > "$LOG_FILE"
   
   banner
   
-  # Verificar que estamos en el directorio correcto
+  # Verify we are in the correct directory
   if [[ ! -f "docker-compose.yml" ]] && [[ ! -f "$ROOT_DIR/docker-compose.yml" ]]; then
     err "No se encontró docker-compose.yml. Ejecuta desde la raíz del proyecto."
   fi
   
-  # Limpiar archivos corruptos de instalaciones anteriores fallidas
+  # Clean up corrupt files from previous failed installations
   if [[ -f "$ENV_FILE" ]]; then
-    # Verificar si el archivo contiene HTML (corrupto)
+    # Check if the file contains HTML (corrupt)
     if head -1 "$ENV_FILE" | grep -q "<html\|<!DOCTYPE"; then
       warn "Archivo .env corrupto detectado, limpiando..."
       rm -f "$ENV_FILE"
     fi
   fi
   
-  # Detener y limpiar contenedores previos si existen
+  # Stop and clean up previous containers if they exist
   if docker compose ps 2>/dev/null | grep -q "disherio"; then
     log "Deteniendo instalación anterior..."
     docker compose down --remove-orphans >> "$LOG_FILE" 2>&1 || true

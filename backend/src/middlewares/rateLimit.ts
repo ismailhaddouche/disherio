@@ -17,28 +17,28 @@ export const authLimiter = rateLimit({
   message: { errorCode: 'AUTH_RATE_LIMIT_EXCEEDED' },
 });
 
-// Rate limiter especifico para endpoints de QR (acceso publico)
+// Rate limiter for QR endpoints (public access)
 export const qrLimiter = rateLimit({
-  windowMs: 1 * 60 * 1000, // 1 minuto
-  max: 30, // 30 requests por minuto por IP
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 30, // 30 requests per minute per IP
   standardHeaders: true,
   legacyHeaders: false,
   message: { errorCode: 'QR_RATE_LIMIT_EXCEEDED' },
   skip: (_req) => {
-    // Opcional: skip rate limiting para IPs internas/development
+    // Optional: skip rate limiting for internal/development IPs
     return process.env.NODE_ENV === 'development';
   },
 });
 
-// Rate limiter mas estricto para prevenir fuerza bruta de tokens QR
+// Stricter rate limiter to prevent QR token brute force
 export const qrBruteForceLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 10, // 10 intentos por ventana
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // 10 attempts per window
   standardHeaders: true,
   legacyHeaders: false,
   message: { errorCode: 'QR_BRUTE_FORCE_DETECTED' },
   handler: (req, res, _next, options) => {
-    // Loggear intentos sospechosos
+    // Log suspicious attempts
     logger.warn({ ip: req.ip }, 'QR brute force attempt detected');
     res.status(429).json(options.message);
   },

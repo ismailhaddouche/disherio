@@ -22,7 +22,7 @@ import customerRoutes from './routes/customer.routes';
 
 const PORT = process.env.PORT || 3000;
 
-// VALIDACIÓN CRÍTICA: JWT_SECRET no puede ser el valor por defecto
+// CRITICAL: JWT_SECRET must not use the default value
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET || JWT_SECRET === 'changeme_in_production') {
   logger.error('❌ JWT_SECRET is not set or uses default value. Please set a secure JWT_SECRET in .env');
@@ -57,10 +57,10 @@ async function bootstrap() {
 
   app.get('/health', (_req, res) => res.json({ status: 'ok' }));
 
-  // 404 handler - debe ir después de todas las rutas
+  // 404 handler - must go after all routes
   app.use(notFoundHandler);
 
-  // Global error handler - debe ir al FINAL de la cadena
+  // Global error handler - must go at the END of the chain
   app.use(errorHandler);
 
   initSocket(httpServer);

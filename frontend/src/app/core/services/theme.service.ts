@@ -90,7 +90,7 @@ export class ThemeService {
   }
   
   toggleTheme(): void {
-    // Toggle entre light y dark
+    // Toggle between light and dark
     const current = this._currentTheme();
     const newTheme = current === 'dark' ? 'light' : 'dark';
     this.setTheme(newTheme);

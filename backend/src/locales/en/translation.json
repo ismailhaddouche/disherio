@@ -87,6 +87,20 @@
     "ORDERED": "Dish ordered",
     "ON_PREPARE": "Preparation started",
     "SERVED": "Dish served",
-    "CANCELED": "Dish cancelled"
+    "CANCELED": "Dish cancelled",
+    "CUSTOMER": "Customer"
+  },
+  "sockets": {
+    "BILL_REQUESTED": "Bill requested",
+    "SESSION_CLOSED_NO_MORE_ORDERS": "The bill has been requested. No more orders can be placed.",
+    "MUST_JOIN_SESSION": "Must join session first",
+    "NEEDS_HELP": "Needs help",
+    "WAITER_COMING": "A waiter is coming right away",
+    "BILL_ALREADY_REQUESTED": "The bill has already been requested.",
+    "BILL_REQUEST_SENT": "Your bill request has been sent. The session will close shortly.",
+    "BILL_REQUESTED_BY_CUSTOMER": "Bill requested by customer",
+    "BILL_REQUESTED_BY_WAITER": "Bill requested by waiter",
+    "WAITER_COMING_ASSIST": "A waiter is coming to assist you",
+    "SESSION_ENDED_THANK_YOU": "The session has ended. Thank you for your visit."
   }
 }

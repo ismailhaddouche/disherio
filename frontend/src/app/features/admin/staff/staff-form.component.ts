@@ -8,6 +8,7 @@ import { StaffService, Staff, Role } from '../../../services/staff.service';
 import type { Role as RoleType } from '../../../services/staff.service';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../core/services/i18n.service';
+import { NotificationService } from '../../../core/services/notification.service';
 
 @Component({
   selector: 'app-staff-form',
@@ -41,16 +42,6 @@ import { I18nService } from '../../../core/services/i18n.service';
         </div>
       </header>
 
-      <!-- Error Alert -->
-      <div *ngIf="error()" class="bg-red-100 dark:bg-red-900/30 border border-red-400 dark:border-red-600 text-red-700 dark:text-red-400 px-4 py-3 rounded mb-6">
-        {{ error() }}
-      </div>
-
-      <!-- Success Alert -->
-      <div *ngIf="success()" class="bg-green-100 dark:bg-green-900/30 border border-green-400 dark:border-green-600 text-green-700 dark:text-green-400 px-4 py-3 rounded mb-6">
-        {{ success() }}
-      </div>
-
       <form [formGroup]="staffForm" class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
 
         <!-- Name Field -->
@@ -62,7 +53,7 @@ import { I18nService } from '../../../core/services/i18n.service';
             id="staff_name"
             type="text"
             formControlName="staff_name"
-            placeholder="Ej: Juan Pérez"
+            [placeholder]="i18n.translate('staff.name_placeholder')"
             class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent"
             [class.border-red-500]="staffForm.get('staff_name')?.invalid && staffForm.get('staff_name')?.touched"
           />
@@ -80,7 +71,7 @@ import { I18nService } from '../../../core/services/i18n.service';
             id="username"
             type="text"
             formControlName="username"
-            placeholder="juan.perez"
+            [placeholder]="i18n.translate('staff.username_placeholder')"
             class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent lowercase"
             [class.border-red-500]="staffForm.get('username')?.invalid && staffForm.get('username')?.touched"
           />
@@ -127,7 +118,7 @@ import { I18nService } from '../../../core/services/i18n.service';
             id="password"
             type="password"
             formControlName="password"
-            placeholder="Mínimo 6 caracteres"
+            [placeholder]="i18n.translate('staff.password_placeholder')"
             class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent"
             [class.border-red-500]="staffForm.get('password')?.invalid && staffForm.get('password')?.touched"
           />
@@ -145,7 +136,7 @@ import { I18nService } from '../../../core/services/i18n.service';
             id="pin_code"
             type="password"
             formControlName="pin_code"
-            placeholder="4 dígitos numéricos"
+            [placeholder]="i18n.translate('staff.pin_placeholder')"
             maxlength="4"
             class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent"
             [class.border-red-500]="staffForm.get('pin_code')?.invalid && staffForm.get('pin_code')?.touched"
@@ -166,7 +157,8 @@ export class StaffFormComponent implements OnInit, OnDestroy {
   private staffService = inject(StaffService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
-  private i18n = inject(I18nService);
+  protected i18n = inject(I18nService);
+  private notify = inject(NotificationService);
   private destroy$ = new Subject<void>();
   private navigationTimeout: ReturnType<typeof setTimeout> | null = null;
 
@@ -177,8 +169,6 @@ export class StaffFormComponent implements OnInit, OnDestroy {
   roles = signal<Role[]>([]);
   loadingRoles = signal(false);
   submitting = signal(false);
-  error = signal<string | null>(null);
-  success = signal<string | null>(null);
 
   ngOnInit(): void {
     this.initForm();
@@ -186,7 +176,7 @@ export class StaffFormComponent implements OnInit, OnDestroy {
     this.staffId = this.route.snapshot.paramMap.get('id');
     this.isEditMode = !!this.staffId;
 
-    // Cargar roles primero, luego el staff para evitar condición de carrera
+    // Load roles first, then staff to avoid race condition
     this.loadRoles().then(() => {
       if (this.isEditMode && this.staffId) {
         this.loadStaff(this.staffId);
@@ -219,9 +209,9 @@ export class StaffFormComponent implements OnInit, OnDestroy {
             resolve();
           },
           error: () => {
-            this.error.set(this.i18n.translate('errors.LOADING_ERROR'));
+            this.notify.error(this.i18n.translate('errors.LOADING_ERROR'));
             this.loadingRoles.set(false);
-            resolve(); // Resolvemos igual para no bloquear el flujo
+            resolve(); // Resolve anyway to avoid blocking the flow
           }
         });
     });
@@ -232,8 +222,8 @@ export class StaffFormComponent implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (staff) => {
-          // role_id puede ser string o objeto poblado (Role)
-          // Asegurar que siempre sea string para el formulario
+          // role_id can be a string or a populated object (Role)
+          // Ensure it is always a string for the form
           let roleId = '';
           if (typeof staff.role_id === 'string') {
             roleId = staff.role_id;
@@ -253,7 +243,7 @@ export class StaffFormComponent implements OnInit, OnDestroy {
           this.staffForm.get('pin_code')?.updateValueAndValidity();
         },
         error: (err) => {
-          this.error.set(err.error?.message || 'Error al cargar el personal');
+          this.notify.error(err.error?.message || this.i18n.translate('error.staff_loading'));
         }
       });
   }
@@ -265,8 +255,6 @@ export class StaffFormComponent implements OnInit, OnDestroy {
     }
 
     this.submitting.set(true);
-    this.error.set(null);
-    this.success.set(null);
 
     const formData = this.staffForm.value;
     
@@ -282,11 +270,11 @@ export class StaffFormComponent implements OnInit, OnDestroy {
         .subscribe({
           next: () => {
             this.submitting.set(false);
-            this.success.set(this.i18n.translate('staff.updated'));
+            this.notify.success(this.i18n.translate('staff.updated'));
             this.navigationTimeout = setTimeout(() => this.router.navigate(['/admin/staff']), 1500);
           },
           error: (err) => {
-            this.error.set(err.error?.message || this.i18n.translate('errors.SERVER_ERROR'));
+            this.notify.error(err.error?.message || this.i18n.translate('errors.SERVER_ERROR'));
             this.submitting.set(false);
           }
         });
@@ -296,11 +284,11 @@ export class StaffFormComponent implements OnInit, OnDestroy {
         .subscribe({
           next: () => {
             this.submitting.set(false);
-            this.success.set(this.i18n.translate('staff.created'));
+            this.notify.success(this.i18n.translate('staff.created'));
             this.navigationTimeout = setTimeout(() => this.router.navigate(['/admin/staff']), 1500);
           },
           error: (err) => {
-            this.error.set(err.error?.message || this.i18n.translate('errors.SERVER_ERROR'));
+            this.notify.error(err.error?.message || this.i18n.translate('errors.SERVER_ERROR'));
             this.submitting.set(false);
           }
         });

@@ -1,14 +1,14 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
 
-# Copiar monorepo completo manteniendo estructura
+# Copy full monorepo keeping structure
 COPY shared ./shared
 COPY frontend ./frontend
 
-# Build shared primero
+# Build shared first
 RUN cd shared && npm install && npm run build
 
-# Instalar y compilar frontend (encontrará shared en file:../shared)
+# Install and build frontend (will find shared at file:../shared)
 RUN cd frontend && npm install --legacy-peer-deps && npm run build -- --configuration production --output-path=dist/disherio
 
 FROM caddy:2-alpine AS runner

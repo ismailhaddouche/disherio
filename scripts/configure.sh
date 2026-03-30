@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # =============================================================================
 # DisherIo - configure.sh
-# Reconfiguración en caliente: red, dominio, puerto y credenciales de admin.
+# Hot reconfiguration: network, domain, port and admin credentials.
 # =============================================================================
 set -euo pipefail
 
@@ -28,7 +28,7 @@ load_env() {
   set -a; source "$ENV_FILE"; set +a
 }
 
-# ── Menú principal ─────────────────────────────────────────────────────────────
+# ── Main menu ─────────────────────────────────────────────────────────────────
 main_menu() {
   echo ""
   echo -e "${BOLD}  DisherIo — Configuración${RESET}"
@@ -54,7 +54,7 @@ main_menu() {
   esac
 }
 
-# ── Cambiar red ────────────────────────────────────────────────────────────────
+# ── Change network ────────────────────────────────────────────────────────────
 change_network() {
   step "Cambiar modo de red"
   LOCAL_IP=$(ip route get 1.1.1.1 2>/dev/null | awk '{print $7; exit}' || echo "127.0.0.1")
@@ -109,7 +109,7 @@ EOF
       ;;
   esac
 
-  # Actualizar .env
+  # Update .env
   sed_env "FRONTEND_URL" "$access_url"
   log "Red actualizada: $access_url"
   restart_services
@@ -128,24 +128,24 @@ $host {
 EOF
 }
 
-# ── Cambiar puerto ─────────────────────────────────────────────────────────────
+# ── Change port ───────────────────────────────────────────────────────────────
 change_port() {
   step "Cambiar puerto"
   read -rp "  Nuevo puerto [80]: " new_port
   new_port="${new_port:-80}"
 
-  # Reescribir Caddyfile con nuevo puerto (solo modo HTTP)
+  # Rewrite Caddyfile with new port (HTTP mode only)
   sed -i "s/^:[0-9]*/\:$new_port/" "$CADDYFILE" 2>/dev/null || true
 
   current_url="${FRONTEND_URL:-http://localhost}"
-  # Reemplazar puerto en URL
+  # Replace port in URL
   new_url=$(echo "$current_url" | sed "s/:[0-9]*$//:$new_port/" | sed "s|http://[^:/]*|http://$(echo "$current_url" | sed 's|http://||' | cut -d: -f1 \| cut -d/ -f1)|")
   sed_env "FRONTEND_URL" "$new_url"
   log "Puerto cambiado a $new_port"
   restart_services
 }
 
-# ── Resetear contraseña admin ──────────────────────────────────────────────────
+# ── Reset admin password ──────────────────────────────────────────────────────
 reset_admin_password() {
   step "Resetear contraseña del administrador"
   read -rp "  Usuario admin [admin]: " admin_user
@@ -179,7 +179,7 @@ reset_admin_password() {
   echo -e "  ${YELLOW}Nueva contraseña: ${BOLD}${new_pass}${RESET}  (guárdala ahora)"
 }
 
-# ── Cambiar idioma ─────────────────────────────────────────────────────────────
+# ── Change language ───────────────────────────────────────────────────────────
 change_language() {
   step "Cambiar idioma por defecto"
   echo "  1) Español (es)"
@@ -195,7 +195,7 @@ change_language() {
   log "Idioma actualizado a: $new_lang"
 }
 
-# ── Ver config actual ──────────────────────────────────────────────────────────
+# ── View current config ───────────────────────────────────────────────────────
 show_current_config() {
   step "Configuración actual"
   echo ""

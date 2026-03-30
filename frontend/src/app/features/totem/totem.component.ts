@@ -7,14 +7,25 @@ import { takeUntil } from 'rxjs/operators';
 import { cartStore } from '../../store/cart.store';
 import { LocalizePipe } from '../../shared/pipes/localize.pipe';
 import { CurrencyFormatPipe } from '../../shared/pipes/currency-format.pipe';
+import { TranslatePipe } from '../../shared/pipes/translate.pipe';
 import { ThemeService } from '../../core/services/theme.service';
+import { I18nService } from '../../core/services/i18n.service';
 import { environment } from '../../../environments/environment';
+import { NotificationService } from '../../core/services/notification.service';
 import type { Dish, Category, LocalizedString } from '../../types';
+
+interface SessionInfo {
+  session_id: string;
+  totem_id: string;
+  totem_name: string;
+  restaurant_id: string;
+  totem_state: string;
+}
 
 @Component({
   selector: 'app-totem',
   standalone: true,
-  imports: [CommonModule, LocalizePipe, CurrencyFormatPipe],
+  imports: [CommonModule, LocalizePipe, CurrencyFormatPipe, TranslatePipe],
   template: `
     <div class="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white">
       <!-- Header -->
@@ -25,7 +36,7 @@ import type { Dish, Category, LocalizedString } from '../../types';
           <button 
             (click)="themeService.toggleTheme()"
             class="p-2 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-            title="Cambiar tema"
+            [title]="i18n.translate('common.toggle_theme')"
           >
             @if (themeService.isDark()) {
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -96,7 +107,7 @@ import type { Dish, Category, LocalizedString } from '../../types';
         @if (filteredDishes().length === 0) {
           <div class="col-span-2 text-center py-12 text-gray-500 dark:text-gray-400">
             <span class="material-symbols-outlined text-5xl mb-2">restaurant_menu</span>
-            <p>No hay platos disponibles</p>
+            <p>{{ 'totem.no_dishes' | translate }}</p>
           </div>
         }
       </main>
@@ -107,7 +118,7 @@ import type { Dish, Category, LocalizedString } from '../../types';
           <div class="flex-1 bg-black/50" (click)="toggleCart()"></div>
           <aside class="w-80 bg-white dark:bg-gray-800 flex flex-col h-full shadow-xl">
             <div class="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-              <h2 class="font-bold text-lg text-gray-900 dark:text-white">Mi pedido</h2>
+              <h2 class="font-bold text-lg text-gray-900 dark:text-white">{{ 'totem.my_order' | translate }}</h2>
               <button (click)="toggleCart()" class="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
                 <span class="material-symbols-outlined">close</span>
               </button>
@@ -125,7 +136,7 @@ import type { Dish, Category, LocalizedString } from '../../types';
               @if (cartItems().length === 0) {
                 <div class="text-center py-8 text-gray-500 dark:text-gray-400">
                   <span class="material-symbols-outlined text-4xl mb-2">shopping_cart</span>
-                  <p>Tu carrito está vacío</p>
+                  <p>{{ 'totem.cart_empty' | translate }}</p>
                 </div>
               }
             </div>
@@ -134,11 +145,16 @@ import type { Dish, Category, LocalizedString } from '../../types';
                 <span>Total</span>
                 <span>{{ cartTotal() | currencyFormat }}</span>
               </div>
-              <button 
-                [disabled]="cartItems().length === 0"
+              <button
+                (click)="submitOrder()"
+                [disabled]="cartItems().length === 0 || submittingOrder()"
                 class="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 dark:disabled:bg-gray-600 text-white py-3 rounded-xl font-bold text-lg active:scale-95 transition-transform"
               >
-                Pedir
+                @if (submittingOrder()) {
+                  {{ 'totem.sending' | translate }}
+                } @else {
+                  {{ 'totem.place_order' | translate }}
+                }
               </button>
             </div>
           </aside>
@@ -151,13 +167,19 @@ export class TotemComponent implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
   private http = inject(HttpClient);
   themeService = inject(ThemeService);
+  protected i18n = inject(I18nService);
+  private notify = inject(NotificationService);
   private destroy$ = new Subject<void>();
 
-  restaurantName = signal('Cargando...');
+  restaurantName = signal(this.i18n.translate('common.loading'));
   categories = signal<Category[]>([]);
   dishes = signal<Dish[]>([]);
   selectedCategory = signal<string | null>(null);
   showCart = signal(false);
+  sessionInfo = signal<SessionInfo | null>(null);
+  submittingOrder = signal(false);
+
+  private qrToken: string | null = null;
 
   cartItems = cartStore.items;
   cartTotal = cartStore.total;
@@ -175,23 +197,40 @@ export class TotemComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     const qr = this.route.snapshot.paramMap.get('qr');
-    if (qr) {
-      // BUG-10: was calling GET /api/dishes which requires auth — totem is a public QR page.
-      // Now calls the dedicated public endpoint GET /api/totems/menu/:qr/dishes
-      this.http.get<{ categories: Category[]; dishes: Dish[] }>(`${environment.apiUrl}/totems/menu/${qr}/dishes`)
-        .pipe(takeUntil(this.destroy$))
-        .subscribe({
-          next: ({ categories, dishes }) => {
-            if (categories.length) this.restaurantName.set('Menú');
-            this.categories.set(categories);
-            this.dishes.set(dishes);
-          },
-          error: (err) => {
-            console.error('[Totem] Error loading menu:', err);
-            this.restaurantName.set('Error al cargar menú');
-          },
-        });
-    }
+    if (!qr) return;
+    this.qrToken = qr;
+
+    // Load menu dishes
+    this.http.get<{ categories: Category[]; dishes: Dish[] }>(`${environment.apiUrl}/totems/menu/${qr}/dishes`)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: ({ categories, dishes }) => {
+          if (categories.length) this.restaurantName.set(this.i18n.translate('totem.menu'));
+          this.categories.set(categories);
+          this.dishes.set(dishes);
+        },
+        error: (err) => {
+          console.error('[Totem] Error loading menu:', err);
+          this.restaurantName.set(this.i18n.translate('totem.menu_error'));
+          this.notify.error(this.i18n.translate('totem.menu_error'));
+        },
+      });
+
+    // Get or create session for this totem
+    this.http.post<SessionInfo>(`${environment.apiUrl}/totems/menu/${qr}/session`, {})
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (session) => {
+          this.sessionInfo.set(session);
+          if (session.totem_name) {
+            this.restaurantName.set(session.totem_name);
+          }
+        },
+        error: (err) => {
+          console.error('[Totem] Error getting session:', err);
+          this.notify.error(this.i18n.translate('totem.session_error'));
+        },
+      });
   }
 
   ngOnDestroy(): void {
@@ -204,7 +243,7 @@ export class TotemComponent implements OnInit, OnDestroy {
   }
 
   addToCart(dish: Dish) {
-    // Obtener nombre localizado según preferencia del navegador
+    // Get localized name based on browser language preference
     const lang = navigator.language?.split('-')[0] ?? 'es';
     const name = dish.disher_name?.[lang as keyof LocalizedString] 
               || dish.disher_name?.es 
@@ -216,9 +255,38 @@ export class TotemComponent implements OnInit, OnDestroy {
       price: dish.disher_price,
       extras: [],
     });
+    this.notify.info(this.i18n.translate('totem.item_added_to_cart'));
   }
 
   toggleCart() {
     this.showCart.update((v) => !v);
+  }
+
+  submitOrder() {
+    if (!this.qrToken || this.cartItems().length === 0) return;
+
+    this.submittingOrder.set(true);
+
+    const items = this.cartItems().map((item) => ({
+      dishId: item.dishId,
+      quantity: item.quantity,
+      variantId: item.variantId,
+      extras: item.extras.map((e) => e.extraId),
+    }));
+
+    this.http.post<{ order_id: string }>(`${environment.apiUrl}/totems/menu/${this.qrToken}/order`, { items })
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: () => {
+          this.submittingOrder.set(false);
+          this.notify.success(this.i18n.translate('totem.order_sent'));
+          cartStore.clear();
+          this.showCart.set(false);
+        },
+        error: (err) => {
+          this.submittingOrder.set(false);
+          this.notify.error(err.error?.message || this.i18n.translate('totem.order_error'));
+        },
+      });
   }
 }

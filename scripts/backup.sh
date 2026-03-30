@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # =============================================================================
 # DisherIo - backup.sh
-# Realiza mongodump, comprime con timestamp y rota backups > 7 días.
+# Runs mongodump, compresses with timestamp and rotates backups older than 7 days.
 # =============================================================================
 set -euo pipefail
 
@@ -22,11 +22,11 @@ log()  { echo -e "${GREEN}[OK]${RESET} $*"; }
 warn() { echo -e "${YELLOW}[WARN]${RESET} $*"; }
 err()  { echo -e "${RED}[ERROR]${RESET} $*"; exit 1; }
 
-# ── Verificaciones ─────────────────────────────────────────────────────────────
+# ── Checks ────────────────────────────────────────────────────────────────────
 check_running() {
   cd "$ROOT_DIR"
   docker compose ps mongo 2>/dev/null | grep -q "running\|Up" \
-    || err "El contenedor mongo no está corriendo. Inicia los servicios primero."
+    || err "The mongo container is not running. Start the services first."
 }
 
 # ── Backup ─────────────────────────────────────────────────────────────────────
@@ -34,7 +34,7 @@ run_backup() {
   mkdir -p "$BACKUP_DIR"
   mkdir -p "$BACKUP_PATH"
 
-  log "Iniciando mongodump → ${BACKUP_NAME}"
+  log "Starting mongodump → ${BACKUP_NAME}"
   cd "$ROOT_DIR"
 
   docker compose exec -T mongo mongodump \
@@ -42,41 +42,41 @@ run_backup() {
     --out /tmp/dump_${TIMESTAMP} \
     --quiet 2>/dev/null \
     && docker compose cp "mongo:/tmp/dump_${TIMESTAMP}" "$BACKUP_PATH/" \
-    || err "mongodump falló"
+    || err "mongodump failed"
 
-  # Limpiar dump temporal del contenedor
+  # Clean up temporary dump from the container
   docker compose exec -T mongo rm -rf "/tmp/dump_${TIMESTAMP}" 2>/dev/null || true
 
-  log "Comprimiendo backup..."
+  log "Compressing backup..."
   tar -czf "$ARCHIVE" -C "$BACKUP_DIR" "$BACKUP_NAME"
   rm -rf "$BACKUP_PATH"
 
   local size
   size=$(du -sh "$ARCHIVE" | cut -f1)
-  log "Backup creado: ${BOLD}${ARCHIVE}${RESET} (${size})"
+  log "Backup created: ${BOLD}${ARCHIVE}${RESET} (${size})"
 }
 
-# ── Rotación ───────────────────────────────────────────────────────────────────
+# ── Rotation ──────────────────────────────────────────────────────────────────
 rotate_backups() {
-  log "Rotando backups con más de ${RETENTION_DAYS} días..."
+  log "Rotating backups older than ${RETENTION_DAYS} days..."
   local count=0
   while IFS= read -r -d '' old_backup; do
     rm -f "$old_backup"
-    warn "Eliminado: $(basename "$old_backup")"
+    warn "Deleted: $(basename "$old_backup")"
     ((count++)) || true
   done < <(find "$BACKUP_DIR" -name "disherio_backup_*.tar.gz" -mtime "+${RETENTION_DAYS}" -print0 2>/dev/null)
 
   if [[ $count -eq 0 ]]; then
-    log "No hay backups antiguos para eliminar"
+    log "No old backups to delete"
   else
-    log "${count} backup(s) eliminado(s)"
+    log "${count} backup(s) deleted"
   fi
 }
 
-# ── Listado ────────────────────────────────────────────────────────────────────
+# ── Listing ───────────────────────────────────────────────────────────────────
 list_backups() {
   echo ""
-  echo -e "${BOLD}  Backups disponibles en ${BACKUP_DIR}:${RESET}"
+  echo -e "${BOLD}  Available backups in ${BACKUP_DIR}:${RESET}"
   local found=0
   while IFS= read -r -d '' f; do
     local size date_str
@@ -86,7 +86,7 @@ list_backups() {
     ((found++)) || true
   done < <(find "$BACKUP_DIR" -name "disherio_backup_*.tar.gz" -print0 2>/dev/null | sort -z)
 
-  [[ $found -eq 0 ]] && echo "    (ninguno)"
+  [[ $found -eq 0 ]] && echo "    (none)"
   echo ""
 }
 
@@ -98,7 +98,7 @@ main() {
   run_backup
   rotate_backups
   list_backups
-  echo -e "  ${GREEN}Backup completado: ${BOLD}${ARCHIVE}${RESET}"
+  echo -e "  ${GREEN}Backup completed: ${BOLD}${ARCHIVE}${RESET}"
   echo ""
 }
 

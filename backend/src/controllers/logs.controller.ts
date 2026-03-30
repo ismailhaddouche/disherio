@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import i18next from 'i18next';
 import { ItemOrder, IItemOrder } from '../models/order.model';
 import { Types } from 'mongoose';
 import { logger } from '../config/logger';
@@ -88,7 +89,7 @@ export async function getLogs(req: Request, res: Response): Promise<void> {
       const dishName = dish?.disher_name || 
         (item.item_name_snapshot && typeof item.item_name_snapshot === 'object' && 'es' in item.item_name_snapshot) 
           ? (item.item_name_snapshot as { es: string }).es 
-          : 'Desconocido';
+          : i18next.t('common:UNKNOWN');
 
       return {
         id: item._id.toString(),

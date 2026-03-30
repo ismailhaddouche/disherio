@@ -1,4 +1,5 @@
 import { Server } from 'socket.io';
+import i18next from 'i18next';
 
 import { logger } from '../config/logger';
 import { AuthenticatedSocket } from '../middlewares/socketAuth';
@@ -72,8 +73,8 @@ export async function closeSessionForCustomers(sessionId: string, data: {
       closedBy: data.closedBy,
       closedByName: data.closedByName,
       totalAmount: data.totalAmount,
-      reason: data.reason || 'Cuenta solicitada',
-      message: 'La cuenta ha sido solicitada. No se pueden realizar más pedidos.',
+      reason: data.reason || i18next.t('sockets:BILL_REQUESTED'),
+      message: i18next.t('sockets:SESSION_CLOSED_NO_MORE_ORDERS'),
       timestamp: new Date().toISOString(),
     });
 
@@ -87,7 +88,7 @@ export async function closeSessionForCustomers(sessionId: string, data: {
             socket.leave(`customer:session:${sessionId}`);
             socket.emit('totem:force_disconnect', {
               reason: 'SESSION_CLOSED',
-              message: 'La sesión ha finalizado. Gracias por su visita.',
+              message: i18next.t('sockets:SESSION_ENDED_THANK_YOU'),
             });
           }
         });
@@ -145,7 +146,7 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
       if (sessionClosed) {
         socket.emit('totem:error', { 
           message: 'SESSION_CLOSED',
-          details: 'La cuenta ya ha sido solicitada. No se pueden realizar más pedidos.',
+          details: i18next.t('sockets:SESSION_CLOSED_NO_MORE_ORDERS'),
         });
         return;
       }
@@ -189,7 +190,7 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
       const joinedAt = new Date().toISOString();
       customerInfo.set(socketId, { 
         customerId, 
-        customerName: customerName || 'Cliente', 
+        customerName: customerName || i18next.t('common:CUSTOMER', { defaultValue: 'Customer' }), 
         socketId,
         joinedAt,
       });
@@ -215,14 +216,14 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
       emitToCustomers(sessionId, 'totem:customer_joined_table', {
         sessionId,
         customerId,
-        customerName: customerName || 'Cliente',
+        customerName: customerName || i18next.t('common:CUSTOMER', { defaultValue: 'Customer' }),
         joinedAt,
       });
 
       // Notify TAS that a customer joined
       io.to(`tas:session:${sessionId}`).emit('tas:customer_joined', {
         sessionId,
-        customerName: customerName || 'Cliente',
+        customerName: customerName || i18next.t('common:CUSTOMER', { defaultValue: 'Customer' }),
         customerId,
         totalCustomersAtTable: sessionCustomers.get(sessionId)?.size || 1,
         timestamp: joinedAt,
@@ -298,7 +299,7 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
       if (sessionClosed) {
         socket.emit('totem:error', { 
           message: 'SESSION_CLOSED',
-          details: 'La cuenta ya ha sido solicitada. No se pueden realizar más pedidos.',
+          details: i18next.t('sockets:SESSION_CLOSED_NO_MORE_ORDERS'),
         });
         return;
       }
@@ -306,7 +307,7 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
       // Verify customer is in the session
       const currentSession = customerSessions.get(socketId);
       if (currentSession !== sessionId) {
-        socket.emit('totem:error', { message: 'NOT_IN_SESSION', details: 'Must join session first' });
+        socket.emit('totem:error', { message: 'NOT_IN_SESSION', details: i18next.t('sockets:MUST_JOIN_SESSION') });
         return;
       }
 
@@ -323,7 +324,7 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
             item_name_snapshot: item.dishName,
             item_base_price: item.price,
           },
-          customerName: customerName || 'Cliente',
+          customerName: customerName || i18next.t('common:CUSTOMER', { defaultValue: 'Customer' }),
           placedVia: 'totem',
         });
       });
@@ -355,7 +356,7 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
 
       // Get customer info for attribution
       const customerInfoData = customerInfo.get(socketId);
-      const attributedCustomerName = customerName || customerInfoData?.customerName || 'Cliente';
+      const attributedCustomerName = customerName || customerInfoData?.customerName || i18next.t('common:CUSTOMER', { defaultValue: 'Customer' });
       const attributedCustomerId = customerId || customerInfoData?.customerId;
 
       // Confirm to the customer who placed the order
@@ -429,7 +430,7 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
       if (sessionClosed) {
         socket.emit('totem:error', { 
           message: 'SESSION_CLOSED',
-          details: 'La cuenta ya ha sido solicitada. No se pueden realizar más pedidos.',
+          details: i18next.t('sockets:SESSION_CLOSED_NO_MORE_ORDERS'),
         });
         return;
       }
@@ -456,7 +457,7 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
       // Notify TAS
       notifyTASNewOrder(sessionId, {
         item: itemData,
-        customerName: customerName || 'Cliente',
+        customerName: customerName || i18next.t('common:CUSTOMER', { defaultValue: 'Customer' }),
         placedVia: 'totem',
       });
 
@@ -502,9 +503,9 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
       const helpRequest = {
         sessionId,
         customerId,
-        customerName: customerName || 'Cliente',
+        customerName: customerName || i18next.t('common:CUSTOMER', { defaultValue: 'Customer' }),
         tableId,
-        message: message || 'Necesita ayuda',
+        message: message || i18next.t('sockets:NEEDS_HELP'),
         timestamp: new Date().toISOString(),
       };
 
@@ -517,7 +518,7 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
       // Confirm to customer
       socket.emit('totem:help_request_sent', {
         success: true,
-        message: 'Un camarero vendrá enseguida',
+        message: i18next.t('sockets:WAITER_COMING'),
         timestamp: new Date().toISOString(),
       });
 
@@ -551,7 +552,7 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
       if (sessionClosed) {
         socket.emit('totem:error', { 
           message: 'SESSION_ALREADY_CLOSED',
-          details: 'La cuenta ya ha sido solicitada anteriormente.',
+          details: i18next.t('sockets:BILL_ALREADY_REQUESTED'),
         });
         return;
       }
@@ -559,7 +560,7 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
       const billRequest = {
         sessionId,
         customerId,
-        customerName: customerName || 'Cliente',
+        customerName: customerName || i18next.t('common:CUSTOMER', { defaultValue: 'Customer' }),
         splitType: splitType || 'ALL',
         requestedBy: 'customer',
         timestamp: new Date().toISOString(),
@@ -575,15 +576,15 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
       // Confirm to customer
       socket.emit('totem:bill_request_sent', {
         success: true,
-        message: 'Su solicitud de cuenta ha sido enviada. La sesión se cerrará en breve.',
+        message: i18next.t('sockets:BILL_REQUEST_SENT'),
         timestamp: new Date().toISOString(),
       });
 
       // Close session for all customers
       await closeSessionForCustomers(sessionId, {
         closedBy: 'customer',
-        closedByName: customerName || 'Cliente',
-        reason: 'Cuenta solicitada por cliente',
+        closedByName: customerName || i18next.t('common:CUSTOMER', { defaultValue: 'Customer' }),
+        reason: i18next.t('sockets:BILL_REQUESTED_BY_CUSTOMER'),
       });
 
       logger.info({ socketId, sessionId, customerName }, 'Customer requested bill - session closed');

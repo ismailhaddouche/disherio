@@ -14,9 +14,9 @@ interface MongoServerError extends Error {
 const ERROR_STATUS_MAP = ERROR_HTTP_STATUS_MAP;
 
 /**
- * Middleware de error global
- * Debe ser registrado AL FINAL de todas las rutas
- * Captura errores y devuelve JSON consistente con traducciones
+ * Global error middleware
+ * Must be registered AFTER all routes
+ * Catches errors and returns consistent JSON with translations
  */
 export function errorHandler(
   err: Error | AppError,
@@ -24,7 +24,7 @@ export function errorHandler(
   res: Response,
   _next: NextFunction
 ): void {
-  // Determinar status code
+  // Determine status code
   let statusCode = 500;
   let errorCode = 'SERVER_ERROR';
   let errorMessage: string;
@@ -52,7 +52,7 @@ export function errorHandler(
     errorCode = ErrorCode.DUPLICATE_RESOURCE;
     errorMessage = i18next.t(`errors:${ErrorCode.DUPLICATE_RESOURCE}`, {
       lng: req.lang,
-      defaultValue: 'El recurso ya existe'
+      defaultValue: 'Resource already exists'
     });
   } else {
     // Check if the error message is a known error code
@@ -68,7 +68,7 @@ export function errorHandler(
     }
   }
 
-  // Logging con pino
+  // Log with pino
   logger.error({
     err: {
       message: err.message,
@@ -78,9 +78,9 @@ export function errorHandler(
       errorCode,
     },
     type: 'error_handler',
-  }, 'Error capturado por el manejador global');
+  }, 'Error caught by global handler');
 
-  // Responder con JSON consistente (nunca HTML)
+  // Respond with consistent JSON (never HTML)
   res.status(statusCode).json({
     error: errorMessage,
     errorCode: errorCode,
@@ -89,9 +89,9 @@ export function errorHandler(
 }
 
 /**
- * Middleware para rutas no encontradas (404)
- * Debe ser registrado DESPUÉS de todas las rutas válidas
- * y ANTES del errorHandler
+ * Middleware for not found routes (404)
+ * Must be registered AFTER all valid routes
+ * and BEFORE the errorHandler
  */
 export function notFoundHandler(req: Request, res: Response): void {
   const message = i18next.t(`errors:${ErrorCode.NOT_FOUND}`, { lng: req.lang });

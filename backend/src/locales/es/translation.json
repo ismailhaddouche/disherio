@@ -87,6 +87,20 @@
     "ORDERED": "Plato pedido",
     "ON_PREPARE": "Preparación iniciada",
     "SERVED": "Plato servido",
-    "CANCELED": "Plato cancelado"
+    "CANCELED": "Plato cancelado",
+    "CUSTOMER": "Cliente"
+  },
+  "sockets": {
+    "BILL_REQUESTED": "Cuenta solicitada",
+    "SESSION_CLOSED_NO_MORE_ORDERS": "La cuenta ha sido solicitada. No se pueden realizar más pedidos.",
+    "MUST_JOIN_SESSION": "Debe unirse a la sesión primero",
+    "NEEDS_HELP": "Necesita ayuda",
+    "WAITER_COMING": "Un camarero vendrá enseguida",
+    "BILL_ALREADY_REQUESTED": "La cuenta ya ha sido solicitada anteriormente.",
+    "BILL_REQUEST_SENT": "Su solicitud de cuenta ha sido enviada. La sesión se cerrará en breve.",
+    "BILL_REQUESTED_BY_CUSTOMER": "Cuenta solicitada por cliente",
+    "BILL_REQUESTED_BY_WAITER": "Cuenta solicitada por camarero",
+    "WAITER_COMING_ASSIST": "Un camarero vendrá a ayudarle",
+    "SESSION_ENDED_THANK_YOU": "La sesión ha finalizado. Gracias por su visita."
   }
 }

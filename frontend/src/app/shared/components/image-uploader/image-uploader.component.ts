@@ -2,11 +2,14 @@ import { Component, input, output, inject, signal, effect } from '@angular/core'
 import { HttpClient } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
 import { environment } from '../../../../environments/environment';
+import { NotificationService } from '../../../core/services/notification.service';
+import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
+import { I18nService } from '../../../core/services/i18n.service';
 
 @Component({
   selector: 'app-image-uploader',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, TranslatePipe],
   template: `
     <div class="flex flex-col gap-2">
       <div 
@@ -17,7 +20,7 @@ import { environment } from '../../../../environments/environment';
           <img [src]="previewUrl()" class="w-full h-32 object-cover rounded-lg mb-2" />
         } @else {
           <span class="material-symbols-outlined text-4xl text-gray-400">add_a_photo</span>
-          <p class="text-xs text-gray-500 mt-2 text-center">Subir imagen (WebP, JPG, PNG)</p>
+          <p class="text-xs text-gray-500 mt-2 text-center">{{ 'image_uploader.hint' | translate }}</p>
         }
         <input 
           #fileInput 
@@ -37,6 +40,8 @@ import { environment } from '../../../../environments/environment';
 })
 export class ImageUploaderComponent {
   private http = inject(HttpClient);
+  private notify = inject(NotificationService);
+  private i18n = inject(I18nService);
 
   folder = input.required<'dishes' | 'restaurant' | 'categories'>();
   currentImage = input<string | null>(null);
@@ -81,7 +86,7 @@ export class ImageUploaderComponent {
           this.uploading.set(false);
         },
         error: () => {
-          alert('Error al subir la imagen');
+          this.notify.error(this.i18n.translate('image_uploader.error'));
           this.uploading.set(false);
         }
       });

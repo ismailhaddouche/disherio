@@ -1,5 +1,8 @@
 import { ErrorCode } from '@disherio/shared';
 import { getIO } from '../config/socket';
+import { notifyTASNewOrder } from '../sockets/tas.handler';
+import { emitSessionFullyPaid, emitTicketPaid } from '../sockets/pos.handler';
+import { notifyCustomerItemUpdate } from '../sockets/totem.handler';
 import * as TaxUtils from '../utils/tax';
 import { withTransaction } from '../utils/transactions';
 import { IVariant, IExtra } from '../models/dish.model';
@@ -83,8 +86,10 @@ function canDelete(permissions: string[]): boolean {
   return permissions.some((p) => DELETE_PERMISSIONS.includes(p));
 }
 
-function emitItemStateChanged(sessionId: string, itemId: string, newState: string): void {
+function emitItemStateChanged(sessionId: string, itemId: string, newState: string, itemName?: any): void {
   getIO().to(`session:${sessionId}`).emit('item:state_changed', { itemId, newState });
+  // Also notify customers directly
+  notifyCustomerItemUpdate(sessionId, itemId, newState, itemName);
 }
 
 function emitItemDeleted(sessionId: string, itemId: string): void {
@@ -99,7 +104,8 @@ function emitNewKitchenItem(sessionId: string, item: unknown): void {
   getIO().to(`session:${sessionId}`).emit('kds:new_item', item);
 }
 
-function emitSessionPaid(sessionId: string): void {
+// Legacy function - kept for compatibility
+function emitSessionPaidLegacy(sessionId: string): void {
   getIO().to(`session:${sessionId}`).emit('session:paid');
 }
 
@@ -173,6 +179,13 @@ export async function addItemToOrder(
     emitNewKitchenItem(sessionId, item);
   }
 
+  // Notify TAS (waiters) about the new order item
+  notifyTASNewOrder(sessionId, {
+    item,
+    addedBy: 'customer', // or 'system' depending on context
+    dishType: dish.disher_type,
+  });
+
   return item;
 }
 
@@ -198,7 +211,7 @@ export async function updateItemState(
     newState as 'ORDERED' | 'ON_PREPARE' | 'SERVED' | 'CANCELED'
   );
 
-  emitItemStateChanged(item.session_id.toString(), item._id.toString(), newState);
+  emitItemStateChanged(item.session_id.toString(), item._id.toString(), newState, item.item_name_snapshot);
 
   return updated;
 }
@@ -272,7 +285,7 @@ export async function createPayment(
 ) {
   const { total } = await calculateSessionTotal(sessionId, customTip);
 
-  // Validar que haya items en la sesión antes de crear el pago
+  // Validate that there are items in the session before creating the payment
   if (total <= 0) {
     throw new Error(ErrorCode.NO_ITEMS_TO_PAY);
   }
@@ -348,9 +361,31 @@ export async function markTicketPaid(paymentId: string, ticketPart: number) {
     if (!updated) throw new Error(ErrorCode.TICKET_NOT_FOUND);
 
     const allPaid = updated.tickets.every((t) => t.paid);
+    const sessionIdStr = updated.session_id.toString();
+    
+    // Emit ticket paid notification to POS and TAS
+    const ticket = updated.tickets.find(t => t.ticket_part === ticketPart);
+    if (ticket) {
+      const remainingAmount = updated.tickets
+        .filter(t => !t.paid)
+        .reduce((sum, t) => sum + t.ticket_amount, 0);
+        
+      emitTicketPaid(sessionIdStr, {
+        ticketPart,
+        ticketAmount: ticket.ticket_amount,
+        remainingAmount,
+      });
+    }
+    
     if (allPaid) {
-      await totemSessionRepo.updateState(updated.session_id.toString(), 'PAID', session);
-      emitSessionPaid(updated.session_id.toString());
+      await totemSessionRepo.updateState(sessionIdStr, 'PAID', session);
+      emitSessionPaidLegacy(sessionIdStr);
+      
+      // Emit detailed session fully paid notification
+      emitSessionFullyPaid(sessionIdStr, {
+        paymentTotal: updated.payment_total,
+        paymentType: updated.payment_type,
+      });
     }
 
     return updated;

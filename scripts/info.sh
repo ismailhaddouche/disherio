@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # =============================================================================
 # DisherIo - info.sh
-# Panel de información: IP, dominio, DNS, acceso, estado de servicios,
-# uso de recursos, versión de la app.
+# Information panel: IP, domain, DNS, access, service status,
+# resource usage, app version.
 # =============================================================================
 set -euo pipefail
 
@@ -13,7 +13,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(dirname "$SCRIPT_DIR")"
 ENV_FILE="$ROOT_DIR/.env"
 
-# ── Cargar .env ────────────────────────────────────────────────────────────────
+# ── Load .env ─────────────────────────────────────────────────────────────────
 load_env() {
   if [[ -f "$ENV_FILE" ]]; then
     set -a; source "$ENV_FILE"; set +a
@@ -39,18 +39,18 @@ status_icon() {
   fi
 }
 
-# ── Recopilar datos de red ─────────────────────────────────────────────────────
+# ── Gather network data ───────────────────────────────────────────────────────
 gather_network_info() {
   LOCAL_IP=$(ip route get 1.1.1.1 2>/dev/null | awk '{print $7; exit}' || hostname -I | awk '{print $1}' || echo "N/A")
   PUBLIC_IP=$(curl -s --max-time 6 ifconfig.me 2>/dev/null || curl -s --max-time 6 api.ipify.org 2>/dev/null || echo "N/A")
   HOSTNAME=$(hostname -f 2>/dev/null || hostname || echo "N/A")
   FRONTEND_URL="${FRONTEND_URL:-http://localhost}"
 
-  # Detectar dominio configurado en Caddyfile
+  # Detect domain configured in Caddyfile
   CONFIGURED_DOMAIN="N/A"
   if [[ -f "$ROOT_DIR/Caddyfile" ]]; then
     CONFIGURED_DOMAIN=$(grep -Eo '^[a-zA-Z0-9._-]+\.[a-zA-Z]{2,}' "$ROOT_DIR/Caddyfile" 2>/dev/null | head -1 || echo "N/A")
-    # Si no encontró dominio real, ver si hay :puerto
+    # If no real domain found, check for :port
     if [[ "$CONFIGURED_DOMAIN" == "N/A" ]]; then
       local port_entry
       port_entry=$(grep -Eo ':[0-9]+' "$ROOT_DIR/Caddyfile" 2>/dev/null | head -1 || echo "")
@@ -58,7 +58,7 @@ gather_network_info() {
     fi
   fi
 
-  # Detectar si hay SSL
+  # Detect if SSL is enabled
   SSL_MODE="No"
   if grep -qiE '^https|443' "$ROOT_DIR/Caddyfile" 2>/dev/null; then
     SSL_MODE="Si (Let's Encrypt / Caddy auto)"
@@ -77,7 +77,7 @@ dns_lookup() {
   fi
 }
 
-# ── Panel de red ───────────────────────────────────────────────────────────────
+# ── Network panel ─────────────────────────────────────────────────────────────
 print_network_panel() {
   echo ""
   echo -e "  ${BOLD}RED Y ACCESO${RESET}"
@@ -89,13 +89,13 @@ print_network_panel() {
   row "Dominio configurado" "$CONFIGURED_DOMAIN"
   row "SSL / HTTPS"        "$SSL_MODE"
 
-  # Resolución DNS si hay dominio real
+  # DNS resolution if there is a real domain
   if [[ "$CONFIGURED_DOMAIN" != "N/A" && "$CONFIGURED_DOMAIN" != *"puerto"* ]]; then
     local resolved
     resolved=$(dns_lookup "$CONFIGURED_DOMAIN")
     row "DNS resuelve a" "$resolved"
 
-    # Verificar si coincide con la IP pública
+    # Check if it matches the public IP
     if [[ -n "$resolved" && "$resolved" != "N/A" ]] && echo "$resolved" | grep -q "$PUBLIC_IP"; then
       row "DNS apunta a este server" "Si — correcto"
     elif [[ "$resolved" == "N/A" || -z "$resolved" ]]; then
@@ -113,7 +113,7 @@ print_network_panel() {
   fi
 }
 
-# ── Panel de servicios ─────────────────────────────────────────────────────────
+# ── Services panel ────────────────────────────────────────────────────────────
 print_services_panel() {
   echo ""
   echo -e "  ${BOLD}ESTADO DE SERVICIOS${RESET}"
@@ -135,31 +135,31 @@ print_services_panel() {
 
   echo ""
 
-  # Uso de recursos
+  # Resource usage
   echo -e "  ${BOLD}USO DE RECURSOS${RESET}"
   divider
   docker stats --no-stream --format "  {{.Name}}\tCPU: {{.CPUPerc}}\tRAM: {{.MemUsage}}" 2>/dev/null \
     | column -t -s $'\t' || echo "  (no disponible)"
 }
 
-# ── Panel de almacenamiento ────────────────────────────────────────────────────
+# ── Storage panel ─────────────────────────────────────────────────────────────
 print_storage_panel() {
   echo ""
   echo -e "  ${BOLD}ALMACENAMIENTO${RESET}"
   divider
 
-  # Disco del sistema
+  # System disk
   local disk_usage
   disk_usage=$(df -h / 2>/dev/null | awk 'NR==2{printf "%s / %s (%s usado)", $3, $2, $5}' || echo "N/A")
   row "Disco raíz" "$disk_usage"
 
-  # Volúmenes Docker
+  # Docker volumes
   local vol_size
   vol_size=$(docker system df --format "{{.Type}}\t{{.TotalCount}}\t{{.Size}}" 2>/dev/null \
     | grep -i volume | awk '{printf "%s volúmenes — %s", $2, $3}' || echo "N/A")
   row "Volúmenes Docker" "$vol_size"
 
-  # Backups
+  # Backups storage
   local backup_dir="/var/backups/disherio"
   if [[ -d "$backup_dir" ]]; then
     local backup_count backup_size
@@ -171,7 +171,7 @@ print_storage_panel() {
   fi
 }
 
-# ── Panel de versión ───────────────────────────────────────────────────────────
+# ── Version panel ─────────────────────────────────────────────────────────────
 print_version_panel() {
   echo ""
   echo -e "  ${BOLD}VERSIÓN Y SISTEMA${RESET}"
@@ -187,7 +187,7 @@ print_version_panel() {
   row "Idioma app"      "${APP_LANG:-es}"
 }
 
-# ── Accesos rápidos ────────────────────────────────────────────────────────────
+# ── Quick access ──────────────────────────────────────────────────────────────
 print_access_summary() {
   local url="${FRONTEND_URL:-http://localhost}"
   echo ""

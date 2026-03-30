@@ -9,8 +9,8 @@ function setAuthCookie(res: Response, token: string, isSecure: boolean): void {
   const maxAge = parseDurationToMs(jwtExpires);
   res.cookie(COOKIE_NAME, token, {
     httpOnly: true,
-    secure: isSecure,  // Solo true si es HTTPS
-    sameSite: isSecure ? 'strict' : 'lax',  // lax para HTTP, strict para HTTPS
+    secure: isSecure,  // Only true if HTTPS
+    sameSite: isSecure ? 'strict' : 'lax',  // lax for HTTP, strict for HTTPS
     maxAge: maxAge,
     path: '/',
   });

@@ -87,6 +87,20 @@
     "ORDERED": "Plat commandé",
     "ON_PREPARE": "Préparation commencée",
     "SERVED": "Plat servi",
-    "CANCELED": "Plat annulé"
+    "CANCELED": "Plat annulé",
+    "CUSTOMER": "Client"
+  },
+  "sockets": {
+    "BILL_REQUESTED": "Addition demandée",
+    "SESSION_CLOSED_NO_MORE_ORDERS": "L'addition a été demandée. Plus aucune commande ne peut être passée.",
+    "MUST_JOIN_SESSION": "Vous devez rejoindre la session d'abord",
+    "NEEDS_HELP": "A besoin d'aide",
+    "WAITER_COMING": "Un serveur arrive tout de suite",
+    "BILL_ALREADY_REQUESTED": "L'addition a déjà été demandée.",
+    "BILL_REQUEST_SENT": "Votre demande d'addition a été envoyée. La session sera fermée sous peu.",
+    "BILL_REQUESTED_BY_CUSTOMER": "Addition demandée par le client",
+    "BILL_REQUESTED_BY_WAITER": "Addition demandée par le serveur",
+    "WAITER_COMING_ASSIST": "Un serveur vient vous aider",
+    "SESSION_ENDED_THANK_YOU": "La session est terminée. Merci de votre visite."
   }
 }

@@ -1,6 +1,6 @@
 /**
- * Simple in-memory cache para reducir queries a BD
- * NOTA: En produccion con multiple instancias, usar Redis
+ * Simple in-memory cache to reduce DB queries
+ * NOTE: In production with multiple instances, use Redis
  */
 
 interface CacheEntry<T> {
@@ -10,7 +10,7 @@ interface CacheEntry<T> {
 
 class CacheService {
   private cache: Map<string, CacheEntry<any>> = new Map();
-  private defaultTTL: number = 2 * 60 * 1000; // 2 minutos
+  private defaultTTL: number = 2 * 60 * 1000; // 2 minutes
   private cleanupInterval: NodeJS.Timeout | null = null;
 
   constructor() {
@@ -54,7 +54,7 @@ class CacheService {
     this.cache.clear();
   }
 
-  // Limpiar entradas expiradas (llamar periodicamente)
+  // Clean up expired entries (call periodically)
   cleanup(): void {
     const now = Date.now();
     for (const [key, entry] of this.cache.entries()) {

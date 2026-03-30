@@ -8,8 +8,8 @@ import { CreateDishData, UpdateDishData, CreateCategoryData, UpdateCategoryData 
 const dishRepo = new DishRepository();
 const categoryRepo = new CategoryRepository();
 
-// Cache TTL en ms
-const CACHE_TTL = 2 * 60 * 1000; // 2 minutos
+// Cache TTL in ms
+const CACHE_TTL = 2 * 60 * 1000; // 2 minutes
 
 // Cache invalidation helpers
 function invalidateDishCaches(dishId: string, restaurantId?: string): void {
@@ -141,7 +141,7 @@ export async function deleteCategory(id: string): Promise<ICategory | null> {
   const existing = await categoryRepo.findById(id);
   if (!existing) return null;
   
-  // Verificar que no haya platos usando esta categoria
+  // Verify no dishes are using this category
   const dishesInCategory = await dishRepo.countByCategory(id);
   if (dishesInCategory > 0) {
     throw new Error(ErrorCode.CATEGORY_HAS_DISHES);
