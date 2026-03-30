@@ -92,11 +92,11 @@ export class DishListComponent implements OnInit, OnDestroy {
   }
 
   loadDishes() {
-    this.http.get<any[]>(`${environment.apiUrl}/dishes`)
+    this.http.get<{ data: any[] }>(`${environment.apiUrl}/dishes`)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (res) => {
-          this.dishes.set(res);
+          this.dishes.set(res.data);
         },
         error: (err) => {
           console.error('[DishList] Error loading dishes:', err);
