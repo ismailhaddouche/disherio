@@ -18,6 +18,7 @@ export interface KdsItem {
   order_id: string;
   session_id: string;
   customer_name?: string;
+  totem_name?: string;
   item_disher_extras?: { extra_id: string; name: LocalizedName; price: number }[];
 }
 
