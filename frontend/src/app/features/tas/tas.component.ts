@@ -29,6 +29,14 @@ import { NotificationService } from '../../core/services/notification.service';
               <span class="material-symbols-outlined text-2xl text-primary">room_service</span>
               <h1 class="text-lg font-bold text-gray-900 dark:text-white">{{ 'tas.title' | translate }}</h1>
             </div>
+            <span class="flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium"
+                  [class.bg-green-100]="isConnected()"
+                  [class.text-green-700]="isConnected()"
+                  [class.bg-red-100]="!isConnected()"
+                  [class.text-red-700]="!isConnected()">
+              <span class="w-1.5 h-1.5 rounded-full" [class.bg-green-500]="isConnected()" [class.bg-red-500]="!isConnected()"></span>
+              {{ isConnected() ? ('kds.connected' | translate) : ('kds.disconnected' | translate) }}
+            </span>
           </div>
           
           <!-- New Temporary Totem -->
@@ -574,6 +582,7 @@ export class TasComponent implements OnInit, OnDestroy {
   selectedCustomerId = signal<string | null>(null);
   isAddingItem = signal(false);
   allTotems = signal<Array<{ _id: string; totem_name: string; totem_type: string }>>([]);
+  isConnected = signal(false);
 
   // Store signals
   sessions = tasStore.sessions;
@@ -591,7 +600,7 @@ export class TasComponent implements OnInit, OnDestroy {
 
   availableTotems = computed(() => {
     const activeTotemIds = new Set(this.sessions().map(s => s.totem_id));
-    return this.allTotems().filter(t => !activeTotemIds.has(t._id));
+    return this.allTotems().filter(t => t.totem_type === 'STANDARD' && !activeTotemIds.has(t._id));
   });
 
   kitchenItems = computed(() => 
@@ -628,6 +637,13 @@ export class TasComponent implements OnInit, OnDestroy {
     
     this.loadData();
     this.setupSocketListeners();
+    this.checkConnection();
+    const connInterval = setInterval(() => this.checkConnection(), 2000);
+    this.destroy$.subscribe(() => clearInterval(connInterval));
+  }
+
+  private checkConnection() {
+    this.isConnected.set(this.socketService.isConnected());
   }
 
   ngOnDestroy() {
