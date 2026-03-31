@@ -21,7 +21,7 @@ import type { LocalizedEntry, MenuLanguage } from '../../types';
           @for (lang of languages(); track lang._id) {
             <button
               type="button"
-              (click)="activeTab.set(lang._id)"
+              (click)="activeTab.set(lang._id!)"
               class="px-3 py-1.5 text-sm font-medium border-b-2 transition-colors relative"
               [class.border-primary]="activeTab() === lang._id"
               [class.text-primary]="activeTab() === lang._id"
@@ -34,7 +34,7 @@ import type { LocalizedEntry, MenuLanguage } from '../../types';
               @if (lang.is_default && required) {
                 <span class="text-red-500">*</span>
               }
-              @if (hasValue(lang._id)) {
+              @if (hasValue(lang._id!)) {
                 <span class="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-primary rounded-full"></span>
               }
             </button>
@@ -47,8 +47,8 @@ import type { LocalizedEntry, MenuLanguage } from '../../types';
         @if (activeTab() === lang._id || languages().length === 1) {
           @if (multiline) {
             <textarea
-              [ngModel]="getValueForLang(lang._id)"
-              (ngModelChange)="setValueForLang(lang._id, $event)"
+              [ngModel]="getValueForLang(lang._id!)"
+              (ngModelChange)="setValueForLang(lang._id!, $event)"
               class="admin-input min-h-[80px]"
               [placeholder]="placeholder || ''"
               rows="3"
@@ -56,8 +56,8 @@ import type { LocalizedEntry, MenuLanguage } from '../../types';
           } @else {
             <input
               type="text"
-              [ngModel]="getValueForLang(lang._id)"
-              (ngModelChange)="setValueForLang(lang._id, $event)"
+              [ngModel]="getValueForLang(lang._id!)"
+              (ngModelChange)="setValueForLang(lang._id!, $event)"
               class="admin-input"
               [placeholder]="placeholder || ''"
             />
@@ -86,7 +86,7 @@ export class LocalizedInputComponent implements OnInit {
       const langs = this.languages();
       if (langs.length > 0 && !this.activeTab()) {
         const def = this.menuLangService.defaultLanguage();
-        this.activeTab.set(def ? def._id : langs[0]._id);
+        this.activeTab.set(def ? def._id! : langs[0]._id!);
       }
     });
   }
@@ -94,9 +94,9 @@ export class LocalizedInputComponent implements OnInit {
   ngOnInit() {
     const def = this.menuLangService.defaultLanguage();
     if (def) {
-      this.activeTab.set(def._id);
+      this.activeTab.set(def._id!);
     } else if (this.languages().length) {
-      this.activeTab.set(this.languages()[0]._id);
+      this.activeTab.set(this.languages()[0]._id!);
     }
   }
 

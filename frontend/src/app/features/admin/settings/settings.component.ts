@@ -205,7 +205,7 @@ interface RestaurantSettings {
                       <div class="flex items-center gap-1">
                         @if (!lang.is_default) {
                           <button
-                            (click)="setDefaultLang(lang._id)"
+                            (click)="setDefaultLang(lang._id!)"
                             class="p-1.5 text-gray-400 hover:text-primary transition-colors"
                             [title]="'settings.set_as_default' | translate"
                           >
@@ -386,7 +386,7 @@ export class SettingsComponent implements OnInit {
   }
 
   startEditLang(lang: MenuLanguage) {
-    this.editingLangId.set(lang._id);
+    this.editingLangId.set(lang._id ?? null);
     this.editLangName = lang.name;
     this.editLangLinked = lang.linked_app_lang ?? null;
   }
@@ -396,7 +396,7 @@ export class SettingsComponent implements OnInit {
   }
 
   saveEditLang(lang: MenuLanguage) {
-    this.menuLangService.update(lang._id, {
+    this.menuLangService.update(lang._id!, {
       name: this.editLangName,
       linked_app_lang: this.editLangLinked,
     } as any).subscribe({
@@ -425,7 +425,7 @@ export class SettingsComponent implements OnInit {
       return;
     }
     if (!confirm(this.i18n.translate('settings.confirm_delete_lang'))) return;
-    this.menuLangService.remove(lang._id).subscribe({
+    this.menuLangService.remove(lang._id!).subscribe({
       next: () => {
         this.notify.success(this.i18n.translate('settings.menu_lang_deleted'));
         this.menuLangService.refresh();

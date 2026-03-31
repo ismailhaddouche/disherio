@@ -10,7 +10,7 @@ import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../core/services/i18n.service';
 import { MenuLanguageService } from '../../../services/menu-language.service';
 import { NotificationService } from '../../../core/services/notification.service';
-import type { Category } from '../../../types';
+import type { Category, LocalizedField } from '../../../types';
 
 @Component({
   selector: 'app-category-form',
@@ -76,11 +76,15 @@ export class CategoryFormComponent implements OnInit {
   private notify = inject(NotificationService);
 
   isEdit = false;
-  category = signal<Partial<Category>>({
+  category = signal<Omit<Partial<Category>, 'category_name' | 'category_description' | 'category_image_url'> & {
+    category_name: LocalizedField;
+    category_description: LocalizedField;
+    category_image_url: string | null;
+  }>({
     category_name: [],
     category_order: 0,
     category_description: [],
-    category_image_url: ''
+    category_image_url: null,
   });
 
   ngOnInit() {
@@ -92,7 +96,7 @@ export class CategoryFormComponent implements OnInit {
   }
 
   loadCategory(id: string) {
-    this.http.get(`${environment.apiUrl}/dishes/categories/${id}`).subscribe(res => this.category.set(res));
+    this.http.get(`${environment.apiUrl}/dishes/categories/${id}`).subscribe(res => this.category.set(res as any));
   }
 
   onImageUploaded(url: string) {

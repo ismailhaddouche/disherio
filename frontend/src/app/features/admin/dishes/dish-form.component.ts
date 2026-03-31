@@ -13,6 +13,7 @@ import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../core/services/i18n.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { Dish, Variant, Extra, Category, LocalizedField } from '../../../types';
+import { MenuLanguageService } from '../../../services/menu-language.service';
 
 const ALLERGEN_CODES = ['GLUTEN','CRUSTACEANS','EGGS','FISH','PEANUTS','SOY','MILK','NUTS','CELERY','MUSTARD','SESAME','SULPHITES','LUPINE','MOLLUSCS'] as const;
 
@@ -150,7 +151,16 @@ export class DishFormComponent implements OnInit, OnDestroy {
   readonly allergenCodes = ALLERGEN_CODES;
 
   isEdit = false;
-  dish = signal<Partial<Dish>>({
+  dish = signal<Omit<Partial<Dish>, 'disher_name' | 'disher_description' | 'disher_price' | 'disher_alergens' | 'variants' | 'extras' | 'disher_type' | 'category_id'> & {
+    category_id: string;
+    disher_name: LocalizedField;
+    disher_description: LocalizedField;
+    disher_price: number;
+    disher_type: 'KITCHEN' | 'SERVICE';
+    disher_alergens: string[];
+    variants: Variant[];
+    extras: Extra[];
+  }>({
     category_id: '',
     disher_name: [],
     disher_description: [],
@@ -193,7 +203,7 @@ export class DishFormComponent implements OnInit, OnDestroy {
     this.http.get<Partial<Dish>>(`${environment.apiUrl}/dishes/${id}`)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
-        next: (dish) => this.dish.set(dish),
+        next: (dish) => this.dish.set(dish as any),
         error: (err) => {
           console.error('[DishForm] Error loading dish:', err);
           this.notify.error(this.i18n.translate('errors.LOADING_ERROR'));

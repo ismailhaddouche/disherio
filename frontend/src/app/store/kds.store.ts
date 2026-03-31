@@ -1,17 +1,11 @@
 import { signal, computed, Signal } from '@angular/core';
+import type { LocalizedField } from '../types';
 
 export type ItemState = 'ORDERED' | 'ON_PREPARE' | 'SERVED' | 'CANCELED';
 
-export interface LocalizedName {
-  es: string;
-  en: string;
-  fr: string;
-  ar: string;
-}
-
 export interface KdsItem {
   _id: string;
-  item_name_snapshot: LocalizedName;
+  item_name_snapshot: LocalizedField;
   item_state: ItemState;
   item_base_price: number;
   createdAt: string;
@@ -19,8 +13,8 @@ export interface KdsItem {
   session_id: string;
   customer_name?: string;
   totem_name?: string;
-  item_disher_variant?: { variant_id: string; name: string; price: number } | null;
-  item_disher_extras?: { extra_id: string; name: LocalizedName; price: number }[];
+  item_disher_variant?: { variant_id: string; name: LocalizedField; price: number } | null;
+  item_disher_extras?: { extra_id: string; name: LocalizedField; price: number }[];
 }
 
 export interface KdsStore {

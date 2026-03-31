@@ -3,11 +3,12 @@ import { HttpClient } from '@angular/common/http';
 import { Observable, forkJoin } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
-import type { 
-  TotemSession, 
-  ItemOrder, 
-  Customer, 
-  Dish 
+import type {
+  TotemSession,
+  ItemOrder,
+  Customer,
+  Dish,
+  LocalizedField,
 } from '../types';
 
 export interface CreateTotemData {
@@ -100,10 +101,10 @@ export class TasService {
   }
 
   // Dishes & Menu
-  getDishes(): Observable<{ dishes: Dish[]; categories: Array<{ _id: string; category_name: { es: string; en: string; fr: string; ar: string } }> }> {
+  getDishes(): Observable<{ dishes: Dish[]; categories: Array<{ _id: string; category_name: LocalizedField }> }> {
     return forkJoin({
       dishesResp: this.http.get<{ data: Dish[] }>(`${this.apiUrl}/dishes?limit=100`),
-      categories: this.http.get<Array<{ _id: string; category_name: { es: string; en: string; fr: string; ar: string } }>>(`${this.apiUrl}/dishes/categories`),
+      categories: this.http.get<Array<{ _id: string; category_name: LocalizedField }>>(`${this.apiUrl}/dishes/categories`),
     }).pipe(
       map(({ dishesResp, categories }) => ({
         dishes: dishesResp.data,

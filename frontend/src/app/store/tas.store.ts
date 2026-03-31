@@ -5,7 +5,7 @@ import {
   ItemOrder,
   Customer,
   Dish,
-  LocalizedString,
+  LocalizedField,
 } from '../types';
 
 export interface TasStore {
@@ -16,7 +16,7 @@ export interface TasStore {
   serviceItems: Signal<ItemOrder[]>;
   customers: Signal<Customer[]>;
   dishes: Signal<Dish[]>;
-  categories: Signal<Array<{ _id: string; category_name: LocalizedString }>>;
+  categories: Signal<Array<{ _id: string; category_name: LocalizedField }>>;
   isLoading: Signal<boolean>;
   error: Signal<string | null>;
 
@@ -39,7 +39,7 @@ export interface TasStore {
   assignItemToCustomer: (itemId: string, customerId: string | null) => void;
   setCustomers: (customers: Customer[]) => void;
   addCustomer: (customer: Customer) => void;
-  setDishes: (dishes: Dish[], categories: Array<{ _id: string; category_name: LocalizedString }>) => void;
+  setDishes: (dishes: Dish[], categories: Array<{ _id: string; category_name: LocalizedField }>) => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
   clearError: () => void;
@@ -58,7 +58,7 @@ const _sessionItems = signal<ItemOrder[]>([]);
 const _serviceItems = signal<ItemOrder[]>([]);
 const _customers = signal<Customer[]>([]);
 const _dishes = signal<Dish[]>([]);
-const _categories = signal<Array<{ _id: string; category_name: LocalizedString }>>([]);
+const _categories = signal<Array<{ _id: string; category_name: LocalizedField }>>([]);
 const _isLoading = signal<boolean>(false);
 const _error = signal<string | null>(null);
 let _referenceCount = 0;
@@ -169,7 +169,7 @@ export const tasStore: TasStore = {
 
   setDishes(
     dishes: Dish[], 
-    categories: Array<{ _id: string; category_name: LocalizedString }>
+    categories: Array<{ _id: string; category_name: LocalizedField }>
   ) {
     _dishes.set(dishes);
     _categories.set(categories);
