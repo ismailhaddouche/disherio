@@ -348,6 +348,9 @@ export class SettingsComponent implements OnInit {
 
     this.http.patch(`${environment.apiUrl}/restaurant/settings`, payload).subscribe({
       next: () => {
+        // Sync menu language default with app language
+        this.syncMenuLanguageWithAppLanguage(s.default_language);
+        
         this.saving.set(false);
         this.notify.success(this.i18n.translate('settings.preferences.saved'));
       },
@@ -355,6 +358,78 @@ export class SettingsComponent implements OnInit {
         console.error('Error saving settings:', err);
         this.saving.set(false);
         this.notify.error(this.i18n.translate('error.saving'));
+      }
+    });
+  }
+
+  /**
+   * Syncs the default menu language with the app default language.
+   * Finds the menu language linked to the app language and sets it as default.
+   */
+  private syncMenuLanguageWithAppLanguage(appLangCode: string) {
+    // Find menu language linked to this app language
+    const linkedMenuLang = this.menuLangService.languages().find(
+      l => l.linked_app_lang === appLangCode
+    );
+
+    if (linkedMenuLang && !linkedMenuLang.is_default) {
+      // Set it as default
+      this.menuLangService.setDefault(linkedMenuLang._id!).subscribe({
+        next: () => {
+          this.menuLangService.refresh();
+          console.log(`[Settings] Menu language synced: ${linkedMenuLang.name} is now default`);
+        },
+        error: (err) => {
+          console.error('[Settings] Failed to sync menu language default:', err);
+          // Don't show error to user as the main settings were saved successfully
+        }
+      });
+    } else if (!linkedMenuLang) {
+      // No menu language linked to this app language - could create one automatically
+      // or notify the user. For now, we just log it.
+      console.warn(`[Settings] No menu language linked to app language: ${appLangCode}`);
+      
+      // Optional: Auto-create a menu language for this app language
+      this.autoCreateMenuLanguageForAppLang(appLangCode);
+    }
+  }
+
+  /**
+   * Auto-creates a menu language linked to the app language if none exists.
+   */
+  private autoCreateMenuLanguageForAppLang(appLangCode: string) {
+    const appLang = this.availableLanguages.find(l => l.code === appLangCode);
+    if (!appLang) return;
+
+    // Check if a menu language with this code already exists
+    const existingByCode = this.menuLangService.languages().find(l => l.code === appLangCode);
+    if (existingByCode) {
+      // Just link it and set as default
+      this.menuLangService.update(existingByCode._id!, {
+        linked_app_lang: appLangCode
+      } as any).subscribe({
+        next: () => {
+          this.menuLangService.setDefault(existingByCode._id!).subscribe(() => {
+            this.menuLangService.refresh();
+          });
+        }
+      });
+      return;
+    }
+
+    // Create new menu language
+    this.menuLangService.create({
+      name: appLang.name,
+      code: appLangCode,
+      linked_app_lang: appLangCode,
+      is_default: true
+    }).subscribe({
+      next: () => {
+        this.menuLangService.refresh();
+        this.notify.success(this.i18n.translate('settings.menu_lang_auto_created'));
+      },
+      error: (err) => {
+        console.error('[Settings] Failed to auto-create menu language:', err);
       }
     });
   }
