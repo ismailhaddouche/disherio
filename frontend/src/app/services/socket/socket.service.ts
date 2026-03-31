@@ -100,8 +100,10 @@ export class SocketService implements OnDestroy {
   private socket: Socket | null = null;
   private reconnectAttempts = 0;
   private readonly maxReconnectAttempts = 5;
+  private readonly daemonRetryDelay = 15000; // ms to wait before re-attempting after max reconnects
   private hasReachedMaxReconnects = false;
   private connectionRefCount = 0;
+  private daemonRetryTimer: ReturnType<typeof setTimeout> | null = null;
   private activeListeners: Map<string, Set<(data: unknown) => void>> = new Map();
 
   // ==================== TOTEM/CUSTOMER STATE ====================
@@ -255,13 +257,24 @@ export class SocketService implements OnDestroy {
         console.error('[Socket] Connection error:', err.message);
         this.reconnectAttempts++;
         if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-          console.error('[Socket] Max reconnection attempts reached');
+          console.error('[Socket] Max reconnection attempts reached, scheduling daemon retry in', this.daemonRetryDelay, 'ms');
           this.hasReachedMaxReconnects = true;
           if (this.socket) {
             this.socket.io.opts.reconnection = false;
             this.socket.close();
           }
           this.socket = null;
+          if (this.connectionRefCount > 0) {
+            this.daemonRetryTimer = setTimeout(() => {
+              this.daemonRetryTimer = null;
+              if (this.connectionRefCount > 0) {
+                console.log('[Socket] Daemon retry attempt...');
+                this.hasReachedMaxReconnects = false;
+                this.reconnectAttempts = 0;
+                this.doConnect();
+              }
+            }, this.daemonRetryDelay);
+          }
         }
       });
 
@@ -907,12 +920,16 @@ export class SocketService implements OnDestroy {
   // ==================== LIFECYCLE ====================
 
   private doDisconnect(): void {
+    if (this.daemonRetryTimer !== null) {
+      clearTimeout(this.daemonRetryTimer);
+      this.daemonRetryTimer = null;
+    }
     if (this.socket) {
       this.activeListeners.forEach((callbacks, event) => {
         callbacks.forEach(callback => this.socket?.off(event, callback));
       });
       this.activeListeners.clear();
-      
+
       this.socket.io.opts.reconnection = false;
       this.socket.close();
       this.socket = null;

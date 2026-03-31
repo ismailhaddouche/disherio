@@ -42,6 +42,7 @@
 
     handle /socket.io/* {
         reverse_proxy backend:3000 {
+            flush_interval -1
             transport http {
                 versions 1.1
             }
