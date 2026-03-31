@@ -4,6 +4,7 @@ import { getPaginationParams, createPaginatedResponse } from '../utils/paginatio
 import { Types } from 'mongoose';
 import { Staff, Role } from '../models/staff.model';
 import bcrypt from 'bcryptjs';
+import { ErrorCode } from '@disherio/shared';
 
 // Get all staff for the restaurant
 export const listStaff = asyncHandler(async (req: Request, res: Response): Promise<void> => {
@@ -51,8 +52,17 @@ export const createStaff = asyncHandler(async (req: Request, res: Response): Pro
   // Normalize username
   const normalizedUsername = username.toLowerCase().trim();
 
+  // Validate that the role exists and belongs to this restaurant
+  const role = await Role.findOne({
+    _id: new Types.ObjectId(role_id as string),
+    restaurant_id: new Types.ObjectId(restaurantId)
+  });
+  if (!role) {
+    throw createError.notFound(ErrorCode.ROLE_NOT_FOUND);
+  }
+
   // Check if username already exists in this restaurant
-  const existingStaff = await Staff.findOne({ 
+  const existingStaff = await Staff.findOne({
     username: normalizedUsername,
     restaurant_id: new Types.ObjectId(restaurantId)
   });
@@ -111,7 +121,16 @@ export const updateStaff = asyncHandler(async (req: Request, res: Response): Pro
 
   // Update fields
   if (staff_name) staff.staff_name = staff_name;
-  if (role_id) staff.role_id = new Types.ObjectId(role_id as string);
+  if (role_id) {
+    const role = await Role.findOne({
+      _id: new Types.ObjectId(role_id as string),
+      restaurant_id: new Types.ObjectId(restaurantId)
+    });
+    if (!role) {
+      throw createError.notFound(ErrorCode.ROLE_NOT_FOUND);
+    }
+    staff.role_id = new Types.ObjectId(role_id as string);
+  }
   
   // Update passwords if provided
   if (password) {

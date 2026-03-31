@@ -21,8 +21,6 @@ export function registerKdsHandlers(_io: Server, socket: AuthenticatedSocket): v
   const user = socket.user;
   if (!user || !user.permissions.includes('KTS')) {
     logger.warn({ socketId: socket.id }, 'Unauthorized KDS connection attempt');
-    socket.emit('kds:error', { message: 'INSUFFICIENT_PERMISSIONS', required: 'KTS' });
-    socket.disconnect();
     return;
   }
 

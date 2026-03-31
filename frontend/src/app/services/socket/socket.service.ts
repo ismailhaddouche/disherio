@@ -103,6 +103,7 @@ export class SocketService implements OnDestroy {
   private readonly daemonRetryDelay = 15000; // ms to wait before re-attempting after max reconnects
   private hasReachedMaxReconnects = false;
   private connectionRefCount = 0;
+  private insufficientPermissions = false;
   private daemonRetryTimer: ReturnType<typeof setTimeout> | null = null;
   private activeListeners: Map<string, Set<(data: unknown) => void>> = new Map();
 
@@ -280,7 +281,7 @@ export class SocketService implements OnDestroy {
 
       this.socket.on('disconnect', (reason: Socket.DisconnectReason) => {
         console.log('[Socket] Disconnected:', reason);
-        if (reason === 'io server disconnect' && this.socket?.io.opts.reconnection) {
+        if (reason === 'io server disconnect' && !this.insufficientPermissions && this.socket?.io.opts.reconnection) {
           this.socket.connect();
         }
       });
@@ -375,7 +376,24 @@ export class SocketService implements OnDestroy {
 
     this.socket.on('tas:error', (error: any) => {
       console.error('[TAS] Error:', error);
+      if (error?.message === 'INSUFFICIENT_PERMISSIONS') {
+        this.insufficientPermissions = true;
+      }
       this.tasErrorSubject.next(error);
+    });
+
+    this.socket.on('kds:error', (error: any) => {
+      console.error('[KDS] Error:', error);
+      if (error?.message === 'INSUFFICIENT_PERMISSIONS') {
+        this.insufficientPermissions = true;
+      }
+    });
+
+    this.socket.on('pos:error', (error: any) => {
+      console.error('[POS] Error:', error);
+      if (error?.message === 'INSUFFICIENT_PERMISSIONS') {
+        this.insufficientPermissions = true;
+      }
     });
 
     // Confirmations
@@ -920,6 +938,7 @@ export class SocketService implements OnDestroy {
   // ==================== LIFECYCLE ====================
 
   private doDisconnect(): void {
+    this.insufficientPermissions = false;
     if (this.daemonRetryTimer !== null) {
       clearTimeout(this.daemonRetryTimer);
       this.daemonRetryTimer = null;

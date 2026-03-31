@@ -25,8 +25,6 @@ export function registerTasHandlers(io: Server, socket: AuthenticatedSocket): vo
   // Verify user has TAS permission
   if (!user || !user.permissions.includes('TAS')) {
     logger.warn({ socketId: socket.id }, 'Unauthorized TAS connection attempt');
-    socket.emit('tas:error', { message: 'INSUFFICIENT_PERMISSIONS', required: 'TAS' });
-    socket.disconnect();
     return;
   }
 

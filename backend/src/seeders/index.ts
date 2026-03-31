@@ -44,18 +44,12 @@ async function seed() {
   ];
 
   for (const roleData of defaultRoles) {
-    const existingRole = await Role.findOne({ 
-      restaurant_id: restaurant._id, 
-      role_name: roleData.role_name 
-    });
-    if (!existingRole) {
-      await Role.create({
-        restaurant_id: restaurant._id,
-        role_name: roleData.role_name,
-        permissions: roleData.permissions,
-      });
-      logger.info(`Role created: ${roleData.role_name}`);
-    }
+    const result = await Role.findOneAndUpdate(
+      { restaurant_id: restaurant._id, role_name: roleData.role_name },
+      { $set: { permissions: roleData.permissions } },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+    logger.info(`Role upserted: ${roleData.role_name} → permissions: [${result.permissions.join(', ')}]`);
   }
 
   // Create or update admin user
