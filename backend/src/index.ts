@@ -10,6 +10,8 @@ import { apiLimiter } from './middlewares/rateLimit';
 import { languageMiddleware } from './middlewares/language';
 import { logger } from './config/logger';
 import { errorHandler, notFoundHandler } from './middlewares/error-handler';
+import { validateJWTSecretOrExit } from './utils/jwt-validation';
+import { validateEnv } from './config/env';
 import authRoutes from './routes/auth.routes';
 import dishRoutes from './routes/dish.routes';
 import orderRoutes from './routes/order.routes';
@@ -21,17 +23,14 @@ import staffRoutes from './routes/staff.routes';
 import customerRoutes from './routes/customer.routes';
 import menuLanguageRoutes from './routes/menu-language.routes';
 
-const PORT = process.env.PORT || 3000;
+// CRITICAL: Validate all environment variables before starting
+const env = validateEnv();
+const PORT = env.PORT;
 
-// CRITICAL: JWT_SECRET must not use the default value
-const JWT_SECRET = process.env.JWT_SECRET;
-if (!JWT_SECRET || JWT_SECRET === 'changeme_in_production') {
-  logger.error('❌ JWT_SECRET is not set or uses default value. Please set a secure JWT_SECRET in .env');
-  process.exit(1);
-}
-if (JWT_SECRET.length < 32) {
-  logger.warn('⚠️  JWT_SECRET is less than 32 characters. Consider using a longer secret for better security.');
-}
+// CRITICAL: JWT_SECRET must not use the default value and must be at least 32 chars
+validateJWTSecretOrExit(process.env.JWT_SECRET);
+
+logger.info('✅ JWT_SECRET validation passed');
 
 async function bootstrap() {
   await connectDB();

@@ -105,13 +105,14 @@ export class ItemOrderRepository extends BaseRepository<IItemOrder> {
 
   async updateState(
     itemId: string,
-    newState: 'ORDERED' | 'ON_PREPARE' | 'SERVED' | 'CANCELED'
+    newState: 'ORDERED' | 'ON_PREPARE' | 'SERVED' | 'CANCELED',
+    session?: ClientSession
   ): Promise<IItemOrder | null> {
     validateObjectId(itemId, 'item_id');
     return this.model.findByIdAndUpdate(
       itemId,
       { item_state: newState },
-      { new: true }
+      { new: true, session }
     ).exec();
   }
 
@@ -150,7 +151,12 @@ export class ItemOrderRepository extends BaseRepository<IItemOrder> {
     ).exec();
   }
 
-  async assignItemToCustomer(itemId: string, customerId: string | null, customerName?: string | null): Promise<IItemOrder | null> {
+  async assignItemToCustomer(
+    itemId: string, 
+    customerId: string | null, 
+    customerName?: string | null,
+    session?: ClientSession
+  ): Promise<IItemOrder | null> {
     validateObjectId(itemId, 'item_id');
     validateObjectIdOptional(customerId, 'customer_id');
     
@@ -166,7 +172,7 @@ export class ItemOrderRepository extends BaseRepository<IItemOrder> {
     return this.model.findByIdAndUpdate(
       itemId,
       update,
-      { new: true }
+      { new: true, session }
     ).exec();
   }
 

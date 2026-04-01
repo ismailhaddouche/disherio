@@ -104,4 +104,16 @@ const DishSchema = new Schema<IDish>(
   { timestamps: true }
 );
 
+// Index for category-based searches with status filter
+DishSchema.index({ category_id: 1, disher_status: 1 });
+
+// Index for restaurant dish listings
+DishSchema.index({ restaurant_id: 1, disher_status: 1 });
+
+// Text index for dish name search
+DishSchema.index({ 'disher_name.value': 'text' });
+
+// Index for dish type filtering (KITCHEN/SERVICE)
+DishSchema.index({ disher_type: 1, disher_status: 1 });
+
 export const Dish = model<IDish>('Dish', DishSchema);

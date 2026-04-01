@@ -64,6 +64,7 @@ export enum ErrorCode {
 
   // Validation Errors
   VALIDATION_ERROR = 'VALIDATION_ERROR',
+  INVALID_PRICE = 'INVALID_PRICE',
   INVALID_ID_FORMAT = 'INVALID_ID_FORMAT',
   INVALID_FILE_TYPE = 'INVALID_FILE_TYPE',
   FILE_TOO_LARGE = 'FILE_TOO_LARGE',
@@ -134,6 +135,7 @@ export const ERROR_HTTP_STATUS_MAP: Record<ErrorCode, number> = {
   [ErrorCode.CATEGORY_HAS_DISHES]: 409,
 
   [ErrorCode.VALIDATION_ERROR]: 400,
+  [ErrorCode.INVALID_PRICE]: 400,
   [ErrorCode.INVALID_ID_FORMAT]: 400,
   [ErrorCode.INVALID_FILE_TYPE]: 400,
   [ErrorCode.FILE_TOO_LARGE]: 400,

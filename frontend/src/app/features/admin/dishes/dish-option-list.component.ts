@@ -7,7 +7,8 @@ import { I18nService } from '../../../core/services/i18n.service';
 import type { LocalizedField } from '../../../types';
 
 export interface OptionItem {
-  [key: string]: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  [key: string]: unknown;
 }
 
 @Component({

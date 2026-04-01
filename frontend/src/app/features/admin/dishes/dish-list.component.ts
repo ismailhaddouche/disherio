@@ -10,6 +10,7 @@ import { LocalizePipe } from '../../../shared/pipes/localize.pipe';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../core/services/i18n.service';
 import { NotificationService } from '../../../core/services/notification.service';
+import type { Dish } from '../../../types';
 
 @Component({
   selector: 'app-dish-list',
@@ -92,7 +93,7 @@ export class DishListComponent implements OnInit, OnDestroy {
   }
 
   loadDishes() {
-    this.http.get<{ data: any[] }>(`${environment.apiUrl}/dishes`)
+    this.http.get<{ data: Dish[] }>(`${environment.apiUrl}/dishes`)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (res) => {

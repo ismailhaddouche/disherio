@@ -2,8 +2,9 @@ import { Server } from 'socket.io';
 import { ItemOrder } from '../models/order.model';
 import { logger } from '../config/logger';
 import { AuthenticatedSocket } from '../middlewares/socketAuth';
-import { createSocketRateLimiter, rateLimitWrapper } from '../middlewares/socketRateLimit';
 import { getIO } from '../config/socket';
+import { trackSocketConnection, cleanupSocketConnection, trackSocketJoinRoom, trackSocketLeaveRoom, updateSocketActivity } from './middleware/connection-tracker';
+import { rateLimitMiddleware, cleanupSocketRateLimits } from './middleware/rate-limiter';
 
 /**
  * KDS (Kitchen Display System) Socket Handler
@@ -25,7 +26,9 @@ export function registerKdsHandlers(_io: Server, socket: AuthenticatedSocket): v
   }
 
   const staffId = user.staffId;
-  const rateLimiter = createSocketRateLimiter();
+
+  // Track this connection
+  trackSocketConnection(socket, 'KDS', { userId: staffId });
 
   logger.info({ socketId: socket.id, staffId }, 'KDS client connected');
 
@@ -35,7 +38,7 @@ export function registerKdsHandlers(_io: Server, socket: AuthenticatedSocket): v
    * Join KDS session room
    * Payload: { sessionId: string }
    */
-  socket.on('kds:join', rateLimitWrapper(rateLimiter, socket, 'kds:join', (sessionId: string) => {
+  socket.on('kds:join', rateLimitMiddleware(socket, 'kds:join', (sessionId: string) => {
     if (!sessionId || typeof sessionId !== 'string') {
       socket.emit('kds:error', { message: 'INVALID_SESSION_ID' });
       return;
@@ -50,6 +53,13 @@ export function registerKdsHandlers(_io: Server, socket: AuthenticatedSocket): v
       kdsSessionSubscriptions.set(sessionId, new Set());
     }
     kdsSessionSubscriptions.get(sessionId)!.add(socket.id);
+    
+    // Track room join in connection tracker
+    trackSocketJoinRoom(socket.id, roomName);
+    trackSocketJoinRoom(socket.id, `session:${sessionId}`);
+    
+    // Update activity
+    updateSocketActivity(socket.id);
 
     logger.info({ socketId: socket.id, staffId, sessionId }, 'KDS joined session');
     socket.emit('kds:joined', { sessionId, timestamp: new Date().toISOString() });
@@ -59,7 +69,7 @@ export function registerKdsHandlers(_io: Server, socket: AuthenticatedSocket): v
    * Leave KDS session room
    * Payload: { sessionId: string }
    */
-  socket.on('kds:leave', rateLimitWrapper(rateLimiter, socket, 'kds:leave', (sessionId: string) => {
+  socket.on('kds:leave', rateLimitMiddleware(socket, 'kds:leave', (sessionId: string) => {
     if (!sessionId || typeof sessionId !== 'string') {
       socket.emit('kds:error', { message: 'INVALID_SESSION_ID' });
       return;
@@ -77,6 +87,13 @@ export function registerKdsHandlers(_io: Server, socket: AuthenticatedSocket): v
         kdsSessionSubscriptions.delete(sessionId);
       }
     }
+    
+    // Track room leave in connection tracker
+    trackSocketLeaveRoom(socket.id, roomName);
+    trackSocketLeaveRoom(socket.id, `session:${sessionId}`);
+    
+    // Update activity
+    updateSocketActivity(socket.id);
 
     logger.info({ socketId: socket.id, staffId, sessionId }, 'KDS left session');
     socket.emit('kds:left', { sessionId });
@@ -88,7 +105,7 @@ export function registerKdsHandlers(_io: Server, socket: AuthenticatedSocket): v
    * Mark item as being prepared
    * Payload: { itemId: string }
    */
-  socket.on('kds:item_prepare', rateLimitWrapper(rateLimiter, socket, 'kds:item_prepare', async ({ itemId }: { itemId: string }) => {
+  socket.on('kds:item_prepare', rateLimitMiddleware(socket, 'kds:item_prepare', async ({ itemId }: { itemId: string }) => {
     try {
       if (!itemId || typeof itemId !== 'string') {
         socket.emit('kds:error', { message: 'INVALID_ITEM_ID', itemId });
@@ -173,7 +190,7 @@ export function registerKdsHandlers(_io: Server, socket: AuthenticatedSocket): v
    * Cancel an item (only if in ORDERED state)
    * Payload: { itemId: string, reason?: string }
    */
-  socket.on('kds:item_cancel', rateLimitWrapper(rateLimiter, socket, 'kds:item_cancel', async ({ itemId, reason }: { itemId: string; reason?: string }) => {
+  socket.on('kds:item_cancel', rateLimitMiddleware(socket, 'kds:item_cancel', async ({ itemId, reason }: { itemId: string; reason?: string }) => {
     try {
       if (!itemId || typeof itemId !== 'string') {
         socket.emit('kds:error', { message: 'INVALID_ITEM_ID', itemId });
@@ -260,7 +277,7 @@ export function registerKdsHandlers(_io: Server, socket: AuthenticatedSocket): v
    * Mark item as served/ready
    * Payload: { itemId: string }
    */
-  socket.on('kds:item_serve', rateLimitWrapper(rateLimiter, socket, 'kds:item_serve', async ({ itemId }: { itemId: string }) => {
+  socket.on('kds:item_serve', rateLimitMiddleware(socket, 'kds:item_serve', async ({ itemId }: { itemId: string }) => {
     try {
       if (!itemId || typeof itemId !== 'string') {
         socket.emit('kds:error', { message: 'INVALID_ITEM_ID', itemId });
@@ -339,15 +356,30 @@ export function registerKdsHandlers(_io: Server, socket: AuthenticatedSocket): v
   // ==================== DISCONNECT ====================
 
   socket.on('disconnect', () => {
-    // Clean up subscriptions
-    for (const [sessionId, socketIds] of kdsSessionSubscriptions.entries()) {
-      if (socketIds.has(socket.id)) {
-        socketIds.delete(socket.id);
-        if (socketIds.size === 0) {
-          kdsSessionSubscriptions.delete(sessionId);
+    try {
+      // Clean up subscriptions
+      for (const [sessionId, socketIds] of kdsSessionSubscriptions.entries()) {
+        if (socketIds.has(socket.id)) {
+          socketIds.delete(socket.id);
+          if (socketIds.size === 0) {
+            kdsSessionSubscriptions.delete(sessionId);
+          }
+          logger.info({ socketId: socket.id, staffId, sessionId }, 'KDS disconnected, removed from session');
         }
-        logger.info({ socketId: socket.id, staffId, sessionId }, 'KDS disconnected, removed from session');
       }
+
+      // Remove all listeners registered by this socket to prevent memory leaks
+      socket.removeAllListeners();
+
+      // Clean up connection tracking
+      cleanupSocketConnection(socket.id);
+
+      // Clean up rate limit tracking
+      cleanupSocketRateLimits(socket.id);
+
+      logger.info({ socketId: socket.id, staffId }, 'KDS client disconnected and cleaned up');
+    } catch (err) {
+      logger.error({ err, socketId: socket.id, staffId }, 'Error during KDS disconnect cleanup');
     }
   });
 }

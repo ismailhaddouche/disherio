@@ -18,6 +18,63 @@ import {
   ValidationError,
 } from '../repositories';
 
+// Price validation constants and types
+const MAX_PRICE = 999999;
+const MIN_PRICE = 0;
+
+interface PriceValidationResult {
+  valid: boolean;
+  field: string;
+  value: number;
+}
+
+/**
+ * Validates that a price is positive and within allowed range
+ */
+function validatePrice(price: number, fieldName: string): PriceValidationResult {
+  if (typeof price !== 'number' || isNaN(price)) {
+    return { valid: false, field: fieldName, value: price };
+  }
+  if (price <= MIN_PRICE) {
+    return { valid: false, field: fieldName, value: price };
+  }
+  if (price > MAX_PRICE) {
+    return { valid: false, field: fieldName, value: price };
+  }
+  return { valid: true, field: fieldName, value: price };
+}
+
+/**
+ * Validates all prices in an item before adding to order
+ * Throws error if any price is invalid
+ */
+function validateItemPrices(
+  basePrice: number,
+  variantPrice: number | null | undefined,
+  extras: Array<{ price: number }>
+): void {
+  const validations: PriceValidationResult[] = [
+    validatePrice(basePrice, 'item_base_price'),
+  ];
+
+  if (variantPrice !== null && variantPrice !== undefined) {
+    validations.push(validatePrice(variantPrice, 'variant_price'));
+  }
+
+  for (let i = 0; i < extras.length; i++) {
+    validations.push(validatePrice(extras[i].price, `extra_price[${i}]`));
+  }
+
+  const invalidPrices = validations.filter(v => !v.valid);
+  
+  if (invalidPrices.length > 0) {
+    const details = invalidPrices
+      .map(v => `${v.field}=${v.value}`)
+      .join(', ');
+    throw new Error(`${ErrorCode.INVALID_PRICE}: Invalid price(s) - ${details}`);
+  }
+}
+
 const orderRepo = new OrderRepository();
 const itemOrderRepo = new ItemOrderRepository();
 const paymentRepo = new PaymentRepository();
@@ -111,11 +168,14 @@ function emitSessionPaidLegacy(sessionId: string): void {
 
 export async function createOrder(sessionId: string, staffId?: string, customerId?: string) {
   try {
-    const session = await totemSessionRepo.findById(sessionId);
-    if (!session || session.totem_state !== 'STARTED') {
-      throw new Error(ErrorCode.SESSION_NOT_ACTIVE);
-    }
-    return orderRepo.createOrder(sessionId, staffId, customerId);
+    // Use transaction to ensure session validation and order creation are atomic
+    return withTransaction(async (session) => {
+      const totemSession = await totemSessionRepo.findById(sessionId);
+      if (!totemSession || totemSession.totem_state !== 'STARTED') {
+        throw new Error(ErrorCode.SESSION_NOT_ACTIVE);
+      }
+      return orderRepo.createOrder(sessionId, staffId, customerId, session);
+    });
   } catch (err) {
     if (err instanceof ValidationError) throw err;
     throw new Error(ErrorCode.SESSION_NOT_ACTIVE);
@@ -130,63 +190,73 @@ export async function addItemToOrder(
   variantId?: string,
   extras: string[] = []
 ) {
-  const order = await orderRepo.findById(orderId);
-  if (!order) throw new Error(ErrorCode.ORDER_NOT_FOUND);
+  // Use transaction to ensure order validation, dish availability check, and item creation are atomic
+  return withTransaction(async (session) => {
+    const order = await orderRepo.findById(orderId);
+    if (!order) throw new Error(ErrorCode.ORDER_NOT_FOUND);
 
-  const dish = await dishRepo.findById(dishId);
-  if (!dish) throw new Error(ErrorCode.DISH_NOT_FOUND);
-  if (dish.disher_status !== 'ACTIVATED') throw new Error(ErrorCode.DISH_NOT_AVAILABLE);
+    const dish = await dishRepo.findById(dishId);
+    if (!dish) throw new Error(ErrorCode.DISH_NOT_FOUND);
+    if (dish.disher_status !== 'ACTIVATED') throw new Error(ErrorCode.DISH_NOT_AVAILABLE);
 
-  const variant = variantId
-    ? dish.variants.find((v: IVariant) => v._id.toString() === variantId)
-    : null;
-  
-  const selectedExtras = dish.extras.filter((e: IExtra) =>
-    extras.includes(e._id.toString())
-  );
+    const variant = variantId
+      ? dish.variants.find((v: IVariant) => v._id.toString() === variantId)
+      : null;
+    
+    const selectedExtras = dish.extras.filter((e: IExtra) =>
+      extras.includes(e._id.toString())
+    );
 
-  // Get customer name if customerId is provided
-  let customerName: string | undefined;
-  if (customerId) {
-    const customer = await customerRepo.findById(customerId);
-    customerName = customer?.customer_name;
-  }
+    // Validate all prices before creating the item
+    validateItemPrices(
+      dish.disher_price,
+      variant?.variant_price,
+      selectedExtras.map(e => ({ price: e.extra_price }))
+    );
 
-  const item = await itemOrderRepo.createItem({
-    order_id: orderId,
-    session_id: sessionId,
-    item_dish_id: dishId,
-    customer_id: customerId,
-    customer_name: customerName,
-    item_disher_type: dish.disher_type,
-    item_name_snapshot: dish.disher_name,
-    item_base_price: dish.disher_price,
-    item_disher_variant: variant
-      ? {
-          variant_id: variant._id.toString(),
-          name: variant.variant_name,
-          price: variant.variant_price,
-        }
-      : null,
-    item_disher_extras: selectedExtras.map((e: IExtra) => ({
-      extra_id: e._id.toString(),
-      name: e.extra_name,
-      price: e.extra_price,
-    })),
+    // Get customer name if customerId is provided
+    let customerName: string | undefined;
+    if (customerId) {
+      const customer = await customerRepo.findById(customerId);
+      customerName = customer?.customer_name;
+    }
+
+    const item = await itemOrderRepo.createItem({
+      order_id: orderId,
+      session_id: sessionId,
+      item_dish_id: dishId,
+      customer_id: customerId,
+      customer_name: customerName,
+      item_disher_type: dish.disher_type,
+      item_name_snapshot: dish.disher_name,
+      item_base_price: dish.disher_price,
+      item_disher_variant: variant
+        ? {
+            variant_id: variant._id.toString(),
+            name: variant.variant_name,
+            price: variant.variant_price,
+          }
+        : null,
+      item_disher_extras: selectedExtras.map((e: IExtra) => ({
+        extra_id: e._id.toString(),
+        name: e.extra_name,
+        price: e.extra_price,
+      })),
+    }, session);
+
+    if (dish.disher_type === 'KITCHEN') {
+      emitNewKitchenItem(sessionId, item);
+    }
+
+    // Notify TAS (waiters) about the new order item
+    notifyTASNewOrder(sessionId, {
+      item,
+      addedBy: 'customer', // or 'system' depending on context
+      dishType: dish.disher_type,
+    });
+
+    return item;
   });
-
-  if (dish.disher_type === 'KITCHEN') {
-    emitNewKitchenItem(sessionId, item);
-  }
-
-  // Notify TAS (waiters) about the new order item
-  notifyTASNewOrder(sessionId, {
-    item,
-    addedBy: 'customer', // or 'system' depending on context
-    dishType: dish.disher_type,
-  });
-
-  return item;
 }
 
 export async function updateItemState(
@@ -402,42 +472,48 @@ export async function markTicketPaid(paymentId: string, ticketPart: number) {
 }
 
 export async function deleteItem(itemId: string, requesterPerms: string[]) {
-  const item = await itemOrderRepo.findById(itemId);
-  if (!item) throw new Error(ErrorCode.ITEM_NOT_FOUND);
-  
-  if (item.item_state !== 'ORDERED') {
-    throw new Error(ErrorCode.CANNOT_DELETE_ITEM_NOT_ORDERED);
-  }
-  
-  if (!canDelete(requesterPerms)) {
-    throw new Error(ErrorCode.REQUIRES_AUTHORIZATION);
-  }
+  // Use transaction to ensure item state check and deletion are atomic
+  return withTransaction(async (session) => {
+    const item = await itemOrderRepo.findById(itemId);
+    if (!item) throw new Error(ErrorCode.ITEM_NOT_FOUND);
+    
+    if (item.item_state !== 'ORDERED') {
+      throw new Error(ErrorCode.CANNOT_DELETE_ITEM_NOT_ORDERED);
+    }
+    
+    if (!canDelete(requesterPerms)) {
+      throw new Error(ErrorCode.REQUIRES_AUTHORIZATION);
+    }
 
-  const deleted = await itemOrderRepo.deleteItem(itemId);
-  if (!deleted) throw new Error(ErrorCode.ITEM_NOT_FOUND_OR_ALREADY_PROCESSED);
+    const deleted = await itemOrderRepo.deleteItem(itemId, session);
+    if (!deleted) throw new Error(ErrorCode.ITEM_NOT_FOUND_OR_ALREADY_PROCESSED);
 
-  emitItemDeleted(item.session_id.toString(), item._id.toString());
+    emitItemDeleted(item.session_id.toString(), item._id.toString());
 
-  return deleted;
+    return deleted;
+  });
 }
 
 export async function assignItemToCustomer(itemId: string, customerId: string | null) {
-  const item = await itemOrderRepo.findById(itemId);
-  if (!item) throw new Error(ErrorCode.ITEM_NOT_FOUND);
+  // Use transaction to ensure item and customer lookup and update are atomic
+  return withTransaction(async (session) => {
+    const item = await itemOrderRepo.findById(itemId);
+    if (!item) throw new Error(ErrorCode.ITEM_NOT_FOUND);
 
-  // Get customer name if customerId is provided
-  let customerName: string | null = null;
-  if (customerId) {
-    const customer = await customerRepo.findById(customerId);
-    customerName = customer?.customer_name ?? null;
-  }
+    // Get customer name if customerId is provided
+    let customerName: string | null = null;
+    if (customerId) {
+      const customer = await customerRepo.findById(customerId);
+      customerName = customer?.customer_name ?? null;
+    }
 
-  const updated = await itemOrderRepo.assignItemToCustomer(itemId, customerId, customerName);
-  if (!updated) throw new Error(ErrorCode.UPDATE_FAILED);
+    const updated = await itemOrderRepo.assignItemToCustomer(itemId, customerId, customerName, session);
+    if (!updated) throw new Error(ErrorCode.UPDATE_FAILED);
 
-  emitCustomerAssigned(item.session_id.toString(), item._id.toString(), customerId);
+    emitCustomerAssigned(item.session_id.toString(), item._id.toString(), customerId);
 
-  return updated;
+    return updated;
+  });
 }
 
 export async function getServiceItems(restaurantId: string) {

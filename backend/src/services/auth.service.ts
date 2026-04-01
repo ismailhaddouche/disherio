@@ -3,6 +3,13 @@ import jwt from 'jsonwebtoken';
 import { ErrorCode } from '@disherio/shared';
 import { UserRepository, RoleRepository } from '../repositories/user.repository';
 import { Restaurant } from '../models/restaurant.model';
+import {
+  createIdentifier,
+  recordFailedAttempt,
+  isLocked,
+  getRemainingLockTime,
+  clearAttempts,
+} from './pin-security.service';
 
 const userRepo = new UserRepository();
 const roleRepo = new RoleRepository();
@@ -79,16 +86,39 @@ export async function loginWithUsername(username: string, password: string): Pro
   return buildAuthResult(staff, restaurant);
 }
 
-export async function loginWithPin(pin: string, restaurantId: string): Promise<AuthResult> {
+export async function loginWithPin(
+  pin: string, 
+  restaurantId: string,
+  username?: string,
+  ipAddress?: string
+): Promise<AuthResult> {
+  // Build identifier for rate limiting (username + IP if available)
+  const identifier = username 
+    ? createIdentifier(username.toLowerCase(), ipAddress)
+    : createIdentifier(`restaurant:${restaurantId}`, ipAddress);
+
+  // Check if account is locked before attempting validation
+  if (isLocked(identifier)) {
+    const retryAfter = getRemainingLockTime(identifier);
+    const error = new Error(ErrorCode.AUTH_RATE_LIMIT_EXCEEDED);
+    (error as Error & { retryAfter: number }).retryAfter = retryAfter;
+    throw error;
+  }
+
   const staffMembers = await userRepo.findByRestaurantId(restaurantId);
   const restaurant = await Restaurant.findById(restaurantId);
 
   for (const staff of staffMembers) {
     const isPinValid = await bcrypt.compare(pin, staff.pin_code_hash);
     if (isPinValid) {
+      // Clear failed attempts on successful login
+      clearAttempts(identifier);
       return buildAuthResult(staff, restaurant);
     }
   }
+
+  // Record failed attempt
+  recordFailedAttempt(identifier);
 
   throw new Error(ErrorCode.INVALID_PIN);
 }

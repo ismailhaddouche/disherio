@@ -7,7 +7,7 @@ import { TasService } from '../../services/tas.service';
 import { SocketService } from '../../services/socket/socket.service';
 import { tasStore } from '../../store/tas.store';
 import { authStore } from '../../store/auth.store';
-import type { TotemSession, ItemOrder, Customer, Dish } from '../../types';
+import type { TotemSession, ItemOrder, Customer, Dish, LocalizedField } from '../../types';
 import { LocalizePipe } from '../../shared/pipes/localize.pipe';
 import { CurrencyFormatPipe } from '../../shared/pipes/currency-format.pipe';
 import { TranslatePipe } from '../../shared/pipes/translate.pipe';
@@ -759,7 +759,7 @@ export class TasComponent implements OnInit, OnDestroy {
     });
 
     // Listen for items canceled by KDS/kitchen
-    this.socketService.on('kds:item_canceled', (data: { itemId: string; itemName?: any; reason?: string }) => {
+    this.socketService.on('kds:item_canceled', (data: { itemId: string; itemName?: LocalizedField; reason?: string }) => {
       tasStore.updateItemState(data.itemId, 'CANCELED');
       this.notify.warning(
         this.i18n.translate('tas.item_canceled_by_kitchen')
@@ -769,7 +769,7 @@ export class TasComponent implements OnInit, OnDestroy {
     // Listen for specific TAS kitchen item updates (detailed notifications from KDS)
     this.socketService.on('tas:kitchen_item_update', (data: { 
       itemId: string; 
-      itemName?: any;
+      itemName?: LocalizedField;
       newState: 'ORDERED' | 'ON_PREPARE' | 'SERVED' | 'CANCELED';
       updatedBy?: string;
       updatedByName?: string;
@@ -778,7 +778,8 @@ export class TasComponent implements OnInit, OnDestroy {
       if (this.selectedSession()) {
         tasStore.updateItemState(data.itemId, data.newState);
         
-        const itemName = data.itemName?.es || data.itemName?.en || 'Item';
+        const itemName = data.itemName?.find(e => e.lang === 'es')?.value || 
+                        data.itemName?.find(e => e.lang === 'en')?.value || 'Item';
         
         switch (data.newState) {
           case 'ON_PREPARE':
@@ -815,7 +816,7 @@ export class TasComponent implements OnInit, OnDestroy {
     });
 
     // Listen for items canceled by POS
-    this.socketService.on('pos:item_canceled', (data: { itemId: string; itemName?: any; canceledByName?: string; reason?: string }) => {
+    this.socketService.on('pos:item_canceled', (data: { itemId: string; itemName?: LocalizedField; canceledByName?: string; reason?: string }) => {
       tasStore.updateItemState(data.itemId, 'CANCELED');
       this.notify.warning(
         this.i18n.translate('tas.item_canceled_by_pos')

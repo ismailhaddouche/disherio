@@ -8,6 +8,6 @@ const router = Router();
 
 router.post('/login', authLimiter, validate(LoginSchema), loginUsername);
 router.post('/pin', authLimiter, validate(PinSchema), loginPin);
-router.post('/logout', logout);
+router.post('/logout', authLimiter, logout);
 
 export default router;

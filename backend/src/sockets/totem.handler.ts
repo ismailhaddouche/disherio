@@ -3,11 +3,12 @@ import i18next from 'i18next';
 
 import { logger } from '../config/logger';
 import { AuthenticatedSocket } from '../middlewares/socketAuth';
-import { createSocketRateLimiter, rateLimitWrapper } from '../middlewares/socketRateLimit';
 import { getIO } from '../config/socket';
 import { notifyTASNewOrder, notifyTASHelpRequest, notifyTASBillRequest } from './tas.handler';
 import { notifyKDSNewItem } from './kds.handler';
 import { TotemSessionRepository } from '../repositories';
+import { trackSocketConnection, cleanupSocketConnection, trackSocketJoinRoom, trackSocketLeaveRoom, updateSocketActivity } from './middleware/connection-tracker';
+import { rateLimitMiddleware, cleanupSocketRateLimits } from './middleware/rate-limiter';
 
 /**
  * Totem/Customer Socket Handler
@@ -118,7 +119,9 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
   // Customers may not be authenticated (public QR access)
   // But we can identify them by their socket ID
   const socketId = socket.id;
-  const rateLimiter = createSocketRateLimiter();
+  
+  // Track this connection
+  trackSocketConnection(socket, 'TOTEM');
 
   logger.info({ socketId }, 'Customer/Totem client connected');
 
@@ -128,7 +131,7 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
    * Customer joins a session room (after scanning QR)
    * Payload: { sessionId: string, customerName?: string }
    */
-  socket.on('totem:join_session', rateLimitWrapper(rateLimiter, socket, 'totem:join_session', async (data: {
+  socket.on('totem:join_session', rateLimitMiddleware(socket, 'totem:join_session', async (data: {
     sessionId: string;
     customerName?: string;
     customerId?: string;
@@ -185,6 +188,10 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
         sessionCustomers.set(sessionId, new Set());
       }
       sessionCustomers.get(sessionId)!.add(socketId);
+      
+      // Track room join in connection tracker
+      trackSocketJoinRoom(socketId, roomName);
+      updateSocketActivity(socketId);
 
       // Store customer info
       const joinedAt = new Date().toISOString();
@@ -238,7 +245,7 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
   /**
    * Customer leaves session
    */
-  socket.on('totem:leave_session', rateLimitWrapper(rateLimiter, socket, 'totem:leave_session', () => {
+  socket.on('totem:leave_session', rateLimitMiddleware(socket, 'totem:leave_session', () => {
     try {
       const sessionId = customerSessions.get(socketId);
       if (sessionId) {
@@ -253,6 +260,10 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
         }
         
         customerSessions.delete(socketId);
+        
+        // Track room leave in connection tracker
+        trackSocketLeaveRoom(socketId, `customer:session:${sessionId}`);
+        updateSocketActivity(socketId);
         
         logger.info({ socketId, sessionId }, 'Customer left session');
         socket.emit('totem:session_left', { sessionId });
@@ -269,7 +280,7 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
    * Customer places an order
    * Payload: { sessionId: string, items: Array<{dishId, quantity, variantId?, extras?}> }
    */
-  socket.on('totem:place_order', rateLimitWrapper(rateLimiter, socket, 'totem:place_order', async (data: {
+  socket.on('totem:place_order', rateLimitMiddleware(socket, 'totem:place_order', async (data: {
     sessionId: string;
     orderId: string;
     items: Array<{
@@ -407,7 +418,7 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
   /**
    * Customer adds item to existing order
    */
-  socket.on('totem:add_item', rateLimitWrapper(rateLimiter, socket, 'totem:add_item', async (data: {
+  socket.on('totem:add_item', rateLimitMiddleware(socket, 'totem:add_item', async (data: {
     sessionId: string;
     orderId: string;
     item: {
@@ -484,7 +495,7 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
   /**
    * Customer requests help/waiter
    */
-  socket.on('totem:call_waiter', rateLimitWrapper(rateLimiter, socket, 'totem:call_waiter', (data: {
+  socket.on('totem:call_waiter', rateLimitMiddleware(socket, 'totem:call_waiter', (data: {
     sessionId: string;
     customerName?: string;
     customerId?: string;
@@ -532,7 +543,7 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
   /**
    * Customer requests the bill
    */
-  socket.on('totem:request_bill', rateLimitWrapper(rateLimiter, socket, 'totem:request_bill', async (data: {
+  socket.on('totem:request_bill', rateLimitMiddleware(socket, 'totem:request_bill', async (data: {
     sessionId: string;
     customerName?: string;
     customerId?: string;
@@ -599,7 +610,7 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
   /**
    * Customer subscribes to item updates for their session
    */
-  socket.on('totem:subscribe_items', rateLimitWrapper(rateLimiter, socket, 'totem:subscribe_items', (data: {
+  socket.on('totem:subscribe_items', rateLimitMiddleware(socket, 'totem:subscribe_items', (data: {
     sessionId: string;
   }) => {
     try {
@@ -625,7 +636,7 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
   /**
    * Get table info - who's at the table and current orders
    */
-  socket.on('totem:get_table_info', rateLimitWrapper(rateLimiter, socket, 'totem:get_table_info', (data: {
+  socket.on('totem:get_table_info', rateLimitMiddleware(socket, 'totem:get_table_info', (data: {
     sessionId: string;
   }) => {
     try {
@@ -666,7 +677,7 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
   /**
    * Get my orders - orders placed by this specific customer
    */
-  socket.on('totem:get_my_orders', rateLimitWrapper(rateLimiter, socket, 'totem:get_my_orders', (data: {
+  socket.on('totem:get_my_orders', rateLimitMiddleware(socket, 'totem:get_my_orders', (data: {
     sessionId: string;
   }) => {
     try {
@@ -741,6 +752,17 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
           timestamp: new Date().toISOString(),
         });
       }
+
+      // Remove all listeners registered by this socket to prevent memory leaks
+      socket.removeAllListeners();
+
+      // Clean up connection tracking
+      cleanupSocketConnection(socketId);
+
+      // Clean up rate limit tracking
+      cleanupSocketRateLimits(socketId);
+
+      logger.info({ socketId }, 'Totem client disconnected and cleaned up');
     } catch (err: any) {
       logger.error({ err, socketId }, 'Error handling customer disconnect');
     }

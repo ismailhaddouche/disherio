@@ -32,7 +32,7 @@ export interface TasStore {
   setSessions: (sessions: TotemSession[]) => void;
   selectSession: (session: TotemSession | null) => void;
   setSessionItems: (items: ItemOrder[]) => void;
-  loadSessionItems: (items: any[]) => void;
+  loadSessionItems: (items: ItemOrder[]) => void;
   setServiceItems: (items: ItemOrder[]) => void;
   addItem: (item: ItemOrder) => void;
   updateItemState: (itemId: string, newState: ItemOrder['item_state']) => void;

@@ -53,6 +53,11 @@ const _config = signal<RestaurantConfig>({
 });
 const _customTip = signal<number>(0);
 
+// Computed interno para evitar referencia circular
+const _totalGross = computed(() =>
+  _items().reduce((total, item) => total + calculateItemTotal(item), 0)
+);
+
 function calculateItemTotal(item: CartItem): number {
   const basePrice = item.price + (item.variantPrice ?? 0);
   const extrasTotal = item.extras.reduce((sum, e) => sum + e.price, 0);
@@ -84,18 +89,16 @@ export const cartStore: CartStore = {
   config: _config.asReadonly(),
   customTip: _customTip.asReadonly(),
 
-  totalGross: computed(() =>
-    _items().reduce((total, item) => total + calculateItemTotal(item), 0)
-  ),
+  totalGross: _totalGross,
 
   taxAmount: computed(() => {
-    const grossTotal = cartStore.totalGross();
+    const grossTotal = _totalGross();
     const tax = extractTaxFromTotal(grossTotal, _config().taxRate);
     return formatCurrency(tax);
   }),
 
   subtotal: computed(() => {
-    const grossTotal = cartStore.totalGross();
+    const grossTotal = _totalGross();
     const tax = cartStore.taxAmount();
     return formatCurrency(grossTotal - tax);
   }),
@@ -108,14 +111,14 @@ export const cartStore: CartStore = {
     
     const config = _config();
     if (isMandatoryTipEnabled(config)) {
-      return calculateMandatoryTip(cartStore.totalGross(), config.tipsRate);
+      return calculateMandatoryTip(_totalGross(), config.tipsRate);
     }
     
     return 0;
   }),
 
   total: computed(() => {
-    const grossTotal = cartStore.totalGross();
+    const grossTotal = _totalGross();
     const tips = cartStore.tipsAmount();
     return formatCurrency(grossTotal + tips);
   }),

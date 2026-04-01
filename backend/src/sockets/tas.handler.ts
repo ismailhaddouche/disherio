@@ -3,10 +3,11 @@ import i18next from 'i18next';
 import { ItemOrder, IItemOrder } from '../models/order.model';
 import { logger } from '../config/logger';
 import { AuthenticatedSocket } from '../middlewares/socketAuth';
-import { createSocketRateLimiter, rateLimitWrapper } from '../middlewares/socketRateLimit';
 import { getIO } from '../config/socket';
 import { notifyCustomerFromWaiter, closeSessionForCustomers } from './totem.handler';
 import { notifyKDSNewItem, notifyKDSItemCanceled } from './kds.handler';
+import { trackSocketConnection, cleanupSocketConnection, trackSocketJoinRoom, trackSocketLeaveRoom, updateSocketActivity } from './middleware/connection-tracker';
+import { rateLimitMiddleware, cleanupSocketRateLimits } from './middleware/rate-limiter';
 
 /**
  * TAS (Table Assistance Service) Socket Handler
@@ -28,8 +29,10 @@ export function registerTasHandlers(io: Server, socket: AuthenticatedSocket): vo
     return;
   }
 
-  const rateLimiter = createSocketRateLimiter();
   const staffId = user.staffId;
+
+  // Track this connection
+  trackSocketConnection(socket, 'TAS', { userId: staffId });
 
   logger.info({ socketId: socket.id, staffId }, 'TAS client connected');
 
@@ -39,7 +42,7 @@ export function registerTasHandlers(io: Server, socket: AuthenticatedSocket): vo
    * Join TAS session room and subscribe to all events for this session
    * Payload: { sessionId: string }
    */
-  socket.on('tas:join', rateLimitWrapper(rateLimiter, socket, 'tas:join', (sessionId: string) => {
+  socket.on('tas:join', rateLimitMiddleware(socket, 'tas:join', (sessionId: string) => {
     if (!sessionId || typeof sessionId !== 'string') {
       socket.emit('tas:error', { message: 'INVALID_SESSION_ID' });
       return;
@@ -53,6 +56,12 @@ export function registerTasHandlers(io: Server, socket: AuthenticatedSocket): vo
       tasSessionSubscriptions.set(sessionId, new Set());
     }
     tasSessionSubscriptions.get(sessionId)!.add(socket.id);
+    
+    // Track room join in connection tracker
+    trackSocketJoinRoom(socket.id, roomName);
+    
+    // Update activity
+    updateSocketActivity(socket.id);
 
     logger.info({ socketId: socket.id, staffId, sessionId }, 'TAS joined session');
     socket.emit('tas:joined', { sessionId, timestamp: new Date().toISOString() });
@@ -62,7 +71,7 @@ export function registerTasHandlers(io: Server, socket: AuthenticatedSocket): vo
    * Leave TAS session room
    * Payload: { sessionId: string }
    */
-  socket.on('tas:leave', rateLimitWrapper(rateLimiter, socket, 'tas:leave', (sessionId: string) => {
+  socket.on('tas:leave', rateLimitMiddleware(socket, 'tas:leave', (sessionId: string) => {
     if (!sessionId || typeof sessionId !== 'string') {
       socket.emit('tas:error', { message: 'INVALID_SESSION_ID' });
       return;
@@ -79,6 +88,12 @@ export function registerTasHandlers(io: Server, socket: AuthenticatedSocket): vo
         tasSessionSubscriptions.delete(sessionId);
       }
     }
+    
+    // Track room leave in connection tracker
+    trackSocketLeaveRoom(socket.id, roomName);
+    
+    // Update activity
+    updateSocketActivity(socket.id);
 
     logger.info({ socketId: socket.id, staffId, sessionId }, 'TAS left session');
     socket.emit('tas:left', { sessionId });
@@ -98,7 +113,7 @@ export function registerTasHandlers(io: Server, socket: AuthenticatedSocket): vo
    *   extras?: string[]
    * }
    */
-  socket.on('tas:add_item', rateLimitWrapper(rateLimiter, socket, 'tas:add_item', async (data: {
+  socket.on('tas:add_item', rateLimitMiddleware(socket, 'tas:add_item', async (data: {
     sessionId: string;
     orderId: string;
     dishId: string;
@@ -180,7 +195,7 @@ export function registerTasHandlers(io: Server, socket: AuthenticatedSocket): vo
    * Kitchen items are handled by KDS handler
    * Payload: { itemId: string }
    */
-  socket.on('tas:serve_service_item', rateLimitWrapper(rateLimiter, socket, 'tas:serve_service_item', async ({ itemId }: { itemId: string }) => {
+  socket.on('tas:serve_service_item', rateLimitMiddleware(socket, 'tas:serve_service_item', async ({ itemId }: { itemId: string }) => {
     try {
       if (!itemId || typeof itemId !== 'string') {
         socket.emit('tas:error', { message: 'INVALID_ITEM_ID' });
@@ -246,7 +261,7 @@ export function registerTasHandlers(io: Server, socket: AuthenticatedSocket): vo
    * Cancel an item (waiter cancels an item from the order)
    * Payload: { itemId: string, reason?: string }
    */
-  socket.on('tas:cancel_item', rateLimitWrapper(rateLimiter, socket, 'tas:cancel_item', async ({ itemId, reason }: { itemId: string; reason?: string }) => {
+  socket.on('tas:cancel_item', rateLimitMiddleware(socket, 'tas:cancel_item', async ({ itemId, reason }: { itemId: string; reason?: string }) => {
     try {
       if (!itemId || typeof itemId !== 'string') {
         socket.emit('tas:error', { message: 'INVALID_ITEM_ID' });
@@ -330,7 +345,7 @@ export function registerTasHandlers(io: Server, socket: AuthenticatedSocket): vo
    * Request bill/check for a session
    * Payload: { sessionId: string, requestedBy: 'waiter' | 'customer', customerId?: string }
    */
-  socket.on('tas:request_bill', rateLimitWrapper(rateLimiter, socket, 'tas:request_bill', async (data: {
+  socket.on('tas:request_bill', rateLimitMiddleware(socket, 'tas:request_bill', async (data: {
     sessionId: string;
     requestedBy: 'waiter' | 'customer';
     customerId?: string;
@@ -388,7 +403,7 @@ export function registerTasHandlers(io: Server, socket: AuthenticatedSocket): vo
    * Mark bill as paid / Close session
    * Payload: { sessionId: string, paymentData: object }
    */
-  socket.on('tas:bill_paid', rateLimitWrapper(rateLimiter, socket, 'tas:bill_paid', (data: {
+  socket.on('tas:bill_paid', rateLimitMiddleware(socket, 'tas:bill_paid', (data: {
     sessionId: string;
     paymentTotal: number;
     paymentType: 'ALL' | 'BY_USER' | 'SHARED';
@@ -438,7 +453,7 @@ export function registerTasHandlers(io: Server, socket: AuthenticatedSocket): vo
    * Customer calls waiter (this is received from customer client and forwarded to TAS)
    * Note: This event is typically emitted by customer clients, TAS receives it
    */
-  socket.on('tas:call_waiter_response', rateLimitWrapper(rateLimiter, socket, 'tas:call_waiter_response', (data: {
+  socket.on('tas:call_waiter_response', rateLimitMiddleware(socket, 'tas:call_waiter_response', (data: {
     sessionId: string;
     customerId?: string;
     tableId?: string;
@@ -470,7 +485,7 @@ export function registerTasHandlers(io: Server, socket: AuthenticatedSocket): vo
    * Send message to customers at a table
    * Payload: { sessionId: string, message: string, type?: 'info' | 'warning' | 'success' }
    */
-  socket.on('tas:notify_customers', rateLimitWrapper(rateLimiter, socket, 'tas:notify_customers', (data: {
+  socket.on('tas:notify_customers', rateLimitMiddleware(socket, 'tas:notify_customers', (data: {
     sessionId: string;
     message: string;
     type?: 'info' | 'warning' | 'success';
@@ -496,15 +511,30 @@ export function registerTasHandlers(io: Server, socket: AuthenticatedSocket): vo
   // ==================== DISCONNECT ====================
 
   socket.on('disconnect', () => {
-    // Clean up subscriptions
-    for (const [sessionId, socketIds] of tasSessionSubscriptions.entries()) {
-      if (socketIds.has(socket.id)) {
-        socketIds.delete(socket.id);
-        if (socketIds.size === 0) {
-          tasSessionSubscriptions.delete(sessionId);
+    try {
+      // Clean up subscriptions
+      for (const [sessionId, socketIds] of tasSessionSubscriptions.entries()) {
+        if (socketIds.has(socket.id)) {
+          socketIds.delete(socket.id);
+          if (socketIds.size === 0) {
+            tasSessionSubscriptions.delete(sessionId);
+          }
+          logger.info({ socketId: socket.id, staffId, sessionId }, 'TAS disconnected, removed from session');
         }
-        logger.info({ socketId: socket.id, staffId, sessionId }, 'TAS disconnected, removed from session');
       }
+
+      // Remove all listeners registered by this socket to prevent memory leaks
+      socket.removeAllListeners();
+
+      // Clean up connection tracking
+      cleanupSocketConnection(socket.id);
+
+      // Clean up rate limit tracking
+      cleanupSocketRateLimits(socket.id);
+
+      logger.info({ socketId: socket.id, staffId }, 'TAS client disconnected and cleaned up');
+    } catch (err) {
+      logger.error({ err, socketId: socket.id, staffId }, 'Error during TAS disconnect cleanup');
     }
   });
 }

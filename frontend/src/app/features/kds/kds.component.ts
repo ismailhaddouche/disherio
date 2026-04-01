@@ -3,13 +3,14 @@ import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
-import { kdsStore, KdsItem } from '../../store/kds.store';
+import { kdsStore, type KdsItem } from '../../store/kds.store';
 import { SocketService } from '../../services/socket/socket.service';
 import { LocalizePipe } from '../../shared/pipes/localize.pipe';
 import { environment } from '../../../environments/environment';
 import { TranslatePipe } from '../../shared/pipes/translate.pipe';
 import { NotificationService } from '../../core/services/notification.service';
 import { I18nService } from '../../core/services/i18n.service';
+import type { SocketError } from '../../types';
 
 interface TableGroup {
   name: string;
@@ -255,7 +256,7 @@ export class KdsComponent implements OnInit, OnDestroy {
   }
 
   private setupSocketListeners() {
-    this.socketService.on('kds:error', (error: any) => {
+    this.socketService.on('kds:error', (error: SocketError) => {
       this.processingItem.set(null);
       this.processingAction.set(null);
       this.notify.error(error.message || error.details || this.i18n.translate('kds.error_generic'));
@@ -283,10 +284,10 @@ export class KdsComponent implements OnInit, OnDestroy {
     });
 
     this.socketService.on('item:state_changed', (data: { itemId: string; newState: string }) => {
-      kdsStore.updateItemState(data.itemId, data.newState as any);
+      kdsStore.updateItemState(data.itemId, data.newState as KdsItem['item_state']);
     });
 
-    this.socketService.on('kds:new_item', (item: any) => {
+    this.socketService.on('kds:new_item', (item: KdsItem) => {
       kdsStore.addItem(item);
       this.notify.info(this.i18n.translate('kds.new_item_received'));
     });

@@ -1,8 +1,9 @@
 import { Server } from 'socket.io';
 import { logger } from '../config/logger';
 import { AuthenticatedSocket } from '../middlewares/socketAuth';
-import { createSocketRateLimiter, rateLimitWrapper } from '../middlewares/socketRateLimit';
 import { getIO } from '../config/socket';
+import { trackSocketConnection, cleanupSocketConnection, trackSocketJoinRoom, trackSocketLeaveRoom, updateSocketActivity } from './middleware/connection-tracker';
+import { rateLimitMiddleware, cleanupSocketRateLimits } from './middleware/rate-limiter';
 
 export function registerPosHandlers(_io: Server, socket: AuthenticatedSocket): void {
   const user = socket.user;
@@ -12,20 +13,52 @@ export function registerPosHandlers(_io: Server, socket: AuthenticatedSocket): v
     return;
   }
 
-  // Create rate limiter for this socket connection
-  const rateLimiter = createSocketRateLimiter();
+  // Track this connection
+  trackSocketConnection(socket, 'POS', { userId: user.staffId });
 
-  socket.on('pos:join', rateLimitWrapper(rateLimiter, socket, 'pos:join', (sessionId: string) => {
+  socket.on('pos:join', rateLimitMiddleware(socket, 'pos:join', (sessionId: string) => {
     socket.join(`session:${sessionId}`);
     socket.join(`pos:session:${sessionId}`);
+    
+    // Track room joins
+    trackSocketJoinRoom(socket.id, `session:${sessionId}`);
+    trackSocketJoinRoom(socket.id, `pos:session:${sessionId}`);
+    updateSocketActivity(socket.id);
+    
     logger.info({ socketId: socket.id, userId: user.staffId, sessionId }, 'POS/TAS joined session room');
   }));
 
-  socket.on('pos:leave', rateLimitWrapper(rateLimiter, socket, 'pos:leave', (sessionId: string) => {
+  socket.on('pos:leave', rateLimitMiddleware(socket, 'pos:leave', (sessionId: string) => {
     socket.leave(`session:${sessionId}`);
     socket.leave(`pos:session:${sessionId}`);
+    
+    // Track room leaves
+    trackSocketLeaveRoom(socket.id, `session:${sessionId}`);
+    trackSocketLeaveRoom(socket.id, `pos:session:${sessionId}`);
+    updateSocketActivity(socket.id);
+    
     logger.info({ socketId: socket.id, userId: user.staffId, sessionId }, 'POS/TAS left session room');
   }));
+
+  // ==================== DISCONNECT ====================
+  // IMPORTANT: Cleanup on disconnect to prevent memory leaks
+
+  socket.on('disconnect', () => {
+    try {
+      // Remove all listeners registered by this socket to prevent memory leaks
+      socket.removeAllListeners();
+
+      // Clean up connection tracking
+      cleanupSocketConnection(socket.id);
+
+      // Clean up rate limit tracking
+      cleanupSocketRateLimits(socket.id);
+
+      logger.info({ socketId: socket.id, userId: user.staffId }, 'POS client disconnected and cleaned up');
+    } catch (err) {
+      logger.error({ err, socketId: socket.id, userId: user.staffId }, 'Error during POS disconnect cleanup');
+    }
+  });
 }
 
 // ==================== EXPORTED HELPERS ====================

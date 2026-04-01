@@ -21,6 +21,10 @@ ENV NODE_ENV=production
 # Install tools needed for healthchecks
 RUN apk add --no-cache wget curl
 
+# Create non-root user and group (UID/GID 1001)
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -u 1001 -S nodejs -G nodejs
+
 # Copy files needed for production
 COPY backend/package*.json ./
 # npm creates a symlink node_modules/@disherio/shared -> /shared (system root)
@@ -35,6 +39,13 @@ COPY --from=builder /app/shared/package.json ./node_modules/@disherio/shared/pac
 
 # Copy compiled backend
 COPY --from=builder /app/backend/dist ./dist
+
+# Create uploads directory and set ownership
+RUN mkdir -p /app/uploads && \
+    chown -R nodejs:nodejs /app
+
+# Switch to non-root user
+USER nodejs
 
 EXPOSE 3000
 CMD ["node", "dist/index.js"]

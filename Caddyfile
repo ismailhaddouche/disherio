@@ -1,21 +1,36 @@
 {
     admin off
-    auto_https off
+    # Auto HTTPS habilitado - Caddy gestionará automáticamente los certificados
 }
 
+# ============================================
+# Redirección HTTP a HTTPS
+# ============================================
 :80 {
-    # Security headers
+    redir https://{host}{uri} permanent
+}
+
+# ============================================
+# HTTPS con TLS 1.3 mínimo
+# ============================================
+:443 {
+    # TLS 1.3 como mínimo protocolo
+    tls {
+        protocols tls1.3
+    }
+
+    # Headers de seguridad
     header {
-        # Strict Transport Security (HSTS) - enable when using HTTPS
-        # Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        # HSTS - Fuerza HTTPS por 1 año, incluye subdominios y permite preload
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
         
         # Content Security Policy
-        Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' ws: wss:;"
+        Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' wss:;"
         
-        # Prevent clickjacking
+        # Prevenir clickjacking
         X-Frame-Options "SAMEORIGIN"
         
-        # Prevent MIME type sniffing
+        # Prevenir MIME type sniffing
         X-Content-Type-Options "nosniff"
         
         # XSS Protection
@@ -26,20 +41,26 @@
         
         # Permissions Policy
         Permissions-Policy "accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()"
+        
+        # Remover headers que identifican el servidor
+        -Server
     }
 
-    # Compress responses
+    # Compresión de respuestas
     encode gzip zstd
 
+    # Servir archivos subidos
     handle /uploads/* {
         root * /srv
         file_server
     }
 
+    # Reverse proxy a backend API
     handle /api/* {
         reverse_proxy backend:3000
     }
 
+    # Reverse proxy a Socket.IO (WebSockets)
     handle /socket.io/* {
         reverse_proxy backend:3000 {
             flush_interval -1
@@ -49,6 +70,7 @@
         }
     }
 
+    # Reverse proxy al frontend (Angular/Caddy)
     handle {
         reverse_proxy frontend:4200
     }

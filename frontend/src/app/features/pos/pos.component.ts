@@ -839,7 +839,7 @@ export class PosComponent implements OnInit, OnDestroy {
       );
     });
 
-    this.socketService.on('kds:new_item', (item: any) => {
+    this.socketService.on('kds:new_item', (item: ItemOrder) => {
       if (item.session_id === this.selectedSession()?._id) {
         this.sessionItems.update(items => [...items, item]);
       }

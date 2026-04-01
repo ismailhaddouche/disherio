@@ -27,6 +27,18 @@ const OrderSchema = new Schema<IOrder>(
   { timestamps: true }
 );
 
+// Index for session-based queries
+OrderSchema.index({ session_id: 1, order_date: -1 });
+
+// Index for customer order history
+OrderSchema.index({ customer_id: 1, order_date: -1 });
+
+// Index for staff order queries
+OrderSchema.index({ staff_id: 1, order_date: -1 });
+
+// Compound index for date range queries
+OrderSchema.index({ order_date: -1 });
+
 export const Order = model<IOrder>('Order', OrderSchema);
 
 export interface ILocalizedSnapshot {

@@ -51,7 +51,7 @@ services:
       MONGODB_URI: mongodb://mongo:27017/disherio
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRES: 8h
-      FRONTEND_URL: ${FRONTEND_URL:-http://localhost}
+      FRONTEND_URL: ${FRONTEND_URL:-https://localhost}
       LOG_LEVEL: ${LOG_LEVEL:-info}
     expose:
       - "3000"
@@ -95,7 +95,7 @@ services:
         max-file: "3"
 
   # -----------------------------------------
-  # Caddy Reverse Proxy
+  # Caddy Reverse Proxy con HTTPS
   # -----------------------------------------
   caddy:
     image: caddy:2-alpine
@@ -107,11 +107,13 @@ services:
       frontend:
         condition: service_healthy
     ports:
-      - "${PORT:-80}:${PORT:-80}"
-      - "${HTTPS_PORT:-443}:443"
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"  # HTTP/3 (QUIC)
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - disherio_uploads:/srv/uploads:ro
+      # Volumenes persistentes para certificados TLS
       - caddy_data:/data
       - caddy_config:/config
     networks:
@@ -132,5 +134,6 @@ networks:
 volumes:
   mongo_data:
   disherio_uploads:
+  # Volumen para certificados TLS y datos de Caddy
   caddy_data:
   caddy_config:

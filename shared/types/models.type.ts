@@ -3,7 +3,7 @@
 // These are the single source of truth for all models
 // ============================================
 
-import { LocalizedString, LocalizedField } from './localized-string.type';
+import { LocalizedField } from './localized-string.type';
 
 // Localized entry (lang + value pair)
 export type { LocalizedField };

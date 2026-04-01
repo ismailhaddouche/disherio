@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { authMiddleware } from '../middlewares/auth';
 import { requirePermission } from '../middlewares/rbac';
+import { strictLimiter } from '../middlewares/rateLimit';
 import { CustomerRepository } from '../repositories/totem.repository';
 import { asyncHandler, createError } from '../utils/async-handler';
 
@@ -16,7 +17,7 @@ router.get('/session/:sessionId', requirePermission('read', 'Customer'), asyncHa
 }));
 
 // Create customer
-router.post('/', requirePermission('create', 'Customer'), asyncHandler(async (req, res) => {
+router.post('/', strictLimiter, requirePermission('create', 'Customer'), asyncHandler(async (req, res) => {
   const { session_id, customer_name } = req.body;
   
   if (!session_id || !customer_name) {
@@ -32,7 +33,7 @@ router.post('/', requirePermission('create', 'Customer'), asyncHandler(async (re
 }));
 
 // Delete customer
-router.delete('/:id', requirePermission('delete', 'Customer'), asyncHandler(async (req, res) => {
+router.delete('/:id', strictLimiter, requirePermission('delete', 'Customer'), asyncHandler(async (req, res) => {
   const customer = await customerRepo.deleteCustomer(String(req.params.id));
   if (!customer) {
     throw createError.notFound('Customer not found');

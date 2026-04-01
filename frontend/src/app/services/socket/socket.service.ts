@@ -4,94 +4,37 @@ import { environment } from '../../../environments/environment';
 import { kdsStore } from '../../store/kds.store';
 import { authStore } from '../../store/auth.store';
 import { tasStore } from '../../store/tas.store';
-import { Subject, Observable, BehaviorSubject } from 'rxjs';
-
-// ==================== PAYLOAD TYPES ====================
-
-interface ItemStateChangedPayload {
-  itemId: string;
-  newState: string;
-}
-
-interface ItemDeletedPayload {
-  itemId: string;
-}
-
-interface KdsNewItem {
-  _id: string;
-  [key: string]: unknown;
-}
-
-// Totem/Customer types
-export interface OrderItem {
-  dishId: string;
-  dishName: any;
-  quantity: number;
-  price: number;
-  dishType: 'KITCHEN' | 'SERVICE';
-  variantId?: string;
-  variantName?: any;
-  extras?: Array<{ extraId: string; extraName: any; price: number }>;
-}
-
-export interface ItemUpdateEvent {
-  itemId: string;
-  newState: 'ORDERED' | 'ON_PREPARE' | 'SERVED' | 'CANCELED';
-  itemName?: any;
-  timestamp: string;
-}
-
-export interface WaiterNotification {
-  message: string;
-  from: string;
-  type: 'info' | 'warning' | 'success';
-  timestamp: string;
-}
-
-export interface SessionClosedEvent {
-  sessionId: string;
-  closedBy: 'customer' | 'waiter' | 'pos' | 'system';
-  closedByName?: string;
-  totalAmount?: number;
-  reason?: string;
-  message: string;
-  timestamp: string;
-}
-
-// TAS types
-export interface TASItemEvent {
-  item: any;
-  sessionId: string;
-  addedBy?: string;
-  timestamp: string;
-}
-
-export interface TASItemStateEvent {
-  itemId: string;
-  sessionId: string;
-  newState: 'ORDERED' | 'ON_PREPARE' | 'SERVED' | 'CANCELED';
-  servedBy?: string;
-  canceledBy?: string;
-  reason?: string;
-  timestamp: string;
-}
-
-export interface TASBillEvent {
-  sessionId: string;
-  requestedBy: 'waiter' | 'customer';
-  requestedByStaff?: string;
-  customerId?: string;
-  splitType?: 'ALL' | 'BY_USER' | 'SHARED';
-  timestamp: string;
-}
-
-export interface TASHelpRequest {
-  sessionId: string;
-  customerId?: string;
-  customerName?: string;
-  tableId?: string;
-  timestamp: string;
-}
+import { Subject } from 'rxjs';
+import { ItemOrder, LocalizedField } from '../../types';
+import type {
+  ItemState,
+  SocketError,
+  OrderItem,
+  ItemUpdateEvent,
+  WaiterNotification,
+  TotemSessionClosedEvent,
+  TASItemEvent,
+  TASItemStateEvent,
+  TASBillEvent,
+  TASBillPaidEvent,
+  TASHelpRequest,
+  TASNewCustomerOrderEvent,
+  TASCustomerBillRequestEvent,
+  TASAddItemData,
+  TASPaymentData,
+  TotemItemsAddedEvent,
+  TotemCustomerJoinedEvent,
+  TotemCustomerLeftEvent,
+  TotemTableInfoEvent,
+  TotemTableOrderUpdateEvent,
+  TotemOrderConfirmedEvent,
+  TotemHelpRequestConfirmedEvent,
+  TotemBillRequestConfirmedEvent,
+  TotemForceDisconnectEvent,
+  ItemStateChangedPayload,
+  ItemDeletedPayload,
+  KdsNewItem,
+} from '../../types/socket.types';
 
 type SocketEventCallback<T> = (data: T) => void;
 
@@ -114,18 +57,18 @@ export class SocketService implements OnDestroy {
   
   // Totem event subjects
   private totemItemUpdateSubject = new Subject<ItemUpdateEvent>();
-  private totemItemsAddedSubject = new Subject<{ items: any[]; addedBy: string; addedByCustomerId?: string }>();
+  private totemItemsAddedSubject = new Subject<TotemItemsAddedEvent>();
   private totemWaiterNotificationSubject = new Subject<WaiterNotification>();
-  private totemOrderConfirmedSubject = new Subject<any>();
-  private totemHelpRequestConfirmedSubject = new Subject<any>();
-  private totemBillRequestConfirmedSubject = new Subject<any>();
+  private totemOrderConfirmedSubject = new Subject<TotemOrderConfirmedEvent>();
+  private totemHelpRequestConfirmedSubject = new Subject<TotemHelpRequestConfirmedEvent>();
+  private totemBillRequestConfirmedSubject = new Subject<TotemBillRequestConfirmedEvent>();
   private totemCustomerJoinedSubject = new Subject<{ customerId?: string; customerName: string; joinedAt: string }>();
   private totemCustomerLeftSubject = new Subject<{ customerId?: string; customerName: string; leftAt: string }>();
-  private totemTableOrderUpdateSubject = new Subject<any>();
-  private totemTableInfoSubject = new Subject<any>();
-  private totemSessionClosedSubject = new Subject<SessionClosedEvent>();
-  private totemForceDisconnectSubject = new Subject<{ reason: string; message: string }>();
-  private totemErrorSubject = new Subject<any>();
+  private totemTableOrderUpdateSubject = new Subject<TotemTableOrderUpdateEvent>();
+  private totemTableInfoSubject = new Subject<TotemTableInfoEvent>();
+  private totemSessionClosedSubject = new Subject<TotemSessionClosedEvent>();
+  private totemForceDisconnectSubject = new Subject<TotemForceDisconnectEvent>();
+  private totemErrorSubject = new Subject<SocketError>();
 
   // Totem observables
   public totemItemUpdate$ = this.totemItemUpdateSubject.asObservable();
@@ -346,7 +289,7 @@ export class SocketService implements OnDestroy {
       this.tasBillRequestedSubject.next(data);
     });
 
-    this.socket.on('tas:bill_paid', (data: any) => {
+    this.socket.on('tas:bill_paid', (data: TASBillPaidEvent) => {
       console.log('[TAS] Bill paid:', data);
       this.tasBillPaidSubject.next(data);
     });
@@ -356,7 +299,7 @@ export class SocketService implements OnDestroy {
       this.tasHelpRequestedSubject.next(data);
     });
 
-    this.socket.on('tas:new_customer_order', (data: any) => {
+    this.socket.on('tas:new_customer_order', (data: TASNewCustomerOrderEvent) => {
       console.log('[TAS] New customer order:', data);
       if (data.item) {
         tasStore.addItem(data.item);
@@ -364,17 +307,17 @@ export class SocketService implements OnDestroy {
       this.tasNewCustomerOrderSubject.next(data);
     });
 
-    this.socket.on('tas:customer_bill_request', (data: any) => {
+    this.socket.on('tas:customer_bill_request', (data: TASCustomerBillRequestEvent) => {
       console.log('[TAS] Customer bill request:', data);
       this.tasCustomerBillRequestSubject.next(data);
     });
 
-    this.socket.on('notification:from_waiter', (data: any) => {
+    this.socket.on('notification:from_waiter', (data: WaiterNotification) => {
       console.log('[TAS] Notification:', data);
       this.tasNotificationSubject.next(data);
     });
 
-    this.socket.on('tas:error', (error: any) => {
+    this.socket.on('tas:error', (error: SocketError) => {
       console.error('[TAS] Error:', error);
       if (error?.message === 'INSUFFICIENT_PERMISSIONS') {
         this.insufficientPermissions = true;
@@ -382,14 +325,14 @@ export class SocketService implements OnDestroy {
       this.tasErrorSubject.next(error);
     });
 
-    this.socket.on('kds:error', (error: any) => {
+    this.socket.on('kds:error', (error: SocketError) => {
       console.error('[KDS] Error:', error);
       if (error?.message === 'INSUFFICIENT_PERMISSIONS') {
         this.insufficientPermissions = true;
       }
     });
 
-    this.socket.on('pos:error', (error: any) => {
+    this.socket.on('pos:error', (error: SocketError) => {
       console.error('[POS] Error:', error);
       if (error?.message === 'INSUFFICIENT_PERMISSIONS') {
         this.insufficientPermissions = true;
@@ -485,14 +428,7 @@ export class SocketService implements OnDestroy {
       this.totemTableInfoSubject.next(data);
     });
 
-    this.socket.on('totem:table_order_update', (data: {
-      type: string;
-      items: any[];
-      orderedBy: string;
-      orderedByCustomerId?: string;
-      totalItemsAtTable: number;
-      timestamp: string;
-    }) => {
+    this.socket.on('totem:table_order_update', (data: TotemTableOrderUpdateEvent) => {
       console.log('[Totem] Table order update:', data);
       this.totemTableOrderUpdateSubject.next(data);
     });
@@ -518,7 +454,7 @@ export class SocketService implements OnDestroy {
       this.totemItemUpdateSubject.next(data);
     });
 
-    this.socket.on('order:items_added', (data: { items: any[]; addedBy: string; addedByCustomerId?: string; timestamp: string }) => {
+    this.socket.on('order:items_added', (data: TotemItemsAddedEvent) => {
       console.log('[Totem] Items added to order:', data);
       this.totemItemsAddedSubject.next(data);
     });
@@ -527,7 +463,7 @@ export class SocketService implements OnDestroy {
       console.log('[Totem] Item state changed:', data);
       this.totemItemUpdateSubject.next({
         itemId: data.itemId,
-        newState: data.newState as any,
+        newState: data.newState as ItemState,
         timestamp: new Date().toISOString(),
       });
     });
@@ -547,7 +483,7 @@ export class SocketService implements OnDestroy {
       this.totemWaiterNotificationSubject.next(data);
     });
 
-    this.socket.on('totem:session_closed', (data: SessionClosedEvent) => {
+    this.socket.on('totem:session_closed', (data: TotemSessionClosedEvent) => {
       console.log('[Totem] Session closed:', data);
       this.isTotemSessionClosed = true;
       this.totemSessionClosedSubject.next(data);
@@ -560,7 +496,7 @@ export class SocketService implements OnDestroy {
       this.leaveTotemSession();
     });
 
-    this.socket.on('totem:error', (error: any) => {
+    this.socket.on('totem:error', (error: SocketError) => {
       console.error('[Totem] Error:', error);
       if (error.message === 'SESSION_CLOSED' || error.message === 'SESSION_ALREADY_CLOSED') {
         this.isTotemSessionClosed = true;
@@ -616,15 +552,7 @@ export class SocketService implements OnDestroy {
     }
   }
 
-  tasAddItem(data: {
-    sessionId: string;
-    orderId: string;
-    dishId: string;
-    customerId?: string;
-    variantId?: string;
-    extras?: string[];
-    itemData: any;
-  }): void {
+  tasAddItem(data: TASAddItemData): void {
     if (!this.socket?.connected) {
       console.warn('[TAS] Cannot add item: socket not connected');
       return;
@@ -669,11 +597,7 @@ export class SocketService implements OnDestroy {
     console.log(`[TAS] Requesting bill for session: ${sessionId}`);
   }
 
-  tasMarkBillAsPaid(sessionId: string, paymentData: {
-    paymentTotal: number;
-    paymentType: 'ALL' | 'BY_USER' | 'SHARED';
-    tickets: any[];
-  }): void {
+  tasMarkBillAsPaid(sessionId: string, paymentData: TASPaymentData): void {
     if (!this.socket?.connected) {
       console.warn('[TAS] Cannot mark bill paid: socket not connected');
       return;
