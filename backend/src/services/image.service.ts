@@ -7,6 +7,7 @@ import {
   DimensionValidationResult,
   SECURITY_LIMITS,
 } from '../utils/file-security';
+import logger from '../config/logger';
 
 const UPLOADS_DIR = '/app/uploads';
 
@@ -158,7 +159,7 @@ export async function deleteImage(imagePath: string): Promise<boolean> {
     
     return false;
   } catch (error) {
-    console.error('Error deleting image:', error);
+    logger.error({ error, imagePath }, 'Error deleting image');
     return false;
   }
 }
@@ -194,7 +195,7 @@ export async function getImageInfo(imagePath: string): Promise<sharp.Metadata | 
     const metadata = await sharp(fullPath).metadata();
     return metadata;
   } catch (error) {
-    console.error('Error getting image info:', error);
+    logger.error({ error, imagePath }, 'Error getting image info');
     return null;
   }
 }

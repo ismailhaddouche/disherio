@@ -8,6 +8,7 @@
 import { ClientSession } from 'mongoose';
 import { withTransaction, withTransactionRetry, runInParallel } from './transactions';
 import { OrderRepository, ItemOrderRepository, PaymentRepository } from '../repositories';
+import { logger } from '../config/logger';
 
 const orderRepo = new OrderRepository();
 const itemOrderRepo = new ItemOrderRepository();
@@ -46,7 +47,7 @@ async function ejemploTransaccionSimple() {
     return { order, items: [item1, item2] };
   });
   
-  console.log('Orden creada:', result.order._id);
+  logger.info({ orderId: result.order._id }, 'Orden creada');
 }
 
 // ============================================================================
@@ -78,7 +79,7 @@ async function ejemploTransaccionConReintentos() {
   100     // 100ms de delay entre reintentos
   );
   
-  console.log('Pago procesado:', result._id);
+  logger.info({ paymentId: result._id }, 'Pago procesado');
 }
 
 // ============================================================================
@@ -87,7 +88,7 @@ async function ejemploTransaccionConReintentos() {
 async function ejemploOperacionesParalelas() {
   const result = await withTransaction(async (session) => {
     // Ejecutar múltiples operaciones en paralelo dentro de la misma transacción
-    const [order, items, payment] = await runInParallel(session, [
+    const results = await runInParallel<unknown>(session, [
       // Crear orden
       (s) => orderRepo.createOrder('session-123', undefined, undefined, s),
       // Crear múltiples items
@@ -109,10 +110,11 @@ async function ejemploOperacionesParalelas() {
       }, s),
     ]);
     
-    return { order, items, payment };
+    const [order, item, payment] = results;
+    return { order, item, payment };
   });
   
-  console.log('Operaciones completadas:', result);
+  logger.info({ result }, 'Operaciones completadas');
 }
 
 // ============================================================================
@@ -142,7 +144,7 @@ async function ejemploManejoErrores() {
     });
   } catch (error) {
     // La transacción fue abortada, no hay datos inconsistentes
-    console.error('Error capturado, transacción revertida:', error);
+    logger.error({ error }, 'Error capturado, transacción revertida');
   }
 }
 

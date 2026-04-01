@@ -27,7 +27,7 @@ const OrderSchema = new Schema<IOrder>(
   { timestamps: true }
 );
 
-// Index for session-based queries
+// Index for session-based queries with sorting
 OrderSchema.index({ session_id: 1, order_date: -1 });
 
 // Index for customer order history
@@ -38,6 +38,12 @@ OrderSchema.index({ staff_id: 1, order_date: -1 });
 
 // Compound index for date range queries
 OrderSchema.index({ order_date: -1 });
+
+// Index for aggregation lookups
+OrderSchema.index({ _id: 1, session_id: 1 });
+
+// Index for restaurant-wide queries via session
+OrderSchema.index({ session_id: 1, _id: 1 });
 
 export const Order = model<IOrder>('Order', OrderSchema);
 
@@ -62,10 +68,10 @@ export interface IItemOrder extends Document {
 
 const ItemOrderSchema = new Schema<IItemOrder>(
   {
-    order_id: { type: Schema.Types.ObjectId, ref: 'Order', required: true },
+    order_id: { type: Schema.Types.ObjectId, ref: 'Order', required: true, index: true },
     session_id: { type: Schema.Types.ObjectId, ref: 'TotemSession', required: true, index: true },
-    item_dish_id: { type: Schema.Types.ObjectId, ref: 'Dish', required: true },
-    customer_id: { type: Schema.Types.ObjectId, ref: 'Customer' },
+    item_dish_id: { type: Schema.Types.ObjectId, ref: 'Dish', required: true, index: true },
+    customer_id: { type: Schema.Types.ObjectId, ref: 'Customer', index: true },
     customer_name: String,
     item_state: {
       type: String,
@@ -95,6 +101,24 @@ const ItemOrderSchema = new Schema<IItemOrder>(
 // Compound index for kitchen queries
 ItemOrderSchema.index({ session_id: 1, item_disher_type: 1, item_state: 1 });
 
+// Index for order lookups with items
+ItemOrderSchema.index({ order_id: 1, item_state: 1 });
+
+// Index for dish sales aggregation
+ItemOrderSchema.index({ item_dish_id: 1, item_state: 1, createdAt: -1 });
+
+// Index for customer item queries
+ItemOrderSchema.index({ customer_id: 1, createdAt: -1 });
+
+// Compound index for KDS queries with time sorting
+ItemOrderSchema.index({ item_disher_type: 1, item_state: 1, createdAt: 1 });
+
+// Index for active items by session
+ItemOrderSchema.index({ session_id: 1, item_state: 1, createdAt: 1 });
+
+// Index for revenue calculations
+ItemOrderSchema.index({ item_dish_id: 1, createdAt: -1, item_state: 1 });
+
 export const ItemOrder = model<IItemOrder>('ItemOrder', ItemOrderSchema);
 
 export interface IPayment extends Document {
@@ -114,7 +138,7 @@ export interface IPayment extends Document {
 
 const PaymentSchema = new Schema<IPayment>(
   {
-    session_id: { type: Schema.Types.ObjectId, ref: 'TotemSession', required: true },
+    session_id: { type: Schema.Types.ObjectId, ref: 'TotemSession', required: true, index: true },
     payment_type: { type: String, enum: ['ALL', 'BY_USER', 'SHARED'], required: true },
     payment_total: { type: Number, required: true, min: 0 },
     payment_date: { type: Date, default: Date.now },
@@ -130,5 +154,14 @@ const PaymentSchema = new Schema<IPayment>(
   },
   { timestamps: true }
 );
+
+// Index for payment lookups by session
+PaymentSchema.index({ session_id: 1, payment_date: -1 });
+
+// Index for payment statistics
+PaymentSchema.index({ payment_date: -1, session_id: 1 });
+
+// Index for ticket queries
+PaymentSchema.index({ _id: 1, 'tickets.ticket_part': 1 });
 
 export const Payment = model<IPayment>('Payment', PaymentSchema);

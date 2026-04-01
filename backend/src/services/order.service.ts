@@ -290,22 +290,24 @@ export async function getSessionItems(sessionId: string) {
   return itemOrderRepo.findBySessionIdLean(sessionId);
 }
 
+/**
+ * Get kitchen items using optimized aggregation with KDS details.
+ */
 export async function getKitchenItems(restaurantId: string) {
   const totems = await totemRepo.findByRestaurantIdSelectId(restaurantId);
   const totemIds = totems.map((t) => t._id.toString());
   const sessions = await totemSessionRepo.findByTotemIdsAndState(totemIds, 'STARTED');
   const sessionIds = sessions.map((s) => s._id.toString());
 
-  const totemNameMap = new Map(totems.map(t => [t._id.toString(), t.totem_name]));
-  const sessionTotemMap = new Map(
-    sessions.map(s => [s._id.toString(), totemNameMap.get(s.totem_id.toString()) ?? ''])
-  );
+  // Use optimized KDS aggregation
+  const items = await itemOrderRepo.getKDSItemsWithDetails(sessionIds, {
+    states: ['ORDERED', 'ON_PREPARE'],
+    types: ['KITCHEN'],
+    sortBy: 'createdAt',
+    sortOrder: 'asc',
+  });
 
-  const items = await itemOrderRepo.findKitchenItemsBySessionIds(sessionIds);
-  return items.map(item => ({
-    ...item,
-    totem_name: sessionTotemMap.get(item.session_id.toString()) ?? '',
-  }));
+  return items;
 }
 
 export async function calculateSessionTotal(
@@ -516,11 +518,43 @@ export async function assignItemToCustomer(itemId: string, customerId: string | 
   });
 }
 
+/**
+ * Get service items using optimized aggregation.
+ */
 export async function getServiceItems(restaurantId: string) {
   const totems = await totemRepo.findByRestaurantIdSelectId(restaurantId);
   const totemIds = totems.map((t) => t._id.toString());
   const sessions = await totemSessionRepo.findByTotemIdsAndState(totemIds, 'STARTED');
   const sessionIds = sessions.map((s) => s._id.toString());
 
-  return itemOrderRepo.findServiceItemsBySessionIds(sessionIds);
+  // Use optimized KDS aggregation for service items
+  const items = await itemOrderRepo.getKDSItemsWithDetails(sessionIds, {
+    states: ['ORDERED'],
+    types: ['SERVICE'],
+    sortBy: 'createdAt',
+    sortOrder: 'asc',
+  });
+
+  return items;
+}
+
+/**
+ * Get orders with items for a session using optimized aggregation.
+ */
+export async function getOrdersWithItems(sessionId: string) {
+  return orderRepo.getOrdersWithItems(sessionId, {
+    includeCancelled: false,
+  });
+}
+
+/**
+ * Get daily metrics for a restaurant.
+ */
+export async function getDailyMetrics(restaurantId: string, date: Date) {
+  const totems = await totemRepo.findByRestaurantIdSelectId(restaurantId);
+  const totemIds = totems.map(t => t._id.toString());
+  const sessions = await totemSessionRepo.findByTotemIdsAndState(totemIds, 'STARTED');
+  const sessionIds = sessions.map(s => s._id.toString());
+
+  return orderRepo.getDailyMetrics(sessionIds, date);
 }

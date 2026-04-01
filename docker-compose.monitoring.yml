@@ -1,0 +1,221 @@
+# ============================================
+# DisherIO Monitoring Stack
+# Prometheus + Grafana + Alertmanager
+# ============================================
+
+services:
+  # Prometheus - Metrics collection
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    container_name: disherio_prometheus
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/prometheus/rules:/etc/prometheus/rules:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=15d'
+      - '--storage.tsdb.retention.size=5GB'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
+    ports:
+      - "9090:9090"
+    networks:
+      - disherio_net
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 2G
+        reservations:
+          cpus: '0.25'
+          memory: 512M
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Grafana - Visualization
+  grafana:
+    image: grafana/grafana:10.2.3
+    container_name: disherio_grafana
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana_data:/var/lib/grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_USERS_ALLOW_ORG_CREATE: "false"
+      GF_SERVER_ROOT_URL: ${GRAFANA_ROOT_URL:-http://localhost:3001}
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_SECURITY_DISABLE_GRAVATAR: "true"
+      GF_SECURITY_ANGULAR_SUPPORT_ENABLED: "false"
+      GF_UNIFIED_ALERTING_ENABLED: "true"
+      GF_UNIFIED_ALERTING_HA_PEERS: ""
+      GF_FEATURE_TOGGLES_ENABLE: "publicDashboards,accessControlOnCall"
+    ports:
+      - "3001:3000"
+    networks:
+      - disherio_net
+    depends_on:
+      - prometheus
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Alertmanager - Alert routing
+  alertmanager:
+    image: prom/alertmanager:v0.26.0
+    container_name: disherio_alertmanager
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager_data:/alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+      - '--web.external-url=http://localhost:9093'
+    ports:
+      - "9093:9093"
+    networks:
+      - disherio_net
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # MongoDB Exporter - MongoDB metrics
+  mongo-exporter:
+    image: percona/mongodb_exporter:0.40.0
+    container_name: disherio_mongo_exporter
+    restart: unless-stopped
+    command:
+      - '--mongodb.uri=mongodb://mongo:27017'
+      - '--collect-all'
+      - '--compatible-mode'
+    environment:
+      MONGODB_URI: mongodb://${MONGO_ROOT_USER:-admin}:${MONGO_ROOT_PASS:-change-this-secure-password}@mongo:27017/admin?ssl=false
+    networks:
+      - disherio_net
+    depends_on:
+      - mongo
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Redis Exporter - Redis metrics
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.55.0
+    container_name: disherio_redis_exporter
+    restart: unless-stopped
+    environment:
+      REDIS_ADDR: redis://redis:6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_secure_password}
+    networks:
+      - disherio_net
+    depends_on:
+      - redis
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
+        reservations:
+          cpus: '0.1'
+          memory: 32M
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Node Exporter - System metrics (optional, for host metrics)
+  node-exporter:
+    image: prom/node-exporter:v1.7.0
+    container_name: disherio_node_exporter
+    restart: unless-stopped
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    networks:
+      - disherio_net
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
+        reservations:
+          cpus: '0.1'
+          memory: 32M
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3'
+
+networks:
+  disherio_net:
+    external: true
+    name: disherio_disherio_net
+
+volumes:
+  prometheus_data:
+    name: disherio_prometheus_data
+  grafana_data:
+    name: disherio_grafana_data
+  alertmanager_data:
+    name: disherio_alertmanager_data

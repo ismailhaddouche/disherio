@@ -9,3 +9,6 @@ export * as paymentService from './payment.service';
 export * as pinSecurityService from './pin-security.service';
 export * as restaurantService from './restaurant.service';
 export * as totemService from './totem.service';
+
+// Re-export cache utilities
+export { cache, CacheKeys, CACHE_TTL, fetchWithCache } from './cache.service';

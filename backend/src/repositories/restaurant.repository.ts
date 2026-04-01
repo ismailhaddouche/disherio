@@ -19,6 +19,10 @@ export class RestaurantRepository extends BaseRepository<IRestaurant> {
     return this.model.findById(id).lean().exec();
   }
 
+  async findByUrl(url: string): Promise<IRestaurant | null> {
+    return this.model.findOne({ restaurant_url: url }).lean().exec();
+  }
+
   async updateRestaurant(
     id: string,
     data: Partial<IRestaurant>

@@ -2,6 +2,7 @@ import { Express } from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import compression from 'compression';
+import { logger } from '../config/logger';
 
 export function applySecurityMiddleware(app: Express): void {
   app.use(helmet());
@@ -25,11 +26,11 @@ export function applySecurityMiddleware(app: Express): void {
   }
 
   if (process.env.NODE_ENV === 'production' && allowedOrigins.length === 0) {
-    console.error('ERROR: FRONTEND_URL must be set in production');
+    logger.error('ERROR: FRONTEND_URL must be set in production');
     process.exit(1);
   }
 
-  console.log('CORS allowed origins:', allowedOrigins);
+  logger.info({ allowedOrigins }, 'CORS allowed origins configured');
 
   app.use(
     cors({
@@ -41,7 +42,7 @@ export function applySecurityMiddleware(app: Express): void {
           return callback(null, true);
         }
         
-        console.warn(`CORS rejected origin: ${origin}`);
+        logger.warn({ origin }, 'CORS rejected origin');
         callback(new Error(`Origin ${origin} not allowed by CORS`));
       },
       credentials: true,

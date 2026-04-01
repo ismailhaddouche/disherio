@@ -1,8 +1,15 @@
 import { Request, Response } from 'express';
-import { ItemOrder, Payment } from '../models/order.model';
-import { Dish } from '../models/dish.model';
 import { Types } from 'mongoose';
 import { logger } from '../config/logger';
+import { DishRepository, ItemOrderRepository, PaymentRepository } from '../repositories';
+import { TotemRepository, TotemSessionRepository } from '../repositories/totem.repository';
+import { Category } from '../models/dish.model';
+
+const dishRepo = new DishRepository();
+const itemOrderRepo = new ItemOrderRepository();
+const paymentRepo = new PaymentRepository();
+const totemRepo = new TotemRepository();
+const totemSessionRepo = new TotemSessionRepository();
 
 /**
  * Get dashboard statistics for the authenticated restaurant
@@ -18,73 +25,41 @@ export async function getDashboardStats(req: Request, res: Response): Promise<vo
 
     // Parse date filters
     const { from, to } = req.query;
-    const dateFilter: { $gte?: Date; $lte?: Date } = {};
+    const dateRange: { from?: Date; to?: Date } = {};
     
     if (from) {
-      dateFilter.$gte = new Date(from as string);
+      dateRange.from = new Date(from as string);
     }
     if (to) {
-      dateFilter.$lte = new Date(to as string);
+      dateRange.to = new Date(to as string);
     }
 
-    // Build match stages
-    const itemMatch: Record<string, unknown> = {};
-    const paymentMatch: Record<string, unknown> = {};
-    
-    if (dateFilter.$gte || dateFilter.$lte) {
-      itemMatch.createdAt = dateFilter;
-      paymentMatch.payment_date = dateFilter;
-    }
+    // Get all active sessions for this restaurant
+    const totems = await totemRepo.findByRestaurantIdSelectId(restaurantId);
+    const totemIds = totems.map(t => t._id.toString());
+    const sessions = await totemSessionRepo.findByTotemIdsAndState(totemIds, 'STARTED');
+    const sessionIds = sessions.map(s => s._id.toString());
 
-    // Get dishes for this restaurant to filter items
-    const dishes = await Dish.find({ 
-      restaurant_id: new Types.ObjectId(restaurantId) 
-    }).select('_id category_id');
-    
+    // Get all dishes for this restaurant
+    const dishes = await dishRepo.findByRestaurantId(restaurantId);
     const dishIds = dishes.map(d => d._id.toString());
-    itemMatch.item_dish_id = { $in: dishIds.map(id => new Types.ObjectId(id)) };
 
-    // Aggregate sales by dish
-    const salesByDish = await ItemOrder.aggregate([
-      { $match: itemMatch },
-      {
-        $group: {
-          _id: '$item_dish_id',
-          totalQuantity: { $sum: 1 },
-          totalRevenue: { 
-            $sum: { 
-              $add: [
-                '$item_base_price',
-                { $ifNull: ['$item_disher_variant.price', 0] },
-                { $sum: '$item_disher_extras.price' }
-              ]
-            }
-          }
-        }
-      },
-      { $sort: { totalRevenue: -1 } },
-      { $limit: 10 }
-    ]);
+    // Use optimized aggregation for sales by dish
+    const salesByDish = await itemOrderRepo.getSalesByDish(dishIds, dateRange);
 
-    // Populate dish names
-    const dishDetails = await Dish.find({ 
-      _id: { $in: salesByDish.map(s => s._id) } 
-    }).select('disher_name category_id');
-
+    // Map dish names
     const salesByDishWithNames = salesByDish.map(sale => {
-      const dish = dishDetails.find(d => d._id.equals(sale._id));
+      const dish = dishes.find(d => d._id.equals(sale.dishId));
       return {
-        dishId: sale._id,
-        dishName: dish?.disher_name || 'UNKNOWN',
-        quantity: sale.totalQuantity,
-        revenue: sale.totalRevenue
+        ...sale,
+        dishName: dish?.disher_name?.[0]?.value ?? sale.dishName ?? 'Unknown',
       };
     });
 
     // Aggregate sales by category
     const categoryMap = new Map();
     for (const sale of salesByDishWithNames) {
-      const dish = dishDetails.find(d => d._id.equals(sale.dishId));
+      const dish = dishes.find(d => d._id.equals(sale.dishId));
       const categoryId = dish?.category_id?.toString() || 'uncategorized';
       
       if (!categoryMap.has(categoryId)) {
@@ -98,52 +73,50 @@ export async function getDashboardStats(req: Request, res: Response): Promise<vo
 
     // Get category names
     const categoryIds = Array.from(categoryMap.keys()).filter(id => id !== 'uncategorized');
-    const categories = await (await import('../models/dish.model')).Category.find({
-      _id: { $in: categoryIds.map(id => new Types.ObjectId(id)) }
-    }).select('category_name');
+    const categories = categoryIds.length > 0 
+      ? await Category.find({
+          _id: { $in: categoryIds.map(id => new Types.ObjectId(id)) }
+        }).select('category_name').lean().exec()
+      : [];
 
     const salesByCategory = Array.from(categoryMap.entries()).map(([catId, data]) => {
-      const category = categories.find(c => c._id.equals(catId));
+      const category = categories.find((c: any) => c._id.equals(catId));
       return {
         categoryId: catId,
         categoryName: category?.category_name?.[0]?.value || 'UNCATEGORIZED',
-        revenue: data.revenue,
-        quantity: data.quantity
+        revenue: Math.round(data.revenue * 100) / 100,
+        quantity: data.quantity,
       };
     }).sort((a, b) => b.revenue - a.revenue);
 
-    // Get total revenue from payments
-    const paymentStats = await Payment.aggregate([
-      { $match: paymentMatch },
-      {
-        $group: {
-          _id: null,
-          totalRevenue: { $sum: '$payment_total' },
-          totalTransactions: { $sum: 1 },
-          averageTicket: { $avg: '$payment_total' }
-        }
-      }
-    ]);
+    // Get payment statistics using optimized aggregation
+    const paymentStats = await paymentRepo.getPaymentStats(sessionIds, dateRange);
 
-    // Get order status counts
-    const orderStatusCounts = await ItemOrder.aggregate([
-      { $match: itemMatch },
+    // Get order status counts using aggregation
+    const statusAggregation = await itemOrderRepo.getModel().aggregate([
+      {
+        $match: {
+          item_dish_id: { $in: dishIds.map(id => new Types.ObjectId(id)) },
+          ...(dateRange.from && { createdAt: { $gte: dateRange.from } }),
+          ...(dateRange.to && { createdAt: { $lte: dateRange.to } }),
+        },
+      },
       {
         $group: {
           _id: '$item_state',
-          count: { $sum: 1 }
-        }
-      }
+          count: { $sum: 1 },
+        },
+      },
     ]);
 
     const statusCounts = {
       ordered: 0,
       onPrepare: 0,
       served: 0,
-      canceled: 0
+      canceled: 0,
     };
 
-    orderStatusCounts.forEach(status => {
+    statusAggregation.forEach((status: any) => {
       switch (status._id) {
         case 'ORDERED': statusCounts.ordered = status.count; break;
         case 'ON_PREPARE': statusCounts.onPrepare = status.count; break;
@@ -153,15 +126,136 @@ export async function getDashboardStats(req: Request, res: Response): Promise<vo
     });
 
     res.json({
-      salesByDish: salesByDishWithNames,
+      salesByDish: salesByDishWithNames.slice(0, 10),
       salesByCategory,
-      paymentStats: paymentStats[0] || { totalRevenue: 0, totalTransactions: 0, averageTicket: 0 },
+      paymentStats,
       orderStatus: statusCounts,
-      dateRange: { from, to }
+      dateRange: { from, to },
     });
 
   } catch (error) {
     logger.error({ err: error }, 'Error getting dashboard stats');
     res.status(500).json({ errorCode: 'DASHBOARD_ERROR' });
+  }
+}
+
+/**
+ * Get popular dishes for the dashboard
+ */
+export async function getPopularDishes(req: Request, res: Response): Promise<void> {
+  try {
+    const restaurantId = req.user?.restaurantId;
+    if (!restaurantId) {
+      res.status(401).json({ errorCode: 'UNAUTHORIZED' });
+      return;
+    }
+
+    const { from, to, limit, type } = req.query;
+    const dateRange: { from?: Date; to?: Date } = {};
+    
+    if (from) dateRange.from = new Date(from as string);
+    if (to) dateRange.to = new Date(to as string);
+
+    const parsedLimit = limit ? parseInt(limit as string, 10) : 10;
+    const parsedType = type === 'KITCHEN' || type === 'SERVICE' ? type : undefined;
+
+    const popularDishes = await dishRepo.getPopularDishes(restaurantId, {
+      limit: parsedLimit,
+      dateRange,
+      type: parsedType,
+    });
+
+    res.json({
+      dishes: popularDishes,
+      dateRange,
+    });
+  } catch (error) {
+    logger.error({ err: error }, 'Error getting popular dishes');
+    res.status(500).json({ errorCode: 'POPULAR_DISHES_ERROR' });
+  }
+}
+
+/**
+ * Get category statistics
+ */
+export async function getCategoryStats(req: Request, res: Response): Promise<void> {
+  try {
+    const restaurantId = req.user?.restaurantId;
+    if (!restaurantId) {
+      res.status(401).json({ errorCode: 'UNAUTHORIZED' });
+      return;
+    }
+
+    const categoriesWithCounts = await dishRepo.getCategoryStats(restaurantId);
+
+    res.json({
+      categories: categoriesWithCounts,
+    });
+  } catch (error) {
+    logger.error({ err: error }, 'Error getting category stats');
+    res.status(500).json({ errorCode: 'CATEGORY_STATS_ERROR' });
+  }
+}
+
+/**
+ * Get real-time metrics for active sessions
+ */
+export async function getRealtimeMetrics(req: Request, res: Response): Promise<void> {
+  try {
+    const restaurantId = req.user?.restaurantId;
+    if (!restaurantId) {
+      res.status(401).json({ errorCode: 'UNAUTHORIZED' });
+      return;
+    }
+
+    // Get active sessions
+    const totems = await totemRepo.findByRestaurantIdSelectId(restaurantId);
+    const totemIds = totems.map(t => t._id.toString());
+    const sessions = await totemSessionRepo.findByTotemIdsAndState(totemIds, 'STARTED');
+    const sessionIds = sessions.map(s => s._id.toString());
+
+    if (sessionIds.length === 0) {
+      res.json({
+        activeSessions: 0,
+        pendingKitchenItems: 0,
+        pendingServiceItems: 0,
+        averageWaitTime: 0,
+        itemsByStation: [],
+      });
+      return;
+    }
+
+    // Get pending items by station
+    const itemsByStation = await itemOrderRepo.getPendingItemsByStation(sessionIds, {
+      includeService: true,
+    });
+
+    // Calculate totals
+    const kitchenItems = itemsByStation.find(s => s._id === 'KITCHEN');
+    const serviceItems = itemsByStation.find(s => s._id === 'SERVICE');
+
+    const pendingKitchenItems = kitchenItems?.count ?? 0;
+    const pendingServiceItems = serviceItems?.count ?? 0;
+
+    // Calculate average wait time
+    const allItems = itemsByStation.flatMap(s => s.items);
+    const averageWaitTime = allItems.length > 0
+      ? Math.round(allItems.reduce((sum, item: any) => sum + (item.waitTimeMinutes ?? 0), 0) / allItems.length)
+      : 0;
+
+    res.json({
+      activeSessions: sessions.length,
+      pendingKitchenItems,
+      pendingServiceItems,
+      averageWaitTime,
+      itemsByStation: itemsByStation.map(station => ({
+        station: station._id,
+        count: station.count,
+        averageWaitTime: (station as any).averageWaitTime,
+      })),
+    });
+  } catch (error) {
+    logger.error({ err: error }, 'Error getting realtime metrics');
+    res.status(500).json({ errorCode: 'REALTIME_METRICS_ERROR' });
   }
 }

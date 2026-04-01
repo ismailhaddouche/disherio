@@ -1,49 +1,34 @@
 import { ErrorCode } from '@disherio/shared';
 import { DishRepository, CategoryRepository } from '../repositories/dish.repository';
 import { IDish, ICategory } from '../models/dish.model';
-import { cache, CacheKeys } from './cache.service';
+import { cache, CacheKeys, CACHE_TTL, fetchWithCache } from './cache.service';
 import { CreateDishData, UpdateDishData, CreateCategoryData, UpdateCategoryData } from '@disherio/shared';
 
 // Repository instances
 const dishRepo = new DishRepository();
 const categoryRepo = new CategoryRepository();
 
-// Cache TTL in ms
-const CACHE_TTL = 2 * 60 * 1000; // 2 minutes
-
 // Cache invalidation helpers
-function invalidateDishCaches(dishId: string, restaurantId?: string): void {
-  cache.delete(CacheKeys.dishById(dishId));
+async function invalidateDishCaches(dishId: string, restaurantId?: string): Promise<void> {
+  await cache.delete(CacheKeys.dish(dishId));
   if (restaurantId) {
-    cache.delete(CacheKeys.dishByRestaurant(restaurantId));
+    await cache.delete(CacheKeys.dishesByRestaurant(restaurantId));
+    await cache.invalidateMenuCache(restaurantId);
   }
 }
 
-function invalidateCategoryCaches(categoryId: string, restaurantId?: string): void {
-  cache.delete(CacheKeys.categoryById(categoryId));
+async function invalidateCategoryCaches(categoryId: string, restaurantId?: string): Promise<void> {
+  await cache.delete(CacheKeys.category(categoryId));
   if (restaurantId) {
-    cache.delete(CacheKeys.categoriesByRestaurant(restaurantId));
+    await cache.invalidateCategoriesCache(restaurantId);
   }
-}
-
-// Generic cached fetch helper
-async function fetchWithCache<T>(
-  key: string,
-  fetcher: () => Promise<T>,
-  ttl: number = CACHE_TTL
-): Promise<T> {
-  const cached = cache.get<T>(key);
-  if (cached) return cached;
-  
-  const data = await fetcher();
-  cache.set(key, data, ttl);
-  return data;
 }
 
 export async function getDishesByRestaurant(restaurantId: string, _lang: string = 'es'): Promise<IDish[]> {
   return fetchWithCache(
-    CacheKeys.dishByRestaurant(restaurantId),
-    () => dishRepo.findActiveByRestaurantId(restaurantId)
+    CacheKeys.dishesByRestaurant(restaurantId),
+    () => dishRepo.findActiveByRestaurantId(restaurantId),
+    CACHE_TTL.MENU
   );
 }
 
@@ -62,16 +47,16 @@ export async function getDishesByRestaurantPaginated(
 }
 
 export async function getDishById(dishId: string): Promise<IDish | null> {
-  const dish = await fetchWithCache(
-    CacheKeys.dishById(dishId),
-    () => dishRepo.findByIdWithDetails(dishId)
+  return fetchWithCache(
+    CacheKeys.dish(dishId),
+    () => dishRepo.findByIdWithDetails(dishId),
+    CACHE_TTL.MENU
   );
-  return dish;
 }
 
 export async function createDish(data: CreateDishData): Promise<IDish> {
   const dish = await dishRepo.createDish(data);
-  cache.delete(CacheKeys.dishByRestaurant(data.restaurant_id));
+  await cache.invalidateMenuCache(data.restaurant_id);
   return dish;
 }
 
@@ -81,7 +66,7 @@ export async function updateDish(dishId: string, data: UpdateDishData): Promise<
   
   const updated = await dishRepo.updateDish(dishId, data);
   const restaurantId = data.restaurant_id || existing.restaurant_id.toString();
-  invalidateDishCaches(dishId, restaurantId);
+  await invalidateDishCaches(dishId, restaurantId);
   
   return updated;
 }
@@ -91,7 +76,7 @@ export async function deleteDish(dishId: string): Promise<IDish | null> {
   if (!existing) return null;
   
   const deleted = await dishRepo.delete(dishId);
-  invalidateDishCaches(dishId, existing.restaurant_id.toString());
+  await invalidateDishCaches(dishId, existing.restaurant_id.toString());
   
   return deleted;
 }
@@ -101,7 +86,7 @@ export async function toggleDishStatus(dishId: string): Promise<IDish | null> {
   if (!existing) return null;
   
   const updated = await dishRepo.toggleStatus(dishId);
-  invalidateDishCaches(dishId, existing.restaurant_id.toString());
+  await invalidateDishCaches(dishId, existing.restaurant_id.toString());
   
   return updated;
 }
@@ -109,20 +94,22 @@ export async function toggleDishStatus(dishId: string): Promise<IDish | null> {
 export async function getCategoriesByRestaurant(restaurantId: string): Promise<ICategory[]> {
   return fetchWithCache(
     CacheKeys.categoriesByRestaurant(restaurantId),
-    () => categoryRepo.findByRestaurantId(restaurantId)
+    () => categoryRepo.findByRestaurantId(restaurantId),
+    CACHE_TTL.CATEGORIES
   );
 }
 
 export async function getCategoryById(id: string): Promise<ICategory | null> {
   return fetchWithCache(
-    CacheKeys.categoryById(id),
-    () => categoryRepo.findById(id)
+    CacheKeys.category(id),
+    () => categoryRepo.findById(id),
+    CACHE_TTL.CATEGORIES
   );
 }
 
 export async function createCategory(data: CreateCategoryData): Promise<ICategory> {
   const category = await categoryRepo.createCategory(data);
-  cache.delete(CacheKeys.categoriesByRestaurant(data.restaurant_id));
+  await cache.invalidateCategoriesCache(data.restaurant_id);
   return category;
 }
 
@@ -132,7 +119,7 @@ export async function updateCategory(id: string, data: UpdateCategoryData): Prom
   
   const updated = await categoryRepo.updateCategory(id, data);
   const restaurantId = data.restaurant_id || existing.restaurant_id.toString();
-  invalidateCategoryCaches(id, restaurantId);
+  await invalidateCategoryCaches(id, restaurantId);
   
   return updated;
 }
@@ -148,7 +135,7 @@ export async function deleteCategory(id: string): Promise<ICategory | null> {
   }
   
   const deleted = await categoryRepo.deleteCategory(id);
-  invalidateCategoryCaches(id, existing.restaurant_id.toString());
+  await invalidateCategoryCaches(id, existing.restaurant_id.toString());
   
   return deleted;
 }

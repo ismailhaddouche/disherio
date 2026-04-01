@@ -3,6 +3,8 @@
  * Ensures JWT_SECRET meets security requirements
  */
 
+import { logger } from '../config/logger';
+
 export interface JWTValidationResult {
   valid: boolean;
   error?: string;
@@ -53,7 +55,7 @@ export function validateJWTSecretOrExit(secret: string | undefined): void {
   const result = validateJWTSecret(secret);
   
   if (!result.valid) {
-    console.error(`❌ ${result.error}`);
+    logger.error(`❌ ${result.error}`);
     process.exit(1);
   }
 }

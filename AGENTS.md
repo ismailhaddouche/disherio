@@ -271,6 +271,96 @@ export const environment = {
 - Added Angular standalone components approach
 - Defined API conventions and response formats
 
+### 2026-04-02
+- **MongoDB Aggregation Optimizations**
+  - Added optimized aggregation pipelines in repositories
+  - Created QueryProfiler utility for performance monitoring
+  - Added indexes for aggregation queries
+  - New methods: `getOrdersWithItems()`, `getPendingItemsByStation()`, `getDailyMetrics()`
+  - Dashboard controller now uses optimized aggregations
+  - KDS (Kitchen Display) queries optimized with `$lookup` pipelines
+
+---
+
+## 🗄️ Database Optimization Guide
+
+### MongoDB Aggregation Patterns
+
+#### 1. Orders with Items (Single Query Join)
+```typescript
+// BEFORE: Multiple queries (N+1 problem)
+const orders = await orderRepo.findBySessionId(sessionId);
+for (const order of orders) {
+  order.items = await itemOrderRepo.findByOrderId(order._id);
+  for (const item of order.items) {
+    item.dish = await dishRepo.findById(item.item_dish_id);
+  }
+}
+
+// AFTER: Single aggregation with $lookup
+const orders = await orderRepo.getOrdersWithItems(sessionId);
+// Items and dishes populated in one query
+```
+
+#### 2. Dashboard Metrics (Grouped Aggregation)
+```typescript
+// Get all metrics in a single query
+const metrics = await orderRepo.getDailyMetrics(sessionIds, date);
+// Returns: { totalRevenue, orderCount, averageOrderValue, itemCount }
+```
+
+#### 3. KDS Items by Station
+```typescript
+// Group pending items by station with wait times
+const byStation = await itemOrderRepo.getPendingItemsByStation(sessionIds, {
+  includeService: true,
+});
+// Returns items grouped by KITCHEN/SERVICE with wait time calculations
+```
+
+### Query Profiler Usage
+```typescript
+import { QueryProfiler } from '../repositories';
+
+// Profile any query
+const result = await QueryProfiler.profileAggregation(
+  model,
+  pipeline,
+  'OperationName',
+  { explain: true }
+);
+
+// Get slow queries
+const slowQueries = QueryProfiler.getSlowQueries(100); // > 100ms
+
+// Analyze index usage
+const explain = await QueryProfiler.explainAggregation(model, pipeline);
+const analysis = analyzeIndexUsage(explain);
+```
+
+### Critical Indexes
+```javascript
+// Order queries
+OrderSchema.index({ session_id: 1, order_date: -1 });
+
+// Item order queries
+ItemOrderSchema.index({ session_id: 1, item_disher_type: 1, item_state: 1 });
+ItemOrderSchema.index({ item_dish_id: 1, item_state: 1, createdAt: -1 });
+
+// Text search
+DishSchema.index({ 'disher_name.value': 'text' });
+```
+
+### Performance Tips
+- ✅ Use aggregations for joins instead of multiple queries
+- ✅ Add compound indexes for frequent query patterns
+- ✅ Use `$limit` and `$skip` early in pipelines
+- ✅ Profile slow queries with QueryProfiler
+- ✅ Use `lean()` for read-only operations
+- ❌ Avoid populate() in loops
+- ❌ Don't calculate aggregates in JavaScript
+- ❌ Avoid $where operator
+
 ---
 
 *Part of DisherIo Restaurant Management System*  

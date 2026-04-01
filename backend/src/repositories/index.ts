@@ -12,11 +12,21 @@ export {
   OrderRepository,
   ItemOrderRepository,
   PaymentRepository,
+  // Types
+  type OrderWithItems,
+  type PendingItemsByStation,
+  type DailyMetrics,
+  type SalesByDish,
+  type KDSItem,
 } from './order.repository';
 
 export {
   DishRepository,
   CategoryRepository,
+  // Types
+  type DishWithCategory,
+  type DishStats,
+  type CategoryStats,
 } from './dish.repository';
 
 export {
@@ -34,3 +44,12 @@ export {
   TotemSessionRepository,
   CustomerRepository,
 } from './totem.repository';
+
+// Re-export query profiler utilities
+export {
+  QueryProfiler,
+  ProfileQuery,
+  analyzeIndexUsage,
+  type QueryProfile,
+  type ExplainResult,
+} from '../utils/query-profiler';

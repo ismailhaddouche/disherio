@@ -1,0 +1,96 @@
+global:
+  smtp_smarthost: 'localhost:587'
+  smtp_from: 'alerts@disherio.local'
+  smtp_require_tls: false
+
+  slack_api_url: '${SLACK_WEBHOOK_URL:-}'
+
+# Templates for alert notifications
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'
+
+# The root route on which each incoming alert enters.
+route:
+  # The labels by which incoming alerts are grouped together.
+  group_by: ['alertname', 'severity', 'job']
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  receiver: 'default'
+  routes:
+    # Critical alerts - immediate notification
+    - match:
+        severity: critical
+      receiver: 'critical-alerts'
+      group_wait: 10s
+      repeat_interval: 30m
+    
+    # Warning alerts - less frequent
+    - match:
+        severity: warning
+      receiver: 'warning-alerts'
+      group_wait: 1m
+      repeat_interval: 2h
+
+# Inhibition rules allow to mute a set of alerts given that another alert is firing.
+inhibit_rules:
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'instance']
+
+receivers:
+  - name: 'default'
+    email_configs:
+      - to: 'admin@disherio.local'
+        subject: 'DisherIO Alert: {{ .GroupLabels.alertname }}'
+        body: |
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Instance: {{ .Labels.instance }}
+          Severity: {{ .Labels.severity }}
+          Time: {{ .StartsAt }}
+          {{ end }}
+
+  - name: 'critical-alerts'
+    email_configs:
+      - to: 'admin@disherio.local'
+        subject: '🚨 CRITICAL: DisherIO Alert - {{ .GroupLabels.alertname }}'
+        body: |
+          {{ range .Alerts }}
+          🚨 CRITICAL ALERT 🚨
+          
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Instance: {{ .Labels.instance }}
+          Severity: {{ .Labels.severity }}
+          Time: {{ .StartsAt }}
+          {{ end }}
+    slack_configs:
+      - channel: '#alerts-critical'
+        title: '🚨 Critical Alert: {{ .GroupLabels.alertname }}'
+        text: |
+          {{ range .Alerts }}
+          *Alert:* {{ .Annotations.summary }}
+          *Description:* {{ .Annotations.description }}
+          *Instance:* {{ .Labels.instance }}
+          *Severity:* {{ .Labels.severity }}
+          {{ end }}
+        send_resolved: true
+
+  - name: 'warning-alerts'
+    email_configs:
+      - to: 'admin@disherio.local'
+        subject: '⚠️ WARNING: DisherIO Alert - {{ .GroupLabels.alertname }}'
+        body: |
+          {{ range .Alerts }}
+          ⚠️ WARNING ⚠️
+          
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Instance: {{ .Labels.instance }}
+          Severity: {{ .Labels.severity }}
+          Time: {{ .StartsAt }}
+          {{ end }}

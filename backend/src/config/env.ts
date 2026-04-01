@@ -30,6 +30,10 @@ export const envSchema = z.object({
 
   // Optional: Node environment
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+
+  // Optional: Redis configuration
+  REDIS_URL: z.string().default('redis://localhost:6379'),
+  REDIS_PASSWORD: z.string().optional(),
 });
 
 /**

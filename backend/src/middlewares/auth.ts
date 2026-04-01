@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import { logger } from '../config/logger';
 
 export interface JwtPayload {
   staffId: string;
@@ -43,7 +44,7 @@ export function authenticate(req: Request, res: Response, next: NextFunction): v
 
   const jwtSecret = process.env.JWT_SECRET;
   if (!jwtSecret) {
-    console.error('JWT_SECRET not configured');
+    logger.error('JWT_SECRET not configured');
     res.status(500).json({ errorCode: 'SERVER_ERROR' });
     return;
   }

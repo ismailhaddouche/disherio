@@ -1,0 +1,265 @@
+groups:
+  - name: disherio_backend_alerts
+    interval: 30s
+    rules:
+      # High Error Rate Alert
+      - alert: HighErrorRate
+        expr: |
+          (
+            sum(rate(http_requests_total{status=~"5.."}[5m])) 
+            / 
+            sum(rate(http_requests_total[5m]))
+          ) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+          service: backend
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value | humanizePercentage }} (above 5%)"
+
+      # High 4xx Error Rate Alert
+      - alert: HighClientErrorRate
+        expr: |
+          (
+            sum(rate(http_requests_total{status=~"4.."}[5m])) 
+            / 
+            sum(rate(http_requests_total[5m]))
+          ) > 0.10
+        for: 5m
+        labels:
+          severity: warning
+          service: backend
+        annotations:
+          summary: "High client error rate"
+          description: "4xx error rate is {{ $value | humanizePercentage }} (above 10%)"
+
+      # High Latency P95 Alert
+      - alert: HighLatencyP95
+        expr: |
+          histogram_quantile(0.95, 
+            sum(rate(http_request_duration_seconds_bucket[5m])) by (le)
+          ) > 0.5
+        for: 3m
+        labels:
+          severity: critical
+          service: backend
+        annotations:
+          summary: "High latency detected (P95)"
+          description: "95th percentile latency is {{ $value }}s (above 500ms)"
+
+      # High Latency P99 Alert
+      - alert: HighLatencyP99
+        expr: |
+          histogram_quantile(0.99, 
+            sum(rate(http_request_duration_seconds_bucket[5m])) by (le)
+          ) > 1.0
+        for: 2m
+        labels:
+          severity: warning
+          service: backend
+        annotations:
+          summary: "High latency detected (P99)"
+          description: "99th percentile latency is {{ $value }}s (above 1s)"
+
+      # High Memory Usage Alert
+      - alert: HighMemoryUsage
+        expr: |
+          (process_resident_memory_bytes / 
+           (node_memory_MemTotal_bytes or process_virtual_memory_max_bytes)) > 0.8
+        for: 5m
+        labels:
+          severity: critical
+          service: backend
+        annotations:
+          summary: "High memory usage"
+          description: "Memory usage is {{ $value | humanizePercentage }} (above 80%)"
+
+      # Service Down Alert
+      - alert: ServiceDown
+        expr: up{job="backend"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: backend
+        annotations:
+          summary: "Backend service is down"
+          description: "Backend service has been down for more than 1 minute"
+
+      # Slow Requests Alert
+      - alert: SlowRequests
+        expr: |
+          histogram_quantile(0.50, 
+            sum(rate(http_request_duration_seconds_bucket[5m])) by (le)
+          ) > 0.2
+        for: 5m
+        labels:
+          severity: warning
+          service: backend
+        annotations:
+          summary: "Slow requests detected (P50)"
+          description: "Median response time is {{ $value }}s (above 200ms)"
+
+  - name: disherio_mongodb_alerts
+    interval: 30s
+    rules:
+      # MongoDB High Connections Alert
+      - alert: MongoDBHighConnections
+        expr: mongodb_connections{state="current"} > 100
+        for: 5m
+        labels:
+          severity: warning
+          service: mongodb
+        annotations:
+          summary: "MongoDB high connection count"
+          description: "MongoDB has {{ $value }} active connections (above 100)"
+
+      # MongoDB Connection Saturation Alert
+      - alert: MongoDBConnectionSaturation
+        expr: |
+          (
+            mongodb_connections{state="current"} / 
+            mongodb_connections{state="available"}
+          ) > 0.8
+        for: 3m
+        labels:
+          severity: critical
+          service: mongodb
+        annotations:
+          summary: "MongoDB connection pool near saturation"
+          description: "MongoDB connections at {{ $value | humanizePercentage }} of capacity"
+
+      # MongoDB Slow Queries Alert
+      - alert: MongoDBSlowQueries
+        expr: |
+          rate(mongodb_op_latencies_latency_total[5m]) / 
+          rate(mongodb_op_latencies_ops_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          service: mongodb
+        annotations:
+          summary: "MongoDB slow queries detected"
+          description: "Average operation latency is {{ $value }}s"
+
+      # MongoDB Down Alert
+      - alert: MongoDBDown
+        expr: up{job="mongodb"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: mongodb
+        annotations:
+          summary: "MongoDB exporter is down"
+          description: "MongoDB metrics exporter has been down for more than 1 minute"
+
+  - name: disherio_redis_alerts
+    interval: 30s
+    rules:
+      # Redis High Memory Usage Alert
+      - alert: RedisHighMemoryUsage
+        expr: |
+          (
+            redis_memory_used_bytes / 
+            (redis_memory_max_bytes > 0 or redis_config_maxmemory > 0)
+          ) > 0.8
+        for: 5m
+        labels:
+          severity: warning
+          service: redis
+        annotations:
+          summary: "Redis high memory usage"
+          description: "Redis memory usage is {{ $value | humanizePercentage }}"
+
+      # Redis Down Alert
+      - alert: RedisDown
+        expr: up{job="redis"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: redis
+        annotations:
+          summary: "Redis exporter is down"
+          description: "Redis metrics exporter has been down for more than 1 minute"
+
+      # Redis High Connections Alert
+      - alert: RedisHighConnections
+        expr: redis_connected_clients > 50
+        for: 5m
+        labels:
+          severity: warning
+          service: redis
+        annotations:
+          summary: "Redis high client connections"
+          description: "Redis has {{ $value }} connected clients"
+
+  - name: disherio_business_alerts
+    interval: 1m
+    rules:
+      # Low Order Rate Alert (business metric)
+      - alert: LowOrderRate
+        expr: |
+          sum(rate(orders_created_total[15m])) < 0.01
+        for: 15m
+        labels:
+          severity: warning
+          service: business
+        annotations:
+          summary: "Low order creation rate"
+          description: "Order creation rate is unusually low ({{ $value }}/sec)"
+
+      # High Order Failure Rate Alert
+      - alert: HighOrderFailureRate
+        expr: |
+          (
+            sum(rate(orders_failed_total[10m])) / 
+            sum(rate(orders_created_total[10m]))
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          service: business
+        annotations:
+          summary: "High order failure rate"
+          description: "{{ $value | humanizePercentage }} of orders are failing"
+
+  - name: disherio_system_alerts
+    interval: 30s
+    rules:
+      # High CPU Usage Alert
+      - alert: HighCPUUsage
+        expr: |
+          100 - (avg by (instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+          service: system
+        annotations:
+          summary: "High CPU usage"
+          description: "CPU usage is {{ $value }}% (above 80%)"
+
+      # Disk Space Low Alert
+      - alert: DiskSpaceLow
+        expr: |
+          (
+            node_filesystem_avail_bytes{mountpoint="/"} / 
+            node_filesystem_size_bytes{mountpoint="/"}
+          ) < 0.1
+        for: 5m
+        labels:
+          severity: critical
+          service: system
+        annotations:
+          summary: "Low disk space"
+          description: "Disk space is below 10% on {{ $labels.instance }}"
+
+      # Node Down Alert
+      - alert: NodeDown
+        expr: up{job="node-exporter"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: system
+        annotations:
+          summary: "Node exporter is down"
+          description: "Node exporter on {{ $labels.instance }} has been down for more than 2 minutes"

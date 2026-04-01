@@ -70,6 +70,13 @@ export abstract class BaseRepository<T extends Document> {
     this.model = model;
   }
 
+  /**
+   * Get the underlying Mongoose model for advanced operations
+   */
+  getModel(): Model<T> {
+    return this.model;
+  }
+
   protected validateId(id: string, fieldName: string = 'id'): void {
     validateObjectId(id, fieldName);
   }

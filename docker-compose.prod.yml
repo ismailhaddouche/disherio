@@ -20,11 +20,20 @@ services:
     environment:
       MONGO_INITDB_DATABASE: disherio
     healthcheck:
-      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      test: ["CMD-SHELL", "echo 'db.runCommand({ping:1}).ok' | mongosh -u $${MONGO_INITDB_ROOT_USERNAME} -p $${MONGO_INITDB_ROOT_PASSWORD} --authenticationDatabase admin --quiet"]
       interval: 10s
       timeout: 5s
-      retries: 6
-      start_period: 20s
+      retries: 5
+      start_period: 60s
+    # Resource limits - Production (más restrictivos)
+    deploy:
+      resources:
+        limits:
+          cpus: '1.5'
+          memory: 1.5G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
     logging:
       driver: "json-file"
       options:
@@ -58,11 +67,20 @@ services:
     volumes:
       - disherio_uploads:/app/uploads
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/health || exit 1"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/health/simple"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 30s
+      start_period: 40s
+    # Resource limits - Production (más restrictivos)
+    deploy:
+      resources:
+        limits:
+          cpus: '0.75'
+          memory: 768M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
     logging:
       driver: "json-file"
       options:
@@ -83,11 +101,20 @@ services:
     expose:
       - "4200"
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:4200 || exit 1"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:4200"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 10s
+      start_period: 30s
+    # Resource limits - Production (más restrictivos)
+    deploy:
+      resources:
+        limits:
+          cpus: '0.4'
+          memory: 384M
+        reservations:
+          cpus: '0.2'
+          memory: 128M
     logging:
       driver: "json-file"
       options:
@@ -118,6 +145,15 @@ services:
       - caddy_config:/config
     networks:
       - disherio_net
+    # Resource limits - Production (más restrictivos)
+    deploy:
+      resources:
+        limits:
+          cpus: '0.3'
+          memory: 192M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
     logging:
       driver: "json-file"
       options:

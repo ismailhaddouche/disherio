@@ -9,9 +9,11 @@ import { applySecurityMiddleware } from './middlewares/security';
 import { apiLimiter } from './middlewares/rateLimit';
 import { languageMiddleware } from './middlewares/language';
 import { logger } from './config/logger';
+import requestLogger from './middlewares/request-logger';
 import { errorHandler, notFoundHandler } from './middlewares/error-handler';
 import { validateJWTSecretOrExit } from './utils/jwt-validation';
 import { validateEnv } from './config/env';
+import { cache } from './services/cache.service';
 import authRoutes from './routes/auth.routes';
 import dishRoutes from './routes/dish.routes';
 import orderRoutes from './routes/order.routes';
@@ -22,6 +24,8 @@ import dashboardRoutes from './routes/dashboard.routes';
 import staffRoutes from './routes/staff.routes';
 import customerRoutes from './routes/customer.routes';
 import menuLanguageRoutes from './routes/menu-language.routes';
+import healthRoutes from './routes/health.routes';
+import metricsRoutes, { metricsMiddleware } from './routes/metrics.routes';
 
 // CRITICAL: Validate all environment variables before starting
 const env = validateEnv();
@@ -35,11 +39,17 @@ logger.info('✅ JWT_SECRET validation passed');
 async function bootstrap() {
   await connectDB();
   await initI18n();
+  
+  // Connect to Redis (non-blocking - app works without cache)
+  await cache.connect().catch(() => {
+    logger.warn('⚠️  Redis not available - running without distributed cache');
+  });
 
   const app = express();
   const httpServer = http.createServer(app);
 
   applySecurityMiddleware(app);
+  app.use(requestLogger);
   app.use(pinoHttp({ logger }));
   app.use(express.json({ limit: '1mb' }));
   app.use(languageMiddleware);
@@ -56,7 +66,14 @@ async function bootstrap() {
   app.use('/api/customers', customerRoutes);
   app.use('/api/menu-languages', menuLanguageRoutes);
 
-  app.get('/health', (_req, res) => res.json({ status: 'ok' }));
+  // Health check endpoints
+  // Metrics middleware for HTTP request tracking
+  app.use(metricsMiddleware());
+
+  app.use('/health', healthRoutes);
+  
+  // Prometheus metrics endpoint
+  app.use('/metrics', metricsRoutes);
 
   // 404 handler - must go after all routes
   app.use(notFoundHandler);
