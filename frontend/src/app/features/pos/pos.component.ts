@@ -819,7 +819,12 @@ export class PosComponent implements OnInit, OnDestroy {
     this.tasService.getTotems()
       .pipe(takeUntil(this.destroy$))
       .subscribe({
-        next: (totems) => this.allTotems.set(totems),
+        next: (totems) => {
+          const validTotems = totems
+            .filter((t): t is typeof t & { _id: string } => !!t._id)
+            .map(t => ({ _id: t._id, totem_name: t.totem_name, totem_type: t.totem_type }));
+          this.allTotems.set(validTotems);
+        },
         error: (err) => console.error('[POS] Error loading totems:', err),
       });
 

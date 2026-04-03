@@ -32,12 +32,12 @@ export interface OptionItem {
             <div class="flex-1 flex flex-col gap-3">
               <app-localized-input
                 [label]="'common.name' | translate"
-                [(value)]="item[nameKey()]"
+                [(value)]="$any(item)[nameKey()]"
                 [required]="true"
               />
               <app-localized-input
                 [label]="'dish.description' | translate"
-                [(value)]="item[descriptionKey()]"
+                [(value)]="$any(item)[descriptionKey()]"
                 [multiline]="true"
               />
             </div>

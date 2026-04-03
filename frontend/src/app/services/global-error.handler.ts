@@ -54,15 +54,15 @@ export class GlobalErrorHandler implements ErrorHandler {
       // Intentar extraer mensaje de objetos de error comunes
       const errorObj = error as Record<string, unknown>;
       const message = 
-        (typeof errorObj.message === 'string' && errorObj.message) ||
-        (typeof errorObj.error === 'string' && errorObj.error) ||
+        (typeof errorObj['message'] === 'string' && errorObj['message']) ||
+        (typeof errorObj['error'] === 'string' && errorObj['error']) ||
         JSON.stringify(error);
       
       const normalizedError = new Error(message);
       
       // Preservar stack si existe
-      if (typeof errorObj.stack === 'string') {
-        normalizedError.stack = errorObj.stack;
+      if (typeof errorObj['stack'] === 'string') {
+        normalizedError.stack = errorObj['stack'];
       }
 
       return normalizedError;
@@ -75,6 +75,8 @@ export class GlobalErrorHandler implements ErrorHandler {
    * Verifica si estamos en modo desarrollo
    */
   private isDevelopment(): boolean {
-    return import.meta.env?.['NODE_ENV'] === 'development' || !import.meta.env?.['PROD'];
+    return typeof window !== 'undefined' && 
+           (window.location.hostname === 'localhost' || 
+            window.location.hostname === '127.0.0.1');
   }
 }

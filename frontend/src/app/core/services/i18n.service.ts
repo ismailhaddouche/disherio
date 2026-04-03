@@ -1322,6 +1322,7 @@ const TRANSLATIONS: Record<Language, Translations> = {
 export class I18nService {
   private readonly platform = inject(Platform);
   private readonly http = inject(HttpClient);
+  private readonly destroyRef = inject(DestroyRef);
   
   // Signals
   private readonly _currentLang = signal<Language>('es');
