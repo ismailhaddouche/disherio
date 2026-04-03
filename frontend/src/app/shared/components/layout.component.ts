@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterOutlet } from '@angular/router';
 import { HeaderComponent } from './header.component';
@@ -8,6 +8,7 @@ import { MenuLanguageService } from '../../services/menu-language.service';
   selector: 'app-layout',
   standalone: true,
   imports: [CommonModule, RouterOutlet, HeaderComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="min-h-screen bg-gray-50 dark:bg-gray-950">
       <app-header />

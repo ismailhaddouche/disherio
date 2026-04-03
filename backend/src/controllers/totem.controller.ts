@@ -4,6 +4,7 @@ import * as TotemService from '../services/totem.service';
 import * as DishService from '../services/dish.service';
 import * as OrderService from '../services/order.service';
 import * as MenuLanguageService from '../services/menu-language.service';
+import { ItemOrder, IOrder } from '../models/order.model';
 
 export const listTotems = asyncHandler(async (req: Request, res: Response): Promise<void> => {
   const totems = await TotemService.getTotemsByRestaurant(req.user!.restaurantId);
@@ -100,22 +101,79 @@ export const createPublicOrder = asyncHandler(async (req: Request, res: Response
     throw createError.badRequest('NO_ITEMS');
   }
 
-  const order = await OrderService.createOrder(session._id.toString());
-  const createdItems = [];
+  const order = await OrderService.createOrder(session._id.toString()) as IOrder;
 
+  // BATCH OPERATIONS: Preparar items para batch insert
+  // Obtener todos los dishes únicos para enriquecer los datos
+  const uniqueDishIds = [...new Set(items.map(item => item.dishId))];
+  const dishes = await Promise.all(uniqueDishIds.map(id => DishService.getDishById(id)));
+  const dishMap = new Map(dishes.filter(d => d !== null).map(d => [d!._id.toString(), d!]));
+
+  // Preparar items para batch insert
+  const itemsToCreate = [];
   for (const item of items) {
-    for (let i = 0; i < (item.quantity || 1); i++) {
-      const created = await OrderService.addItemToOrder(
-        order._id.toString(),
-        session._id.toString(),
-        item.dishId,
-        customer_id,
-        item.variantId,
-        item.extras ?? []
-      );
-      createdItems.push(created);
+    const dish = dishMap.get(item.dishId);
+    if (!dish) {
+      throw createError.badRequest('DISH_NOT_FOUND');
+    }
+    if (dish.disher_status !== 'ACTIVATED') {
+      throw createError.badRequest('DISH_NOT_AVAILABLE');
+    }
+
+    // Buscar variant y extras seleccionados
+    const variant = item.variantId
+      ? dish.variants.find((v: { _id: { toString(): string } }) => v._id.toString() === item.variantId)
+      : null;
+    const selectedExtras = dish.extras.filter((e: { _id: { toString(): string } }) =>
+      (item.extras ?? []).includes(e._id.toString())
+    );
+
+    const quantity = item.quantity || 1;
+    for (let i = 0; i < quantity; i++) {
+      itemsToCreate.push({
+        order_id: order._id,
+        session_id: session._id,
+        item_dish_id: item.dishId,
+        customer_id: customer_id,
+        item_state: 'ORDERED',
+        item_disher_type: dish.disher_type,
+        item_name_snapshot: dish.disher_name,
+        item_base_price: dish.disher_price,
+        item_disher_variant: variant
+          ? {
+              variant_id: variant._id.toString(),
+              name: variant.variant_name,
+              price: variant.variant_price,
+            }
+          : null,
+        item_disher_extras: selectedExtras.map((e: { _id: { toString(): string }; extra_name: { lang: string; value: string }[]; extra_price: number }) => ({
+          extra_id: e._id.toString(),
+          name: e.extra_name,
+          price: e.extra_price,
+        })),
+      });
     }
   }
+
+  // BATCH INSERT: Crear todos los items en una sola operación
+  const createdItems = await ItemOrder.insertMany(itemsToCreate, { ordered: false });
+
+  // Emitir eventos de socket para items de cocina
+  for (const item of createdItems) {
+    if (item.item_disher_type === 'KITCHEN') {
+      // Emitir evento para KDS
+      const io = (await import('../config/socket')).getIO();
+      io.to(`session:${session._id}`).emit('kds:new_item', item);
+    }
+  }
+
+  // Notificar a TAS (camareros) sobre el nuevo pedido
+  const { notifyTASNewOrder } = await import('../sockets/tas.handler');
+  notifyTASNewOrder(session._id.toString(), {
+    items: createdItems,
+    orderId: order._id.toString(),
+    addedBy: 'customer',
+  });
 
   res.status(201).json({ order_id: order._id, items: createdItems });
 });

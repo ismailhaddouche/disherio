@@ -1,5 +1,5 @@
 import { Types, ClientSession } from 'mongoose';
-import { Totem, ITotem, TotemSession, ITotemSession, Customer, ICustomer } from '../models/totem.model';
+import { Totem, ITotem, TotemSession, ITotemSession, SessionCustomer, ISessionCustomer } from '../models/totem.model';
 import { BaseRepository, validateObjectId, validateObjectIdOptional } from './base.repository';
 import { CreateTotemData, UpdateTotemData } from '@disherio/shared';
 
@@ -168,12 +168,12 @@ export class TotemSessionRepository extends BaseRepository<ITotemSession> {
   }
 }
 
-export class CustomerRepository extends BaseRepository<ICustomer> {
+export class CustomerRepository extends BaseRepository<ISessionCustomer> {
   constructor() {
-    super(Customer);
+    super(SessionCustomer);
   }
 
-  async findBySessionId(sessionId: string): Promise<ICustomer[]> {
+  async findBySessionId(sessionId: string): Promise<ISessionCustomer[]> {
     validateObjectId(sessionId, 'session_id');
     return this.model
       .find({ session_id: new Types.ObjectId(sessionId) })
@@ -182,8 +182,8 @@ export class CustomerRepository extends BaseRepository<ICustomer> {
   }
 
   async createCustomer(
-    data: Partial<ICustomer> & { customer_name: string; session_id: string }
-  ): Promise<ICustomer> {
+    data: Partial<ISessionCustomer> & { customer_name: string; session_id: string }
+  ): Promise<ISessionCustomer> {
     validateObjectId(data.session_id, 'session_id');
     return this.create({
       ...data,
@@ -191,7 +191,7 @@ export class CustomerRepository extends BaseRepository<ICustomer> {
     });
   }
 
-  async deleteCustomer(id: string): Promise<ICustomer | null> {
+  async deleteCustomer(id: string): Promise<ISessionCustomer | null> {
     validateObjectId(id, 'customer_id');
     return this.model.findByIdAndDelete(id).exec();
   }

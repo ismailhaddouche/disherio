@@ -1,9 +1,10 @@
 import { Schema, model, Document, Types } from 'mongoose';
 
 // Localized field: array of { lang (ref MenuLanguage), value }
+// Uses string for lang (stores the MenuLanguage _id as string)
 const LocalizedFieldSchema = [
   {
-    lang: { type: Schema.Types.ObjectId, ref: 'MenuLanguage', required: true },
+    lang: { type: String, required: true },
     value: { type: String, default: '' },
     _id: false,
   },
@@ -32,6 +33,9 @@ const CategorySchema = new Schema<ICategory>(
   },
   { timestamps: true }
 );
+
+// Index for restaurant category listings with ordering
+CategorySchema.index({ restaurant_id: 1, category_order: 1 });
 
 export const Category = model<ICategory>('Category', CategorySchema);
 

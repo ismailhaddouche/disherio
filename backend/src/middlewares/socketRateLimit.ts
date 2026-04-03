@@ -1,3 +1,9 @@
+/**
+ * @deprecated This file is deprecated. Use sockets/middleware/rate-limiter.ts instead.
+ * This module is kept for reference but should not be used in new code.
+ * TODO: Remove this file after verifying all imports are updated.
+ */
+
 import { AuthenticatedSocket } from './socketAuth';
 import { logger } from '../config/logger';
 

@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
@@ -13,6 +13,7 @@ import { authStore } from '../../../store/auth.store';
   selector: 'app-category-list',
   standalone: true,
   imports: [CommonModule, RouterModule, LocalizePipe, TranslatePipe],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="admin-container">
       <header class="admin-header">

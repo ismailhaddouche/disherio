@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, computed, signal, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, computed, signal, inject, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
@@ -34,6 +34,7 @@ type ViewTab = 'menu' | 'my-orders' | 'all-orders';
   selector: 'app-totem',
   standalone: true,
   imports: [CommonModule, LocalizePipe, CurrencyFormatPipe, TranslatePipe],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white pb-20">
       <!-- Header -->

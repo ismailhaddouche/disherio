@@ -1,0 +1,63 @@
+# ============================================
+# Docker Compose Override - Modo PUBLIC-IP
+# ============================================
+# IP pública con túnel (Cloudflare/ngrok)
+# ============================================
+
+services:
+  # Caddy escucha solo en puerto interno (sin exposición externa)
+  caddy:
+    ports: []  # No expone puertos externos
+    expose:
+      - "${CADDY_INTERNAL_PORT:-8080}"
+    command: caddy run --config /etc/caddy/Caddyfile --adapter caddyfile
+    networks:
+      - disherio_net
+      - tunnel_net
+
+  # Backend configurado para túnel
+  backend:
+    environment:
+      - NODE_ENV=production
+      - FRONTEND_URL=${TUNNEL_URL:-https://localhost}
+      - TRUST_PROXY=true
+    networks:
+      - disherio_net
+
+  # Cloudflare Tunnel (opcional, si se seleccionó)
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: disherio_cloudflared
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run --token ${CF_TUNNEL_TOKEN}
+    environment:
+      - TUNNEL_TOKEN=${CF_TUNNEL_TOKEN}
+    networks:
+      - tunnel_net
+    depends_on:
+      caddy:
+        condition: service_healthy
+    profiles:
+      - cloudflare  # Solo se inicia si se especifica el perfil
+
+  # ngrok (opcional, si se seleccionó)
+  ngrok:
+    image: ngrok/ngrok:latest
+    container_name: disherio_ngrok
+    restart: unless-stopped
+    command: http --url=${NGROK_DOMAIN:-} caddy:${CADDY_INTERNAL_PORT:-8080}
+    environment:
+      - NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN}
+    networks:
+      - tunnel_net
+    depends_on:
+      caddy:
+        condition: service_healthy
+    profiles:
+      - ngrok  # Solo se inicia si se especifica el perfil
+
+# Red adicional para el túnel
+networks:
+  tunnel_net:
+    driver: bridge
+    internal: true  # Aislamiento de red

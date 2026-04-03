@@ -1,0 +1,89 @@
+# ============================================
+# DisherIo Caddyfile - Modo DOMAIN
+# ============================================
+# Dominio propio con Let's Encrypt automático
+# HTTPS completo con TLS 1.3
+# ============================================
+
+{
+    admin off
+    # Auto HTTPS habilitado - Let's Encrypt automático
+    email ${EMAIL}
+}
+
+# Redirección HTTP a HTTPS
+:80 {
+    redir https://{host}{uri} permanent
+}
+
+# HTTPS con Let's Encrypt
+${DOMAIN}:443 {
+    # TLS 1.3 como mínimo protocolo
+    tls {
+        protocols tls1.3
+    }
+
+    # Headers de seguridad de producción
+    header {
+        # HSTS - Fuerza HTTPS por 1 año
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        
+        # Content Security Policy
+        Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' wss:;"
+        
+        # Prevenir clickjacking
+        X-Frame-Options "SAMEORIGIN"
+        
+        # Prevenir MIME type sniffing
+        X-Content-Type-Options "nosniff"
+        
+        # XSS Protection
+        X-XSS-Protection "1; mode=block"
+        
+        # Referrer Policy
+        Referrer-Policy "strict-origin-when-cross-origin"
+        
+        # Permissions Policy
+        Permissions-Policy "accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()"
+        
+        # Remover headers que identifican el servidor
+        -Server
+    }
+
+    # Compresión de respuestas
+    encode gzip zstd
+
+    # Servir archivos subidos
+    handle /uploads/* {
+        root * /srv
+        file_server
+    }
+
+    # Reverse proxy a backend API
+    handle /api/* {
+        reverse_proxy backend:3000
+    }
+
+    # Reverse proxy a Socket.IO (WebSockets con soporte WSS)
+    handle /socket.io/* {
+        reverse_proxy backend:3000 {
+            flush_interval -1
+            transport http {
+                versions 1.1
+            }
+        }
+    }
+
+    # Reverse proxy al frontend
+    handle {
+        reverse_proxy frontend:4200
+    }
+}
+
+# HTTP/3 (QUIC) support
+${DOMAIN}:443 {
+    bind udp/0.0.0.0
+    tls {
+        protocols tls1.3
+    }
+}

@@ -1,15 +1,16 @@
 import { Server as HttpServer } from 'http';
 import { Server as SocketServer } from 'socket.io';
+import { createAdapter } from '@socket.io/redis-adapter';
 import { logger } from './logger';
 import { registerKdsHandlers } from '../sockets/kds.handler';
 import { registerPosHandlers } from '../sockets/pos.handler';
 import { registerTasHandlers } from '../sockets/tas.handler';
 import { registerTotemHandlers } from '../sockets/totem.handler';
 import { socketAuthMiddleware, AuthenticatedSocket } from '../middlewares/socketAuth';
-import { cleanupRateLimiters } from '../middlewares/socketRateLimit';
+import { registerGlobalDisconnectHandler } from '../sockets/middleware/connection-tracker';
+import { initSocketRedisAdapter } from './redis';
 
 let io: SocketServer;
-let rateLimitCleanupInterval: NodeJS.Timeout | null = null;
 
 // Build allowed origins for Socket.IO
 function getAllowedOrigins(): string[] {
@@ -33,7 +34,7 @@ function getAllowedOrigins(): string[] {
   return origins;
 }
 
-export function initSocket(httpServer: HttpServer): SocketServer {
+export async function initSocket(httpServer: HttpServer): Promise<SocketServer> {
   const allowedOrigins = getAllowedOrigins();
   logger.info({ allowedOrigins }, 'Socket.IO CORS origins');
   
@@ -45,8 +46,22 @@ export function initSocket(httpServer: HttpServer): SocketServer {
     },
   });
 
+  // Setup Redis adapter for multi-node support
+  try {
+    const { pubClient, subClient } = await initSocketRedisAdapter();
+    io.adapter(createAdapter(pubClient, subClient));
+    logger.info('Socket.IO Redis adapter configured for multi-node support');
+  } catch (err) {
+    logger.error({ err }, 'Failed to configure Redis adapter, falling back to in-memory adapter');
+    // Continue without Redis adapter - will use default in-memory adapter
+  }
+
   // Apply authentication middleware to all connections
   io.use(socketAuthMiddleware);
+
+  // Register global disconnect handler as safety net for memory leak prevention
+  registerGlobalDisconnectHandler(io);
+  logger.info('Global disconnect handler registered');
 
   io.on('connection', (socket: AuthenticatedSocket) => {
     logger.info({ socketId: socket.id, userId: socket.user?.staffId }, 'Client connected');
@@ -61,27 +76,24 @@ export function initSocket(httpServer: HttpServer): SocketServer {
     });
   });
 
-  // Setup rate limit cleanup interval (every 5 minutes)
-  if (rateLimitCleanupInterval) {
-    clearInterval(rateLimitCleanupInterval);
-  }
-  rateLimitCleanupInterval = setInterval(() => {
-    cleanupRateLimiters();
-  }, 5 * 60 * 1000);
-  logger.info('Socket rate limiter cleanup scheduled every 5 minutes');
-
   return io;
 }
 
 /**
- * Cleanup function to stop rate limiter cleanup interval
+ * Cleanup function to stop socket server
  * Call this before shutting down the server
  */
-export function cleanupSocketServer(): void {
-  if (rateLimitCleanupInterval) {
-    clearInterval(rateLimitCleanupInterval);
-    rateLimitCleanupInterval = null;
-    logger.info('Socket rate limiter cleanup stopped');
+export async function cleanupSocketServer(): Promise<void> {
+  logger.info('Socket server cleanup initiated');
+  
+  if (io) {
+    // Close all socket connections
+    const sockets = await io.fetchSockets();
+    await Promise.all(sockets.map(socket => socket.disconnect(true)));
+    
+    // Close the Socket.IO server
+    io.close();
+    logger.info('Socket.IO server closed');
   }
 }
 

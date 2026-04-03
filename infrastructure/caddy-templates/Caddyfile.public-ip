@@ -1,0 +1,57 @@
+# ============================================
+# DisherIo Caddyfile - Modo PUBLIC-IP
+# ============================================
+# IP pública con túnel (Cloudflare Tunnel / ngrok)
+# El túnel maneja el HTTPS externamente
+# Caddy escucha en puerto interno sin TLS
+# ============================================
+
+{
+    admin off
+    auto_https off
+    http_port ${CADDY_INTERNAL_PORT}
+}
+
+# Servidor HTTP interno (el túnel se conecta aquí)
+:${CADDY_INTERNAL_PORT} {
+    bind 0.0.0.0
+    
+    # Headers de seguridad
+    # Nota: El túnel añadirá headers adicionales de seguridad
+    header {
+        X-Frame-Options "SAMEORIGIN"
+        X-Content-Type-Options "nosniff"
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        -Server
+    }
+
+    # Compresión
+    encode gzip zstd
+
+    # Servir archivos subidos
+    handle /uploads/* {
+        root * /srv
+        file_server
+    }
+
+    # Reverse proxy a backend API
+    handle /api/* {
+        reverse_proxy backend:3000
+    }
+
+    # Reverse proxy a Socket.IO (WebSockets)
+    handle /socket.io/* {
+        reverse_proxy backend:3000 {
+            flush_interval -1
+            transport http {
+                versions 1.1
+            }
+        }
+    }
+
+    # Reverse proxy al frontend
+    handle {
+        reverse_proxy frontend:4200
+    }
+}

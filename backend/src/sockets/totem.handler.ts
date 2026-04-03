@@ -1,5 +1,6 @@
 import { Server } from 'socket.io';
 import i18next from 'i18next';
+import mongoose from 'mongoose';
 
 import { logger } from '../config/logger';
 import { AuthenticatedSocket } from '../middlewares/socketAuth';
@@ -21,6 +22,17 @@ import { rateLimitMiddleware, cleanupSocketRateLimits } from './middleware/rate-
  * - Receive notifications from waiters
  */
 
+// Track sessions in the process of closing (to prevent race conditions)
+const closingSessions = new Set<string>();
+
+// Track active session close timeouts for cleanup
+const sessionCloseTimeouts = new Map<string, NodeJS.Timeout>(); // sessionId -> timeoutId
+
+// Helper function to check if session is closing
+export function isSessionClosing(sessionId: string): boolean {
+  return closingSessions.has(sessionId);
+}
+
 // Repository instance
 const totemSessionRepo = new TotemSessionRepository();
 
@@ -34,6 +46,15 @@ const customerInfo = new Map<string, {
   joinedAt: string;
 }>(); // socketId -> customer info
 
+// Track last activity time for cleanup
+const sessionLastActivity = new Map<string, number>(); // sessionId -> timestamp
+const customerLastActivity = new Map<string, number>(); // socketId -> timestamp
+
+// Configuration for cleanup
+const SESSION_TIMEOUT_MS = 24 * 60 * 60 * 1000; // 24 hours
+const CUSTOMER_TIMEOUT_MS = 12 * 60 * 60 * 1000; // 12 hours
+const CLEANUP_INTERVAL_MS = 60 * 60 * 1000; // Run cleanup every hour
+
 // Get all customers in a session
 function getSessionCustomers(sessionId: string): Array<{ customerId?: string; customerName: string; socketId: string; joinedAt: string }> {
   const socketIds = sessionCustomers.get(sessionId);
@@ -43,6 +64,55 @@ function getSessionCustomers(sessionId: string): Array<{ customerId?: string; cu
     .map(socketId => customerInfo.get(socketId))
     .filter((info): info is NonNullable<typeof info> => info !== undefined);
 }
+
+// Cleanup stale entries periodically
+function cleanupStaleEntries(): void {
+  const now = Date.now();
+  let cleanedSessions = 0;
+  let cleanedCustomers = 0;
+
+  // Clean up stale sessions
+  for (const [sessionId, lastActivity] of sessionLastActivity.entries()) {
+    if (now - lastActivity > SESSION_TIMEOUT_MS) {
+      // Clean up session-related data
+      sessionCustomers.delete(sessionId);
+      closingSessions.delete(sessionId);
+      
+      // Clear any pending timeout
+      const timeoutId = sessionCloseTimeouts.get(sessionId);
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+        sessionCloseTimeouts.delete(sessionId);
+      }
+      
+      sessionLastActivity.delete(sessionId);
+      cleanedSessions++;
+    }
+  }
+
+  // Clean up stale customer entries
+  for (const [socketId, lastActivity] of customerLastActivity.entries()) {
+    if (now - lastActivity > CUSTOMER_TIMEOUT_MS) {
+      customerSessions.delete(socketId);
+      customerInfo.delete(socketId);
+      customerLastActivity.delete(socketId);
+      cleanedCustomers++;
+    }
+  }
+
+  if (cleanedSessions > 0 || cleanedCustomers > 0) {
+    logger.info(
+      { cleanedSessions, cleanedCustomers },
+      'Cleaned up stale socket tracking entries'
+    );
+  }
+}
+
+// Start periodic cleanup
+const cleanupInterval = setInterval(cleanupStaleEntries, CLEANUP_INTERVAL_MS);
+
+// Ensure cleanup interval is cleared on process exit (for tests)
+process.once('exit', () => clearInterval(cleanupInterval));
 
 // Check if session is closed (bill requested) - uses database state
 export async function isSessionClosed(sessionId: string): Promise<boolean> {
@@ -65,6 +135,12 @@ export async function closeSessionForCustomers(sessionId: string, data: {
   try {
     const io = getIO();
     
+    // Marcar sesión como cerrándose INMEDIATAMENTE (prevenir race condition)
+    closingSessions.add(sessionId);
+    
+    // Update last activity
+    sessionLastActivity.set(sessionId, Date.now());
+    
     // Update database state to COMPLETE (bill requested, waiting for payment)
     await totemSessionRepo.updateState(sessionId, 'COMPLETE');
 
@@ -79,28 +155,70 @@ export async function closeSessionForCustomers(sessionId: string, data: {
       timestamp: new Date().toISOString(),
     });
 
+    // Clear any existing timeout for this session
+    const existingTimeout = sessionCloseTimeouts.get(sessionId);
+    if (existingTimeout) {
+      clearTimeout(existingTimeout);
+      sessionCloseTimeouts.delete(sessionId);
+    }
+
     // Force disconnect all customers from the room after a short delay
-    setTimeout(() => {
-      const socketIds = sessionCustomers.get(sessionId);
-      if (socketIds) {
-        socketIds.forEach(socketId => {
-          const socket = io.sockets.sockets.get(socketId);
-          if (socket) {
-            socket.leave(`customer:session:${sessionId}`);
-            socket.emit('totem:force_disconnect', {
-              reason: 'SESSION_CLOSED',
-              message: i18next.t('sockets:SESSION_ENDED_THANK_YOU'),
-            });
-          }
-        });
+    const timeoutId = setTimeout(() => {
+      try {
+        // Verificar que la sesión siga existiendo en nuestro tracking
+        if (!sessionCustomers.has(sessionId)) {
+          closingSessions.delete(sessionId);
+          sessionCloseTimeouts.delete(sessionId);
+          return;
+        }
         
-        // Clear tracking for this session
-        sessionCustomers.delete(sessionId);
+        const socketIds = sessionCustomers.get(sessionId);
+        if (socketIds) {
+          socketIds.forEach(socketId => {
+            // Verificar que el socket siga existente antes de operar
+            const socket = io.sockets.sockets.get(socketId);
+            if (socket && socket.connected) {
+              try {
+                socket.leave(`customer:session:${sessionId}`);
+                socket.emit('totem:force_disconnect', {
+                  reason: 'SESSION_CLOSED',
+                  message: i18next.t('sockets:SESSION_ENDED_THANK_YOU'),
+                });
+              } catch (socketErr) {
+                logger.warn({ err: socketErr, socketId, sessionId }, 'Error disconnecting socket');
+              }
+            }
+          });
+          
+          // Clear tracking for this session
+          sessionCustomers.delete(sessionId);
+        }
+        
+        // Limpiar el Set cuando termine
+        closingSessions.delete(sessionId);
+        sessionCloseTimeouts.delete(sessionId);
+        sessionLastActivity.delete(sessionId);
+        
+        logger.info({ sessionId }, 'Session close timeout completed, all customers disconnected');
+      } catch (timeoutErr) {
+        logger.error({ err: timeoutErr, sessionId }, 'Error in session close timeout');
+        closingSessions.delete(sessionId);
+        sessionCloseTimeouts.delete(sessionId);
       }
     }, 5000); // Give 5 seconds for clients to show the message
 
+    // Store timeout reference for cleanup
+    sessionCloseTimeouts.set(sessionId, timeoutId);
+
     logger.info({ sessionId, closedBy: data.closedBy }, 'Session closed for customers');
   } catch (err) {
+    // Limpiar en caso de error también
+    closingSessions.delete(sessionId);
+    const timeoutId = sessionCloseTimeouts.get(sessionId);
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+      sessionCloseTimeouts.delete(sessionId);
+    }
     logger.error({ err, sessionId }, 'Failed to close session for customers');
   }
 }
@@ -108,6 +226,16 @@ export async function closeSessionForCustomers(sessionId: string, data: {
 // Reopen session (if needed, e.g., bill cancelled) - updates database
 export async function reopenSession(sessionId: string): Promise<void> {
   try {
+    // Clear any pending close timeout
+    const timeoutId = sessionCloseTimeouts.get(sessionId);
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+      sessionCloseTimeouts.delete(sessionId);
+    }
+    
+    // Remove from closing sessions
+    closingSessions.delete(sessionId);
+    
     await totemSessionRepo.updateState(sessionId, 'STARTED');
     logger.info({ sessionId }, 'Session reopened');
   } catch (err) {
@@ -144,12 +272,22 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
         return;
       }
 
-      // Check if session is already closed (bill requested)
+      // Validar formato de sessionId
+      if (!mongoose.Types.ObjectId.isValid(sessionId)) {
+        socket.emit('totem:error', { message: 'INVALID_SESSION_ID_FORMAT' });
+        return;
+      }
+
+      // Check if session is already closed or in process of closing
       const sessionClosed = await isSessionClosed(sessionId);
-      if (sessionClosed) {
+      const sessionClosing = isSessionClosing(sessionId);
+
+      if (sessionClosed || sessionClosing) {
         socket.emit('totem:error', { 
           message: 'SESSION_CLOSED',
-          details: i18next.t('sockets:SESSION_CLOSED_NO_MORE_ORDERS'),
+          details: sessionClosing 
+            ? i18next.t('sockets:SESSION_CLOSING_IN_PROGRESS')
+            : i18next.t('sockets:SESSION_CLOSED_NO_MORE_ORDERS'),
         });
         return;
       }
@@ -192,6 +330,11 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
       // Track room join in connection tracker
       trackSocketJoinRoom(socketId, roomName);
       updateSocketActivity(socketId);
+
+      // Update activity timestamps
+      const now = Date.now();
+      customerLastActivity.set(socketId, now);
+      sessionLastActivity.set(sessionId, now);
 
       // Store customer info
       const joinedAt = new Date().toISOString();
@@ -260,6 +403,8 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
         }
         
         customerSessions.delete(socketId);
+        customerInfo.delete(socketId);
+        customerLastActivity.delete(socketId);
         
         // Track room leave in connection tracker
         trackSocketLeaveRoom(socketId, `customer:session:${sessionId}`);
@@ -321,6 +466,10 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
         socket.emit('totem:error', { message: 'NOT_IN_SESSION', details: i18next.t('sockets:MUST_JOIN_SESSION') });
         return;
       }
+
+      // Update activity timestamps
+      customerLastActivity.set(socketId, Date.now());
+      sessionLastActivity.set(sessionId, Date.now());
 
       // Emit to TAS (waiters)
       items.forEach((item) => {
@@ -453,6 +602,10 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
         return;
       }
 
+      // Update activity timestamps
+      customerLastActivity.set(socketId, Date.now());
+      sessionLastActivity.set(sessionId, Date.now());
+
       const itemData = {
         ...item,
         session_id: sessionId,
@@ -511,6 +664,10 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
         return;
       }
 
+      // Update activity timestamps
+      customerLastActivity.set(socketId, Date.now());
+      sessionLastActivity.set(sessionId, Date.now());
+
       const helpRequest = {
         sessionId,
         customerId,
@@ -568,6 +725,10 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
         return;
       }
 
+      // Update activity timestamps
+      customerLastActivity.set(socketId, Date.now());
+      sessionLastActivity.set(sessionId, Date.now());
+
       const billRequest = {
         sessionId,
         customerId,
@@ -622,6 +783,10 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
         return;
       }
 
+      // Update activity timestamps
+      customerLastActivity.set(socketId, Date.now());
+      sessionLastActivity.set(sessionId, Date.now());
+
       // Join the general session room for item updates
       socket.join(`session:${sessionId}`);
       
@@ -647,6 +812,10 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
         socket.emit('totem:error', { message: 'NOT_IN_SESSION' });
         return;
       }
+
+      // Update activity timestamps
+      customerLastActivity.set(socketId, Date.now());
+      sessionLastActivity.set(sessionId, Date.now());
 
       // Get all customers at this table
       const customersAtTable = getSessionCustomers(sessionId).map(c => ({
@@ -695,6 +864,9 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
         return;
       }
 
+      // Update activity timestamps
+      customerLastActivity.set(socketId, Date.now());
+
       // This would typically query the database
       // For now, we acknowledge the request
       socket.emit('totem:my_orders_request', {
@@ -726,10 +898,20 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
           set.delete(socketId);
           if (set.size === 0) {
             sessionCustomers.delete(sessionId);
+            
+            // Si no hay más clientes en la sesión, limpiar el timeout de cierre si existe
+            const timeoutId = sessionCloseTimeouts.get(sessionId);
+            if (timeoutId) {
+              clearTimeout(timeoutId);
+              sessionCloseTimeouts.delete(sessionId);
+              closingSessions.delete(sessionId);
+              logger.info({ sessionId }, 'Cleared session close timeout - no more customers');
+            }
           }
         }
         customerSessions.delete(socketId);
         customerInfo.delete(socketId);
+        customerLastActivity.delete(socketId);
 
         logger.info({ socketId, sessionId, customerName: info?.customerName }, 'Customer disconnected');
 
@@ -760,7 +942,7 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
       cleanupSocketConnection(socketId);
 
       // Clean up rate limit tracking
-      cleanupSocketRateLimits(socketId);
+      cleanupSocketRateLimits(socketId).catch(() => {});
 
       logger.info({ socketId }, 'Totem client disconnected and cleaned up');
     } catch (err: any) {

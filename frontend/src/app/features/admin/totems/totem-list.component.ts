@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { TotemService, Totem } from '../../../services/totem.service';
@@ -10,6 +10,7 @@ import { NotificationService } from '../../../core/services/notification.service
   selector: 'app-totem-list',
   standalone: true,
   imports: [CommonModule, RouterModule, TranslatePipe],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="admin-container">
       <header class="admin-header">

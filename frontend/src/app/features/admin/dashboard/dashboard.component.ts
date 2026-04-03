@@ -1,4 +1,6 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, signal, ChangeDetectionStrategy } from '@angular/core';
+import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 import { CommonModule, CurrencyPipe } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
@@ -45,6 +47,7 @@ interface DashboardData {
   selector: 'app-dashboard',
   standalone: true,
   imports: [CommonModule, CurrencyPipe, TranslatePipe],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="admin-container">
       <header class="admin-header">
@@ -215,10 +218,11 @@ interface DashboardData {
     </div>
   `
 })
-export class DashboardComponent implements OnInit {
+export class DashboardComponent implements OnInit, OnDestroy {
   private http = inject(HttpClient);
   private i18n = inject(I18nService);
   private notify = inject(NotificationService);
+  private destroy$ = new Subject<void>();
   
   data = signal<DashboardData | null>(null);
   loading = signal(false);
@@ -249,17 +253,19 @@ export class DashboardComponent implements OnInit {
     const queryString = new URLSearchParams(params).toString();
     const url = `${environment.apiUrl}/dashboard/stats${queryString ? '?' + queryString : ''}`;
     
-    this.http.get<DashboardData>(url).subscribe({
-      next: (res) => {
-        this.data.set(res);
-        this.loading.set(false);
-      },
-      error: (err) => {
-        console.error(this.i18n.translate('dashboard.error'), err);
-        this.notify.error(this.i18n.translate('dashboard.error'));
-        this.loading.set(false);
-      }
-    });
+    this.http.get<DashboardData>(url)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (res) => {
+          this.data.set(res);
+          this.loading.set(false);
+        },
+        error: (err) => {
+          console.error(this.i18n.translate('dashboard.error'), err);
+          this.notify.error(this.i18n.translate('dashboard.error'));
+          this.loading.set(false);
+        }
+      });
   }
 
   onDateFromChange(event: Event) {
@@ -270,5 +276,10 @@ export class DashboardComponent implements OnInit {
   onDateToChange(event: Event) {
     const value = (event.target as HTMLInputElement).value;
     this.dateTo.set(value);
+  }
+
+  ngOnDestroy() {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 }

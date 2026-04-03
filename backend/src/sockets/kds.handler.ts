@@ -5,6 +5,7 @@ import { AuthenticatedSocket } from '../middlewares/socketAuth';
 import { getIO } from '../config/socket';
 import { trackSocketConnection, cleanupSocketConnection, trackSocketJoinRoom, trackSocketLeaveRoom, updateSocketActivity } from './middleware/connection-tracker';
 import { rateLimitMiddleware, cleanupSocketRateLimits } from './middleware/rate-limiter';
+import { validateSessionAccess } from './middleware/session-validator';
 
 /**
  * KDS (Kitchen Display System) Socket Handler
@@ -16,6 +17,59 @@ import { rateLimitMiddleware, cleanupSocketRateLimits } from './middleware/rate-
 
 // Track active KDS subscriptions per session
 const kdsSessionSubscriptions = new Map<string, Set<string>>(); // sessionId -> Set of socketIds
+
+// Track socket subscriptions for quick cleanup on disconnect
+const socketSubscriptions = new Map<string, Set<string>>(); // socketId -> Set of sessionIds
+
+// Track last activity for TTL cleanup
+const kdsLastActivity = new Map<string, number>(); // socketId -> timestamp
+
+// Configuration for cleanup
+const KDS_TIMEOUT_MS = 12 * 60 * 60 * 1000; // 12 hours
+const CLEANUP_INTERVAL_MS = 60 * 60 * 1000; // Run cleanup every hour
+
+// Cleanup stale KDS entries
+function cleanupStaleKDSEntries(): void {
+  const now = Date.now();
+  let cleanedSockets = 0;
+  let cleanedSessions = 0;
+
+  // Clean up stale socket subscriptions
+  for (const [socketId, lastActivity] of kdsLastActivity.entries()) {
+    if (now - lastActivity > KDS_TIMEOUT_MS) {
+      // Remove from all session subscriptions
+      const sessions = socketSubscriptions.get(socketId);
+      if (sessions) {
+        sessions.forEach(sessionId => {
+          const subs = kdsSessionSubscriptions.get(sessionId);
+          if (subs) {
+            subs.delete(socketId);
+            if (subs.size === 0) {
+              kdsSessionSubscriptions.delete(sessionId);
+              cleanedSessions++;
+            }
+          }
+        });
+        socketSubscriptions.delete(socketId);
+      }
+      kdsLastActivity.delete(socketId);
+      cleanedSockets++;
+    }
+  }
+
+  if (cleanedSockets > 0 || cleanedSessions > 0) {
+    logger.info(
+      { cleanedSockets, cleanedSessions },
+      'Cleaned up stale KDS tracking entries'
+    );
+  }
+}
+
+// Start periodic cleanup
+const cleanupInterval = setInterval(cleanupStaleKDSEntries, CLEANUP_INTERVAL_MS);
+
+// Ensure cleanup interval is cleared on process exit (for tests)
+process.once('exit', () => clearInterval(cleanupInterval));
 
 export function registerKdsHandlers(_io: Server, socket: AuthenticatedSocket): void {
   // Verify user has kitchen permissions (KTS = Kitchen Table Service)
@@ -30,6 +84,10 @@ export function registerKdsHandlers(_io: Server, socket: AuthenticatedSocket): v
   // Track this connection
   trackSocketConnection(socket, 'KDS', { userId: staffId });
 
+  // Initialize socket subscription tracking
+  socketSubscriptions.set(socket.id, new Set());
+  kdsLastActivity.set(socket.id, Date.now());
+
   logger.info({ socketId: socket.id, staffId }, 'KDS client connected');
 
   // ==================== SESSION MANAGEMENT ====================
@@ -38,9 +96,18 @@ export function registerKdsHandlers(_io: Server, socket: AuthenticatedSocket): v
    * Join KDS session room
    * Payload: { sessionId: string }
    */
-  socket.on('kds:join', rateLimitMiddleware(socket, 'kds:join', (sessionId: string) => {
+  socket.on('kds:join', rateLimitMiddleware(socket, 'kds:join', async (sessionId: string) => {
     if (!sessionId || typeof sessionId !== 'string') {
       socket.emit('kds:error', { message: 'INVALID_SESSION_ID' });
+      return;
+    }
+
+    // Validar acceso a la sesión
+    const validation = await validateSessionAccess(socket, sessionId);
+    if (!validation.allowed) {
+      socket.emit('kds:error', { 
+        message: validation.reason || 'UNAUTHORIZED' 
+      });
       return;
     }
 
@@ -53,6 +120,15 @@ export function registerKdsHandlers(_io: Server, socket: AuthenticatedSocket): v
       kdsSessionSubscriptions.set(sessionId, new Set());
     }
     kdsSessionSubscriptions.get(sessionId)!.add(socket.id);
+    
+    // Track socket's subscriptions for cleanup
+    const socketSubs = socketSubscriptions.get(socket.id);
+    if (socketSubs) {
+      socketSubs.add(sessionId);
+    }
+    
+    // Update activity
+    kdsLastActivity.set(socket.id, Date.now());
     
     // Track room join in connection tracker
     trackSocketJoinRoom(socket.id, roomName);
@@ -88,6 +164,15 @@ export function registerKdsHandlers(_io: Server, socket: AuthenticatedSocket): v
       }
     }
     
+    // Remove from socket's subscription tracking
+    const socketSubs = socketSubscriptions.get(socket.id);
+    if (socketSubs) {
+      socketSubs.delete(sessionId);
+    }
+    
+    // Update activity
+    kdsLastActivity.set(socket.id, Date.now());
+    
     // Track room leave in connection tracker
     trackSocketLeaveRoom(socket.id, roomName);
     trackSocketLeaveRoom(socket.id, `session:${sessionId}`);
@@ -111,6 +196,9 @@ export function registerKdsHandlers(_io: Server, socket: AuthenticatedSocket): v
         socket.emit('kds:error', { message: 'INVALID_ITEM_ID', itemId });
         return;
       }
+
+      // Update activity
+      kdsLastActivity.set(socket.id, Date.now());
 
       // Get item first to check type
       const itemToUpdate = await ItemOrder.findById(itemId);
@@ -196,6 +284,9 @@ export function registerKdsHandlers(_io: Server, socket: AuthenticatedSocket): v
         socket.emit('kds:error', { message: 'INVALID_ITEM_ID', itemId });
         return;
       }
+
+      // Update activity
+      kdsLastActivity.set(socket.id, Date.now());
 
       // Get item to verify state
       const itemToCancel = await ItemOrder.findById(itemId);
@@ -284,6 +375,9 @@ export function registerKdsHandlers(_io: Server, socket: AuthenticatedSocket): v
         return;
       }
 
+      // Update activity
+      kdsLastActivity.set(socket.id, Date.now());
+
       // Get item to determine valid previous states
       const itemToUpdate = await ItemOrder.findById(itemId);
       if (!itemToUpdate) {
@@ -357,16 +451,24 @@ export function registerKdsHandlers(_io: Server, socket: AuthenticatedSocket): v
 
   socket.on('disconnect', () => {
     try {
-      // Clean up subscriptions
-      for (const [sessionId, socketIds] of kdsSessionSubscriptions.entries()) {
-        if (socketIds.has(socket.id)) {
-          socketIds.delete(socket.id);
-          if (socketIds.size === 0) {
-            kdsSessionSubscriptions.delete(sessionId);
+      // Clean up subscriptions using the socket subscription tracking
+      const sessions = socketSubscriptions.get(socket.id);
+      if (sessions) {
+        sessions.forEach(sessionId => {
+          const socketIds = kdsSessionSubscriptions.get(sessionId);
+          if (socketIds) {
+            socketIds.delete(socket.id);
+            if (socketIds.size === 0) {
+              kdsSessionSubscriptions.delete(sessionId);
+            }
+            logger.info({ socketId: socket.id, staffId, sessionId }, 'KDS disconnected, removed from session');
           }
-          logger.info({ socketId: socket.id, staffId, sessionId }, 'KDS disconnected, removed from session');
-        }
+        });
+        socketSubscriptions.delete(socket.id);
       }
+
+      // Clean up activity tracking
+      kdsLastActivity.delete(socket.id);
 
       // Remove all listeners registered by this socket to prevent memory leaks
       socket.removeAllListeners();

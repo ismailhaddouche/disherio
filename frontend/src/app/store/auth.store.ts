@@ -1,5 +1,6 @@
 import { signal, computed, Signal } from '@angular/core';
 import { Router } from '@angular/router';
+import type { Staff } from '@disherio/shared';
 
 export type Language = 'es' | 'en' | 'fr';
 export type Theme = 'light' | 'dark';
@@ -9,12 +10,16 @@ export interface UserPreferences {
   theme: Theme;
 }
 
-export interface AuthUser {
-  staffId: string;
-  restaurantId: string;
-  role: string;
-  permissions: string[];
-  name: string;
+/**
+ * AuthUser extiende Staff de @disherio/shared con campos adicionales
+ * necesarios para la autenticación en el frontend.
+ * Mapea los campos de Staff a los nombres usados en el frontend.
+ */
+export interface AuthUser extends Staff {
+  staffId: string; // Mapeado desde _id de Staff
+  role: string; // Rol del staff (resuelto desde role_id)
+  permissions: string[]; // Permisos del rol
+  name: string; // Mapeado desde staff_name de Staff
   preferences?: UserPreferences;
 }
 

@@ -10,6 +10,7 @@ import type {
   Dish,
   LocalizedField,
 } from '../types';
+import type { Totem } from '@disherio/shared';
 
 export interface CreateTotemData {
   totem_name: string;
@@ -37,12 +38,12 @@ export class TasService {
   private apiUrl = environment.apiUrl;
 
   // Totems
-  getTotems(): Observable<Array<{ _id: string; totem_name: string; totem_type: string; totem_qr: string }>> {
-    return this.http.get<any[]>(`${this.apiUrl}/totems`);
+  getTotems(): Observable<Totem[]> {
+    return this.http.get<Totem[]>(`${this.apiUrl}/totems`);
   }
 
   createTotem(data: CreateTotemData): Observable<{ _id: string; totem_name: string; totem_qr: string }> {
-    return this.http.post<any>(`${this.apiUrl}/totems`, data);
+    return this.http.post<{ _id: string; totem_name: string; totem_qr: string }>(`${this.apiUrl}/totems`, data);
   }
 
   deleteTotem(totemId: string): Observable<void> {
@@ -68,7 +69,7 @@ export class TasService {
   }
 
   createOrder(data: CreateOrderData): Observable<{ _id: string; session_id: string }> {
-    return this.http.post<any>(`${this.apiUrl}/orders`, data);
+    return this.http.post<{ _id: string; session_id: string }>(`${this.apiUrl}/orders`, data);
   }
 
   addItem(data: AddItemData): Observable<ItemOrder> {

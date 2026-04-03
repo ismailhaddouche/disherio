@@ -1,6 +1,7 @@
-import { Injectable, signal, computed, effect, inject } from '@angular/core';
+import { Injectable, signal, computed, effect, inject, DestroyRef } from '@angular/core';
 import { Platform } from '@angular/cdk/platform';
 import { HttpClient } from '@angular/common/http';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { authStore, type Language } from '../../store/auth.store';
 
 export type { Language };
@@ -1394,6 +1395,7 @@ export class I18nService {
     if (!authStore.isAuthenticated()) return;
     
     this.http.patch(`${environment.apiUrl}/staff/me/preferences`, { [key]: value })
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         error: (err) => console.error('Failed to save preference:', err)
       });

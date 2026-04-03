@@ -3,7 +3,17 @@
 // These extend shared types with socket event payloads
 // ============================================
 
-import { LocalizedField, ItemOrder, PaymentTicket } from '@disherio/shared';
+import { 
+  LocalizedField, 
+  ItemOrder, 
+  PaymentTicket, 
+  ItemState, 
+  ItemDishType, 
+  PaymentType 
+} from '@disherio/shared';
+
+// Re-export types from shared for convenience
+export type { ItemState } from '@disherio/shared';
 
 // ============================================
 // Socket Error Types
@@ -39,7 +49,7 @@ export interface OrderItem {
   dishName: LocalizedField;
   quantity: number;
   price: number;
-  dishType: 'KITCHEN' | 'SERVICE';
+  dishType: ItemDishType;
   variantId?: string;
   variantName?: LocalizedField;
   extras?: OrderItemExtra[];
@@ -48,11 +58,6 @@ export interface OrderItem {
 // ============================================
 // Item Update Event Types
 // ============================================
-
-/**
- * Item state values
- */
-export type ItemState = 'ORDERED' | 'ON_PREPARE' | 'SERVED' | 'CANCELED';
 
 /**
  * Event emitted when an item's state changes
@@ -113,7 +118,7 @@ export interface TASBillEvent {
   requestedBy: 'waiter' | 'customer';
   requestedByStaff?: string;
   customerId?: string;
-  splitType?: 'ALL' | 'BY_USER' | 'SHARED';
+  splitType?: PaymentType;
   timestamp: string;
 }
 
@@ -156,7 +161,7 @@ export interface TASCustomerBillRequestEvent {
   sessionId: string;
   customerId?: string;
   customerName?: string;
-  splitType?: 'ALL' | 'BY_USER' | 'SHARED';
+  splitType?: PaymentType;
   timestamp: string;
 }
 
@@ -177,7 +182,7 @@ export interface KdsNewItem {
  */
 export interface ItemStateChangedPayload {
   itemId: string;
-  newState: string;
+  newState: ItemState;
 }
 
 /**
@@ -305,7 +310,7 @@ export interface TotemBillRequestConfirmedEvent {
  */
 export interface TASPaymentData {
   paymentTotal: number;
-  paymentType: 'ALL' | 'BY_USER' | 'SHARED';
+  paymentType: PaymentType;
   tickets: PaymentTicket[];
 }
 

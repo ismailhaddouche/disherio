@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
 import { NotificationService, NotificationType } from '../../../core/services/notification.service';
 
 const ICON_MAP: Record<NotificationType, string> = {
@@ -18,6 +18,7 @@ const COLOR_MAP: Record<NotificationType, string> = {
 @Component({
   selector: 'app-toast',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="fixed top-4 right-4 z-[9999] flex flex-col gap-2 max-w-sm w-full pointer-events-none">
       @for (n of notificationService.notifications(); track n.id) {

@@ -1,4 +1,4 @@
-import { Component, inject, computed, HostListener, OnInit } from '@angular/core';
+import { Component, inject, computed, HostListener, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { I18nService } from '../../core/services/i18n.service';
@@ -12,6 +12,7 @@ import { TranslatePipe } from '../pipes/translate.pipe';
   selector: 'app-header',
   standalone: true,
   imports: [CommonModule, RouterLink, TranslatePipe],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <header class="sticky top-0 z-50 w-full border-b border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900 shadow-sm">
       <div class="flex h-14 items-center justify-between px-4 lg:px-6">

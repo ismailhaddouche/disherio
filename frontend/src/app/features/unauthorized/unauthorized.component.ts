@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
 import { Router } from '@angular/router';
 import { TranslatePipe } from '../../shared/pipes/translate.pipe';
 
@@ -6,6 +6,7 @@ import { TranslatePipe } from '../../shared/pipes/translate.pipe';
   selector: 'app-unauthorized',
   standalone: true,
   imports: [TranslatePipe],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900">
       <div class="text-center">

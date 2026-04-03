@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, inject, signal, computed } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, signal, computed, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Subject } from 'rxjs';
@@ -33,6 +33,7 @@ const SPINNER = `<svg class="animate-spin h-3 w-3" viewBox="0 0 24 24"><circle c
   selector: 'app-kds',
   standalone: true,
   imports: [CommonModule, LocalizePipe, TranslatePipe],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="flex flex-col h-screen bg-gray-100 dark:bg-gray-900 p-3 gap-3">
 
@@ -214,6 +215,7 @@ export class KdsComponent implements OnInit, OnDestroy {
   processingAction = signal<'prepare' | 'serve' | 'cancel' | null>(null);
   isConnected = signal(false);
   loading = signal(false);
+  private activeTimeouts: ReturnType<typeof setTimeout>[] = [];
 
   ngOnInit() {
     kdsStore.acquireReference();
@@ -232,6 +234,8 @@ export class KdsComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
     this.socketService.releaseConnection();
     kdsStore.releaseReference();
+    this.activeTimeouts.forEach(timeout => clearTimeout(timeout));
+    this.activeTimeouts = [];
   }
 
   private checkConnection() {
@@ -298,13 +302,18 @@ export class KdsComponent implements OnInit, OnDestroy {
   }
 
   private emitWithTimeout(itemId: string, action: 'prepare' | 'serve' | 'cancel') {
-    setTimeout(() => {
+    const timeout = setTimeout(() => {
       if (this.processingItem() === itemId) {
         this.processingItem.set(null);
         this.processingAction.set(null);
         this.loadItems();
       }
+      const index = this.activeTimeouts.indexOf(timeout);
+      if (index > -1) {
+        this.activeTimeouts.splice(index, 1);
+      }
     }, 5000);
+    this.activeTimeouts.push(timeout);
   }
 
   prepareItem(itemId: string) {

@@ -1,5 +1,6 @@
-import { Injectable, inject, signal, computed } from '@angular/core';
+import { Injectable, inject, signal, computed, DestroyRef } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { environment } from '../../environments/environment';
 import { I18nService } from '../core/services/i18n.service';
 import type { MenuLanguage, LocalizedField } from '../types';
@@ -8,16 +9,19 @@ import type { MenuLanguage, LocalizedField } from '../types';
 export class MenuLanguageService {
   private http = inject(HttpClient);
   private i18n = inject(I18nService);
+  private destroyRef = inject(DestroyRef);
 
   private _languages = signal<MenuLanguage[]>([]);
   readonly languages = this._languages.asReadonly();
   readonly defaultLanguage = computed(() => this._languages().find(l => l.is_default) ?? null);
 
   load() {
-    this.http.get<MenuLanguage[]>(`${environment.apiUrl}/menu-languages`).subscribe({
-      next: (data) => this._languages.set(data),
-      error: (err) => console.error('[MenuLanguageService] Error loading:', err),
-    });
+    this.http.get<MenuLanguage[]>(`${environment.apiUrl}/menu-languages`)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (data) => this._languages.set(data),
+        error: (err) => console.error('[MenuLanguageService] Error loading:', err),
+      });
   }
 
   localize(value: LocalizedField | null | undefined): string {

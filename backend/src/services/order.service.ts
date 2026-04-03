@@ -5,6 +5,14 @@ import { emitSessionFullyPaid, emitTicketPaid } from '../sockets/pos.handler';
 import { notifyCustomerItemUpdate } from '../sockets/totem.handler';
 import * as TaxUtils from '../utils/tax';
 import { withTransaction } from '../utils/transactions';
+import {
+  calculateItemPrice,
+  calculateTips,
+  buildSharedTickets,
+  buildByUserTickets,
+} from '../utils/calculation.utils';
+import { CircuitBreaker } from '../utils/circuit-breaker';
+import { circuitBreakerMonitor } from '../utils/circuit-breaker-monitor';
 import { IVariant, IExtra } from '../models/dish.model';
 import {
   OrderRepository,
@@ -102,29 +110,6 @@ const SERVICE_STATE_TRANSITIONS: Record<string, string[]> = {
 const CANCEL_PERMISSIONS = ['ADMIN', 'POS'];
 const DELETE_PERMISSIONS = ['ADMIN', 'POS', 'TAS'];
 
-interface ItemPriceBreakdown {
-  basePrice: number;
-  variantPrice: number;
-  extrasTotal: number;
-  total: number;
-}
-
-function calculateItemPrice(item: {
-  item_base_price: number;
-  item_disher_variant?: { price?: number } | null;
-  item_disher_extras?: Array<{ price: number }>;
-}): ItemPriceBreakdown {
-  const variantPrice = item.item_disher_variant?.price ?? 0;
-  const extrasTotal = item.item_disher_extras?.reduce((sum, e) => sum + e.price, 0) ?? 0;
-  
-  return {
-    basePrice: item.item_base_price,
-    variantPrice,
-    extrasTotal,
-    total: item.item_base_price + variantPrice + extrasTotal,
-  };
-}
-
 function validateStateTransition(currentState: string, newState: string, itemType?: 'KITCHEN' | 'SERVICE'): void {
   const transitions = itemType === 'SERVICE' 
     ? SERVICE_STATE_TRANSITIONS 
@@ -166,9 +151,13 @@ function emitSessionPaidLegacy(sessionId: string): void {
   getIO().to(`session:${sessionId}`).emit('session:paid');
 }
 
-export async function createOrder(sessionId: string, staffId?: string, customerId?: string) {
-  try {
-    // Use transaction to ensure session validation and order creation are atomic
+// ============================================================================
+// CIRCUIT BREAKERS - Protección para operaciones críticas
+// ============================================================================
+
+// Circuit breaker para crear órdenes - threshold bajo porque es crítico
+const createOrderBreaker = new CircuitBreaker(
+  async (sessionId: string, staffId?: string, customerId?: string) => {
     return withTransaction(async (session) => {
       const totemSession = await totemSessionRepo.findById(sessionId);
       if (!totemSession || totemSession.totem_state !== 'STARTED') {
@@ -176,8 +165,279 @@ export async function createOrder(sessionId: string, staffId?: string, customerI
       }
       return orderRepo.createOrder(sessionId, staffId, customerId, session);
     });
+  },
+  { failureThreshold: 3, resetTimeout: 15000, halfOpenMaxCalls: 2 },
+  'OrderService.createOrder'
+);
+
+// Circuit breaker para agregar items - threshold medio
+const addItemBreaker = new CircuitBreaker(
+  async (args: {
+    orderId: string;
+    sessionId: string;
+    dishId: string;
+    customerId?: string;
+    variantId?: string;
+    extras: string[];
+  }) => {
+    const { orderId, sessionId, dishId, customerId, variantId, extras } = args;
+    return withTransaction(async (session) => {
+      const order = await orderRepo.findById(orderId);
+      if (!order) throw new Error(ErrorCode.ORDER_NOT_FOUND);
+
+      const dish = await dishRepo.findById(dishId);
+      if (!dish) throw new Error(ErrorCode.DISH_NOT_FOUND);
+      if (dish.disher_status !== 'ACTIVATED') throw new Error(ErrorCode.DISH_NOT_AVAILABLE);
+
+      const variant = variantId
+        ? dish.variants.find((v: IVariant) => v._id.toString() === variantId)
+        : null;
+      
+      const selectedExtras = dish.extras.filter((e: IExtra) =>
+        extras.includes(e._id.toString())
+      );
+
+      validateItemPrices(
+        dish.disher_price,
+        variant?.variant_price,
+        selectedExtras.map(e => ({ price: e.extra_price }))
+      );
+
+      let customerName: string | undefined;
+      if (customerId) {
+        const customer = await customerRepo.findById(customerId);
+        customerName = customer?.customer_name;
+      }
+
+      const item = await itemOrderRepo.createItem({
+        order_id: orderId,
+        session_id: sessionId,
+        item_dish_id: dishId,
+        customer_id: customerId,
+        customer_name: customerName,
+        item_disher_type: dish.disher_type,
+        item_name_snapshot: dish.disher_name,
+        item_base_price: dish.disher_price,
+        item_disher_variant: variant
+          ? {
+              variant_id: variant._id.toString(),
+              name: variant.variant_name,
+              price: variant.variant_price,
+            }
+          : null,
+        item_disher_extras: selectedExtras.map((e: IExtra) => ({
+          extra_id: e._id.toString(),
+          name: e.extra_name,
+          price: e.extra_price,
+        })),
+      }, session);
+
+      if (dish.disher_type === 'KITCHEN') {
+        emitNewKitchenItem(sessionId, item);
+      }
+
+      notifyTASNewOrder(sessionId, {
+        item,
+        addedBy: 'customer',
+        dishType: dish.disher_type,
+      });
+
+      return item;
+    });
+  },
+  { failureThreshold: 5, resetTimeout: 20000, halfOpenMaxCalls: 3 },
+  'OrderService.addItem'
+);
+
+// Circuit breaker para actualizar estado de items
+const updateItemStateBreaker = new CircuitBreaker(
+  async (args: {
+    itemId: string;
+    newState: string;
+    requesterPerms: string[];
+  }) => {
+    const { itemId, newState, requesterPerms } = args;
+    const item = await itemOrderRepo.findById(itemId);
+    if (!item) throw new Error(ErrorCode.ITEM_NOT_FOUND);
+
+    validateStateTransition(item.item_state, newState, item.item_disher_type);
+
+    if (newState === 'CANCELED' && item.item_state === 'ON_PREPARE') {
+      if (!canForceCancel(requesterPerms)) {
+        throw new Error(ErrorCode.REQUIRES_POS_AUTHORIZATION);
+      }
+    }
+
+    const updated = await itemOrderRepo.updateState(
+      itemId,
+      newState as 'ORDERED' | 'ON_PREPARE' | 'SERVED' | 'CANCELED'
+    );
+
+    emitItemStateChanged(item.session_id.toString(), item._id.toString(), newState, item.item_name_snapshot);
+
+    return updated;
+  },
+  { failureThreshold: 5, resetTimeout: 10000, halfOpenMaxCalls: 3 },
+  'OrderService.updateItemState'
+);
+
+// Circuit breaker para crear pagos
+const createPaymentBreaker = new CircuitBreaker(
+  async (args: {
+    sessionId: string;
+    paymentType: 'ALL' | 'BY_USER' | 'SHARED';
+    parts: number;
+    customTip?: number;
+  }) => {
+    const { sessionId, paymentType, parts, customTip } = args;
+    const { total } = await calculateSessionTotal(sessionId, customTip);
+
+    if (total <= 0) {
+      throw new Error(ErrorCode.NO_ITEMS_TO_PAY);
+    }
+
+    const tickets = paymentType === 'BY_USER'
+      ? await buildByUserTickets(sessionId)
+      : buildSharedTickets(total, parts);
+
+    return withTransaction(async (session) => {
+      const payment = await paymentRepo.createPayment(
+        {
+          session_id: sessionId,
+          payment_type: paymentType,
+          payment_total: total,
+          tickets,
+        },
+        session
+      );
+
+      await totemSessionRepo.updateState(sessionId, 'COMPLETE', session);
+      return payment;
+    });
+  },
+  { failureThreshold: 3, resetTimeout: 15000, halfOpenMaxCalls: 2 },
+  'OrderService.createPayment'
+);
+
+// Circuit breaker para marcar ticket pagado
+const markTicketPaidBreaker = new CircuitBreaker(
+  async (args: { paymentId: string; ticketPart: number }) => {
+    const { paymentId, ticketPart } = args;
+    const payment = await paymentRepo.findById(paymentId);
+    if (!payment) throw new Error(ErrorCode.PAYMENT_NOT_FOUND);
+
+    return withTransaction(async (session) => {
+      const updated = await paymentRepo.markTicketPaid(paymentId, ticketPart, session);
+      if (!updated) throw new Error(ErrorCode.TICKET_NOT_FOUND);
+
+      const allPaid = updated.tickets.every((t) => t.paid);
+      const sessionIdStr = updated.session_id.toString();
+      
+      const ticket = updated.tickets.find(t => t.ticket_part === ticketPart);
+      if (ticket) {
+        const remainingAmount = updated.tickets
+          .filter(t => !t.paid)
+          .reduce((sum, t) => sum + t.ticket_amount, 0);
+          
+        emitTicketPaid(sessionIdStr, {
+          ticketPart,
+          ticketAmount: ticket.ticket_amount,
+          remainingAmount,
+        });
+      }
+      
+      if (allPaid) {
+        await totemSessionRepo.updateState(sessionIdStr, 'PAID', session);
+        emitSessionPaidLegacy(sessionIdStr);
+        
+        emitSessionFullyPaid(sessionIdStr, {
+          paymentTotal: updated.payment_total,
+          paymentType: updated.payment_type,
+        });
+      }
+
+      return updated;
+    });
+  },
+  { failureThreshold: 3, resetTimeout: 15000, halfOpenMaxCalls: 2 },
+  'OrderService.markTicketPaid'
+);
+
+// Circuit breaker para eliminar items
+const deleteItemBreaker = new CircuitBreaker(
+  async (args: { itemId: string; requesterPerms: string[] }) => {
+    const { itemId, requesterPerms } = args;
+    return withTransaction(async (session) => {
+      const item = await itemOrderRepo.findById(itemId);
+      if (!item) throw new Error(ErrorCode.ITEM_NOT_FOUND);
+      
+      if (item.item_state !== 'ORDERED') {
+        throw new Error(ErrorCode.CANNOT_DELETE_ITEM_NOT_ORDERED);
+      }
+      
+      if (!canDelete(requesterPerms)) {
+        throw new Error(ErrorCode.REQUIRES_AUTHORIZATION);
+      }
+
+      const deleted = await itemOrderRepo.deleteItem(itemId, session);
+      if (!deleted) throw new Error(ErrorCode.ITEM_NOT_FOUND_OR_ALREADY_PROCESSED);
+
+      emitItemDeleted(item.session_id.toString(), item._id.toString());
+
+      return deleted;
+    });
+  },
+  { failureThreshold: 5, resetTimeout: 10000, halfOpenMaxCalls: 3 },
+  'OrderService.deleteItem'
+);
+
+// Circuit breaker para asignar items a cliente
+const assignItemBreaker = new CircuitBreaker(
+  async (args: { itemId: string; customerId: string | null }) => {
+    const { itemId, customerId } = args;
+    return withTransaction(async (session) => {
+      const item = await itemOrderRepo.findById(itemId);
+      if (!item) throw new Error(ErrorCode.ITEM_NOT_FOUND);
+
+      let customerName: string | null = null;
+      if (customerId) {
+        const customer = await customerRepo.findById(customerId);
+        customerName = customer?.customer_name ?? null;
+      }
+
+      const updated = await itemOrderRepo.assignItemToCustomer(itemId, customerId, customerName, session);
+      if (!updated) throw new Error(ErrorCode.UPDATE_FAILED);
+
+      emitCustomerAssigned(item.session_id.toString(), item._id.toString(), customerId);
+
+      return updated;
+    });
+  },
+  { failureThreshold: 5, resetTimeout: 10000, halfOpenMaxCalls: 3 },
+  'OrderService.assignItemToCustomer'
+);
+
+// Registrar todos los circuit breakers en el monitor
+circuitBreakerMonitor.register(createOrderBreaker);
+circuitBreakerMonitor.register(addItemBreaker);
+circuitBreakerMonitor.register(updateItemStateBreaker);
+circuitBreakerMonitor.register(createPaymentBreaker);
+circuitBreakerMonitor.register(markTicketPaidBreaker);
+circuitBreakerMonitor.register(deleteItemBreaker);
+circuitBreakerMonitor.register(assignItemBreaker);
+
+// ============================================================================
+// Funciones públicas con Circuit Breaker
+// ============================================================================
+
+export async function createOrder(sessionId: string, staffId?: string, customerId?: string) {
+  try {
+    return await createOrderBreaker.execute(sessionId, staffId, customerId);
   } catch (err) {
     if (err instanceof ValidationError) throw err;
+    if ((err as Error).message === 'CIRCUIT_BREAKER_OPEN') {
+      throw new Error(`${ErrorCode.DATABASE_ERROR}: Order creation temporarily unavailable - circuit breaker open`);
+    }
     throw new Error(ErrorCode.SESSION_NOT_ACTIVE);
   }
 }
@@ -190,73 +450,7 @@ export async function addItemToOrder(
   variantId?: string,
   extras: string[] = []
 ) {
-  // Use transaction to ensure order validation, dish availability check, and item creation are atomic
-  return withTransaction(async (session) => {
-    const order = await orderRepo.findById(orderId);
-    if (!order) throw new Error(ErrorCode.ORDER_NOT_FOUND);
-
-    const dish = await dishRepo.findById(dishId);
-    if (!dish) throw new Error(ErrorCode.DISH_NOT_FOUND);
-    if (dish.disher_status !== 'ACTIVATED') throw new Error(ErrorCode.DISH_NOT_AVAILABLE);
-
-    const variant = variantId
-      ? dish.variants.find((v: IVariant) => v._id.toString() === variantId)
-      : null;
-    
-    const selectedExtras = dish.extras.filter((e: IExtra) =>
-      extras.includes(e._id.toString())
-    );
-
-    // Validate all prices before creating the item
-    validateItemPrices(
-      dish.disher_price,
-      variant?.variant_price,
-      selectedExtras.map(e => ({ price: e.extra_price }))
-    );
-
-    // Get customer name if customerId is provided
-    let customerName: string | undefined;
-    if (customerId) {
-      const customer = await customerRepo.findById(customerId);
-      customerName = customer?.customer_name;
-    }
-
-    const item = await itemOrderRepo.createItem({
-      order_id: orderId,
-      session_id: sessionId,
-      item_dish_id: dishId,
-      customer_id: customerId,
-      customer_name: customerName,
-      item_disher_type: dish.disher_type,
-      item_name_snapshot: dish.disher_name,
-      item_base_price: dish.disher_price,
-      item_disher_variant: variant
-        ? {
-            variant_id: variant._id.toString(),
-            name: variant.variant_name,
-            price: variant.variant_price,
-          }
-        : null,
-      item_disher_extras: selectedExtras.map((e: IExtra) => ({
-        extra_id: e._id.toString(),
-        name: e.extra_name,
-        price: e.extra_price,
-      })),
-    }, session);
-
-    if (dish.disher_type === 'KITCHEN') {
-      emitNewKitchenItem(sessionId, item);
-    }
-
-    // Notify TAS (waiters) about the new order item
-    notifyTASNewOrder(sessionId, {
-      item,
-      addedBy: 'customer', // or 'system' depending on context
-      dishType: dish.disher_type,
-    });
-
-    return item;
-  });
+  return addItemBreaker.execute({ orderId, sessionId, dishId, customerId, variantId, extras });
 }
 
 export async function updateItemState(
@@ -265,25 +459,7 @@ export async function updateItemState(
   _requesterId: string,
   requesterPerms: string[]
 ) {
-  const item = await itemOrderRepo.findById(itemId);
-  if (!item) throw new Error(ErrorCode.ITEM_NOT_FOUND);
-
-  validateStateTransition(item.item_state, newState, item.item_disher_type);
-
-  if (newState === 'CANCELED' && item.item_state === 'ON_PREPARE') {
-    if (!canForceCancel(requesterPerms)) {
-      throw new Error(ErrorCode.REQUIRES_POS_AUTHORIZATION);
-    }
-  }
-
-  const updated = await itemOrderRepo.updateState(
-    itemId,
-    newState as 'ORDERED' | 'ON_PREPARE' | 'SERVED' | 'CANCELED'
-  );
-
-  emitItemStateChanged(item.session_id.toString(), item._id.toString(), newState, item.item_name_snapshot);
-
-  return updated;
+  return updateItemStateBreaker.execute({ itemId, newState, requesterPerms });
 }
 
 export async function getSessionItems(sessionId: string) {
@@ -342,180 +518,25 @@ export async function calculateSessionTotal(
   };
 }
 
-function calculateTips(
-  totalWithTax: number,
-  customTip: number | undefined,
-  restaurant: { tips_state?: boolean; tips_type?: string; tips_rate?: number }
-): number {
-  if (customTip !== undefined && customTip >= 0) {
-    return parseFloat(customTip.toFixed(2));
-  }
-  
-  if (restaurant.tips_state && restaurant.tips_type === 'MANDATORY' && restaurant.tips_rate) {
-    return parseFloat((totalWithTax * (restaurant.tips_rate / 100)).toFixed(2));
-  }
-  
-  return 0;
-}
-
 export async function createPayment(
   sessionId: string,
   paymentType: 'ALL' | 'BY_USER' | 'SHARED',
   parts: number = 1,
   customTip?: number
 ) {
-  const { total } = await calculateSessionTotal(sessionId, customTip);
-
-  // Validate that there are items in the session before creating the payment
-  if (total <= 0) {
-    throw new Error(ErrorCode.NO_ITEMS_TO_PAY);
-  }
-
-  const tickets = paymentType === 'BY_USER'
-    ? await buildByUserTickets(sessionId)
-    : buildSharedTickets(total, parts);
-
-  // Use transaction to ensure payment creation and session update are atomic
-  return withTransaction(async (session) => {
-    const payment = await paymentRepo.createPayment(
-      {
-        session_id: sessionId,
-        payment_type: paymentType,
-        payment_total: total,
-        tickets,
-      },
-      session
-    );
-
-    await totemSessionRepo.updateState(sessionId, 'COMPLETE', session);
-    return payment;
-  });
-}
-
-function buildSharedTickets(total: number, parts: number) {
-  return TaxUtils.splitAmount(total, parts).map((amount, index) => ({
-    ticket_part: index + 1,
-    ticket_total_parts: parts,
-    ticket_amount: amount,
-    paid: false,
-  }));
-}
-
-async function buildByUserTickets(sessionId: string) {
-  const items = await itemOrderRepo.findBySessionId(sessionId);
-  const customerTotals = calculateCustomerTotals(items);
-
-  return Object.entries(customerTotals).map(([customerId, amount], index) => ({
-    ticket_part: index + 1,
-    ticket_total_parts: Object.keys(customerTotals).length,
-    ticket_amount: parseFloat(amount.toFixed(2)),
-    ticket_customer_name: `Customer ${customerId.slice(-4)}`,
-    paid: false,
-  }));
-}
-
-function calculateCustomerTotals(items: Array<{
-  customer_id?: { toString(): string } | null;
-  item_base_price: number;
-  item_disher_variant?: { price?: number } | null;
-  item_disher_extras?: Array<{ price: number }>;
-}>): Record<string, number> {
-  const totals: Record<string, number> = {};
-
-  for (const item of items) {
-    const customerId = item.customer_id?.toString() ?? 'unknown';
-    const prices = calculateItemPrice(item);
-    
-    totals[customerId] = (totals[customerId] ?? 0) + prices.total;
-  }
-
-  return totals;
+  return createPaymentBreaker.execute({ sessionId, paymentType, parts, customTip });
 }
 
 export async function markTicketPaid(paymentId: string, ticketPart: number) {
-  const payment = await paymentRepo.findById(paymentId);
-  if (!payment) throw new Error(ErrorCode.PAYMENT_NOT_FOUND);
-
-  // Use transaction to ensure payment update and session state change are atomic
-  return withTransaction(async (session) => {
-    const updated = await paymentRepo.markTicketPaid(paymentId, ticketPart, session);
-    if (!updated) throw new Error(ErrorCode.TICKET_NOT_FOUND);
-
-    const allPaid = updated.tickets.every((t) => t.paid);
-    const sessionIdStr = updated.session_id.toString();
-    
-    // Emit ticket paid notification to POS and TAS
-    const ticket = updated.tickets.find(t => t.ticket_part === ticketPart);
-    if (ticket) {
-      const remainingAmount = updated.tickets
-        .filter(t => !t.paid)
-        .reduce((sum, t) => sum + t.ticket_amount, 0);
-        
-      emitTicketPaid(sessionIdStr, {
-        ticketPart,
-        ticketAmount: ticket.ticket_amount,
-        remainingAmount,
-      });
-    }
-    
-    if (allPaid) {
-      await totemSessionRepo.updateState(sessionIdStr, 'PAID', session);
-      emitSessionPaidLegacy(sessionIdStr);
-      
-      // Emit detailed session fully paid notification
-      emitSessionFullyPaid(sessionIdStr, {
-        paymentTotal: updated.payment_total,
-        paymentType: updated.payment_type,
-      });
-    }
-
-    return updated;
-  });
+  return markTicketPaidBreaker.execute({ paymentId, ticketPart });
 }
 
 export async function deleteItem(itemId: string, requesterPerms: string[]) {
-  // Use transaction to ensure item state check and deletion are atomic
-  return withTransaction(async (session) => {
-    const item = await itemOrderRepo.findById(itemId);
-    if (!item) throw new Error(ErrorCode.ITEM_NOT_FOUND);
-    
-    if (item.item_state !== 'ORDERED') {
-      throw new Error(ErrorCode.CANNOT_DELETE_ITEM_NOT_ORDERED);
-    }
-    
-    if (!canDelete(requesterPerms)) {
-      throw new Error(ErrorCode.REQUIRES_AUTHORIZATION);
-    }
-
-    const deleted = await itemOrderRepo.deleteItem(itemId, session);
-    if (!deleted) throw new Error(ErrorCode.ITEM_NOT_FOUND_OR_ALREADY_PROCESSED);
-
-    emitItemDeleted(item.session_id.toString(), item._id.toString());
-
-    return deleted;
-  });
+  return deleteItemBreaker.execute({ itemId, requesterPerms });
 }
 
 export async function assignItemToCustomer(itemId: string, customerId: string | null) {
-  // Use transaction to ensure item and customer lookup and update are atomic
-  return withTransaction(async (session) => {
-    const item = await itemOrderRepo.findById(itemId);
-    if (!item) throw new Error(ErrorCode.ITEM_NOT_FOUND);
-
-    // Get customer name if customerId is provided
-    let customerName: string | null = null;
-    if (customerId) {
-      const customer = await customerRepo.findById(customerId);
-      customerName = customer?.customer_name ?? null;
-    }
-
-    const updated = await itemOrderRepo.assignItemToCustomer(itemId, customerId, customerName, session);
-    if (!updated) throw new Error(ErrorCode.UPDATE_FAILED);
-
-    emitCustomerAssigned(item.session_id.toString(), item._id.toString(), customerId);
-
-    return updated;
-  });
+  return assignItemBreaker.execute({ itemId, customerId });
 }
 
 /**
@@ -558,3 +579,10 @@ export async function getDailyMetrics(restaurantId: string, date: Date) {
 
   return orderRepo.getDailyMetrics(sessionIds, date);
 }
+
+// ============================================================================
+// Exports adicionales para monitoreo
+// ============================================================================
+
+export { createOrderBreaker, addItemBreaker, updateItemStateBreaker };
+export { createPaymentBreaker, markTicketPaidBreaker, deleteItemBreaker, assignItemBreaker };

@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
@@ -16,6 +16,7 @@ import type { Category, LocalizedField } from '../../../types';
   selector: 'app-category-form',
   standalone: true,
   imports: [CommonModule, FormsModule, ImageUploaderComponent, LocalizedInputComponent, TranslatePipe],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="admin-container max-w-4xl">
       <header class="admin-header">

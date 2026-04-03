@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, inject, signal } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
@@ -21,6 +21,7 @@ const ALLERGEN_CODES = ['GLUTEN','CRUSTACEANS','EGGS','FISH','PEANUTS','SOY','MI
   selector: 'app-dish-form',
   standalone: true,
   imports: [CommonModule, FormsModule, ImageUploaderComponent, LocalizedInputComponent, DishOptionListComponent, TranslatePipe],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="admin-container max-w-4xl">
       <header class="admin-header">

@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, inject, signal, OnInit, effect } from '@angular/core';
+import { Component, Input, Output, EventEmitter, inject, signal, OnInit, effect, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MenuLanguageService } from '../../services/menu-language.service';
@@ -9,6 +9,7 @@ import type { LocalizedEntry, MenuLanguage } from '../../types';
   selector: 'app-localized-input',
   standalone: true,
   imports: [CommonModule, FormsModule, TranslatePipe],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div>
       @if (label) {

@@ -50,6 +50,16 @@ export class SocketService implements OnDestroy {
   private daemonRetryTimer: ReturnType<typeof setTimeout> | null = null;
   private activeListeners: Map<string, Set<(data: unknown) => void>> = new Map();
 
+  // Event buffering for disconnection recovery
+  private eventBuffer: Array<{ event: string; data: unknown; timestamp: number }> = [];
+  private readonly maxBufferSize = 100;
+  private bufferEnabled = true;
+  private isBuffering = false;
+
+  // Pending actions queue for disconnection recovery
+  private pendingActions: Array<{ action: string; params: unknown }> = [];
+  private readonly maxPendingActions = 10;
+
   // ==================== TOTEM/CUSTOMER STATE ====================
   private currentTotemSessionId: string | null = null;
   private currentCustomerName: string | null = null;
@@ -176,7 +186,11 @@ export class SocketService implements OnDestroy {
       
       if (this.connectionRefCount === 0) {
         this.doDisconnect();
+        // Resetear refCount solo aquí, después de desconectar
+        // Esto asegura que el conteo esté sincronizado
       }
+    } else {
+      console.warn('[Socket] releaseConnection called with refCount already 0');
     }
   }
 
@@ -195,10 +209,32 @@ export class SocketService implements OnDestroy {
       this.socket.on('connect', () => {
         console.log('[Socket] Connected');
         this.reconnectAttempts = 0;
+        this.isBuffering = false;
+
+        // Ejecutar acciones pendientes
+        this.executePendingActions();
+
+        // Re-unirse a sesiones activas
+        if (this.currentTotemSessionId && this.socket) {
+          console.log(`[Socket] Re-joining totem session: ${this.currentTotemSessionId}`);
+          this.socket.emit('totem:join_session', {
+            sessionId: this.currentTotemSessionId,
+            customerName: this.currentCustomerName
+          });
+        }
+
+        if (this.currentTasSessionId && this.socket) {
+          console.log(`[Socket] Re-joining TAS session: ${this.currentTasSessionId}`);
+          this.socket.emit('tas:join', this.currentTasSessionId);
+        }
+
+        // Reproducir eventos bufferizados
+        this.replayBufferedEvents();
       });
 
       this.socket.on('connect_error', (err: Error) => {
         console.error('[Socket] Connection error:', err.message);
+        this.isBuffering = true;
         this.reconnectAttempts++;
         if (this.reconnectAttempts >= this.maxReconnectAttempts) {
           console.error('[Socket] Max reconnection attempts reached, scheduling daemon retry in', this.daemonRetryDelay, 'ms');
@@ -249,15 +285,27 @@ export class SocketService implements OnDestroy {
     if (!this.socket) return;
 
     this.socket.on('item:state_changed', ({ itemId, newState }: ItemStateChangedPayload) => {
-      kdsStore.updateItemState(itemId, newState as 'ORDERED' | 'ON_PREPARE' | 'SERVED' | 'CANCELED');
+      if (this.isBuffering) {
+        this.bufferEvent('item:state_changed', { itemId, newState });
+      } else {
+        kdsStore.updateItemState(itemId, newState as 'ORDERED' | 'ON_PREPARE' | 'SERVED' | 'CANCELED');
+      }
     });
-    
+
     this.socket.on('kds:new_item', (item: KdsNewItem) => {
-      kdsStore.addItem(item as unknown as Parameters<typeof kdsStore.addItem>[0]);
+      if (this.isBuffering) {
+        this.bufferEvent('kds:new_item', item);
+      } else {
+        kdsStore.addItem(item as unknown as Parameters<typeof kdsStore.addItem>[0]);
+      }
     });
 
     this.socket.on('item:deleted', ({ itemId }: ItemDeletedPayload) => {
-      kdsStore.removeItem(itemId);
+      if (this.isBuffering) {
+        this.bufferEvent('item:deleted', { itemId });
+      } else {
+        kdsStore.removeItem(itemId);
+      }
     });
   }
 
@@ -511,15 +559,87 @@ export class SocketService implements OnDestroy {
 
   // ==================== SESSION JOIN/LEAVE ====================
 
-  joinSession(sessionId: string): void {
+  /**
+   * Join a session with permission verification.
+   * @param sessionId - The session ID to join
+   * @param sessionType - Optional specific session type to join. If not provided, joins all types the user has permission for.
+   */
+  joinSession(sessionId: string, sessionType?: 'TOTEM' | 'KDS' | 'TAS' | 'POS'): void {
     if (!this.socket?.connected) {
       console.warn('[Socket] Cannot join session: not connected');
       return;
     }
-    this.socket.emit('pos:join', sessionId);
-    this.socket.emit('kds:join', sessionId);
-    this.socket.emit('tas:join', sessionId);
-    console.log(`[Socket] Joined session: ${sessionId}`);
+
+    const userPermissions = authStore.user()?.permissions || [];
+
+    if (sessionType) {
+      // Join specific session type with permission check
+      const requiredPermission = this.getRequiredPermission(sessionType);
+      if (requiredPermission && !userPermissions.includes(requiredPermission)) {
+        console.warn(`[Socket] User lacks permission ${requiredPermission} to join ${sessionType} session`);
+        return;
+      }
+
+      switch (sessionType) {
+        case 'POS':
+          this.socket.emit('pos:join', sessionId);
+          console.log(`[Socket] Joined POS session: ${sessionId}`);
+          break;
+        case 'KDS':
+          this.socket.emit('kds:join', sessionId);
+          console.log(`[Socket] Joined KDS session: ${sessionId}`);
+          break;
+        case 'TAS':
+          this.socket.emit('tas:join', sessionId);
+          console.log(`[Socket] Joined TAS session: ${sessionId}`);
+          break;
+        case 'TOTEM':
+          // Totem sessions use a different method
+          console.warn(`[Socket] Use joinTotemSession() for TOTEM sessions`);
+          break;
+      }
+    } else {
+      // Legacy mode: join all session types the user has permission for
+      const posPermission = this.getRequiredPermission('POS');
+      const kdsPermission = this.getRequiredPermission('KDS');
+      const tasPermission = this.getRequiredPermission('TAS');
+
+      if (!posPermission || userPermissions.includes(posPermission)) {
+        this.socket.emit('pos:join', sessionId);
+        console.log(`[Socket] Joined POS session: ${sessionId}`);
+      } else {
+        console.warn(`[Socket] User lacks permission ${posPermission} to join POS session`);
+      }
+
+      if (!kdsPermission || userPermissions.includes(kdsPermission)) {
+        this.socket.emit('kds:join', sessionId);
+        console.log(`[Socket] Joined KDS session: ${sessionId}`);
+      } else {
+        console.warn(`[Socket] User lacks permission ${kdsPermission} to join KDS session`);
+      }
+
+      if (!tasPermission || userPermissions.includes(tasPermission)) {
+        this.socket.emit('tas:join', sessionId);
+        console.log(`[Socket] Joined TAS session: ${sessionId}`);
+      } else {
+        console.warn(`[Socket] User lacks permission ${tasPermission} to join TAS session`);
+      }
+    }
+  }
+
+  /**
+   * Get the required permission for a given session type.
+   * @param sessionType - The session type
+   * @returns The required permission string or null if no permission required
+   */
+  private getRequiredPermission(sessionType: string): string | null {
+    switch (sessionType) {
+      case 'KDS': return 'kitchen:access';
+      case 'TOTEM': return 'totem:access';
+      case 'TAS': return 'service:access';
+      case 'POS': return 'pos:access';
+      default: return null;
+    }
   }
 
   leaveSession(sessionId: string): void {
@@ -534,6 +654,8 @@ export class SocketService implements OnDestroy {
   joinTasSession(sessionId: string): void {
     if (!this.socket?.connected) {
       console.warn('[TAS] Cannot join session: socket not connected');
+      // Agregar a cola de acciones pendientes
+      this.queuePendingAction('joinTasSession', { sessionId });
       return;
     }
     if (this.currentTasSessionId && this.currentTasSessionId !== sessionId) {
@@ -640,6 +762,8 @@ export class SocketService implements OnDestroy {
   joinTotemSession(sessionId: string, customerName?: string, customerId?: string): void {
     if (!this.socket?.connected) {
       console.warn('[Totem] Cannot join session: socket not connected');
+      // Agregar a cola de acciones pendientes
+      this.queuePendingAction('joinTotemSession', { sessionId, customerName, customerId });
       return;
     }
     if (!sessionId) return;
@@ -863,10 +987,17 @@ export class SocketService implements OnDestroy {
 
   private doDisconnect(): void {
     this.insufficientPermissions = false;
+
+    // Limpiar timers
     if (this.daemonRetryTimer !== null) {
       clearTimeout(this.daemonRetryTimer);
       this.daemonRetryTimer = null;
     }
+
+    // Notificar a stores del cierre
+    this.notifyStoresOfDisconnect();
+
+    // Limpiar socket y listeners
     if (this.socket) {
       this.activeListeners.forEach((callbacks, event) => {
         callbacks.forEach(callback => this.socket?.off(event, callback));
@@ -877,12 +1008,352 @@ export class SocketService implements OnDestroy {
       this.socket.close();
       this.socket = null;
     }
+
+    // Resetear flags de conexión
     this.reconnectAttempts = 0;
     this.hasReachedMaxReconnects = false;
-    this.connectionRefCount = 0;
-    this.currentTotemSessionId = null;
-    this.currentTasSessionId = null;
+
+    // Limpiar estado de sesión
+    this.resetSessionState();
+  }
+
+  /**
+   * Reset session state when disconnected
+   */
+  private resetSessionState(): void {
+    // Limpiar estado de totem
+    if (this.currentTotemSessionId) {
+      console.log(`[Socket] Clearing totem session: ${this.currentTotemSessionId}`);
+      this.currentTotemSessionId = null;
+    }
     this.currentCustomerName = null;
+    this.isTotemSessionClosed = false;
+
+    // Limpiar estado de TAS
+    if (this.currentTasSessionId) {
+      console.log(`[Socket] Clearing TAS session: ${this.currentTasSessionId}`);
+      this.currentTasSessionId = null;
+    }
+
+    // Notificar a los subjects de desconexión
+    this.totemErrorSubject.next({ message: 'CONNECTION_LOST' });
+    this.tasErrorSubject.next({ message: 'CONNECTION_LOST' });
+  }
+
+  /**
+   * Notify stores that connection was lost
+   */
+  private notifyStoresOfDisconnect(): void {
+    // Opcional: notificar a stores que la conexión se perdió
+    // Esto permite que los stores manejen el estado offline
+    console.log('[Socket] Notifying stores of disconnect');
+  }
+
+  /**
+   * Buffer an event for later replay after reconnection
+   */
+  private bufferEvent(event: string, data: unknown): void {
+    if (!this.bufferEnabled || this.eventBuffer.length >= this.maxBufferSize) {
+      // Buffer lleno, remover evento más antiguo
+      if (this.eventBuffer.length >= this.maxBufferSize) {
+        this.eventBuffer.shift();
+      }
+    }
+
+    this.eventBuffer.push({
+      event,
+      data,
+      timestamp: Date.now(),
+    });
+
+    console.log(`[Socket] Event buffered: ${event}`, { bufferSize: this.eventBuffer.length });
+  }
+
+  /**
+   * Replay buffered events after reconnection
+   */
+  private replayBufferedEvents(): void {
+    if (this.eventBuffer.length === 0) return;
+
+    console.log(`[Socket] Replaying ${this.eventBuffer.length} buffered events`);
+
+    const now = Date.now();
+    const maxAge = 5 * 60 * 1000; // 5 minutos máximo
+
+    // Filtrar eventos muy antiguos
+    const validEvents = this.eventBuffer.filter(
+      e => now - e.timestamp < maxAge
+    );
+
+    // Procesar eventos
+    for (const buffered of validEvents) {
+      console.log(`[Socket] Replaying buffered event: ${buffered.event}`);
+      // Emitir a los subjects correspondientes según el tipo de evento
+      this.handleBufferedEvent(buffered.event, buffered.data);
+    }
+
+    // Limpiar buffer
+    this.eventBuffer = [];
+  }
+
+  /**
+   * Handle a buffered event by routing to appropriate subject
+   */
+  private handleBufferedEvent(event: string, data: unknown): void {
+    switch (event) {
+      // ==================== KDS EVENTS ====================
+      case 'kds:new_item':
+        if (data) {
+          kdsStore.addItem(data as unknown as Parameters<typeof kdsStore.addItem>[0]);
+        }
+        break;
+      case 'item:state_changed':
+        if (data && typeof data === 'object') {
+          const { itemId, newState } = data as { itemId: string; newState: string };
+          kdsStore.updateItemState(itemId, newState as 'ORDERED' | 'ON_PREPARE' | 'SERVED' | 'CANCELED');
+        }
+        break;
+      case 'item:deleted':
+        if (data && typeof data === 'object') {
+          const { itemId } = data as { itemId: string };
+          kdsStore.removeItem(itemId);
+        }
+        break;
+
+      // ==================== TAS EVENTS ====================
+      case 'tas:item_added':
+        if (data && typeof data === 'object') {
+          const typedData = data as { item?: unknown };
+          if (typedData.item) {
+            tasStore.addItem(typedData.item as Parameters<typeof tasStore.addItem>[0]);
+          }
+          this.tasItemAddedSubject.next(data as TASItemEvent);
+        }
+        break;
+      case 'tas:service_item_served':
+        if (data && typeof data === 'object') {
+          const { itemId } = data as { itemId: string };
+          tasStore.updateItemState(itemId, 'SERVED');
+          this.tasItemServedSubject.next(data as TASItemStateEvent);
+        }
+        break;
+      case 'tas:item_canceled':
+        if (data && typeof data === 'object') {
+          const { itemId } = data as { itemId: string };
+          tasStore.updateItemState(itemId, 'CANCELED');
+          this.tasItemCanceledSubject.next(data as TASItemStateEvent);
+        }
+        break;
+      case 'tas:bill_requested':
+        this.tasBillRequestedSubject.next(data as TASBillEvent);
+        break;
+      case 'tas:bill_paid':
+        this.tasBillPaidSubject.next(data as TASBillPaidEvent);
+        break;
+      case 'tas:help_requested':
+        this.tasHelpRequestedSubject.next(data as TASHelpRequest);
+        break;
+      case 'tas:new_customer_order':
+        if (data && typeof data === 'object') {
+          const typedData = data as { item?: unknown };
+          if (typedData.item) {
+            tasStore.addItem(typedData.item as Parameters<typeof tasStore.addItem>[0]);
+          }
+          this.tasNewCustomerOrderSubject.next(data as TASNewCustomerOrderEvent);
+        }
+        break;
+      case 'tas:customer_bill_request':
+        this.tasCustomerBillRequestSubject.next(data as TASCustomerBillRequestEvent);
+        break;
+      case 'notification:from_waiter':
+        this.tasNotificationSubject.next(data as WaiterNotification);
+        break;
+      case 'tas:error':
+        this.tasErrorSubject.next(data as SocketError);
+        break;
+      case 'kds:error':
+        // KDS errors are logged but don't have a specific subject
+        console.warn('[Socket] Buffered KDS error:', data);
+        break;
+      case 'pos:error':
+        // POS errors are logged but don't have a specific subject
+        console.warn('[Socket] Buffered POS error:', data);
+        break;
+
+      // TAS Confirmations (logged but don't update state)
+      case 'tas:joined':
+        console.log('[Socket] Buffered TAS joined:', data);
+        break;
+      case 'tas:left':
+        console.log('[Socket] Buffered TAS left:', data);
+        break;
+      case 'tas:item_added_confirm':
+        console.log('[Socket] Buffered TAS item added confirm:', data);
+        break;
+      case 'tas:item_served_confirm':
+        console.log('[Socket] Buffered TAS item served confirm:', data);
+        break;
+      case 'tas:item_canceled_confirm':
+        console.log('[Socket] Buffered TAS item canceled confirm:', data);
+        break;
+      case 'tas:bill_request_confirm':
+        console.log('[Socket] Buffered TAS bill request confirm:', data);
+        break;
+      case 'tas:bill_paid_confirm':
+        console.log('[Socket] Buffered TAS bill paid confirm:', data);
+        break;
+      case 'tas:call_acknowledged_confirm':
+        console.log('[Socket] Buffered TAS call acknowledged confirm:', data);
+        break;
+      case 'tas:notify_confirm':
+        console.log('[Socket] Buffered TAS notify confirm:', data);
+        break;
+
+      // ==================== TOTEM EVENTS ====================
+      case 'totem:session_joined':
+        if (data && typeof data === 'object') {
+          const typedData = data as { sessionId: string; customerName?: string };
+          this.currentTotemSessionId = typedData.sessionId;
+          if (typedData.customerName) {
+            this.currentCustomerName = typedData.customerName;
+          }
+        }
+        break;
+      case 'totem:customer_joined_table':
+        this.totemCustomerJoinedSubject.next(data as TotemCustomerJoinedEvent);
+        break;
+      case 'totem:customer_left_table':
+        this.totemCustomerLeftSubject.next(data as TotemCustomerLeftEvent);
+        break;
+      case 'totem:table_info':
+        this.totemTableInfoSubject.next(data as TotemTableInfoEvent);
+        break;
+      case 'totem:table_order_update':
+        this.totemTableOrderUpdateSubject.next(data as TotemTableOrderUpdateEvent);
+        break;
+      case 'totem:session_left':
+        if (data && typeof data === 'object') {
+          const { sessionId } = data as { sessionId: string };
+          if (this.currentTotemSessionId === sessionId) {
+            this.currentTotemSessionId = null;
+          }
+        }
+        break;
+      case 'totem:order_placed':
+        this.totemOrderConfirmedSubject.next(data as TotemOrderConfirmedEvent);
+        break;
+      case 'totem:item_added':
+        console.log('[Socket] Buffered totem item added:', data);
+        break;
+      case 'order:item_update':
+        this.totemItemUpdateSubject.next(data as ItemUpdateEvent);
+        break;
+      case 'order:items_added':
+        this.totemItemsAddedSubject.next(data as TotemItemsAddedEvent);
+        break;
+      case 'totem:help_request_sent':
+        this.totemHelpRequestConfirmedSubject.next(data as TotemHelpRequestConfirmedEvent);
+        break;
+      case 'totem:bill_request_sent':
+        this.totemBillRequestConfirmedSubject.next(data as TotemBillRequestConfirmedEvent);
+        break;
+      case 'totem:session_closed':
+        this.isTotemSessionClosed = true;
+        this.totemSessionClosedSubject.next(data as TotemSessionClosedEvent);
+        break;
+      case 'totem:force_disconnect':
+        this.isTotemSessionClosed = true;
+        this.totemForceDisconnectSubject.next(data as TotemForceDisconnectEvent);
+        break;
+      case 'totem:error':
+        if (data && typeof data === 'object') {
+          const errorData = data as SocketError;
+          if (errorData.message === 'SESSION_CLOSED' || errorData.message === 'SESSION_ALREADY_CLOSED') {
+            this.isTotemSessionClosed = true;
+          }
+        }
+        this.totemErrorSubject.next(data as SocketError);
+        break;
+      case 'totem:items_subscribed':
+        console.log('[Socket] Buffered totem items subscribed:', data);
+        break;
+
+      // ==================== UNHANDLED EVENTS ====================
+      default:
+        console.log(`[Socket] Buffered event not handled for replay: ${event}`);
+    }
+  }
+
+  /**
+   * Queue an action to be executed when connection is restored
+   */
+  private queuePendingAction(action: string, params: unknown): void {
+    if (this.pendingActions.length >= this.maxPendingActions) {
+      console.warn('[Socket] Pending actions queue full, dropping oldest');
+      this.pendingActions.shift();
+    }
+    this.pendingActions.push({ action, params });
+    console.log(`[Socket] Action queued: ${action}`, { queueSize: this.pendingActions.length });
+  }
+
+  /**
+   * Execute pending actions after reconnection
+   */
+  private executePendingActions(): void {
+    if (this.pendingActions.length === 0) return;
+
+    console.log(`[Socket] Executing ${this.pendingActions.length} pending actions`);
+
+    const actions = [...this.pendingActions];
+    this.pendingActions = [];
+
+    for (const { action, params } of actions) {
+      try {
+        switch (action) {
+          case 'joinTotemSession': {
+            const { sessionId, customerName, customerId } = params as { sessionId: string; customerName?: string; customerId?: string };
+            this.joinTotemSession(sessionId, customerName, customerId);
+            break;
+          }
+          case 'joinTasSession': {
+            const { sessionId: tasSessionId } = params as { sessionId: string };
+            this.joinTasSession(tasSessionId);
+            break;
+          }
+          // Agregar más casos según necesidad
+          default:
+            console.warn(`[Socket] Unknown pending action: ${action}`);
+        }
+      } catch (err) {
+        console.error(`[Socket] Error executing pending action ${action}:`, err);
+      }
+    }
+  }
+
+  /**
+   * Request current state from server after reconnection
+   * This should be called to sync stores with server state
+   */
+  requestStateSync(): void {
+    if (!this.socket?.connected) return;
+
+    console.log('[Socket] Requesting state sync from server');
+    this.socket.emit('client:request_state_sync');
+  }
+
+  /**
+   * Clear the event buffer manually
+   */
+  clearEventBuffer(): void {
+    this.eventBuffer = [];
+    console.log('[Socket] Event buffer cleared');
+  }
+
+  /**
+   * Get current buffer size (for debugging)
+   */
+  getBufferSize(): number {
+    return this.eventBuffer.length;
   }
 
   ngOnDestroy(): void {
@@ -920,10 +1391,15 @@ export class SocketService implements OnDestroy {
   }
 
   resetConnection(): void {
+    // Notificar a todos los holders que la conexión se va a resetear
+    console.warn('[Socket] Connection reset requested');
+    
+    // Forzar desconexión independiente del refCount
     this.doDisconnect();
+    
+    // Solo resetear flags, NO el refCount
     this.hasReachedMaxReconnects = false;
-    this.connectionRefCount = 0;
-    this.acquireConnection();
+    // Los componentes deben manejar la reconexión
   }
 
   hasConnectionFailed(): boolean {

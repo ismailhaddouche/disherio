@@ -4,6 +4,12 @@ import { withTransaction, withTransactionRetry } from '../utils/transactions';
 import * as TaxUtils from '../utils/tax';
 import { emitSessionFullyPaid, emitTicketPaid } from '../sockets/pos.handler';
 import {
+  calculateItemPrice,
+  calculateTips,
+  buildSharedTickets,
+  buildByUserTickets,
+} from '../utils/calculation.utils';
+import {
   PaymentRepository,
   ItemOrderRepository,
   TotemSessionRepository,
@@ -17,84 +23,8 @@ const totemSessionRepo = new TotemSessionRepository();
 const totemRepo = new TotemRepository();
 const restaurantRepo = new RestaurantRepository();
 
-interface ItemPriceBreakdown {
-  basePrice: number;
-  variantPrice: number;
-  extrasTotal: number;
-  total: number;
-}
-
-function calculateItemPrice(item: {
-  item_base_price: number;
-  item_disher_variant?: { price?: number } | null;
-  item_disher_extras?: Array<{ price: number }>;
-}): ItemPriceBreakdown {
-  const variantPrice = item.item_disher_variant?.price ?? 0;
-  const extrasTotal = item.item_disher_extras?.reduce((sum, e) => sum + e.price, 0) ?? 0;
-  
-  return {
-    basePrice: item.item_base_price,
-    variantPrice,
-    extrasTotal,
-    total: item.item_base_price + variantPrice + extrasTotal,
-  };
-}
-
-function calculateCustomerTotals(items: Array<{
-  customer_id?: { toString(): string } | null;
-  item_base_price: number;
-  item_disher_variant?: { price?: number } | null;
-  item_disher_extras?: Array<{ price: number }>;
-}>): Record<string, number> {
-  const totals: Record<string, number> = {};
-
-  for (const item of items) {
-    const customerId = item.customer_id?.toString() ?? 'unknown';
-    const prices = calculateItemPrice(item);
-    
-    totals[customerId] = (totals[customerId] ?? 0) + prices.total;
-  }
-
-  return totals;
-}
-
-function buildSharedTickets(total: number, parts: number) {
-  return TaxUtils.splitAmount(total, parts).map((amount, index) => ({
-    ticket_part: index + 1,
-    ticket_total_parts: parts,
-    ticket_amount: amount,
-    paid: false,
-  }));
-}
-
-async function buildByUserTickets(sessionId: string) {
-  const items = await itemOrderRepo.findBySessionId(sessionId);
-  const customerTotals = calculateCustomerTotals(items);
-
-  return Object.entries(customerTotals).map(([customerId, amount], index) => ({
-    ticket_part: index + 1,
-    ticket_total_parts: Object.keys(customerTotals).length,
-    ticket_amount: parseFloat(amount.toFixed(2)),
-    ticket_customer_name: `Customer ${customerId.slice(-4)}`,
-    paid: false,
-  }));
-}
-
-function calculateTips(
-  totalWithTax: number,
-  customTip: number | undefined,
-  restaurant: { tips_state?: boolean; tips_type?: string; tips_rate?: number }
-): number {
-  if (customTip !== undefined && customTip >= 0) {
-    return parseFloat(customTip.toFixed(2));
-  }
-  
-  if (restaurant.tips_state && restaurant.tips_type === 'MANDATORY' && restaurant.tips_rate) {
-    return parseFloat((totalWithTax * (restaurant.tips_rate / 100)).toFixed(2));
-  }
-  
-  return 0;
-}
+// Las funciones calculateItemPrice, calculateCustomerTotals, calculateTips,
+// buildSharedTickets y buildByUserTickets se importan desde '../utils/calculation.utils'
 
 /**
  * Calculate session total including subtotal, tax, tips and total

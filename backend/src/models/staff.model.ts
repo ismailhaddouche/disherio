@@ -15,6 +15,9 @@ const RoleSchema = new Schema<IRole>(
   { timestamps: true }
 );
 
+// Index for restaurant role lookups
+RoleSchema.index({ restaurant_id: 1 });
+
 export const Role = model<IRole>('Role', RoleSchema);
 
 export interface IStaff extends Document {

@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, inject, signal, computed } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, signal, computed, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Subject } from 'rxjs';
@@ -18,6 +18,7 @@ import type { TotemSession, ItemOrder, Customer, Dish, LocalizedField, PaymentTi
   selector: 'app-pos',
   standalone: true,
   imports: [CommonModule, FormsModule, CurrencyFormatPipe, CaslCanDirective, TranslatePipe, LocalizePipe],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="h-screen flex bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-white overflow-hidden">
 
@@ -745,6 +746,7 @@ export class PosComponent implements OnInit, OnDestroy {
   isProcessingPayment = signal(false);
   paymentTickets = signal<PaymentTicket[]>([]);
   showPaymentSummary = signal(false);
+  private paymentTimeout: ReturnType<typeof setTimeout> | null = null;
 
   // Cart (from store, for manual POS items)
   cartItems = cartStore.items;
@@ -792,6 +794,9 @@ export class PosComponent implements OnInit, OnDestroy {
     this.destroy$.next();
     this.destroy$.complete();
     this.socketService.releaseConnection();
+    if (this.paymentTimeout) {
+      clearTimeout(this.paymentTimeout);
+    }
   }
 
   private checkConnection() {
@@ -884,7 +889,7 @@ export class PosComponent implements OnInit, OnDestroy {
         error: (err) => console.error('[POS] Error loading customers:', err),
       });
 
-    this.socketService.joinSession(session._id!);
+    this.socketService.joinSession(session._id!, 'POS');
   }
 
   startSession(totemId: string) {
@@ -1230,7 +1235,7 @@ export class PosComponent implements OnInit, OnDestroy {
       ...paymentData,
     });
 
-    setTimeout(() => {
+    this.paymentTimeout = setTimeout(() => {
       this.isProcessingPayment.set(false);
       this.notify.success(this.i18n.translate('pos.payment.success'));
       this.closePaymentModal();
@@ -1239,6 +1244,7 @@ export class PosComponent implements OnInit, OnDestroy {
       this.customers.set([]);
       this.selectedSession.set(null);
       this.sessions.update(sessions => sessions.filter(s => s._id !== session._id));
+      this.paymentTimeout = null;
     }, 1500);
   }
 

@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { TranslatePipe } from '../../shared/pipes/translate.pipe';
@@ -7,6 +7,7 @@ import { TranslatePipe } from '../../shared/pipes/translate.pipe';
   selector: 'app-admin',
   standalone: true,
   imports: [CommonModule, RouterModule, TranslatePipe],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="h-screen flex bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-white">
       <!-- Sidebar -->

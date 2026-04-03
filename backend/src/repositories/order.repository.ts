@@ -742,6 +742,50 @@ export class ItemOrderRepository extends BaseRepository<IItemOrder> {
   }
 
   /**
+   * Batch insert multiple items in a single operation.
+   * More efficient than creating items one by one in a loop.
+   */
+  async addItemsBatch(
+    items: Array<{
+      order_id: string;
+      session_id: string;
+      item_dish_id: string;
+      customer_id?: string;
+      customer_name?: string;
+      item_disher_type: 'KITCHEN' | 'SERVICE';
+      item_name_snapshot: { lang: string; value: string }[];
+      item_base_price: number;
+      item_disher_variant?: { variant_id: string; name: { lang: string; value: string }[]; price: number } | null;
+      item_disher_extras: { extra_id: string; name: { lang: string; value: string }[]; price: number }[];
+    }>,
+    session?: ClientSession
+  ): Promise<IItemOrder[]> {
+    if (items.length === 0) return [];
+
+    // Validate all ObjectIds before insert
+    for (const item of items) {
+      validateObjectId(item.order_id, 'order_id');
+      validateObjectId(item.session_id, 'session_id');
+      validateObjectId(item.item_dish_id, 'item_dish_id');
+      validateObjectIdOptional(item.customer_id, 'customer_id');
+    }
+
+    const docs = items.map(item => ({
+      ...item,
+      order_id: new Types.ObjectId(item.order_id),
+      session_id: new Types.ObjectId(item.session_id),
+      item_dish_id: new Types.ObjectId(item.item_dish_id),
+      customer_id: item.customer_id ? new Types.ObjectId(item.customer_id) : undefined,
+      item_state: 'ORDERED' as const,
+    }));
+
+    return this.model.insertMany(docs, {
+      session,
+      ordered: false, // Continue if one fails
+    });
+  }
+
+  /**
    * Bulk update item states with optimized query.
    */
   async bulkUpdateState(

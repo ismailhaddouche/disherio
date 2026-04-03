@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, signal, computed, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, signal, computed, inject, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Subject } from 'rxjs';
@@ -18,6 +18,7 @@ import { NotificationService } from '../../core/services/notification.service';
   selector: 'app-tas',
   standalone: true,
   imports: [CommonModule, FormsModule, LocalizePipe, CurrencyFormatPipe, TranslatePipe],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="h-screen flex bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-white overflow-hidden">
       <!-- LEFT PANEL: Sessions & Totems -->
@@ -1050,7 +1051,7 @@ export class TasComponent implements OnInit, OnDestroy {
       });
 
     // Join socket rooms
-    this.socketService.joinSession(session._id!);
+    this.socketService.joinSession(session._id!, 'TAS');
     this.socketService.joinTasSession(session._id!);
   }
 

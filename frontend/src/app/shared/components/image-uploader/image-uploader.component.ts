@@ -1,4 +1,4 @@
-import { Component, input, output, inject, signal, effect } from '@angular/core';
+import { Component, input, output, inject, signal, effect, ChangeDetectionStrategy } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
 import { environment } from '../../../../environments/environment';
@@ -10,6 +10,7 @@ import { I18nService } from '../../../core/services/i18n.service';
   selector: 'app-image-uploader',
   standalone: true,
   imports: [CommonModule, TranslatePipe],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="flex flex-col gap-2">
       <div 

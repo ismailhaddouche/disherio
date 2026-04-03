@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router, ActivatedRoute } from '@angular/router';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
@@ -11,6 +11,7 @@ import { NotificationService } from '../../../core/services/notification.service
   selector: 'app-totem-form',
   standalone: true,
   imports: [CommonModule, RouterModule, ReactiveFormsModule, TranslatePipe],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="admin-container max-w-3xl">
       <header class="admin-header">

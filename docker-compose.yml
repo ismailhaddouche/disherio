@@ -177,8 +177,10 @@ services:
       frontend:
         condition: service_healthy
     ports:
-      - "${PORT:-80}:${PORT:-80}"
+      - "${HTTP_PORT:-80}:80"
       - "${HTTPS_PORT:-443}:443"
+    expose:
+      - "8080"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - disherio_uploads:/srv/uploads:ro
@@ -202,7 +204,7 @@ services:
         max-size: "10m"
         max-file: "3"
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:80 || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080 || wget -qO- http://127.0.0.1:80 || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 6

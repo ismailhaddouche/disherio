@@ -5,6 +5,16 @@
 
 import { LocalizedField } from './localized-string.type';
 
+// ============================================
+// Enums y Tipos de Estado
+// ============================================
+
+export type ItemState = 'ORDERED' | 'ON_PREPARE' | 'SERVED' | 'CANCELED';
+export type ItemDishType = 'KITCHEN' | 'SERVICE';
+export type TotemState = 'STARTED' | 'COMPLETE' | 'PAID';
+export type DishStatus = 'ACTIVATED' | 'DESACTIVATED';
+export type PaymentType = 'ALL' | 'BY_USER' | 'SHARED';
+
 // Localized entry (lang + value pair)
 export type { LocalizedField };
 
@@ -55,8 +65,8 @@ export interface Dish {
   disher_name: LocalizedField;
   disher_description?: LocalizedField;
   disher_price: number;
-  disher_type: 'KITCHEN' | 'SERVICE';
-  disher_status: 'ACTIVATED' | 'DESACTIVATED';
+  disher_type: ItemDishType;
+  disher_status: DishStatus;
   disher_url_image?: string;
   disher_alergens: string[];
   disher_variant: boolean;
@@ -79,7 +89,7 @@ export interface TotemSession {
   _id?: string;
   totem_id: string;
   session_date_start: string;
-  totem_state: 'STARTED' | 'COMPLETE' | 'PAID';
+  totem_state: TotemState;
   totem?: Totem;
 }
 
@@ -121,8 +131,8 @@ export interface ItemOrder {
   item_dish_id: string;
   customer_id?: string;
   customer_name?: string;
-  item_state: 'ORDERED' | 'ON_PREPARE' | 'SERVED' | 'CANCELED';
-  item_disher_type: 'KITCHEN' | 'SERVICE';
+  item_state: ItemState;
+  item_disher_type: ItemDishType;
   item_name_snapshot: LocalizedField;
   item_base_price: number;
   item_disher_variant?: ItemOrderVariant | null;
@@ -144,7 +154,7 @@ export interface PaymentTicket {
 export interface Payment {
   _id?: string;
   session_id: string;
-  payment_type: 'ALL' | 'BY_USER' | 'SHARED';
+  payment_type: PaymentType;
   payment_total: number;
   payment_date: string;
   tickets: PaymentTicket[];

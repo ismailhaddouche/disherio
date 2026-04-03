@@ -39,11 +39,8 @@ OrderSchema.index({ staff_id: 1, order_date: -1 });
 // Compound index for date range queries
 OrderSchema.index({ order_date: -1 });
 
-// Index for aggregation lookups
-OrderSchema.index({ _id: 1, session_id: 1 });
-
-// Index for restaurant-wide queries via session
-OrderSchema.index({ session_id: 1, _id: 1 });
+// Note: Removed redundant indexes on { _id: 1, session_id: 1 } and { session_id: 1, _id: 1 }
+// _id is already the primary key and MongoDB automatically indexes it.
 
 export const Order = model<IOrder>('Order', OrderSchema);
 
@@ -64,6 +61,7 @@ export interface IItemOrder extends Document {
   item_base_price: number;
   item_disher_variant?: { variant_id: string; name: ILocalizedSnapshot[]; price: number } | null;
   item_disher_extras: { extra_id: string; name: ILocalizedSnapshot[]; price: number }[];
+  version: number;
 }
 
 const ItemOrderSchema = new Schema<IItemOrder>(
@@ -94,8 +92,12 @@ const ItemOrderSchema = new Schema<IItemOrder>(
         price: Number,
       },
     ],
+    version: { type: Number, default: 0 },
   },
-  { timestamps: true }
+  { 
+    timestamps: true,
+    optimisticConcurrency: true 
+  }
 );
 
 // Compound index for kitchen queries
@@ -103,9 +105,6 @@ ItemOrderSchema.index({ session_id: 1, item_disher_type: 1, item_state: 1 });
 
 // Index for order lookups with items
 ItemOrderSchema.index({ order_id: 1, item_state: 1 });
-
-// Index for dish sales aggregation
-ItemOrderSchema.index({ item_dish_id: 1, item_state: 1, createdAt: -1 });
 
 // Index for customer item queries
 ItemOrderSchema.index({ customer_id: 1, createdAt: -1 });
@@ -116,8 +115,11 @@ ItemOrderSchema.index({ item_disher_type: 1, item_state: 1, createdAt: 1 });
 // Index for active items by session
 ItemOrderSchema.index({ session_id: 1, item_state: 1, createdAt: 1 });
 
-// Index for revenue calculations
-ItemOrderSchema.index({ item_dish_id: 1, createdAt: -1, item_state: 1 });
+// Index for dish sales aggregation and revenue calculations
+ItemOrderSchema.index({ item_dish_id: 1, item_state: 1, createdAt: -1 });
+
+// Compound index for optimistic locking
+ItemOrderSchema.index({ _id: 1, version: 1 });
 
 export const ItemOrder = model<IItemOrder>('ItemOrder', ItemOrderSchema);
 

@@ -1,20 +1,8 @@
 import { signal, computed, Signal } from '@angular/core';
-import type { LocalizedField } from '../types';
+import type { ItemOrder, ItemState } from '@disherio/shared';
 
-export type ItemState = 'ORDERED' | 'ON_PREPARE' | 'SERVED' | 'CANCELED';
-
-export interface KdsItem {
-  _id: string;
-  item_name_snapshot: LocalizedField;
-  item_state: ItemState;
-  item_base_price: number;
-  createdAt: string;
-  order_id: string;
-  session_id: string;
-  customer_name?: string;
-  totem_name?: string;
-  item_disher_variant?: { variant_id: string; name: LocalizedField; price: number } | null;
-  item_disher_extras?: { extra_id: string; name: LocalizedField; price: number }[];
+export interface KdsItem extends ItemOrder {
+  totem_name?: string; // Campo adicional del frontend para KDS
 }
 
 export interface KdsStore {

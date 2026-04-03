@@ -8,6 +8,7 @@ import { notifyCustomerFromWaiter, closeSessionForCustomers } from './totem.hand
 import { notifyKDSNewItem, notifyKDSItemCanceled } from './kds.handler';
 import { trackSocketConnection, cleanupSocketConnection, trackSocketJoinRoom, trackSocketLeaveRoom, updateSocketActivity } from './middleware/connection-tracker';
 import { rateLimitMiddleware, cleanupSocketRateLimits } from './middleware/rate-limiter';
+import { validateSessionAccess } from './middleware/session-validator';
 
 /**
  * TAS (Table Assistance Service) Socket Handler
@@ -19,6 +20,59 @@ import { rateLimitMiddleware, cleanupSocketRateLimits } from './middleware/rate-
 
 // Track active TAS subscriptions per session
 const tasSessionSubscriptions = new Map<string, Set<string>>(); // sessionId -> Set of socketIds
+
+// Track socket subscriptions for quick cleanup on disconnect
+const socketSubscriptions = new Map<string, Set<string>>(); // socketId -> Set of sessionIds
+
+// Track last activity for TTL cleanup
+const tasLastActivity = new Map<string, number>(); // socketId -> timestamp
+
+// Configuration for cleanup
+const TAS_TIMEOUT_MS = 12 * 60 * 60 * 1000; // 12 hours
+const CLEANUP_INTERVAL_MS = 60 * 60 * 1000; // Run cleanup every hour
+
+// Cleanup stale TAS entries
+function cleanupStaleTASEntries(): void {
+  const now = Date.now();
+  let cleanedSockets = 0;
+  let cleanedSessions = 0;
+
+  // Clean up stale socket subscriptions
+  for (const [socketId, lastActivity] of tasLastActivity.entries()) {
+    if (now - lastActivity > TAS_TIMEOUT_MS) {
+      // Remove from all session subscriptions
+      const sessions = socketSubscriptions.get(socketId);
+      if (sessions) {
+        sessions.forEach(sessionId => {
+          const subs = tasSessionSubscriptions.get(sessionId);
+          if (subs) {
+            subs.delete(socketId);
+            if (subs.size === 0) {
+              tasSessionSubscriptions.delete(sessionId);
+              cleanedSessions++;
+            }
+          }
+        });
+        socketSubscriptions.delete(socketId);
+      }
+      tasLastActivity.delete(socketId);
+      cleanedSockets++;
+    }
+  }
+
+  if (cleanedSockets > 0 || cleanedSessions > 0) {
+    logger.info(
+      { cleanedSockets, cleanedSessions },
+      'Cleaned up stale TAS tracking entries'
+    );
+  }
+}
+
+// Start periodic cleanup
+const cleanupInterval = setInterval(cleanupStaleTASEntries, CLEANUP_INTERVAL_MS);
+
+// Ensure cleanup interval is cleared on process exit (for tests)
+process.once('exit', () => clearInterval(cleanupInterval));
 
 export function registerTasHandlers(io: Server, socket: AuthenticatedSocket): void {
   const user = socket.user;
@@ -34,6 +88,10 @@ export function registerTasHandlers(io: Server, socket: AuthenticatedSocket): vo
   // Track this connection
   trackSocketConnection(socket, 'TAS', { userId: staffId });
 
+  // Initialize socket subscription tracking
+  socketSubscriptions.set(socket.id, new Set());
+  tasLastActivity.set(socket.id, Date.now());
+
   logger.info({ socketId: socket.id, staffId }, 'TAS client connected');
 
   // ==================== SESSION MANAGEMENT ====================
@@ -42,9 +100,18 @@ export function registerTasHandlers(io: Server, socket: AuthenticatedSocket): vo
    * Join TAS session room and subscribe to all events for this session
    * Payload: { sessionId: string }
    */
-  socket.on('tas:join', rateLimitMiddleware(socket, 'tas:join', (sessionId: string) => {
+  socket.on('tas:join', rateLimitMiddleware(socket, 'tas:join', async (sessionId: string) => {
     if (!sessionId || typeof sessionId !== 'string') {
       socket.emit('tas:error', { message: 'INVALID_SESSION_ID' });
+      return;
+    }
+
+    // Validar acceso a la sesión
+    const validation = await validateSessionAccess(socket, sessionId);
+    if (!validation.allowed) {
+      socket.emit('tas:error', { 
+        message: validation.reason || 'UNAUTHORIZED' 
+      });
       return;
     }
 
@@ -56,6 +123,15 @@ export function registerTasHandlers(io: Server, socket: AuthenticatedSocket): vo
       tasSessionSubscriptions.set(sessionId, new Set());
     }
     tasSessionSubscriptions.get(sessionId)!.add(socket.id);
+    
+    // Track socket's subscriptions for cleanup
+    const socketSubs = socketSubscriptions.get(socket.id);
+    if (socketSubs) {
+      socketSubs.add(sessionId);
+    }
+    
+    // Update activity
+    tasLastActivity.set(socket.id, Date.now());
     
     // Track room join in connection tracker
     trackSocketJoinRoom(socket.id, roomName);
@@ -88,6 +164,15 @@ export function registerTasHandlers(io: Server, socket: AuthenticatedSocket): vo
         tasSessionSubscriptions.delete(sessionId);
       }
     }
+    
+    // Remove from socket's subscription tracking
+    const socketSubs = socketSubscriptions.get(socket.id);
+    if (socketSubs) {
+      socketSubs.delete(sessionId);
+    }
+    
+    // Update activity
+    tasLastActivity.set(socket.id, Date.now());
     
     // Track room leave in connection tracker
     trackSocketLeaveRoom(socket.id, roomName);
@@ -129,6 +214,9 @@ export function registerTasHandlers(io: Server, socket: AuthenticatedSocket): vo
         socket.emit('tas:error', { message: 'INVALID_DATA', details: 'Missing required fields' });
         return;
       }
+
+      // Update activity
+      tasLastActivity.set(socket.id, Date.now());
 
       // Create the item (this would typically be done via the order service)
       // For now, we assume the item is created and we broadcast it
@@ -202,6 +290,9 @@ export function registerTasHandlers(io: Server, socket: AuthenticatedSocket): vo
         return;
       }
 
+      // Update activity
+      tasLastActivity.set(socket.id, Date.now());
+
       // Find and update the item atomically
       const item = await ItemOrder.findOneAndUpdate(
         { 
@@ -267,6 +358,9 @@ export function registerTasHandlers(io: Server, socket: AuthenticatedSocket): vo
         socket.emit('tas:error', { message: 'INVALID_ITEM_ID' });
         return;
       }
+
+      // Update activity
+      tasLastActivity.set(socket.id, Date.now());
 
       const item = await ItemOrder.findOneAndUpdate(
         { _id: itemId, item_state: { $in: ['ORDERED', 'ON_PREPARE'] } },
@@ -360,6 +454,9 @@ export function registerTasHandlers(io: Server, socket: AuthenticatedSocket): vo
         return;
       }
 
+      // Update activity
+      tasLastActivity.set(socket.id, Date.now());
+
       const billRequest = {
         sessionId,
         requestedBy,
@@ -417,6 +514,9 @@ export function registerTasHandlers(io: Server, socket: AuthenticatedSocket): vo
         return;
       }
 
+      // Update activity
+      tasLastActivity.set(socket.id, Date.now());
+
       const paymentInfo = {
         sessionId,
         paidBy: staffId,
@@ -463,6 +563,9 @@ export function registerTasHandlers(io: Server, socket: AuthenticatedSocket): vo
     try {
       const { sessionId, acknowledged, message } = data;
 
+      // Update activity
+      tasLastActivity.set(socket.id, Date.now());
+
       // Acknowledge the call
       if (acknowledged) {
         emitToCustomers(sessionId, 'waiter:acknowledged', {
@@ -498,6 +601,9 @@ export function registerTasHandlers(io: Server, socket: AuthenticatedSocket): vo
         return;
       }
 
+      // Update activity
+      tasLastActivity.set(socket.id, Date.now());
+
       notifyCustomerFromWaiter(sessionId, message, user.name, type || 'info');
 
       socket.emit('tas:notify_confirm', { success: true, sessionId });
@@ -512,16 +618,24 @@ export function registerTasHandlers(io: Server, socket: AuthenticatedSocket): vo
 
   socket.on('disconnect', () => {
     try {
-      // Clean up subscriptions
-      for (const [sessionId, socketIds] of tasSessionSubscriptions.entries()) {
-        if (socketIds.has(socket.id)) {
-          socketIds.delete(socket.id);
-          if (socketIds.size === 0) {
-            tasSessionSubscriptions.delete(sessionId);
+      // Clean up subscriptions using the socket subscription tracking
+      const sessions = socketSubscriptions.get(socket.id);
+      if (sessions) {
+        sessions.forEach(sessionId => {
+          const socketIds = tasSessionSubscriptions.get(sessionId);
+          if (socketIds) {
+            socketIds.delete(socket.id);
+            if (socketIds.size === 0) {
+              tasSessionSubscriptions.delete(sessionId);
+            }
+            logger.info({ socketId: socket.id, staffId, sessionId }, 'TAS disconnected, removed from session');
           }
-          logger.info({ socketId: socket.id, staffId, sessionId }, 'TAS disconnected, removed from session');
-        }
+        });
+        socketSubscriptions.delete(socket.id);
       }
+
+      // Clean up activity tracking
+      tasLastActivity.delete(socket.id);
 
       // Remove all listeners registered by this socket to prevent memory leaks
       socket.removeAllListeners();

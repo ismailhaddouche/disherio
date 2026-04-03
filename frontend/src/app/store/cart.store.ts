@@ -99,7 +99,7 @@ export const cartStore: CartStore = {
 
   subtotal: computed(() => {
     const grossTotal = _totalGross();
-    const tax = cartStore.taxAmount();
+    const tax = extractTaxFromTotal(grossTotal, _config().taxRate);
     return formatCurrency(grossTotal - tax);
   }),
 
@@ -119,7 +119,16 @@ export const cartStore: CartStore = {
 
   total: computed(() => {
     const grossTotal = _totalGross();
-    const tips = cartStore.tipsAmount();
+    const config = _config();
+    const customTipValue = _customTip();
+    
+    let tips = 0;
+    if (customTipValue > 0) {
+      tips = formatCurrency(customTipValue);
+    } else if (isMandatoryTipEnabled(config)) {
+      tips = calculateMandatoryTip(grossTotal, config.tipsRate);
+    }
+    
     return formatCurrency(grossTotal + tips);
   }),
 

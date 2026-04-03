@@ -81,7 +81,7 @@ async function bootstrap() {
   // Global error handler - must go at the END of the chain
   app.use(errorHandler);
 
-  initSocket(httpServer);
+  await initSocket(httpServer);
 
   httpServer.listen(PORT, () => {
     logger.info(`Server running on port ${PORT}`);

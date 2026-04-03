@@ -4,11 +4,25 @@ import { AuthenticatedSocket } from '../middlewares/socketAuth';
 import { getIO } from '../config/socket';
 import { trackSocketConnection, cleanupSocketConnection, trackSocketJoinRoom, trackSocketLeaveRoom, updateSocketActivity } from './middleware/connection-tracker';
 import { rateLimitMiddleware, cleanupSocketRateLimits } from './middleware/rate-limiter';
+import { validateSessionAccess } from './middleware/session-validator';
 
 export function registerPosHandlers(_io: Server, socket: AuthenticatedSocket): void {
   const user = socket.user;
+  
+  // Verificar autenticación
   if (!user) {
-    logger.warn({ socketId: socket.id }, 'Unauthorized POS connection attempt');
+    logger.warn({ socketId: socket.id }, 'Unauthorized POS connection attempt - no user');
+    socket.disconnect();
+    return;
+  }
+  
+  // Verificar permiso específico de POS
+  if (!user.permissions?.includes('POS')) {
+    logger.warn({ 
+      socketId: socket.id, 
+      userId: user.staffId,
+      permissions: user.permissions 
+    }, 'Unauthorized POS connection attempt - missing POS permission');
     socket.disconnect();
     return;
   }
@@ -16,7 +30,21 @@ export function registerPosHandlers(_io: Server, socket: AuthenticatedSocket): v
   // Track this connection
   trackSocketConnection(socket, 'POS', { userId: user.staffId });
 
-  socket.on('pos:join', rateLimitMiddleware(socket, 'pos:join', (sessionId: string) => {
+  socket.on('pos:join', rateLimitMiddleware(socket, 'pos:join', async (sessionId: string) => {
+    if (!sessionId || typeof sessionId !== 'string') {
+      socket.emit('pos:error', { message: 'INVALID_SESSION_ID' });
+      return;
+    }
+
+    // Validar acceso a la sesión
+    const validation = await validateSessionAccess(socket, sessionId);
+    if (!validation.allowed) {
+      socket.emit('pos:error', { 
+        message: validation.reason || 'UNAUTHORIZED' 
+      });
+      return;
+    }
+
     socket.join(`session:${sessionId}`);
     socket.join(`pos:session:${sessionId}`);
     
@@ -52,7 +80,7 @@ export function registerPosHandlers(_io: Server, socket: AuthenticatedSocket): v
       cleanupSocketConnection(socket.id);
 
       // Clean up rate limit tracking
-      cleanupSocketRateLimits(socket.id);
+      cleanupSocketRateLimits(socket.id).catch(() => {});
 
       logger.info({ socketId: socket.id, userId: user.staffId }, 'POS client disconnected and cleaned up');
     } catch (err) {

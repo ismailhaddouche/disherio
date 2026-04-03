@@ -1,0 +1,20 @@
+# ============================================
+# Docker Compose Override - Modo LOCAL-IP
+# ============================================
+# Red local sin HTTPS
+# ============================================
+
+services:
+  # Caddy escucha en el puerto HTTP configurado
+  caddy:
+    ports:
+      - "${HTTP_PORT:-80}:${HTTP_PORT:-80}"
+    command: caddy run --config /etc/caddy/Caddyfile --adapter caddyfile
+
+  # Backend optimizado para red local
+  backend:
+    environment:
+      - NODE_ENV=production
+      - FRONTEND_URL=http://${LOCAL_IP}:${HTTP_PORT}
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/health"]
