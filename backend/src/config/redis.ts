@@ -12,6 +12,10 @@ function getRedisUrl(): string {
   return process.env.REDIS_URL || 'redis://localhost:6379';
 }
 
+function getRedisPassword(): string | undefined {
+  return process.env.REDIS_PASSWORD;
+}
+
 /**
  * Initialize main Redis client
  */
@@ -24,6 +28,7 @@ export async function initRedis(): Promise<RedisClientType> {
   
   redisClient = createClient({
     url,
+    password: getRedisPassword(),
     socket: {
       reconnectStrategy: (retries) => Math.min(retries * 50, 500),
     },
@@ -68,6 +73,7 @@ export async function initSocketRedisAdapter(): Promise<{ pubClient: RedisClient
   // Create publisher client
   pubClient = createClient({
     url,
+    password: getRedisPassword(),
     socket: {
       reconnectStrategy: (retries) => Math.min(retries * 50, 500),
     },
