@@ -227,18 +227,26 @@ export const createPublicOrder = asyncHandler(async (req: Request, res: Response
     throw createError.badRequest('ORDER_CREATION_FAILED');
   }
 
-  // Emitir eventos de socket para items de cocina
+  // Emitir eventos de socket
+  const { notifyKDSNewItem } = await import('../sockets/kds.handler');
+  const { notifyTASNewOrder } = await import('../sockets/tas.handler');
+  const { notifyPOSNewOrder } = await import('../sockets/pos.handler');
+
+  const sessionIdStr = session._id.toString();
+
   for (const item of createdItems) {
     if (item.item_disher_type === 'KITCHEN') {
-      // Emitir evento para KDS
-      const io = (await import('../config/socket')).getIO();
-      io.to(`session:${session._id}`).emit('kds:new_item', item);
+      notifyKDSNewItem(sessionIdStr, item);
     }
   }
 
-  // Notificar a TAS (camareros) sobre el nuevo pedido
-  const { notifyTASNewOrder } = await import('../sockets/tas.handler');
-  notifyTASNewOrder(session._id.toString(), {
+  notifyTASNewOrder(sessionIdStr, {
+    items: createdItems,
+    orderId: order._id.toString(),
+    addedBy: 'customer',
+  });
+
+  notifyPOSNewOrder(sessionIdStr, {
     items: createdItems,
     orderId: order._id.toString(),
     addedBy: 'customer',

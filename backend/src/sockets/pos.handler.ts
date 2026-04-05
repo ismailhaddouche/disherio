@@ -190,6 +190,22 @@ export function emitSessionFullyPaid(sessionId: string, data: {
 }
 
 /**
+ * Notify POS when a customer places a new order via totem/socket
+ */
+export function notifyPOSNewOrder(sessionId: string, orderData: any): void {
+  try {
+    const io = getIO();
+    io.to(`pos:session:${sessionId}`).emit('pos:new_customer_order', {
+      ...orderData,
+      timestamp: new Date().toISOString(),
+    });
+    logger.debug({ sessionId }, 'Emitted pos:new_customer_order to POS');
+  } catch (err) {
+    logger.error({ err, sessionId }, 'Failed to emit pos:new_customer_order');
+  }
+}
+
+/**
  * Notify about partial payment (ticket paid)
  */
 export function emitTicketPaid(sessionId: string, data: {

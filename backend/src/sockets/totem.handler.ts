@@ -7,6 +7,7 @@ import { AuthenticatedSocket } from '../middlewares/socketAuth';
 import { getIO } from '../config/socket';
 import { notifyTASNewOrder, notifyTASHelpRequest, notifyTASBillRequest } from './tas.handler';
 import { notifyKDSNewItem } from './kds.handler';
+import { notifyPOSNewOrder } from './pos.handler';
 import { TotemSessionRepository } from '../repositories';
 import { trackSocketConnection, cleanupSocketConnection, trackSocketJoinRoom, trackSocketLeaveRoom, updateSocketActivity } from './middleware/connection-tracker';
 import { rateLimitMiddleware, cleanupSocketRateLimits } from './middleware/rate-limiter';
@@ -513,6 +514,25 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
           });
         });
       }
+
+      // Notify POS about new order
+      notifyPOSNewOrder(sessionId, {
+        items: items.map(item => ({
+          item_dish_id: item.dishId,
+          item_name_snapshot: item.dishName,
+          item_base_price: item.price,
+          item_disher_type: item.dishType,
+          item_state: 'ORDERED',
+          session_id: sessionId,
+          customer_id: customerId,
+          customer_name: customerName,
+          quantity: item.quantity,
+        })),
+        addedBy: 'customer',
+        customerName,
+        customerId,
+        placedVia: 'totem',
+      });
 
       // Get customer info for attribution
       const customerInfoData = customerInfo.get(socketId);

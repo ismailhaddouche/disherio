@@ -117,24 +117,26 @@ export function registerTasHandlers(io: Server, socket: AuthenticatedSocket): vo
 
     const roomName = `tas:session:${sessionId}`;
     socket.join(roomName);
-    
+    socket.join(`session:${sessionId}`);
+
     // Track subscription
     if (!tasSessionSubscriptions.has(sessionId)) {
       tasSessionSubscriptions.set(sessionId, new Set());
     }
     tasSessionSubscriptions.get(sessionId)!.add(socket.id);
-    
+
     // Track socket's subscriptions for cleanup
     const socketSubs = socketSubscriptions.get(socket.id);
     if (socketSubs) {
       socketSubs.add(sessionId);
     }
-    
+
     // Update activity
     tasLastActivity.set(socket.id, Date.now());
-    
-    // Track room join in connection tracker
+
+    // Track room joins in connection tracker
     trackSocketJoinRoom(socket.id, roomName);
+    trackSocketJoinRoom(socket.id, `session:${sessionId}`);
     
     // Update activity
     updateSocketActivity(socket.id);
@@ -155,7 +157,8 @@ export function registerTasHandlers(io: Server, socket: AuthenticatedSocket): vo
 
     const roomName = `tas:session:${sessionId}`;
     socket.leave(roomName);
-    
+    socket.leave(`session:${sessionId}`);
+
     // Remove from tracking
     const subs = tasSessionSubscriptions.get(sessionId);
     if (subs) {
@@ -164,18 +167,19 @@ export function registerTasHandlers(io: Server, socket: AuthenticatedSocket): vo
         tasSessionSubscriptions.delete(sessionId);
       }
     }
-    
+
     // Remove from socket's subscription tracking
     const socketSubs = socketSubscriptions.get(socket.id);
     if (socketSubs) {
       socketSubs.delete(sessionId);
     }
-    
+
     // Update activity
     tasLastActivity.set(socket.id, Date.now());
-    
-    // Track room leave in connection tracker
+
+    // Track room leaves in connection tracker
     trackSocketLeaveRoom(socket.id, roomName);
+    trackSocketLeaveRoom(socket.id, `session:${sessionId}`);
     
     // Update activity
     updateSocketActivity(socket.id);
