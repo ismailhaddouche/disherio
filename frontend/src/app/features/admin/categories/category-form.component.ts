@@ -1,4 +1,6 @@
-import { Component, OnInit, inject, signal, ChangeDetectionStrategy } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, signal, ChangeDetectionStrategy } from '@angular/core';
+import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
@@ -68,7 +70,8 @@ import type { Category, LocalizedField } from '../../../types';
     </div>
   `
 })
-export class CategoryFormComponent implements OnInit {
+export class CategoryFormComponent implements OnInit, OnDestroy {
+  private destroy$ = new Subject<void>();
   private http = inject(HttpClient);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
@@ -97,7 +100,15 @@ export class CategoryFormComponent implements OnInit {
   }
 
   loadCategory(id: string) {
-    this.http.get(`${environment.apiUrl}/dishes/categories/${id}`).subscribe(res => this.category.set(res as any));
+    this.http.get(`${environment.apiUrl}/dishes/categories/${id}`)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (res) => this.category.set(res as any),
+        error: (err) => {
+          this.notify.error(err.error?.message || this.i18n.translate('errors.LOADING_ERROR'));
+          this.router.navigate(['/admin/categories']);
+        },
+      });
   }
 
   onImageUploaded(url: string) {
@@ -117,18 +128,23 @@ export class CategoryFormComponent implements OnInit {
       ? this.http.patch(`${environment.apiUrl}/dishes/categories/${this.category()._id}`, this.category())
       : this.http.post(`${environment.apiUrl}/dishes/categories`, this.category());
     
-    obs.subscribe({
+    obs.pipe(takeUntil(this.destroy$)).subscribe({
       next: () => {
         this.notify.success(this.i18n.translate(this.isEdit ? 'category.updated' : 'category.created'));
         this.router.navigate(['/admin/categories']);
       },
       error: (err) => {
         this.notify.error(err.error?.message || this.i18n.translate('errors.SERVER_ERROR'));
-      }
+      },
     });
   }
 
   cancel() {
     this.router.navigate(['/admin/categories']);
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 }

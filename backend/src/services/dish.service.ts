@@ -1,6 +1,7 @@
 import { ErrorCode } from '@disherio/shared';
 import { DishRepository, CategoryRepository } from '../repositories/dish.repository';
 import { IDish, ICategory } from '../models/dish.model';
+import { deleteImage } from './image.service';
 import { cache, CacheKeys, CACHE_TTL, fetchWithCache } from './cache.service';
 import { CreateDishData, UpdateDishData, CreateCategoryData, UpdateCategoryData } from '@disherio/shared';
 
@@ -74,10 +75,14 @@ export async function updateDish(dishId: string, data: UpdateDishData): Promise<
 export async function deleteDish(dishId: string): Promise<IDish | null> {
   const existing = await dishRepo.findById(dishId);
   if (!existing) return null;
-  
+
+  if (existing.disher_url_image) {
+    await deleteImage(existing.disher_url_image);
+  }
+
   const deleted = await dishRepo.delete(dishId);
   await invalidateDishCaches(dishId, existing.restaurant_id.toString());
-  
+
   return deleted;
 }
 
@@ -127,15 +132,19 @@ export async function updateCategory(id: string, data: UpdateCategoryData): Prom
 export async function deleteCategory(id: string): Promise<ICategory | null> {
   const existing = await categoryRepo.findById(id);
   if (!existing) return null;
-  
+
   // Verify no dishes are using this category
   const dishesInCategory = await dishRepo.countByCategory(id);
   if (dishesInCategory > 0) {
     throw new Error(ErrorCode.CATEGORY_HAS_DISHES);
   }
-  
+
+  if (existing.category_image_url) {
+    await deleteImage(existing.category_image_url);
+  }
+
   const deleted = await categoryRepo.deleteCategory(id);
   await invalidateCategoryCaches(id, existing.restaurant_id.toString());
-  
+
   return deleted;
 }
