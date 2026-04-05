@@ -190,18 +190,22 @@ export function emitSessionFullyPaid(sessionId: string, data: {
 }
 
 /**
- * Notify POS when a customer places a new order via totem/socket
+ * Notify POS when a customer places a new order via totem/socket.
+ * Emits kds:new_item per item — the event name the POS frontend listens for.
  */
 export function notifyPOSNewOrder(sessionId: string, orderData: any): void {
   try {
     const io = getIO();
-    io.to(`pos:session:${sessionId}`).emit('pos:new_customer_order', {
-      ...orderData,
-      timestamp: new Date().toISOString(),
+    const items: any[] = Array.isArray(orderData.items) ? orderData.items : [orderData.items];
+    items.forEach((item) => {
+      io.to(`pos:session:${sessionId}`).emit('kds:new_item', {
+        ...item,
+        timestamp: new Date().toISOString(),
+      });
     });
-    logger.debug({ sessionId }, 'Emitted pos:new_customer_order to POS');
+    logger.debug({ sessionId, count: items.length }, 'Emitted new items to POS');
   } catch (err) {
-    logger.error({ err, sessionId }, 'Failed to emit pos:new_customer_order');
+    logger.error({ err, sessionId }, 'Failed to emit new items to POS');
   }
 }
 

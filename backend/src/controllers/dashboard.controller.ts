@@ -23,15 +23,25 @@ export async function getDashboardStats(req: Request, res: Response): Promise<vo
       return;
     }
 
-    // Parse date filters
+    // Parse and validate date filters
     const { from, to } = req.query;
     const dateRange: { from?: Date; to?: Date } = {};
-    
+
     if (from) {
-      dateRange.from = new Date(from as string);
+      const fromDate = new Date(from as string);
+      if (isNaN(fromDate.getTime())) {
+        res.status(400).json({ errorCode: 'INVALID_DATE_RANGE' });
+        return;
+      }
+      dateRange.from = fromDate;
     }
     if (to) {
-      dateRange.to = new Date(to as string);
+      const toDate = new Date(to as string);
+      if (isNaN(toDate.getTime())) {
+        res.status(400).json({ errorCode: 'INVALID_DATE_RANGE' });
+        return;
+      }
+      dateRange.to = toDate;
     }
 
     // Get all active sessions for this restaurant

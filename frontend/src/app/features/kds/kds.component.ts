@@ -232,6 +232,13 @@ export class KdsComponent implements OnInit, OnDestroy {
   ngOnDestroy() {
     this.destroy$.next();
     this.destroy$.complete();
+    this.socketService.off('kds:error');
+    this.socketService.off('kds:item_prepared');
+    this.socketService.off('kds:item_served');
+    this.socketService.off('kds:item_canceled');
+    this.socketService.off('item:state_changed');
+    this.socketService.off('kds:new_item');
+    this.socketService.off('item:deleted');
     this.socketService.releaseConnection();
     kdsStore.releaseReference();
     this.activeTimeouts.forEach(timeout => clearTimeout(timeout));

@@ -793,6 +793,10 @@ export class PosComponent implements OnInit, OnDestroy {
   ngOnDestroy() {
     this.destroy$.next();
     this.destroy$.complete();
+    this.socketService.off('item:state_changed');
+    this.socketService.off('kds:new_item');
+    this.socketService.off('pos:session_closed');
+    this.socketService.off('item:customer_assigned');
     this.socketService.releaseConnection();
     if (this.paymentTimeout) {
       clearTimeout(this.paymentTimeout);
