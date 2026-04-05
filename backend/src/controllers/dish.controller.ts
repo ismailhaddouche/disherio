@@ -3,6 +3,14 @@ import { asyncHandler, createError } from '../utils/async-handler';
 import { getPaginationParams, createPaginatedResponse } from '../utils/pagination';
 import * as DishService from '../services/dish.service';
 
+export const getDish = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  const dish = await DishService.getDishById(String(req.params.id));
+  if (!dish) {
+    throw createError.notFound('DISH_NOT_FOUND');
+  }
+  res.json(dish);
+});
+
 export const listDishes = asyncHandler(async (req: Request, res: Response): Promise<void> => {
   const { page, limit, skip } = getPaginationParams(req);
   const { dishes, total } = await DishService.getDishesByRestaurantPaginated(

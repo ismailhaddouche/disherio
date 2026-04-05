@@ -165,7 +165,7 @@ export class DishFormComponent implements OnInit, OnDestroy {
     category_id: '',
     disher_name: [],
     disher_description: [],
-    disher_price: 0,
+    disher_price: 0.01,  // Changed from 0 to 0.01 (must be > 0)
     disher_type: 'KITCHEN',
     disher_alergens: [],
     variants: [],
@@ -233,7 +233,7 @@ export class DishFormComponent implements OnInit, OnDestroy {
     const newVariant: Partial<Variant> = {
       variant_name: [],
       variant_description: [],
-      variant_price: 0
+      variant_price: 0.01  // Changed from 0 to 0.01 (must be > 0)
     };
     this.dish.update(d => ({
       ...d,
@@ -252,7 +252,7 @@ export class DishFormComponent implements OnInit, OnDestroy {
     const newExtra: Partial<Extra> = {
       extra_name: [],
       extra_description: [],
-      extra_price: 0
+      extra_price: 0.01  // Changed from 0 to 0.01 (must be > 0)
     };
     this.dish.update(d => ({
       ...d,
@@ -284,9 +284,46 @@ export class DishFormComponent implements OnInit, OnDestroy {
       return;
     }
 
+    // Validate dish price is positive
+    if (!this.dish().disher_price || this.dish().disher_price <= 0) {
+      this.notify.error(this.i18n.translate('validation.price_required'));
+      return;
+    }
+
+    // Validate category is selected
+    if (!this.dish().category_id) {
+      this.notify.error(this.i18n.translate('validation.category_required'));
+      return;
+    }
+
+    // Filter out empty variants and validate variant prices
+    const validVariants = (this.dish().variants || []).filter(v => {
+      // Must have at least one name
+      const hasName = v.variant_name?.some(n => n.value?.trim());
+      // Price must be positive
+      const hasValidPrice = v.variant_price && v.variant_price > 0;
+      return hasName && hasValidPrice;
+    });
+
+    // Filter out empty extras and validate extra prices
+    const validExtras = (this.dish().extras || []).filter(e => {
+      // Must have at least one name
+      const hasName = e.extra_name?.some(n => n.value?.trim());
+      // Price must be positive
+      const hasValidPrice = e.extra_price && e.extra_price > 0;
+      return hasName && hasValidPrice;
+    });
+
+    // Prepare dish data for submission
+    const dishData = {
+      ...this.dish(),
+      variants: validVariants,
+      extras: validExtras
+    };
+
     const request$ = this.isEdit 
-      ? this.http.patch(`${environment.apiUrl}/dishes/${this.dish()._id}`, this.dish())
-      : this.http.post(`${environment.apiUrl}/dishes`, this.dish());
+      ? this.http.patch(`${environment.apiUrl}/dishes/${this.dish()._id}`, dishData)
+      : this.http.post(`${environment.apiUrl}/dishes`, dishData);
     
     request$.pipe(takeUntil(this.destroy$))
       .subscribe({

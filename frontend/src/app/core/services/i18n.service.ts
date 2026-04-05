@@ -282,6 +282,8 @@ const TRANSLATIONS: Record<Language, Translations> = {
     'settings.menu_lang_default_set': 'Idioma predeterminado actualizado',
     'settings.menu_lang_auto_created': 'Idioma de carta vinculado creado automáticamente',
     'validation.default_lang_required': 'El nombre en el idioma predeterminado es obligatorio',
+    'validation.price_required': 'El precio debe ser mayor que 0',
+    'validation.category_required': 'Debes seleccionar una categoría',
     'totem.dish_info': 'Información del plato',
     'dish.description': 'Descripción',
 
@@ -717,6 +719,8 @@ const TRANSLATIONS: Record<Language, Translations> = {
     'settings.menu_lang_default_set': 'Default language updated',
     'settings.menu_lang_auto_created': 'Linked menu language auto-created',
     'validation.default_lang_required': 'Name in the default language is required',
+    'validation.price_required': 'Price must be greater than 0',
+    'validation.category_required': 'You must select a category',
     'totem.dish_info': 'Dish information',
     'dish.description': 'Description',
 
@@ -1150,6 +1154,8 @@ const TRANSLATIONS: Record<Language, Translations> = {
     'settings.menu_lang_default_set': 'Langue par défaut mise à jour',
     'settings.menu_lang_auto_created': 'Langue du menu liée créée automatiquement',
     'validation.default_lang_required': 'Le nom dans la langue par défaut est obligatoire',
+    'validation.price_required': 'Le prix doit être supérieur à 0',
+    'validation.category_required': 'Vous devez sélectionner une catégorie',
     'totem.dish_info': 'Informations du plat',
     'dish.description': 'Description',
 
