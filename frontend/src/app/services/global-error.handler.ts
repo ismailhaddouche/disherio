@@ -6,7 +6,7 @@ import { ErrorCode } from '../types/error.types';
  * Manejador global de errores para Angular
  * Captura errores no manejados en la aplicación
  */
-@Injectable()
+@Injectable({ providedIn: 'root' })
 export class GlobalErrorHandler implements ErrorHandler {
   private readonly errorHandler = inject(ErrorHandlerService);
 
