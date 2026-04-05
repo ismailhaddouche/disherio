@@ -18,11 +18,12 @@ const CustomerSchema = new Schema<ICustomer>(
   { timestamps: { createdAt: 'created_at', updatedAt: false } }
 );
 
-// Unique index for customer email (when provided)
-CustomerSchema.index({ customer_email: 1 }, { unique: true, sparse: true });
+// Unique compound index for customer email within a restaurant
+// Allows same email in different restaurants, but unique within one restaurant
+CustomerSchema.index({ restaurant_id: 1, customer_email: 1 }, { unique: true, sparse: true });
 
-// Index for phone lookups
-CustomerSchema.index({ customer_phone: 1 }, { sparse: true });
+// Unique compound index for phone within a restaurant
+CustomerSchema.index({ restaurant_id: 1, customer_phone: 1 }, { unique: true, sparse: true });
 
 // Index for restaurant customer listings
 CustomerSchema.index({ restaurant_id: 1, created_at: -1 });

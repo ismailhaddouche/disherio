@@ -35,6 +35,7 @@ export const ItemOrderSchema = z.object({
   item_base_price: priceValidation,
   item_disher_variant: VariantSnapshotSchema.optional().default(null),
   item_disher_extras: z.array(ExtraSnapshotSchema).default([]),
+  version: z.number().default(0),  // Added for optimistic concurrency
 });
 
 // Alias para compatibilidad con backend
@@ -46,6 +47,7 @@ export const PaymentTicketSchema = z.object({
   ticket_total_parts: z.number().int().min(1),
   ticket_amount: priceValidation,
   ticket_customer_name: z.string().optional(),
+  paid: z.boolean().default(false),  // Added - tracks if ticket is paid
 });
 
 export const PaymentSchema = z.object({
