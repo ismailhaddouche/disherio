@@ -153,7 +153,7 @@ export class TotemSessionRepository extends BaseRepository<ITotemSession> {
   async findByTotemIdsAndState(
     totemIds: string[],
     state: 'STARTED' | 'COMPLETE' | 'PAID'
-  ): Promise<Array<{ _id: Types.ObjectId; totem_id: Types.ObjectId }>> {
+  ): Promise<Array<{ _id: Types.ObjectId; totem_id: Types.ObjectId; totem_state: string }>> {
     const validIds = totemIds.filter((id) => Types.ObjectId.isValid(id));
     if (validIds.length === 0) return [];
 
@@ -162,9 +162,31 @@ export class TotemSessionRepository extends BaseRepository<ITotemSession> {
         totem_id: { $in: validIds.map((id) => new Types.ObjectId(id)) },
         totem_state: state,
       })
-      .select('_id totem_id')
+      .select('_id totem_id totem_state')
       .lean()
-      .exec() as Promise<Array<{ _id: Types.ObjectId; totem_id: Types.ObjectId }>>;
+      .exec() as Promise<Array<{ _id: Types.ObjectId; totem_id: Types.ObjectId; totem_state: string }>>;
+  }
+
+  async findByTotemIds(
+    totemIds: string[],
+    dateRange?: { from?: Date; to?: Date }
+  ): Promise<Array<{ _id: Types.ObjectId; totem_state: string }>> {
+    const validIds = totemIds.filter((id) => Types.ObjectId.isValid(id));
+    if (validIds.length === 0) return [];
+
+    const match: Record<string, unknown> = {
+      totem_id: { $in: validIds.map((id) => new Types.ObjectId(id)) },
+    };
+    if (dateRange?.from) match['session_date_start'] = { $gte: dateRange.from };
+    if (dateRange?.to) {
+      match['session_date_start'] = { ...(match['session_date_start'] as object || {}), $lte: dateRange.to };
+    }
+
+    return this.model
+      .find(match)
+      .select('_id totem_state')
+      .lean()
+      .exec() as Promise<Array<{ _id: Types.ObjectId; totem_state: string }>>;
   }
 }
 

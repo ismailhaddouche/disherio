@@ -49,8 +49,8 @@ function isSecureRequest(req: Request): boolean {
 }
 
 export const loginUsername = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-  const { username, password } = req.body;
-  const { token, user } = await loginWithUsername(username, password);
+  const { username, password, restaurant_id } = req.body;
+  const { token, user } = await loginWithUsername(username, password, restaurant_id);
   setAuthCookie(res, token, isSecureRequest(req));
   res.json({ user });
 });

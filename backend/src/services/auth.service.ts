@@ -71,8 +71,16 @@ async function buildAuthResult(
   return { token, user: { ...payload, preferences } };
 }
 
-export async function loginWithUsername(username: string, password: string): Promise<AuthResult> {
-  const staff = await userRepo.findByUsername(username.toLowerCase());
+export async function loginWithUsername(
+  username: string,
+  password: string,
+  restaurantId?: string
+): Promise<AuthResult> {
+  // Prefer scoped lookup when restaurant_id is provided (multi-tenant safety)
+  const staff = restaurantId
+    ? await userRepo.findByUsernameAndRestaurant(username.toLowerCase(), restaurantId)
+    : await userRepo.findByUsername(username.toLowerCase());
+
   if (!staff) {
     throw new Error(ErrorCode.INVALID_CREDENTIALS);
   }

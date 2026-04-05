@@ -44,11 +44,16 @@ export async function getDashboardStats(req: Request, res: Response): Promise<vo
       dateRange.to = toDate;
     }
 
-    // Get all active sessions for this restaurant
+    // Get sessions for this restaurant (all states for historical queries)
     const totems = await totemRepo.findByRestaurantIdSelectId(restaurantId);
     const totemIds = totems.map(t => t._id.toString());
-    const sessions = await totemSessionRepo.findByTotemIdsAndState(totemIds, 'STARTED');
-    const sessionIds = sessions.map(s => s._id.toString());
+    const allSessions = await totemSessionRepo.findByTotemIds(totemIds, dateRange);
+    const allSessionIds = allSessions.map(s => s._id.toString());
+
+    // Active sessions only (for realtime payment stats)
+    const sessionIds = allSessions
+      .filter(s => s.totem_state === 'STARTED')
+      .map(s => s._id.toString());
 
     // Get all dishes for this restaurant
     const dishes = await dishRepo.findByRestaurantId(restaurantId);
@@ -81,10 +86,11 @@ export async function getDashboardStats(req: Request, res: Response): Promise<vo
       current.quantity += sale.quantity;
     }
 
-    // Get category names
+    // Get category names (scoped to this restaurant for defense-in-depth)
     const categoryIds = Array.from(categoryMap.keys()).filter(id => id !== 'uncategorized');
-    const categories = categoryIds.length > 0 
+    const categories = categoryIds.length > 0
       ? await Category.find({
+          restaurant_id: new Types.ObjectId(restaurantId),
           _id: { $in: categoryIds.map(id => new Types.ObjectId(id)) }
         }).select('category_name').lean().exec()
       : [];
@@ -102,22 +108,18 @@ export async function getDashboardStats(req: Request, res: Response): Promise<vo
     // Get payment statistics using optimized aggregation
     const paymentStats = await paymentRepo.getPaymentStats(sessionIds, dateRange);
 
-    // Get order status counts using aggregation
-    const statusAggregation = await itemOrderRepo.getModel().aggregate([
-      {
-        $match: {
-          item_dish_id: { $in: dishIds.map(id => new Types.ObjectId(id)) },
-          ...(dateRange.from && { createdAt: { $gte: dateRange.from } }),
-          ...(dateRange.to && { createdAt: { $lte: dateRange.to } }),
-        },
-      },
-      {
-        $group: {
-          _id: '$item_state',
-          count: { $sum: 1 },
-        },
-      },
-    ]);
+    // Get order status counts using aggregation (scoped to this restaurant's sessions)
+    const statusMatchFilter: Record<string, unknown> = {
+      session_id: { $in: allSessionIds.map(id => new Types.ObjectId(id)) },
+      ...(dateRange.from && { createdAt: { $gte: dateRange.from } }),
+      ...(dateRange.to && { createdAt: { $lte: dateRange.to } }),
+    };
+    const statusAggregation = allSessionIds.length > 0
+      ? await itemOrderRepo.getModel().aggregate([
+          { $match: statusMatchFilter },
+          { $group: { _id: '$item_state', count: { $sum: 1 } } },
+        ])
+      : [];
 
     const statusCounts = {
       ordered: 0,
