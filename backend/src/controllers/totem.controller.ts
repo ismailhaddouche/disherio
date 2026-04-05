@@ -222,7 +222,7 @@ export const createPublicOrder = asyncHandler(async (req: Request, res: Response
         message: err.message,
       }));
       console.error('[createPublicOrder] Validation errors:', validationErrors);
-      throw createError.badRequest('VALIDATION_ERROR', { details: validationErrors });
+      throw createError.badRequest('VALIDATION_ERROR');
     }
     throw createError.badRequest('ORDER_CREATION_FAILED');
   }
