@@ -76,6 +76,10 @@ export class TasService {
     return this.http.post<ItemOrder>(`${this.apiUrl}/orders/items`, data);
   }
 
+  createPayment(data: { session_id: string; payment_type: 'ALL' | 'BY_USER' | 'SHARED'; parts?: number; tips?: number }): Observable<unknown> {
+    return this.http.post(`${this.apiUrl}/orders/payments`, data);
+  }
+
   deleteItem(itemId: string): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/orders/items/${itemId}`);
   }

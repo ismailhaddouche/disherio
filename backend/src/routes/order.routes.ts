@@ -8,9 +8,8 @@ const router = Router();
 
 router.use(authMiddleware);
 
-// BUG-05: KDS needs to load all active kitchen items on page mount, not just listen to WS
-router.get('/kitchen', requirePermission('read', 'KDS'), OrderController.getKitchenItems);
-router.get('/service-items', requirePermission('read', 'ItemOrder'), OrderController.getServiceItems);
+router.get('/kitchen', strictLimiter, requirePermission('read', 'KDS'), OrderController.getKitchenItems);
+router.get('/service-items', strictLimiter, requirePermission('read', 'ItemOrder'), OrderController.getServiceItems);
 router.get('/session/:sessionId', requirePermission('read', 'Order'), OrderController.getSessionItems);
 router.post('/', strictLimiter, requirePermission('create', 'Order'), OrderController.createOrder);
 router.post('/items', strictLimiter, requirePermission('create', 'ItemOrder'), OrderController.addItem);

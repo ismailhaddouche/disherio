@@ -746,7 +746,6 @@ export class PosComponent implements OnInit, OnDestroy {
   isProcessingPayment = signal(false);
   paymentTickets = signal<PaymentTicket[]>([]);
   showPaymentSummary = signal(false);
-  private paymentTimeout: ReturnType<typeof setTimeout> | null = null;
 
   // Cart (from store, for manual POS items)
   cartItems = cartStore.items;
@@ -798,9 +797,6 @@ export class PosComponent implements OnInit, OnDestroy {
     this.socketService.off('pos:session_closed');
     this.socketService.off('item:customer_assigned');
     this.socketService.releaseConnection();
-    if (this.paymentTimeout) {
-      clearTimeout(this.paymentTimeout);
-    }
   }
 
   private checkConnection() {
@@ -1078,17 +1074,7 @@ export class PosComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (item) => {
           this.sessionItems.update(items => [...items, item]);
-          
-          this.socketService.emit('pos:add_item', {
-            sessionId: session._id!,
-            orderId: orderId!,
-            dishId: dish._id!,
-            customerId: this.assignToCustomerId() || undefined,
-            variantId: this.selectedVariantId() || undefined,
-            extras: this.selectedExtras(),
-            itemData: item,
-          });
-          
+          // Broadcasts to KDS/TAS are handled server-side by the order service
           this.isAddingItem.set(false);
           this.selectedDish.set(null);
           this.showMenu.set(false);
@@ -1233,28 +1219,31 @@ export class PosComponent implements OnInit, OnDestroy {
 
     this.isProcessingPayment.set(true);
 
-    const paymentData = {
-      paymentTotal: this.sessionTotal(),
-      paymentType: this.paymentType()!,
-      tickets: this.paymentTickets(),
-    };
+    const paymentType = this.paymentType()!;
+    const parts = paymentType === 'SHARED' ? this.splitCount() : 1;
 
-    this.socketService.emit('pos:process_payment', {
-      sessionId: session._id!,
-      ...paymentData,
+    this.tasService.createPayment({
+      session_id: session._id!,
+      payment_type: paymentType,
+      parts,
+    })
+    .pipe(takeUntil(this.destroy$))
+    .subscribe({
+      next: () => {
+        this.isProcessingPayment.set(false);
+        this.notify.success(this.i18n.translate('pos.payment.success'));
+        this.closePaymentModal();
+        // Session state will be cleaned up via socket events (pos:session_paid / pos:session_fully_paid)
+        this.sessionItems.set([]);
+        this.customers.set([]);
+        this.selectedSession.set(null);
+        this.sessions.update(sessions => sessions.filter(s => s._id !== session._id));
+      },
+      error: (err) => {
+        this.isProcessingPayment.set(false);
+        this.notify.error(err.error?.message || this.i18n.translate('errors.SERVER_ERROR'));
+      },
     });
-
-    this.paymentTimeout = setTimeout(() => {
-      this.isProcessingPayment.set(false);
-      this.notify.success(this.i18n.translate('pos.payment.success'));
-      this.closePaymentModal();
-      
-      this.sessionItems.set([]);
-      this.customers.set([]);
-      this.selectedSession.set(null);
-      this.sessions.update(sessions => sessions.filter(s => s._id !== session._id));
-      this.paymentTimeout = null;
-    }, 1500);
   }
 
   protected readonly Math = Math;

@@ -1,6 +1,9 @@
 import { Request, Response } from 'express';
-import { asyncHandler } from '../utils/async-handler';
+import { Types } from 'mongoose';
+import { asyncHandler, createError } from '../utils/async-handler';
 import * as OrderService from '../services/order.service';
+import { TotemSession } from '../models/totem.model';
+import { Totem } from '../models/totem.model';
 
 export const createOrder = asyncHandler(async (req: Request, res: Response): Promise<void> => {
   const { session_id } = req.body;
@@ -31,7 +34,22 @@ export const getKitchenItems = asyncHandler(async (req: Request, res: Response):
 });
 
 export const getSessionItems = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-  const items = await OrderService.getSessionItems(String(req.params.sessionId));
+  const sessionId = String(req.params.sessionId);
+  const restaurantId = req.user!.restaurantId;
+
+  const session = await TotemSession.findById(new Types.ObjectId(sessionId))
+    .select('totem_id')
+    .lean();
+  if (!session) {
+    throw createError.notFound('SESSION_NOT_FOUND');
+  }
+
+  const totem = await Totem.findById(session.totem_id).select('restaurant_id').lean();
+  if (!totem || totem.restaurant_id.toString() !== restaurantId) {
+    throw createError.forbidden('FORBIDDEN');
+  }
+
+  const items = await OrderService.getSessionItems(sessionId);
   res.json(items);
 });
 

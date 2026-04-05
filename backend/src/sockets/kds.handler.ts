@@ -1,5 +1,6 @@
 import { Server } from 'socket.io';
 import { ItemOrder } from '../models/order.model';
+import { TotemSession } from '../models/totem.model';
 import { logger } from '../config/logger';
 import { AuthenticatedSocket } from '../middlewares/socketAuth';
 import { getIO } from '../config/socket';
@@ -209,11 +210,27 @@ export function registerKdsHandlers(_io: Server, socket: AuthenticatedSocket): v
 
       // KDS only handles KITCHEN items
       if (itemToUpdate.item_disher_type === 'SERVICE') {
-        socket.emit('kds:error', { 
-          message: 'INVALID_ITEM_TYPE', 
+        socket.emit('kds:error', {
+          message: 'INVALID_ITEM_TYPE',
           itemId,
           details: 'SERVICE items do not go through kitchen preparation'
         });
+        return;
+      }
+
+      const prepareSessionId = itemToUpdate.session_id.toString();
+
+      // Verify socket has joined this session (authorization check)
+      const prepareSessionSubs = kdsSessionSubscriptions.get(prepareSessionId);
+      if (!prepareSessionSubs || !prepareSessionSubs.has(socket.id)) {
+        socket.emit('kds:error', { message: 'UNAUTHORIZED', details: 'Must join session before operating on items' });
+        return;
+      }
+
+      // Reject modifications on fully-paid sessions
+      const kdsSession = await TotemSession.findById(itemToUpdate.session_id).select('totem_state').lean();
+      if (kdsSession?.totem_state === 'PAID') {
+        socket.emit('kds:error', { message: 'SESSION_CLOSED', details: 'Cannot modify items in a paid session' });
         return;
       }
 
@@ -297,11 +314,27 @@ export function registerKdsHandlers(_io: Server, socket: AuthenticatedSocket): v
 
       // Only allow cancellation if item is in ORDERED state
       if (itemToCancel.item_state !== 'ORDERED') {
-        socket.emit('kds:error', { 
-          message: 'CANNOT_CANCEL', 
+        socket.emit('kds:error', {
+          message: 'CANNOT_CANCEL',
           itemId,
           details: `Cannot cancel item in ${itemToCancel.item_state} state. Only ORDERED items can be cancelled.`
         });
+        return;
+      }
+
+      const cancelSessionId = itemToCancel.session_id.toString();
+
+      // Verify socket has joined this session
+      const cancelSessionSubs = kdsSessionSubscriptions.get(cancelSessionId);
+      if (!cancelSessionSubs || !cancelSessionSubs.has(socket.id)) {
+        socket.emit('kds:error', { message: 'UNAUTHORIZED', details: 'Must join session before operating on items' });
+        return;
+      }
+
+      // Reject modifications on fully-paid sessions
+      const cancelSession = await TotemSession.findById(itemToCancel.session_id).select('totem_state').lean();
+      if (cancelSession?.totem_state === 'PAID') {
+        socket.emit('kds:error', { message: 'SESSION_CLOSED', details: 'Cannot modify items in a paid session' });
         return;
       }
 
@@ -386,9 +419,25 @@ export function registerKdsHandlers(_io: Server, socket: AuthenticatedSocket): v
       }
 
       // KITCHEN items must be ON_PREPARE, SERVICE items can be ORDERED
-      const validPreviousState = itemToUpdate.item_disher_type === 'SERVICE' 
-        ? 'ORDERED' 
+      const validPreviousState = itemToUpdate.item_disher_type === 'SERVICE'
+        ? 'ORDERED'
         : 'ON_PREPARE';
+
+      const serveSessionId = itemToUpdate.session_id.toString();
+
+      // Verify socket has joined this session
+      const serveSessionSubs = kdsSessionSubscriptions.get(serveSessionId);
+      if (!serveSessionSubs || !serveSessionSubs.has(socket.id)) {
+        socket.emit('kds:error', { message: 'UNAUTHORIZED', details: 'Must join session before operating on items' });
+        return;
+      }
+
+      // Reject modifications on fully-paid sessions
+      const serveSession = await TotemSession.findById(itemToUpdate.session_id).select('totem_state').lean();
+      if (serveSession?.totem_state === 'PAID') {
+        socket.emit('kds:error', { message: 'SESSION_CLOSED', details: 'Cannot modify items in a paid session' });
+        return;
+      }
 
       // Atomic update to prevent race conditions
       const item = await ItemOrder.findOneAndUpdate(
