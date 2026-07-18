@@ -1,0 +1,32 @@
+/// DisherIO M3 Elevation Scale
+///
+/// Material 3 defines 5 elevation levels (0-5). Each has a shadow definition
+/// and an optional overlay color (for surfaces on top of other surfaces).
+///
+/// The `mat.theme()` mixin generates `--mat-sys-elevation-*` tokens but they
+/// are not always reliable across Angular Material versions, so we define
+/// explicit shadows here aligned with the M3 spec.
+///
+/// Usage:
+///   box-shadow: var(--disher-elevation-1);
+///   @apply shadow-disher-2;  (via Tailwind config mapping)
+
+:root {
+  // Elevation 0: No shadow (flat surface)
+  --disher-elevation-0: none;
+
+  // Elevation 1: 1dp — subtle, for cards resting on surface
+  --disher-elevation-1: 0 1px 2px 0 rgb(0 0 0 / 0.12), 0 1px 3px 0 rgb(0 0 0 / 0.08);
+
+  // Elevation 2: 3dp — raised cards, dialogs at rest
+  --disher-elevation-2: 0 1px 2px 0 rgb(0 0 0 / 0.14), 0 2px 6px 0 rgb(0 0 0 / 0.12);
+
+  // Elevation 3: 6dp — navigation drawers, FABs, app bars scrolling
+  --disher-elevation-3: 0 4px 8px -2px rgb(0 0 0 / 0.14), 0 6px 16px -4px rgb(0 0 0 / 0.12);
+
+  // Elevation 4: 8dp — dialogs, pickers
+  --disher-elevation-4: 0 8px 12px -4px rgb(0 0 0 / 0.14), 0 12px 24px -6px rgb(0 0 0 / 0.12);
+
+  // Elevation 5: 12dp — menus, floating action buttons pressed
+  --disher-elevation-5: 0 12px 16px -6px rgb(0 0 0 / 0.14), 0 16px 32px -8px rgb(0 0 0 / 0.12);
+}

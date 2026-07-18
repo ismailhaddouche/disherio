@@ -1,0 +1,18 @@
+/// DisherIO M3 Shape Scale
+///
+/// Material 3 defines a shape scale with 8 radius levels.
+/// Components use these tokens for consistent corner rounding.
+///
+/// Usage:
+///   border-radius: var(--disher-shape-sm);
+///   @apply rounded-disher-md;  (via Tailwind config mapping)
+
+:root {
+  --disher-shape-none: 0;
+  --disher-shape-xs: 4px;    // Small buttons, chips
+  --disher-shape-sm: 8px;    // Buttons, text fields
+  --disher-shape-md: 12px;   // Cards, dialogs
+  --disher-shape-lg: 16px;   // Large cards, sheets
+  --disher-shape-xl: 28px;   // FABs, search bars
+  --disher-shape-full: 9999px; // Pills, avatars, circular FABs
+}

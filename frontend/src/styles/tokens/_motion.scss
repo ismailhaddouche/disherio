@@ -1,0 +1,42 @@
+/// DisherIO M3 Motion Tokens
+///
+/// Material 3 defines standard easing curves and duration tokens for
+/// consistent motion across the app.
+///
+/// Easing curves:
+///   emphasized:       cubic-bezier(0.2, 0.0, 0, 1.0)  — default, expanding/collapsing
+///   emphasized-decel: cubic-bezier(0.05, 0.7, 0.1, 1.0) — entering screen
+///   emphasized-accel: cubic-bezier(0.3, 0.0, 0.8, 0.15) — exiting screen
+///   standard:         cubic-bezier(0.2, 0.0, 0, 1.0)  — general
+///
+/// Durations:
+///   short1-4: 50-200ms (micro interactions)
+///   medium1-4: 250-400ms (small expand/collapse)
+///   long1-4: 450-600ms (large expand/collapse, screen transitions)
+
+:root {
+  // Easing curves
+  --disher-easing-standard: cubic-bezier(0.2, 0.0, 0, 1.0);
+  --disher-easing-emphasized: cubic-bezier(0.2, 0.0, 0, 1.0);
+  --disher-easing-emphasized-decelerate: cubic-bezier(0.05, 0.7, 0.1, 1.0);
+  --disher-easing-emphasized-accelerate: cubic-bezier(0.3, 0.0, 0.8, 0.15);
+
+  // Durations
+  --disher-duration-short-1: 50ms;
+  --disher-duration-short-2: 100ms;
+  --disher-duration-short-3: 150ms;
+  --disher-duration-short-4: 200ms;
+  --disher-duration-medium-1: 250ms;
+  --disher-duration-medium-2: 300ms;
+  --disher-duration-medium-3: 350ms;
+  --disher-duration-medium-4: 400ms;
+  --disher-duration-long-1: 450ms;
+  --disher-duration-long-2: 500ms;
+  --disher-duration-long-3: 550ms;
+  --disher-duration-long-4: 600ms;
+
+  // Composite transition shortcuts
+  --disher-transition-fast: var(--disher-duration-short-3) var(--disher-easing-standard);
+  --disher-transition-normal: var(--disher-duration-medium-2) var(--disher-easing-emphasized);
+  --disher-transition-slow: var(--disher-duration-long-2) var(--disher-easing-emphasized);
+}
