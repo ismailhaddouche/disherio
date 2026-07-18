@@ -24,11 +24,14 @@ module.exports = function (config) {
       subdir: '.',
       reporters: [{ type: 'html' }, { type: 'text-summary' }],
       check: {
+        // Ratchet: pinned ~2-3 points below the values measured on 2026-07-18
+        // (statements 59.68, branches 36.27, functions 56.75, lines 60.72) so
+        // CI fails if coverage drops, without requiring future increases.
         global: {
-          statements: 0,
-          branches: 0,
-          functions: 0,
-          lines: 0,
+          statements: 57,
+          branches: 33,
+          functions: 54,
+          lines: 58,
         },
       },
     },
