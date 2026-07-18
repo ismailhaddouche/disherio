@@ -1,0 +1,107 @@
+{
+    admin off
+    # Auto HTTPS habilitado - Caddy gestionara automaticamente los certificados
+    # para bloques con nombres de dominio. Los bloques :puerto usan HTTP por defecto.
+}
+
+# ============================================
+# HTTP is redirect-only. Local/LAN deployments that intentionally use HTTP
+# generate their own mode-specific Caddyfile through configure.sh.
+# ============================================
+:80 {
+    redir https://{host}{uri} permanent
+}
+
+# ============================================
+# HTTPS con TLS 1.3 minimo (dominios propios / produccion)
+# Usar este bloque cuando Caddy reciba un FQDN (ej. app.disherio.com)
+# ============================================
+:443 {
+    # TLS 1.3 como minimo protocolo
+    tls {
+        protocols tls1.3
+    }
+
+    # Headers de seguridad
+    header {
+        # HSTS - Fuerza HTTPS por 1 ano, incluye subdominios y permite preload
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+
+        # Content Security Policy - 'unsafe-eval' removed to harden against XSS.
+        # 'unsafe-inline' remains required by Angular's runtime-emitted styles
+        # and cannot be removed until a nonce-based CSP is adopted. That
+        # migration is blocked by the serving architecture: the Angular bundle
+        # is served as static files by an inner Caddy (frontend/Caddyfile.frontend
+        # via file_server), so there is no per-request hook to generate a fresh
+        # nonce and inject it into both this header and the index.html tags.
+        # Adopting nonces requires either Caddy templates or moving index.html
+        # serving onto a dynamic server (e.g. Express). index.html itself has no
+        # inline scripts and Angular's inlineCritical CSS is disabled, so the
+        # only remaining 'unsafe-inline' consumer is Angular's runtime styles.
+        Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https://api.qrserver.com; connect-src 'self' wss:; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+
+        # Prevenir clickjacking - DENY aligned with CSP frame-ancestors 'none'
+        X-Frame-Options "DENY"
+
+        # Prevenir MIME type sniffing
+        X-Content-Type-Options "nosniff"
+
+        # XSS Protection - deprecated, disabled (modern browsers ignore it)
+        X-XSS-Protection "0"
+
+        # Referrer Policy
+        Referrer-Policy "strict-origin-when-cross-origin"
+
+        # Permissions Policy
+        Permissions-Policy "accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()"
+
+        # Remover headers que identifican el servidor
+        -Server
+    }
+
+    # Compresion de respuestas
+    encode gzip zstd
+
+    # Servir archivos subidos - restrict to images only
+    handle /uploads/* {
+        root * /srv
+        file_server
+        # Prevent script execution from uploaded files
+        header Content-Security-Policy "default-src 'none'; img-src 'self'"
+    }
+
+    # Public readiness/liveness probes must reach the backend, not Angular's
+    # index.html fallback.
+    @health path /health /health/*
+    handle @health {
+        reverse_proxy backend:3000
+    }
+
+    # Reverse proxy a backend API
+    handle /api/* {
+        reverse_proxy backend:3000 {
+            header_up X-Forwarded-Proto {scheme}
+            header_up X-Forwarded-Host {host}
+        }
+    }
+
+    # Reverse proxy a Socket.IO (WebSockets)
+    handle /socket.io/* {
+        reverse_proxy backend:3000 {
+            flush_interval -1
+            header_up X-Forwarded-Proto {scheme}
+            header_up X-Forwarded-Host {host}
+            transport http {
+                versions 1.1
+            }
+        }
+    }
+
+    # Reverse proxy al frontend (Angular/Caddy)
+    handle {
+        reverse_proxy frontend:4200 {
+            header_up X-Forwarded-Proto {scheme}
+            header_up X-Forwarded-Host {host}
+        }
+    }
+}

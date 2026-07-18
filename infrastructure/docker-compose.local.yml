@@ -1,0 +1,18 @@
+# ============================================
+# Docker Compose Override - Modo LOCAL
+# ============================================
+# Desarrollo local en localhost
+# ============================================
+
+services:
+  # Caddy en modo local (sin HTTPS)
+  caddy:
+    ports:
+      - "${CADDY_PORT:-4200}:${CADDY_PORT:-4200}"
+    command: caddy run --config /etc/caddy/Caddyfile --adapter caddyfile
+
+  # Backend en modo desarrollo
+  backend:
+    environment:
+      - NODE_ENV=development
+      - LOG_LEVEL=debug

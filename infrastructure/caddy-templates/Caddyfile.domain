@@ -1,0 +1,95 @@
+# ============================================
+# DisherIo Caddyfile - Modo DOMAIN
+# ============================================
+# Dominio propio con HTTPS automatico de Caddy (Let's Encrypt).
+# HTTPS completo con TLS 1.3. HTTP/3 se habilita automaticamente con tls.
+# ============================================
+
+{
+    admin off
+    # Auto HTTPS habilitado - Let's Encrypt automatico
+    email ${EMAIL}
+}
+
+# Redireccion HTTP a HTTPS
+:80 {
+    redir https://${DOMAIN}{uri} permanent
+}
+
+# HTTPS con Let's Encrypt
+${DOMAIN}:443 {
+    # TLS 1.3 como minimo protocolo
+    tls {
+        protocols tls1.3
+    }
+
+    # Headers de seguridad de produccion
+    header {
+        # HSTS - Fuerza HTTPS por 1 ano
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+
+        # Content Security Policy
+        Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https://api.qrserver.com; connect-src 'self' wss:; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+
+        # Prevenir clickjacking
+        X-Frame-Options "DENY"
+
+        # Prevenir MIME type sniffing
+        X-Content-Type-Options "nosniff"
+
+        # XSS Protection
+        X-XSS-Protection "0"
+
+        # Referrer Policy
+        Referrer-Policy "strict-origin-when-cross-origin"
+
+        # Permissions Policy
+        Permissions-Policy "accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()"
+
+        # Remover headers que identifican el servidor
+        -Server
+    }
+
+    # Compresion de respuestas
+    encode gzip zstd
+
+    # Servir archivos subidos
+    handle /uploads/* {
+        root * /srv
+        file_server
+        header Content-Security-Policy "default-src 'none'; img-src 'self'"
+    }
+
+    @health path /health /health/*
+    handle @health {
+        reverse_proxy backend:3000
+    }
+
+    # Reverse proxy a backend API
+    handle /api/* {
+        reverse_proxy backend:3000 {
+            header_up X-Forwarded-Proto {scheme}
+            header_up X-Forwarded-Host {host}
+        }
+    }
+
+    # Reverse proxy a Socket.IO (WebSockets con soporte WSS)
+    handle /socket.io/* {
+        reverse_proxy backend:3000 {
+            flush_interval -1
+            header_up X-Forwarded-Proto {scheme}
+            header_up X-Forwarded-Host {host}
+            transport http {
+                versions 1.1
+            }
+        }
+    }
+
+    # Reverse proxy al frontend
+    handle {
+        reverse_proxy frontend:4200 {
+            header_up X-Forwarded-Proto {scheme}
+            header_up X-Forwarded-Host {host}
+        }
+    }
+}
