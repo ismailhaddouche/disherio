@@ -1,0 +1,101 @@
+    <div class="admin-container max-w-4xl">
+      <header class="admin-header">
+        <div>
+          <a routerLink="/admin/dishes" class="disher-back-link">
+            <span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>
+            {{ 'common.back' | translate }}
+          </a>
+          <h1 class="admin-title">{{ isEdit ? ('dish.edit_dish' | translate) : ('dish.new_dish' | translate) }}</h1>
+          <p class="admin-subtitle">{{ isEdit ? ('dish.edit_subtitle' | translate) : ('dish.new_subtitle' | translate) }}</p>
+        </div>
+        <div class="flex gap-3">
+          <button matButton (click)="cancel()">{{ 'common.cancel' | translate }}</button>
+          <button matButton (click)="save()" [disabled]="saving()">
+            <mat-icon aria-hidden="true">{{ saving() ? 'progress_activity' : 'save' }}</mat-icon>
+            {{ 'common.save' | translate }}
+          </button>
+        </div>
+      </header>
+
+      <div class="admin-card p-6 flex flex-col gap-6">
+        <section class="flex flex-col gap-2">
+          <label class="admin-label text-base font-bold">{{ 'dish.image' | translate }}</label>
+          <app-image-uploader
+            folder="dishes"
+            [resourceId]="dish()._id ?? null"
+            [currentImage]="dish().disher_url_image ?? null"
+            (imageUploaded)="onImageUploaded($event)"
+          />
+        </section>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <app-localized-input
+            [label]="('dish.name' | translate) + ' *'"
+            [(value)]="dish().disher_name"
+            [required]="true"
+          />
+          <mat-form-field appearance="outline">
+            <mat-label>{{ 'dish.base_price' | translate }} *</mat-label>
+            <input matInput type="number" min="0" step="0.01"
+              [ngModel]="dish().disher_price"
+              (ngModelChange)="dish.update(d => ({ ...d, disher_price: +$event }))"
+            />
+            @if (dish().disher_price < 0) {
+              <mat-error>{{ 'dish.price_negative' | translate }}</mat-error>
+            }
+          </mat-form-field>
+        </div>
+
+        <app-localized-input
+          [label]="'dish.description' | translate"
+          [(value)]="dish().disher_description"
+          [multiline]="true"
+        />
+
+        <mat-form-field appearance="outline">
+          <mat-label>{{ 'dish.category' | translate }} *</mat-label>
+          <mat-select
+            [ngModel]="dish().category_id"
+            (ngModelChange)="dish.update(d => ({ ...d, category_id: $event }))"
+          >
+            <mat-option value="">{{ 'dish.select_category' | translate }}</mat-option>
+            @for (cat of categories(); track cat._id) {
+              <mat-option [value]="cat._id">{{ getCategoryName(cat) }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <section class="disher-allergens-section">
+          <h2 class="disher-section-title">
+            <span class="material-symbols-outlined" aria-hidden="true" style="color: var(--mat-sys-tertiary)">warning</span>
+            {{ 'dish.allergens' | translate }}
+          </h2>
+          <div class="flex flex-wrap gap-2">
+            @for (code of allergenCodes; track code) {
+              <label class="disher-allergen-chip focus-within:ring-2 focus-within:ring-primary" [class.disher-allergen-active]="hasAllergen(code)">
+                <input type="checkbox" class="sr-only" [checked]="hasAllergen(code)" (change)="toggleAllergen(code)" />
+                {{ 'allergen.' + code | translate }}
+              </label>
+            }
+          </div>
+        </section>
+
+        <app-dish-option-list
+          [title]="'dish.variants' | translate"
+          [emptyMessage]="'dish.no_variants' | translate"
+          [items]="getVariantsAsOptions()"
+          (add)="addVariant()"
+          (remove)="removeVariant($event)"
+        />
+
+        <app-dish-option-list
+          [title]="'dish.extras' | translate"
+          [subtitle]="'dish.extras_desc' | translate"
+          [emptyMessage]="'dish.no_extras' | translate"
+          variant="amber"
+          [items]="getExtrasAsOptions()"
+          (add)="addExtra()"
+          (remove)="removeExtra($event)"
+        />
+      </div>
+    </div>
