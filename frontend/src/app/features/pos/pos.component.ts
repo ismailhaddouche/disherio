@@ -1,36 +1,29 @@
 import { Component, OnInit, OnDestroy, inject, signal, computed, ChangeDetectionStrategy } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
-import { A11yModule } from '@angular/cdk/a11y';
 import { Subject } from 'rxjs';
 import { switchMap, takeUntil } from 'rxjs/operators';
 import { TasService } from '../../services/tas.service';
-import type { PaymentHistoryEntry } from '../../services/tas.service';
 import { SocketService } from '../../services/socket/socket.service';
 import { cartStore } from '../../store/cart.store';
-import { CurrencyFormatPipe } from '../../shared/pipes/currency-format.pipe';
-import { CaslCanDirective } from '../../shared/directives/casl.directive';
 import { TranslatePipe } from '../../shared/pipes/translate.pipe';
-import { LocalizePipe } from '../../shared/pipes/localize.pipe';
 import { I18nService } from '../../core/services/i18n.service';
 import { NotificationService } from '../../core/services/notification.service';
-import { getActiveItemTotal, getSessionListItemCount } from '../../shared/utils/order-item.utils';
-import { ConfirmationService } from '../../core/services/confirmation.service';
+import { getActiveItemTotal } from '../../shared/utils/order-item.utils';
 import { OrderWorkspaceState } from '../../shared/state/order-workspace.state';
 import { PosTicketHistoryService } from './pos-ticket-history.service';
-import {
-  removeOperationalSession,
-  removeTemporaryTotem,
-  replaceOperationalSession,
-  setOperationalSessionState,
-} from '../../shared/utils/operational-session.utils';
+import { PosSessionActionsService } from './pos-session-actions.service';
+import { PosSessionsSidebarComponent } from './pos-sessions-sidebar.component';
+import { PosTicketHistoryPanelComponent } from './pos-ticket-history-panel.component';
+import { PosSessionPanelComponent } from './pos-session-panel.component';
+import { PosMenuPanelComponent } from './pos-menu-panel.component';
+import { PosTicketPanelComponent } from './pos-ticket-panel.component';
+import { PosDishModalComponent } from './pos-dish-modal.component';
+import { PosPaymentModalComponent } from './pos-payment-modal.component';
 import type {
   TotemSession,
   ItemOrder,
   Customer,
   Dish,
   LocalizedField,
-  PaymentTicket,
   SessionArchivedEvent,
   SessionClosedEvent,
   SessionReopenedEvent,
@@ -39,21 +32,33 @@ import type {
 @Component({
   selector: 'app-pos',
   standalone: true,
-  imports: [CommonModule, FormsModule, A11yModule, CurrencyFormatPipe, CaslCanDirective, TranslatePipe, LocalizePipe],
+  imports: [
+    TranslatePipe,
+    PosSessionsSidebarComponent,
+    PosTicketHistoryPanelComponent,
+    PosSessionPanelComponent,
+    PosMenuPanelComponent,
+    PosTicketPanelComponent,
+    PosDishModalComponent,
+    PosPaymentModalComponent,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './pos.component.html',
-  providers: [PosTicketHistoryService],
+  providers: [PosTicketHistoryService, PosSessionActionsService],
 })
 export class PosComponent extends OrderWorkspaceState implements OnInit, OnDestroy {
   private tasService = inject(TasService);
   private socketService = inject(SocketService);
   private i18n = inject(I18nService);
   private notify = inject(NotificationService);
-  private confirmation = inject(ConfirmationService);
   private ticketHistoryState = inject(PosTicketHistoryService);
+  protected readonly sessionActions = inject(PosSessionActionsService);
   private destroy$ = new Subject<void>();
   private socketListenerDisposers: Array<() => void> = [];
   private connectionStatusInitialized = false;
+
+  /** Workspace state passed down to the extracted presentational children. */
+  readonly workspace: OrderWorkspaceState = this;
 
   // State
   isLoading = signal(false);
@@ -61,19 +66,9 @@ export class PosComponent extends OrderWorkspaceState implements OnInit, OnDestr
   sessions = signal<TotemSession[]>([]);
   selectedSession = signal<TotemSession | null>(null);
   sessionItems = signal<ItemOrder[]>([]);
-  allTotems = signal<Array<{ _id: string; totem_name: string; totem_type: string }>>([]);
   customers = signal<Customer[]>([]);
   showAddCustomer = signal(false);
   newCustomerName = signal('');
-
-  // Temporary totem creation
-  newTotemName = signal('');
-  isCreatingTotem = signal(false);
-  isStartingSession = signal(false);
-  isClosingSession = signal(false);
-  isReopeningSession = signal(false);
-  isArchivingSession = signal(false);
-  isCancellingSession = signal(false);
 
   // Menu data
   showMenu = signal(false);
@@ -83,11 +78,6 @@ export class PosComponent extends OrderWorkspaceState implements OnInit, OnDestr
 
   // Ticket history state
   showTicketHistory = this.ticketHistoryState.isOpen;
-  isLoadingHistory = this.ticketHistoryState.isLoading;
-  ticketHistory = this.ticketHistoryState.payments;
-  ticketHistorySearch = this.ticketHistoryState.search;
-  ticketHistoryFrom = this.ticketHistoryState.from;
-  ticketHistoryTo = this.ticketHistoryState.to;
 
   // Cart (from store, for manual POS items)
   cartItems = cartStore.items;
@@ -110,13 +100,23 @@ export class PosComponent extends OrderWorkspaceState implements OnInit, OnDestr
     const activeTotemIds = new Set(
       this.activeSessions().map(s => s.totem_id?.toString())
     );
-    return this.allTotems().filter(t => t.totem_type === 'STANDARD' && !activeTotemIds.has(t._id?.toString()));
+    return this.sessionActions.allTotems().filter(t => t.totem_type === 'STANDARD' && !activeTotemIds.has(t._id?.toString()));
   });
 
   sessionTotal = computed(() =>
     getActiveItemTotal(this.sessionItems())
   );
 
+  constructor() {
+    super();
+    this.sessionActions.init({
+      sessions: this.sessions,
+      selectedSession: this.selectedSession,
+      sessionItems: this.sessionItems,
+      customers: this.customers,
+      selectSession: session => this.selectSession(session),
+    });
+  }
 
   protected override getWorkspaceItems(): ItemOrder[] {
     return this.sessionItems();
@@ -216,7 +216,7 @@ export class PosComponent extends OrderWorkspaceState implements OnInit, OnDestr
           const validTotems = totems
             .filter((t): t is typeof t & { _id: string } => !!t._id)
             .map(t => ({ _id: t._id, totem_name: t.totem_name, totem_type: t.totem_type }));
-          this.allTotems.set(validTotems);
+          this.sessionActions.setTotems(validTotems);
         },
         error: () => undefined,
       });
@@ -250,13 +250,13 @@ export class PosComponent extends OrderWorkspaceState implements OnInit, OnDestr
     this.listen('pos:session_closed', (data: SessionClosedEvent) => {
       const wasSelected = data.sessionId === this.selectedSession()?._id;
       if (data.state === 'CANCELLED') {
-        this.removeSessionFromActiveView(data.sessionId);
-        if (wasSelected && !this.isCancellingSession()) {
+        this.sessionActions.removeSessionFromActiveView(data.sessionId);
+        if (wasSelected && !this.sessionActions.isCancellingSession()) {
           this.notify.warning(this.i18n.translate('tas.session_cancelled'));
         }
       } else {
-        this.markSessionComplete(data.sessionId);
-        if (wasSelected && !this.isClosingSession()) {
+        this.sessionActions.markSessionComplete(data.sessionId);
+        if (wasSelected && !this.sessionActions.isClosingSession()) {
           this.notify.warning(this.i18n.translate('tas.session_closed_by_pos'));
         }
       }
@@ -264,16 +264,16 @@ export class PosComponent extends OrderWorkspaceState implements OnInit, OnDestr
 
     this.listen('pos:session_reopened', (data: SessionReopenedEvent) => {
       const wasSelected = data.sessionId === this.selectedSession()?._id;
-      this.markSessionStarted(data.sessionId);
-      if (wasSelected && !this.isReopeningSession()) {
+      this.sessionActions.markSessionStarted(data.sessionId);
+      if (wasSelected && !this.sessionActions.isReopeningSession()) {
         this.notify.info(this.i18n.translate('tas.session_reopened'));
       }
     });
 
     this.listen('pos:session_archived', (data: SessionArchivedEvent) => {
       const wasSelected = data.sessionId === this.selectedSession()?._id;
-      this.removeSessionFromActiveView(data.sessionId);
-      if (wasSelected && !this.isArchivingSession() && !this.isProcessingPayment()) {
+      this.sessionActions.removeSessionFromActiveView(data.sessionId);
+      if (wasSelected && !this.sessionActions.isArchivingSession() && !this.isProcessingPayment()) {
         this.notify.success(this.i18n.translate('tas.session_archived'));
       }
     });
@@ -299,7 +299,7 @@ export class PosComponent extends OrderWorkspaceState implements OnInit, OnDestr
     });
 
     this.listen('pos:bill_requested', ({ sessionId }: { sessionId: string }) => {
-      this.markSessionComplete(sessionId);
+      this.sessionActions.markSessionComplete(sessionId);
     });
   }
 
@@ -338,234 +338,12 @@ export class PosComponent extends OrderWorkspaceState implements OnInit, OnDestr
     this.socketService.joinSession(sessionId, 'POS');
   }
 
-  startSession(totemId: string) {
-    if (this.isStartingSession()) return;
-    this.isStartingSession.set(true);
-
-    this.tasService.startSession(totemId)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (session) => {
-          this.sessions.update(s => [...s, session]);
-          this.selectSession(session);
-          this.isStartingSession.set(false);
-          this.notify.success(this.i18n.translate('tas.session_started'));
-        },
-        error: (err) => {
-          this.isStartingSession.set(false);
-          this.notify.error(err.error?.message || this.i18n.translate('errors.SERVER_ERROR'));
-        },
-      });
-  }
-
-  closeSession(sessionId: string) {
-    if (this.isClosingSession()) return;
-    this.isClosingSession.set(true);
-
-    this.tasService.closeSession(sessionId)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (updated) => {
-          this.markSessionComplete(sessionId, updated);
-          this.isClosingSession.set(false);
-          this.notify.success(this.i18n.translate('tas.session_closed'));
-        },
-        error: (err) => {
-          this.isClosingSession.set(false);
-          const code = err.error?.errorCode;
-          if (code === 'SESSION_NOT_ACTIVE') {
-            this.notify.error(this.i18n.translate('tas.session_already_closed'));
-          } else {
-            this.notify.error(err.error?.message || this.i18n.translate('errors.SERVER_ERROR'));
-          }
-        },
-      });
-  }
-
-  reopenSession(sessionId: string) {
-    if (this.isReopeningSession()) return;
-    this.isReopeningSession.set(true);
-
-    this.tasService.reopenSession(sessionId)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (session) => {
-          this.sessions.update(current => replaceOperationalSession(current, session));
-          if (this.selectedSession()?._id === sessionId) {
-            this.selectedSession.set(session);
-          }
-          this.isReopeningSession.set(false);
-          this.notify.success(this.i18n.translate('tas.session_reopened'));
-        },
-        error: (err) => {
-          this.isReopeningSession.set(false);
-          this.notify.error(err.error?.message || this.i18n.translate('tas.session_reopen_error'));
-        },
-      });
-  }
-
-  /**
-   * Remove a temporary totem from the sidebar after its session reaches a
-   * terminal state. The backend already deletes it; this keeps the UI in sync.
-   */
-  private removeTemporaryTotemIfAny(totemId: string | undefined): void {
-    this.allTotems.update(current => removeTemporaryTotem(current, totemId));
-  }
-
-  private markSessionComplete(sessionId: string, updated?: TotemSession): void {
-    this.sessions.update(sessions => setOperationalSessionState(
-      sessions,
-      sessionId,
-      'COMPLETE',
-      updated
-    ));
-    const selected = this.selectedSession();
-    if (selected?._id === sessionId) {
-      this.selectedSession.set({ ...selected, ...updated, totem_state: 'COMPLETE' });
-    }
-  }
-
-  private markSessionStarted(sessionId: string): void {
-    this.sessions.update(sessions => setOperationalSessionState(sessions, sessionId, 'STARTED'));
-    const selected = this.selectedSession();
-    if (selected?._id === sessionId) {
-      this.selectedSession.set({ ...selected, totem_state: 'STARTED' });
-    }
-  }
-
-  private removeSessionFromActiveView(sessionId: string, updated?: TotemSession): void {
-    const session = this.sessions().find(candidate => candidate._id === sessionId) ?? updated;
-    this.sessions.update(sessions => removeOperationalSession(sessions, sessionId));
-    if (this.selectedSession()?._id === sessionId) {
-      this.selectedSession.set(null);
-      this.sessionItems.set([]);
-      this.customers.set([]);
-    }
-    this.socketService.leaveSession(sessionId);
-    this.removeTemporaryTotemIfAny(session?.totem_id?.toString());
-  }
-
-  archiveSession(sessionId: string) {
-    if (this.isArchivingSession()) return;
-    this.confirmation.confirm(this.i18n.translate('tas.confirm_archive_session'), { destructive: true })
-      .pipe(takeUntil(this.destroy$))
-      .subscribe(confirmed => {
-        if (confirmed) this.archiveSessionConfirmed(sessionId);
-      });
-  }
-
-  private archiveSessionConfirmed(sessionId: string): void {
-    if (this.isArchivingSession()) return;
-    this.isArchivingSession.set(true);
-    this.tasService.archiveSession(sessionId)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (updated) => {
-          this.isArchivingSession.set(false);
-          this.removeSessionFromActiveView(sessionId, updated);
-          this.notify.success(this.i18n.translate('tas.session_archived'));
-        },
-        error: (err) => {
-          this.isArchivingSession.set(false);
-          this.notify.error(err.error?.message || this.i18n.translate('errors.SERVER_ERROR'));
-        },
-      });
-  }
-
-  cancelSession(sessionId: string) {
-    if (this.isCancellingSession()) return;
-    this.confirmation.confirm(this.i18n.translate('tas.confirm_cancel_session') + '?', { destructive: true })
-      .pipe(takeUntil(this.destroy$))
-      .subscribe(confirmed => {
-        if (confirmed) this.cancelSessionConfirmed(sessionId);
-      });
-  }
-
-  private cancelSessionConfirmed(sessionId: string): void {
-    if (this.isCancellingSession()) return;
-    this.isCancellingSession.set(true);
-    this.tasService.cancelSession(sessionId)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (updated) => {
-          this.isCancellingSession.set(false);
-          this.removeSessionFromActiveView(sessionId, updated);
-          this.notify.success(this.i18n.translate('tas.session_cancelled'));
-        },
-        error: (err) => {
-          this.isCancellingSession.set(false);
-          this.notify.error(err.error?.message || this.i18n.translate('errors.SERVER_ERROR'));
-        },
-      });
-  }
-
-  createTemporaryTotem() {
-    const name = this.newTotemName().trim();
-    if (!name) return;
-
-    this.isCreatingTotem.set(true);
-    this.tasService.createTotem({
-      totem_name: name,
-      totem_type: 'TEMPORARY',
-    })
-    .pipe(takeUntil(this.destroy$))
-    .subscribe({
-      next: (totem) => {
-        this.allTotems.update(current => [...current, { ...totem, totem_type: 'TEMPORARY' }]);
-        this.newTotemName.set('');
-        this.isCreatingTotem.set(false);
-        this.notify.success(this.i18n.translate('tas.totem_created'));
-
-        // Auto-start session
-        this.startSession(totem._id!);
-      },
-      error: (err) => {
-        this.isCreatingTotem.set(false);
-        this.notify.error(this.i18n.translate('errors.SERVER_ERROR'));
-      },
-    });
-  }
-
-  getSessionItemCount(session: TotemSession): number {
-    return getSessionListItemCount(session, this.selectedSession()?._id, this.sessionItems());
-  }
-
-  getStateLabel(state: string): string {
-    switch (state) {
-      case 'ORDERED': return this.i18n.translate('order_state.ordered');
-      case 'ON_PREPARE': return this.i18n.translate('order_state.preparing');
-      case 'SERVED': return this.i18n.translate('order_state.served');
-      case 'CANCELED': return this.i18n.translate('order_state.canceled');
-      default: return state;
-    }
-  }
-
   openTicketHistory() {
     this.showMenu.set(false);
     this.selectedSession.set(null);
     this.sessionItems.set([]);
     this.customers.set([]);
     this.ticketHistoryState.open();
-  }
-
-  loadTicketHistory() {
-    this.ticketHistoryState.load();
-  }
-
-  clearTicketHistoryFilters() {
-    this.ticketHistoryState.clearFilters();
-  }
-
-  getPaymentTypeLabel(type: PaymentHistoryEntry['payment_type']): string {
-    return this.ticketHistoryState.paymentTypeLabel(type);
-  }
-
-  formatDateTime(value: string): string {
-    return this.ticketHistoryState.formatDateTime(value);
-  }
-
-  printHistoryTicket(payment: PaymentHistoryEntry, ticket: PaymentTicket) {
-    this.ticketHistoryState.print(payment, ticket);
   }
 
   addCustomer() {
@@ -606,14 +384,6 @@ export class PosComponent extends OrderWorkspaceState implements OnInit, OnDestr
   assignItemFromSelect(itemId: string, event: Event): void {
     const customerId = (event.target as HTMLSelectElement | null)?.value || null;
     this.assignItemToCustomer(itemId, customerId);
-  }
-
-  getSelectedCustomerTotal(): number {
-    const customerId = this.selectedCustomerId();
-    if (!customerId) return this.sessionTotal();
-    return this.sessionItems()
-      .filter(i => i.customer_id === customerId && i.item_state !== 'CANCELED')
-      .reduce((sum, item) => sum + this.getItemTotal(item), 0);
   }
 
   sendOrder() {
@@ -667,7 +437,7 @@ export class PosComponent extends OrderWorkspaceState implements OnInit, OnDestr
     .subscribe({
       next: (updated) => {
         this.isProcessingPayment.set(false);
-        this.removeSessionFromActiveView(session._id!, updated);
+        this.sessionActions.removeSessionFromActiveView(session._id!, updated);
         this.notify.success(this.i18n.translate('pos.payment.success'));
         this.closePaymentModal();
       },
@@ -677,6 +447,4 @@ export class PosComponent extends OrderWorkspaceState implements OnInit, OnDestr
       },
     });
   }
-
-  protected readonly Math = Math;
 }

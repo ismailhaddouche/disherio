@@ -1,0 +1,153 @@
+<!-- Session Header with Customers -->
+<header class="p-4 bg-surface border-b border-outline-variant">
+  <div class="flex items-center gap-3 mb-3">
+    <span class="material-symbols-outlined text-2xl">point_of_sale</span>
+    <div class="flex-1">
+      <div class="flex items-center gap-2">
+        <h1 class="text-xl font-bold">{{ session().totem?.totem_name || ('tas.table' | translate) }}</h1>
+        @if (session()._id) {
+          <span class="text-xs text-on-surface-variant font-mono">#{{ session()._id!.slice(-8) }}</span>
+        }
+      </div>
+      <p class="text-sm text-on-surface-variant">{{ state().filteredItems().length }} {{ 'pos.items' | translate }}</p>
+    </div>
+  </div>
+
+  <!-- Customers Tabs -->
+  <div class="flex items-center gap-2 overflow-x-auto">
+    <button
+      (click)="state().selectedCustomerId.set(null)"
+      class="px-3 py-1.5 rounded-full text-sm whitespace-nowrap transition-colors"
+      [class.bg-primary]="state().selectedCustomerId() === null"
+      [class.text-on-primary]="state().selectedCustomerId() === null"
+      [class.bg-surface-container-high]="state().selectedCustomerId() !== null"
+      [class.bg-surface-container-high]="state().selectedCustomerId() !== null"
+    >
+      {{ 'tas.all' | translate }}
+    </button>
+
+    @for (customer of customers(); track customer._id!) {
+      <button
+        (click)="state().selectedCustomerId.set(customer._id!)"
+        class="px-3 py-1.5 rounded-full text-sm whitespace-nowrap transition-colors flex items-center gap-1"
+        [class.bg-primary]="state().selectedCustomerId() === customer._id!"
+        [class.text-on-primary]="state().selectedCustomerId() === customer._id!"
+        [class.bg-surface-container-high]="state().selectedCustomerId() !== customer._id!"
+        [class.bg-surface-container-high]="state().selectedCustomerId() !== customer._id!"
+      >
+        {{ customer.customer_name }}
+        <span
+          class="text-xs px-1.5 rounded-full"
+          [class.bg-surface]="state().selectedCustomerId() === customer._id!"
+          [class.bg-surface-container]="state().selectedCustomerId() !== customer._id!"
+          [class.text-primary]="state().selectedCustomerId() === customer._id!"
+        >
+          {{ state().getCustomerItemCount(customer._id!) }}
+        </span>
+      </button>
+    }
+
+    <button
+      (click)="showAddCustomer.set(true)"
+      class="px-3 py-1.5 rounded-full text-sm bg-success-container text-on-success-container"
+    >
+      {{ 'tas.add_customer' | translate }}
+    </button>
+  </div>
+
+  <!-- Add Customer Input -->
+  @if (showAddCustomer()) {
+    <div class="flex gap-2 mt-2">
+      <input
+        [ngModel]="newCustomerName()"
+        (ngModelChange)="newCustomerName.set($event)"
+        [placeholder]="'tas.session.customers' | translate"
+        class="flex-1 px-3 py-2 text-sm border border-outline-variant rounded-lg bg-surface bg-surface-container-high"
+        (keyup.enter)="addCustomer.emit()"
+      />
+      <button
+        (click)="addCustomer.emit()"
+        class="px-3 py-2 bg-success text-on-success rounded-lg"
+      >
+        {{ 'common.add' | translate }}
+      </button>
+      <button
+        (click)="showAddCustomer.set(false)"
+        class="px-3 py-2 bg-surface-container bg-surface-container-high rounded-lg"
+      >
+        {{ 'common.cancel' | translate }}
+      </button>
+    </div>
+  }
+</header>
+
+<!-- Items List -->
+<div class="flex-1 overflow-auto p-4">
+  @if (state().filteredItems().length === 0) {
+    <div class="flex flex-col items-center justify-center py-16 text-on-surface-variant">
+      <span class="material-symbols-outlined text-5xl mb-3">receipt_long</span>
+      <p>{{ 'pos.empty_cart' | translate }}</p>
+    </div>
+  }
+  @for (item of state().filteredItems(); track item._id) {
+    @if (item.item_state !== 'CANCELED') {
+      <div class="bg-surface rounded-lg p-3 mb-2 border border-outline-variant">
+        <div class="flex items-center justify-between">
+          <div class="flex-1 min-w-0">
+            <p class="font-medium text-sm truncate">{{ item.item_name_snapshot | localize }}</p>
+            @if (item.item_disher_variant) {
+              <p class="text-xs text-on-surface-variant">
+                {{ item.item_disher_variant.name | localize }}
+                (+{{ item.item_disher_variant.price | currencyFormat }})
+              </p>
+            }
+            @if (item.item_disher_extras.length > 0) {
+              <p class="text-xs text-on-surface-variant">
+                @for (extra of item.item_disher_extras; track extra.extra_id) {
+                  <span>{{ extra.name | localize }}</span>
+                  @if (!$last) { + }
+                }
+              </p>
+            }
+          </div>
+          <span class="font-bold text-sm ml-4">{{ state().getItemTotal(item) | currencyFormat }}</span>
+        </div>
+        <div class="flex items-center gap-2 mt-2">
+          <span class="text-xs px-2 py-0.5 rounded-full"
+            [class.bg-tertiary-container]="item.item_state === 'ORDERED'"
+            [class.text-on-tertiary-container]="item.item_state === 'ORDERED'"
+            [class.bg-primary-container]="item.item_state === 'ON_PREPARE'"
+            [class.text-on-primary-container]="item.item_state === 'ON_PREPARE'"
+            [class.bg-success-container]="item.item_state === 'SERVED'"
+            [class.text-on-success-container]="item.item_state === 'SERVED'"
+          >
+            {{ getStateLabel(item.item_state) }}
+          </span>
+
+          <!-- Customer Assignment -->
+          <select
+            [ngModel]="item.customer_id"
+            (change)="assignSelect.emit({ itemId: item._id!, event: $event })"
+            class="text-xs px-2 py-1 border border-outline-variant rounded bg-surface bg-surface-container-high"
+          >
+            <option value="">{{ 'tas.unassigned' | translate }}</option>
+            @for (customer of customers(); track customer._id!) {
+              <option [value]="customer._id!">{{ customer.customer_name }}</option>
+            }
+          </select>
+        </div>
+      </div>
+    }
+  }
+</div>
+
+<!-- Add Order Button -->
+<div class="p-4 bg-surface border-t border-outline-variant">
+  <button
+    (click)="addOrder.emit()"
+    class="w-full py-3 bg-primary text-on-primary rounded-lg font-semibold flex items-center justify-center gap-2"
+  >
+    <span class="material-symbols-outlined">add_circle</span>
+    {{ 'tas.add_order' | translate }}
+  </button>
+</div>

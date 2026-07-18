@@ -1,0 +1,102 @@
+<!-- Scrim overlay (always visible, covers entire screen) -->
+<div class="fixed inset-0 bg-scrim/50 z-40" (click)="closed.emit()"></div>
+
+<aside class="fixed right-0 top-0 bottom-0 z-50 w-80 min-w-80 h-full flex flex-col bg-surface border-l border-outline-variant shadow-disher-4 overflow-hidden" role="dialog" aria-modal="true" aria-labelledby="tas-cart-drawer-title" cdkTrapFocus cdkTrapFocusAutoCapture>
+  <!-- Cart header -->
+  <div class="flex items-center justify-between p-3 border-b border-outline-variant">
+    <div class="flex items-center gap-2">
+      <span class="material-symbols-outlined text-primary">shopping_cart</span>
+      <h2 id="tas-cart-drawer-title" class="font-semibold text-on-surface">{{ 'tas.pending_items' | translate }}</h2>
+      <span class="text-xs bg-primary-container text-on-primary-container px-2 py-0.5 rounded-full">{{ state().pendingCount() }}</span>
+    </div>
+    <button (click)="closed.emit()" class="btn-icon" [attr.aria-label]="i18n.translate('common.close')">
+      <span class="material-symbols-outlined">close</span>
+    </button>
+  </div>
+
+  <!-- Cart items -->
+  <div class="flex-1 overflow-auto p-3">
+    @if (state().pendingItems().length === 0) {
+      <div class="flex flex-col items-center justify-center py-12 text-on-surface-variant">
+        <span class="material-symbols-outlined text-5xl mb-2 opacity-40">shopping_cart</span>
+        <p class="text-sm">{{ 'tas.no_pending' | translate }}</p>
+      </div>
+    } @else {
+      @for (item of state().pendingItems(); track $index) {
+        <div class="flex items-start gap-2 p-3 bg-surface-container-low rounded-disher-sm mb-2 border border-outline-variant">
+          <div class="flex-1 min-w-0">
+            <p class="font-medium text-sm text-on-surface">{{ item.dish.disher_name | localize }}</p>
+            @if (item.variantId) {
+              <p class="text-xs text-on-surface-variant">
+                {{ item.dish.variants.find(v => v._id === item.variantId)?.variant_name | localize }}
+              </p>
+            }
+            @if (item.extras.length > 0) {
+              <p class="text-xs text-on-surface-variant">
+                +{{ item.extras.length }} extras
+              </p>
+            }
+            @if (item.customerId) {
+              <p class="text-xs text-primary mt-0.5">
+                {{ state().getCustomerById(item.customerId)?.customer_name }}
+              </p>
+            }
+            <!-- Quantity controls -->
+            <div class="flex items-center gap-2 mt-2">
+              <button
+                (click)="state().decrementPendingQuantity($index)"
+                class="w-11 h-11 flex items-center justify-center rounded-disher-sm border border-outline-variant bg-surface"
+                [disabled]="item.quantity <= 1"
+                [attr.aria-label]="i18n.translate('common.decrease_quantity')"
+              >
+                <span class="material-symbols-outlined text-xs">remove</span>
+              </button>
+              <span class="text-sm font-bold w-6 text-center">{{ item.quantity }}</span>
+              <button
+                (click)="state().incrementPendingQuantity($index)"
+                class="w-11 h-11 flex items-center justify-center rounded-disher-sm border border-outline-variant bg-surface"
+                [attr.aria-label]="i18n.translate('common.increase_quantity')"
+              >
+                <span class="material-symbols-outlined text-xs">add</span>
+              </button>
+            </div>
+          </div>
+          <div class="flex flex-col items-end gap-1">
+            <span class="font-bold text-sm text-primary">
+              {{ state().getPendingItemUnitTotal(item) * item.quantity | currencyFormat }}
+            </span>
+            <button (click)="state().removePendingItem($index)" class="w-11 h-11 flex items-center justify-center text-error" [title]="i18n.translate('common.delete_item')" [attr.aria-label]="i18n.translate('common.delete_item')">
+              <span class="material-symbols-outlined text-sm">delete</span>
+            </button>
+          </div>
+        </div>
+      }
+    }
+  </div>
+
+  <!-- Cart footer -->
+  @if (state().pendingItems().length > 0) {
+    <div class="p-3 border-t border-outline-variant bg-surface-container-low">
+      <div class="flex items-center justify-between mb-3">
+        <span class="font-semibold text-on-surface">{{ 'common.total' | translate }}</span>
+        <span class="text-xl font-bold text-primary">{{ state().pendingTotal() | currencyFormat }}</span>
+      </div>
+      <div class="flex gap-2">
+        <button
+          (click)="state().clearPendingItems()"
+          class="btn-admin btn-secondary flex-1 text-sm"
+        >
+          {{ 'tas.clear_pending' | translate }}
+        </button>
+        <button
+          (click)="sendOrder.emit()"
+          [disabled]="isSendingOrder()"
+          class="btn-admin btn-primary flex-1 text-sm flex items-center justify-center gap-1"
+        >
+          <span class="material-symbols-outlined text-sm">send</span>
+          {{ isSendingOrder() ? ('tas.sending_order' | translate) : ('tas.send_order' | translate) }}
+        </button>
+      </div>
+    </div>
+  }
+</aside>

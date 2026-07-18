@@ -1,0 +1,60 @@
+<!-- ═══ Dish grid (bottom section) ═══ -->
+<div class="border-t border-outline-variant bg-surface-container-low max-h-[50%] flex flex-col">
+  <!-- Category tabs -->
+  <div class="flex items-center gap-2 px-3 py-2 overflow-x-auto bg-surface border-b border-outline-variant">
+    <button
+      (click)="state().selectedCategory.set(null)"
+      class="px-3 py-1.5 rounded-disher-sm text-sm font-medium whitespace-nowrap transition-colors"
+      [class.bg-primary]="state().selectedCategory() === null"
+      [class.text-on-primary]="state().selectedCategory() === null"
+      [class.bg-surface-container-high]="state().selectedCategory() !== null"
+      [class.text-on-surface-variant]="state().selectedCategory() !== null"
+    >
+      {{ 'tas.all_categories' | translate }}
+    </button>
+    @for (cat of categories(); track cat._id) {
+      <button
+        (click)="state().selectedCategory.set(cat._id)"
+        class="px-3 py-1.5 rounded-disher-sm text-sm font-medium whitespace-nowrap transition-colors"
+        [class.bg-primary]="state().selectedCategory() === cat._id"
+        [class.text-on-primary]="state().selectedCategory() === cat._id"
+        [class.bg-surface-container-high]="state().selectedCategory() !== cat._id"
+        [class.text-on-surface-variant]="state().selectedCategory() !== cat._id"
+      >
+        {{ cat.category_name | localize }}
+      </button>
+    }
+  </div>
+
+  <!-- Dish grid -->
+  <div class="flex-1 overflow-auto p-3">
+    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
+      @for (dish of state().filteredDishes(); track dish._id) {
+        <div class="flex flex-col p-3 bg-surface rounded-disher-sm border border-outline-variant hover:border-primary hover:shadow-disher-1 transition-all">
+          <button
+            (click)="state().quickAddToCart(dish)"
+            class="flex flex-col text-left flex-1"
+          >
+            <span class="font-medium text-sm text-on-surface line-clamp-2">{{ dish.disher_name | localize }}</span>
+            <span class="text-xs text-on-surface-variant mt-1">{{ dish.disher_price | currencyFormat }}</span>
+            <span class="text-xs mt-0.5"
+              [class.text-tertiary]="dish.disher_type === 'KITCHEN'"
+              [class.text-primary]="dish.disher_type === 'SERVICE'"
+            >
+              {{ dish.disher_type === 'KITCHEN' ? ('tas.kitchen' | translate) : ('tas.service' | translate) }}
+            </span>
+          </button>
+          @if (dish.variants.length > 0 || dish.extras.length > 0) {
+            <button
+              (click)="state().selectDish(dish)"
+              class="mt-2 text-xs text-primary flex items-center gap-1"
+            >
+              <span class="material-symbols-outlined text-xs">tune</span>
+              {{ 'tas.customize' | translate }}
+            </button>
+          }
+        </div>
+      }
+    </div>
+  </div>
+</div>

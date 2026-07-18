@@ -1,0 +1,202 @@
+<div class="fixed inset-0 bg-scrim/50 z-[60] flex items-center justify-center p-4">
+  <div class="bg-surface rounded-disher-md shadow-disher-4 max-w-lg w-full max-h-[90vh] overflow-auto" role="dialog" aria-modal="true" aria-labelledby="tas-payment-modal-title" cdkTrapFocus cdkTrapFocusAutoCapture>
+    <div class="p-4 border-b border-outline-variant flex items-center justify-between">
+      <h3 id="tas-payment-modal-title" class="text-lg font-bold flex items-center gap-2 text-on-surface">
+        <span class="material-symbols-outlined">payments</span>
+        {{ 'pos.payment.title' | translate }}
+      </h3>
+      <button (click)="state().closePaymentModal()" class="btn-icon" [attr.aria-label]="i18n.translate('common.close')">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+
+    <div class="p-4">
+      <div class="bg-primary-container rounded-disher-md p-4 mb-4 text-center">
+        <p class="text-sm text-on-surface-variant">{{ 'pos.payment.total_to_pay' | translate }}</p>
+        <p class="text-3xl font-bold text-primary">{{ total() | currencyFormat }}</p>
+        @if (state().selectedCustomerId()) {
+          <p class="text-xs text-on-surface-variant mt-1">
+            {{ 'pos.payment.paying_for' | translate }} {{ state().getCustomerById(state().selectedCustomerId()!)?.customer_name }}
+          </p>
+        }
+      </div>
+
+      @if (!state().showPaymentSummary()) {
+        <div class="space-y-3 mb-4">
+          <p class="text-sm font-semibold text-on-surface-variant">{{ 'pos.payment.select_method' | translate }}</p>
+
+          <button
+            (click)="state().selectPaymentType('ALL')"
+            class="w-full p-4 rounded-disher-sm border-2 text-left transition-colors"
+            [class.border-primary]="state().paymentType() === 'ALL'"
+            [class.bg-primary-container]="state().paymentType() === 'ALL'"
+            [class.border-outline-variant]="state().paymentType() !== 'ALL'"
+          >
+            <div class="flex items-center gap-3">
+              <span class="material-symbols-outlined text-2xl" [class.text-primary]="state().paymentType() === 'ALL'">receipt</span>
+              <div>
+                <p class="font-semibold">{{ 'pos.payment.full_payment' | translate }}</p>
+                <p class="text-xs text-on-surface-variant">{{ 'pos.payment.full_payment_desc' | translate }}</p>
+              </div>
+            </div>
+          </button>
+
+          <button
+            (click)="state().selectPaymentType('SHARED')"
+            class="w-full p-4 rounded-disher-sm border-2 text-left transition-colors"
+            [class.border-primary]="state().paymentType() === 'SHARED'"
+            [class.bg-primary-container]="state().paymentType() === 'SHARED'"
+            [class.border-outline-variant]="state().paymentType() !== 'SHARED'"
+          >
+            <div class="flex items-center gap-3">
+              <span class="material-symbols-outlined text-2xl" [class.text-primary]="state().paymentType() === 'SHARED'">splitscreen</span>
+              <div class="flex-1">
+                <p class="font-semibold">{{ 'pos.payment.split_equal' | translate }}</p>
+                <p class="text-xs text-on-surface-variant">{{ 'pos.payment.split_equal_desc' | translate }}</p>
+              </div>
+            </div>
+          </button>
+
+          @if (state().paymentType() === 'SHARED') {
+            <div class="p-3 bg-surface-container-low rounded-disher-sm border border-outline-variant">
+              <label class="text-sm text-on-surface-variant">{{ 'pos.payment.number_of_people' | translate }}</label>
+              <div class="flex items-center gap-3 mt-2">
+                <button
+                  (click)="state().splitCount.set(Math.max(2, state().splitCount() - 1))"
+                  class="w-11 h-11 flex items-center justify-center rounded border border-outline-variant"
+                  [attr.aria-label]="i18n.translate('common.decrease_quantity')"
+                >
+                  <span class="material-symbols-outlined text-sm">remove</span>
+                </button>
+                <input
+                  type="number"
+                  [ngModel]="state().splitCount()"
+                  (ngModelChange)="state().splitCount.set(Math.max(2, +$event || 2))"
+                  min="2"
+                  class="w-16 text-center px-2 py-1 border border-outline-variant rounded bg-surface"
+                />
+                <button
+                  (click)="state().splitCount.set(state().splitCount() + 1)"
+                  class="w-11 h-11 flex items-center justify-center rounded border border-outline-variant"
+                  [attr.aria-label]="i18n.translate('common.increase_quantity')"
+                >
+                  <span class="material-symbols-outlined text-sm">add</span>
+                </button>
+                <span class="text-sm text-on-surface-variant">
+                  {{ 'pos.payment.each_pays' | translate }} <span class="font-bold text-primary">{{ state().calculateSplitAmount() | currencyFormat }}</span>
+                </span>
+              </div>
+            </div>
+          }
+
+          @if (state().canPayByConsumption()) {
+            <button
+              (click)="state().selectPaymentType('BY_USER')"
+              class="w-full p-4 rounded-disher-sm border-2 text-left transition-colors"
+              [class.border-primary]="state().paymentType() === 'BY_USER'"
+              [class.bg-primary-container]="state().paymentType() === 'BY_USER'"
+              [class.border-outline-variant]="state().paymentType() !== 'BY_USER'"
+            >
+              <div class="flex items-center gap-3">
+                <span class="material-symbols-outlined text-2xl" [class.text-primary]="state().paymentType() === 'BY_USER'">group</span>
+                <div>
+                  <p class="font-semibold">{{ 'pos.payment.by_consumption' | translate }}</p>
+                  <p class="text-xs text-on-surface-variant">{{ 'pos.payment.by_consumption_desc' | translate }}</p>
+                </div>
+              </div>
+            </button>
+          } @else {
+            <div class="w-full p-4 rounded-disher-sm border border-outline-variant opacity-50">
+              <div class="flex items-center gap-3">
+                <span class="material-symbols-outlined text-2xl">group</span>
+                <div>
+                  <p class="font-semibold">{{ 'pos.payment.by_consumption' | translate }}</p>
+                  <p class="text-xs text-error">{{ 'pos.payment.by_consumption_unavailable' | translate }}</p>
+                </div>
+              </div>
+            </div>
+          }
+        </div>
+      }
+
+      @if (state().showPaymentSummary()) {
+        <div class="mb-4">
+          <h4 class="font-semibold mb-3 flex items-center gap-2">
+            <span class="material-symbols-outlined">receipt_long</span>
+            {{ 'pos.payment.summary' | translate }}
+          </h4>
+
+          <div class="space-y-2 max-h-60 overflow-auto">
+            @for (ticket of state().paymentTickets(); track ticket.ticket_id || $index) {
+              <div class="p-3 rounded-disher-sm border border-outline-variant bg-surface-container-low">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <p class="font-medium">
+                      @if (ticket.ticket_customer_name) {
+                        {{ ticket.ticket_customer_name }}
+                      } @else {
+                        {{ 'pos.payment.ticket' | translate }} {{ ticket.ticket_part }} / {{ ticket.ticket_total_parts }}
+                      }
+                    </p>
+                    @if (ticket.ticket_customer_name) {
+                      <p class="text-xs text-on-surface-variant">
+                        {{ state().getItemsForCustomer(ticket.ticket_customer_name).length }} {{ 'pos.items' | translate }}
+                      </p>
+                    }
+                  </div>
+                  <span class="text-lg font-bold text-primary">{{ ticket.ticket_amount | currencyFormat }}</span>
+                </div>
+              </div>
+            }
+          </div>
+
+          <div class="mt-4 p-3 rounded-disher-sm bg-primary-container border border-outline-variant">
+            <div class="flex items-center justify-between">
+              <span class="font-semibold">{{ 'pos.payment.total' | translate }}</span>
+              <span class="text-xl font-bold text-primary">{{ total() | currencyFormat }}</span>
+            </div>
+          </div>
+        </div>
+
+        <button
+          (click)="state().showPaymentSummary.set(false)"
+          class="w-full py-2 mb-2 border border-outline-variant rounded-disher-sm font-semibold hover:bg-surface-container-low"
+        >
+          {{ 'common.back' | translate }}
+        </button>
+      }
+
+      @if (!state().showPaymentSummary()) {
+        <div class="flex gap-2">
+          <button
+            (click)="state().closePaymentModal()"
+            class="flex-1 py-3 border border-outline-variant rounded-disher-sm font-semibold hover:bg-surface-container-low"
+          >
+            {{ 'common.cancel' | translate }}
+          </button>
+          <button
+            (click)="state().calculateTickets()"
+            [disabled]="!state().paymentType() || state().isProcessingPayment()"
+            class="flex-1 py-3 bg-primary text-on-primary rounded-disher-sm font-semibold disabled:opacity-50"
+          >
+            {{ 'pos.payment.calculate' | translate }}
+          </button>
+        </div>
+      } @else {
+        <button
+          (click)="process.emit()"
+          [disabled]="state().isProcessingPayment()"
+          class="w-full py-3 bg-success text-on-success rounded-disher-sm font-semibold disabled:opacity-50 flex items-center justify-center gap-2"
+        >
+          @if (state().isProcessingPayment()) {
+            <span class="material-symbols-outlined animate-spin">refresh</span>
+            {{ 'pos.payment.processing' | translate }}
+          } @else {
+            <span class="material-symbols-outlined">check_circle</span>
+            {{ 'pos.payment.confirm' | translate }}
+          }
+        </button>
+      }
+    </div>
+  </div>
+</div>

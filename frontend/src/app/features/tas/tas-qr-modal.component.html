@@ -1,0 +1,30 @@
+<div class="fixed inset-0 bg-scrim/50 z-[60] flex items-center justify-center p-4" (click)="closed.emit()">
+  <div class="bg-surface rounded-disher-md shadow-disher-4 max-w-sm w-full" (click)="$event.stopPropagation()" role="dialog" aria-modal="true" aria-labelledby="tas-qr-modal-title" cdkTrapFocus cdkTrapFocusAutoCapture>
+    <div class="flex items-center justify-between p-4 border-b border-outline-variant">
+      <h3 id="tas-qr-modal-title" class="font-bold text-on-surface">{{ session().totem?.totem_name }} — QR</h3>
+      <button (click)="closed.emit()" class="btn-icon" [attr.aria-label]="i18n.translate('common.close')">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+    <div class="flex flex-col items-center p-6">
+      @if (session().totem?.totem_qr) {
+        <app-qr-code
+          [value]="getQrUrl(session().totem!.totem_qr!)"
+          [ariaLabel]="'totem.current_qr' | translate"
+          [size]="200"
+          class="w-48 rounded-disher-sm border border-outline-variant mb-4"
+        />
+        <p class="text-sm text-on-surface-variant mb-2 text-center break-all">{{ getQrUrl(session().totem!.totem_qr!) }}</p>
+        <button
+          (click)="copyToClipboard(getQrUrl(session().totem!.totem_qr!))"
+          class="btn-admin btn-secondary text-sm"
+        >
+          <span class="material-symbols-outlined text-sm">content_copy</span>
+          {{ 'common.copy' | translate }}
+        </button>
+      } @else {
+        <p class="text-sm text-on-surface-variant">{{ 'totem.no_qr' | translate }}</p>
+      }
+    </div>
+  </div>
+</div>

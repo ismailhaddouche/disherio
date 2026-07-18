@@ -1,0 +1,97 @@
+@if (dish(); as dish) {
+  <div class="fixed inset-0 bg-scrim/50 z-50 flex items-center justify-center p-4">
+    <div class="bg-surface rounded-xl max-w-md w-full max-h-[90vh] overflow-auto" role="dialog" aria-modal="true" aria-labelledby="pos-dish-modal-title" cdkTrapFocus cdkTrapFocusAutoCapture>
+      <div class="p-4 border-b border-outline-variant flex items-center justify-between">
+        <h3 id="pos-dish-modal-title" class="text-lg font-bold">{{ dish.disher_name | localize }}</h3>
+        <button (click)="state().selectedDish.set(null)" class="text-on-surface-variant hover:text-on-surface-variant" [attr.aria-label]="'common.close' | translate">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+
+      <div class="p-4">
+        <!-- Variants -->
+        @if (dish.variants.length > 0) {
+          <div class="mb-4">
+            <h4 class="text-sm font-semibold mb-2">{{ 'tas.variant' | translate }}</h4>
+            @for (variant of dish.variants; track variant._id) {
+              <label class="flex items-center gap-2 p-2 rounded-lg border border-outline-variant mb-1 cursor-pointer">
+                <input
+                  type="radio"
+                  name="variant"
+                  [value]="variant._id"
+                  [ngModel]="state().selectedVariantId()"
+                  (ngModelChange)="state().selectedVariantId.set($event)"
+                  class="w-4 h-4"
+                />
+                <span class="flex-1">{{ variant.variant_name | localize }}</span>
+                <span class="text-sm text-on-surface-variant">+{{ variant.variant_price | currencyFormat }}</span>
+              </label>
+            }
+          </div>
+        }
+
+        <!-- Extras -->
+        @if (dish.extras.length > 0) {
+          <div class="mb-4">
+            <h4 class="text-sm font-semibold mb-2">{{ 'dish.extras' | translate }}</h4>
+            @for (extra of dish.extras; track extra._id) {
+              <label class="flex items-center gap-2 p-2 rounded-lg border border-outline-variant mb-1 cursor-pointer">
+                <input
+                  type="checkbox"
+                  [value]="extra._id"
+                  (change)="state().toggleExtra(extra._id!)"
+                  class="w-4 h-4"
+                />
+                <span class="flex-1">{{ extra.extra_name | localize }}</span>
+                <span class="text-sm text-on-surface-variant">+{{ extra.extra_price | currencyFormat }}</span>
+              </label>
+            }
+          </div>
+        }
+
+        <!-- Assign to Customer -->
+        @if (customers().length > 0) {
+          <div class="mb-4">
+            <h4 class="text-sm font-semibold mb-2">{{ 'tas.assign_to' | translate }}</h4>
+            <select
+              [ngModel]="state().assignToCustomerId()"
+              (ngModelChange)="state().assignToCustomerId.set($event)"
+              class="w-full px-3 py-2 border border-outline-variant rounded-lg bg-surface bg-surface-container-high"
+            >
+              <option [value]="null">{{ 'tas.unassigned' | translate }}</option>
+              @for (customer of customers(); track customer._id!) {
+                <option [value]="customer._id!">{{ customer.customer_name }}</option>
+              }
+            </select>
+          </div>
+        }
+
+        <!-- Total -->
+        <div class="flex items-center justify-between py-3 border-t border-outline-variant">
+          <div class="flex items-center gap-3">
+            <span class="font-semibold">{{ 'common.quantity' | translate }}</span>
+            <div class="flex items-center gap-2">
+              <button type="button" (click)="state().decrementQuantity()" class="w-11 h-11 flex items-center justify-center rounded border border-outline-variant" [disabled]="state().itemQuantity() <= 1" [attr.aria-label]="'common.decrease_quantity' | translate">
+                <span class="material-symbols-outlined text-sm">remove</span>
+              </button>
+              <span class="text-lg font-bold w-8 text-center">{{ state().itemQuantity() }}</span>
+              <button type="button" (click)="state().incrementQuantity()" class="w-11 h-11 flex items-center justify-center rounded border border-outline-variant" [attr.aria-label]="'common.increase_quantity' | translate">
+                <span class="material-symbols-outlined text-sm">add</span>
+              </button>
+            </div>
+          </div>
+          <span class="text-xl font-bold text-primary">{{ state().calculateDishTotal(dish) * state().itemQuantity() | currencyFormat }}</span>
+        </div>
+
+        <!-- Add Button -->
+        <button
+          (click)="state().addItemToOrder(dish)"
+          [disabled]="state().isAddingItem()"
+          class="w-full py-3 bg-success text-on-success rounded-lg font-semibold disabled:opacity-50"
+        >
+          {{ state().isAddingItem() ? ('tas.adding' | translate) : ('tas.add_order' | translate) }} ({{ state().itemQuantity() }})
+        </button>
+      </div>
+    </div>
+  </div>
+}

@@ -1,0 +1,64 @@
+<aside class="w-96 bg-surface border-l border-outline-variant flex flex-col">
+  <div class="p-4 border-b border-outline-variant flex items-center justify-between">
+    <h2 class="text-lg font-bold">{{ 'tas.add_order' | translate }}</h2>
+    <button (click)="closed.emit()" class="text-on-surface-variant hover:text-on-surface-variant" [attr.aria-label]="'common.close' | translate">
+      <span class="material-symbols-outlined">close</span>
+    </button>
+  </div>
+
+  <!-- Categories -->
+  <div class="flex gap-2 overflow-x-auto p-3 border-b border-outline-variant">
+    <button
+      (click)="state().selectedCategory.set(null)"
+      class="px-3 py-1.5 rounded-full text-sm whitespace-nowrap"
+      [class.bg-primary]="state().selectedCategory() === null"
+      [class.text-on-primary]="state().selectedCategory() === null"
+      [class.bg-surface-container-high]="state().selectedCategory() !== null"
+      [class.bg-surface-container-high]="state().selectedCategory() !== null"
+    >
+      {{ 'tas.all' | translate }}
+    </button>
+    @for (cat of categories(); track cat._id) {
+      <button
+        (click)="state().selectedCategory.set(cat._id!)"
+        class="px-3 py-1.5 rounded-full text-sm whitespace-nowrap"
+        [class.bg-primary]="state().selectedCategory() === cat._id"
+        [class.text-on-primary]="state().selectedCategory() === cat._id"
+        [class.bg-surface-container-high]="state().selectedCategory() !== cat._id"
+        [class.bg-surface-container-high]="state().selectedCategory() !== cat._id"
+      >
+        {{ cat.category_name | localize }}
+      </button>
+    }
+  </div>
+
+  <!-- Dishes Grid -->
+  <div class="flex-1 overflow-auto p-3 grid grid-cols-2 gap-3">
+    @for (dish of state().filteredDishes(); track dish._id) {
+      <button
+        type="button"
+        (click)="state().selectDish(dish)"
+        class="w-full text-left bg-surface-container-low rounded-lg p-3 cursor-pointer hover:bg-surface-container-high hover:bg-surface-container-high transition-colors"
+      >
+        @if (dish.disher_url_image) {
+          <img [src]="dish.disher_url_image" [alt]="dish.disher_name | localize" class="w-full h-24 object-cover rounded-lg mb-2" />
+        } @else {
+          <span class="w-full h-24 bg-surface-container-high bg-surface-container-high rounded-lg mb-2 flex items-center justify-center">
+            <span class="material-symbols-outlined text-3xl text-on-surface-variant">restaurant</span>
+          </span>
+        }
+        <span class="block font-medium text-sm line-clamp-2">{{ dish.disher_name | localize }}</span>
+        <span class="block text-primary font-bold text-sm mt-1">{{ dish.disher_price | currencyFormat }}</span>
+        <span
+          class="text-xs px-1.5 py-0.5 rounded mt-1 inline-block"
+          [class.bg-tertiary-container]="dish.disher_type === 'KITCHEN'"
+          [class.text-on-tertiary-container]="dish.disher_type === 'KITCHEN'"
+          [class.bg-primary-container]="dish.disher_type === 'SERVICE'"
+          [class.text-on-primary-container]="dish.disher_type === 'SERVICE'"
+        >
+          {{ dish.disher_type === 'KITCHEN' ? ('tas.kitchen' | translate) : ('tas.bar' | translate) }}
+        </span>
+      </button>
+    }
+  </div>
+</aside>

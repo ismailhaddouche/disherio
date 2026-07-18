@@ -1,0 +1,109 @@
+<!-- Ordered items list -->
+<div class="flex-1 overflow-auto p-3">
+  @if (state().filteredItems().length === 0) {
+    <div class="flex flex-col items-center justify-center py-12 text-on-surface-variant">
+      <span class="material-symbols-outlined text-5xl mb-2 opacity-40">receipt_long</span>
+      <p class="text-sm">{{ 'tas.no_items' | translate }}</p>
+    </div>
+  } @else {
+    <!-- Kitchen items -->
+    @if (kitchenItems().length > 0) {
+      <h3 class="text-xs font-semibold text-on-surface-variant uppercase mb-2 flex items-center gap-1">
+        <span class="material-symbols-outlined text-base">restaurant</span>
+        {{ 'tas.kitchen_items' | translate }}
+      </h3>
+      <div class="space-y-2 mb-4">
+        @for (item of kitchenItems().filter(i => i.item_state !== 'CANCELED'); track item._id) {
+          <div class="flex items-center gap-3 p-3 bg-surface rounded-disher-sm border border-outline-variant">
+            <div class="flex-1 min-w-0">
+              <p class="font-medium text-sm text-on-surface">{{ item.item_name_snapshot | localize }}</p>
+              @if (item.item_disher_variant) {
+                <p class="text-xs text-on-surface-variant">+{{ item.item_disher_variant.name | localize }}</p>
+              }
+              <div class="flex items-center gap-2 mt-1">
+                <span class="text-xs px-2 py-0.5 rounded-full"
+                  [class.bg-tertiary-container]="item.item_state === 'ORDERED'"
+                  [class.text-on-tertiary-container]="item.item_state === 'ORDERED'"
+                  [class.bg-primary-container]="item.item_state === 'ON_PREPARE'"
+                  [class.text-on-primary-container]="item.item_state === 'ON_PREPARE'"
+                  [class.bg-success-container]="item.item_state === 'SERVED'"
+                  [class.text-on-success-container]="item.item_state === 'SERVED'"
+                >
+                  {{ getStateLabel(item.item_state) }}
+                </span>
+                <select
+                  [ngModel]="item.customer_id || ''"
+                  (ngModelChange)="assignItem.emit({ itemId: item._id!, customerId: $event || null })"
+                  class="text-xs px-2 py-0.5 border border-outline-variant rounded bg-surface"
+                >
+                  <option value="">{{ 'tas.unassigned' | translate }}</option>
+                  @for (customer of customers(); track customer._id!) {
+                    <option [value]="customer._id!">{{ customer.customer_name }}</option>
+                  }
+                </select>
+              </div>
+            </div>
+            <div class="flex flex-col items-end gap-1">
+              <span class="font-bold text-sm">{{ state().getItemTotal(item) | currencyFormat }}</span>
+              @if (item.item_state === 'ORDERED') {
+                <button (click)="deleteItem.emit(item._id!)" class="w-11 h-11 flex items-center justify-center text-error" [title]="i18n.translate('common.delete_item')" [attr.aria-label]="i18n.translate('common.delete_item')">
+                  <span class="material-symbols-outlined text-sm">delete</span>
+                </button>
+              }
+            </div>
+          </div>
+        }
+      </div>
+    }
+
+    <!-- Service items -->
+    @if (serviceItemsSession().length > 0) {
+      <h3 class="text-xs font-semibold text-on-surface-variant uppercase mb-2 flex items-center gap-1">
+        <span class="material-symbols-outlined text-base">local_bar</span>
+        {{ 'tas.bar_service' | translate }}
+      </h3>
+      <div class="space-y-2">
+        @for (item of serviceItemsSession().filter(i => i.item_state !== 'CANCELED'); track item._id) {
+          <div class="flex items-center gap-3 p-3 bg-surface rounded-disher-sm border border-outline-variant">
+            <div class="flex-1 min-w-0">
+              <p class="font-medium text-sm text-on-surface">{{ item.item_name_snapshot | localize }}</p>
+              <div class="flex items-center gap-2 mt-1">
+                <span class="text-xs px-2 py-0.5 rounded-full"
+                  [class.bg-tertiary-container]="item.item_state === 'ORDERED'"
+                  [class.text-on-tertiary-container]="item.item_state === 'ORDERED'"
+                  [class.bg-success-container]="item.item_state === 'SERVED'"
+                  [class.text-on-success-container]="item.item_state === 'SERVED'"
+                >
+                  {{ getStateLabel(item.item_state) }}
+                </span>
+                <select
+                  [ngModel]="item.customer_id || ''"
+                  (ngModelChange)="assignItem.emit({ itemId: item._id!, customerId: $event || null })"
+                  class="text-xs px-2 py-0.5 border border-outline-variant rounded bg-surface"
+                >
+                  <option value="">{{ 'tas.unassigned' | translate }}</option>
+                  @for (customer of customers(); track customer._id!) {
+                    <option [value]="customer._id!">{{ customer.customer_name }}</option>
+                  }
+                </select>
+              </div>
+            </div>
+            <div class="flex flex-col items-end gap-1">
+              <span class="font-bold text-sm">{{ state().getItemTotal(item) | currencyFormat }}</span>
+              <div class="flex gap-1">
+                @if (item.item_state === 'ORDERED') {
+                  <button (click)="serveItem.emit(item._id!)" class="w-11 h-11 flex items-center justify-center text-primary" [title]="i18n.translate('tas.mark_served')" [attr.aria-label]="i18n.translate('tas.mark_served')">
+                    <span class="material-symbols-outlined text-sm">check_circle</span>
+                  </button>
+                  <button (click)="deleteItem.emit(item._id!)" class="w-11 h-11 flex items-center justify-center text-error" [title]="i18n.translate('common.delete_item')" [attr.aria-label]="i18n.translate('common.delete_item')">
+                    <span class="material-symbols-outlined text-sm">delete</span>
+                  </button>
+                }
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+    }
+  }
+</div>

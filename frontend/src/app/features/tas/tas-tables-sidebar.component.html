@@ -1,0 +1,113 @@
+<!-- Scrim overlay (always visible, covers entire screen) -->
+<div class="fixed inset-0 bg-scrim/50 z-40" (click)="closed.emit()"></div>
+
+<aside class="fixed left-0 top-0 bottom-0 z-50 w-72 min-w-72 flex flex-col bg-surface border-r border-outline-variant transition-all duration-200 shadow-disher-3 overflow-hidden" role="dialog" aria-modal="true" aria-labelledby="tas-tables-drawer-title" cdkTrapFocus cdkTrapFocusAutoCapture>
+  <!-- Sidebar header with close button -->
+  <div class="flex items-center justify-between p-3 border-b border-outline-variant bg-surface">
+    <h2 id="tas-tables-drawer-title" class="text-sm font-semibold text-on-surface-variant uppercase">{{ 'tas.tables' | translate }}</h2>
+    <button
+      (click)="closed.emit()"
+      class="btn-icon"
+      [attr.aria-label]="i18n.translate('common.close')"
+    >
+      <span class="material-symbols-outlined">menu_open</span>
+    </button>
+  </div>
+
+  <div class="flex-1 overflow-auto">
+    <!-- All Totems (click to view sessions) -->
+    <div class="p-3">
+      <h3 class="text-xs font-semibold text-on-surface-variant uppercase mb-2">{{ 'tas.tables' | translate }}</h3>
+      @for (totem of actions().allTotems(); track totem._id) {
+        <div
+          class="p-3 rounded-disher-sm border transition-colors mb-2"
+          [class.bg-primary-container]="actions().selectedTotemId() === totem._id"
+          [class.border-primary]="actions().selectedTotemId() === totem._id"
+          [class.bg-surface]="actions().selectedTotemId() !== totem._id"
+          [class.border-outline-variant]="actions().selectedTotemId() !== totem._id"
+        >
+          <button
+            type="button"
+            (click)="actions().loadTotemSessions(totem._id)"
+            class="w-full flex items-center justify-between text-left"
+          >
+            <span class="font-medium text-sm" [class.text-on-primary-container]="actions().selectedTotemId() === totem._id" [class.text-on-surface]="actions().selectedTotemId() !== totem._id">
+              {{ totem.totem_name }}
+            </span>
+            <span class="text-xs px-2 py-0.5 rounded-full"
+              [class.bg-tertiary-container]="totem.totem_type === 'TEMPORARY'"
+              [class.text-on-tertiary-container]="totem.totem_type === 'TEMPORARY'"
+              [class.bg-surface-container-high]="totem.totem_type === 'STANDARD'"
+              [class.text-on-surface-variant]="totem.totem_type === 'STANDARD'"
+            >
+              {{ totem.totem_type === 'TEMPORARY' ? ('tas.temporary' | translate) : ('tas.standard' | translate) }}
+            </span>
+          </button>
+          <!-- Show sessions for this totem -->
+          @if (actions().selectedTotemId() === totem._id) {
+            <div class="mt-2 space-y-1">
+              @for (session of actions().totemSessions(); track session._id) {
+                <button
+                  type="button"
+                  (click)="sessionSelect.emit(session)"
+                  class="w-full flex items-center justify-between p-2 rounded-disher-sm text-xs text-left"
+                  [class.bg-surface-container-high]="selectedSessionId() !== session._id"
+                  [class.bg-primary]="selectedSessionId() === session._id"
+                  [class.text-on-primary]="selectedSessionId() === session._id"
+                  [class.text-on-surface]="selectedSessionId() !== session._id"
+                >
+                  <span class="flex items-center gap-1">
+                    @if (session.totem_state === 'STARTED') {
+                      <span class="material-symbols-outlined text-xs text-success">play_circle</span>
+                    } @else if (session.totem_state === 'COMPLETE') {
+                      <span class="material-symbols-outlined text-xs text-on-surface-variant">lock</span>
+                    }
+                    {{ session.session_date_start | date:'shortTime' }}
+                  </span>
+                  <span class="text-xs">{{ session.totem_state === 'STARTED' ? ('tas.state_open' | translate) : ('tas.state_closed' | translate) }}</span>
+                </button>
+              }
+              @if (actions().totemSessions().length === 0) {
+                <p class="text-xs text-on-surface-variant text-center py-1">{{ 'tas.no_sessions' | translate }}</p>
+              }
+            </div>
+            @if (!hasOpenSession()) {
+              <!-- Open new session button -->
+              <button
+                (click)="actions().startSession(totem._id)"
+                class="w-full mt-2 text-xs py-1.5 bg-success text-on-success rounded-disher-sm font-medium"
+              >
+                {{ 'tas.session.open' | translate }}
+              </button>
+            }
+          }
+        </div>
+      }
+      @if (actions().allTotems().length === 0) {
+        <p class="text-xs text-on-surface-variant text-center py-2">{{ 'tas.no_tables' | translate }}</p>
+      }
+    </div>
+
+    <!-- Create Temporary Totem -->
+    <div class="p-3 border-t border-outline-variant">
+      <h3 class="text-xs font-semibold text-on-surface-variant uppercase mb-2">{{ 'tas.create_temp' | translate }}</h3>
+      <div class="flex gap-2">
+        <input
+          type="text"
+          [ngModel]="actions().newTotemName()"
+          (ngModelChange)="actions().newTotemName.set($event)"
+          (keyup.enter)="actions().createTemporaryTotem()"
+          [placeholder]="i18n.translate('tas.table_name')"
+          class="admin-input flex-1 text-sm"
+        />
+        <button
+          (click)="actions().createTemporaryTotem()"
+          [disabled]="actions().isCreatingTotem() || !actions().newTotemName().trim() || hasOpenSession()"
+          class="btn-primary btn-admin px-3"
+        >
+          <span class="material-symbols-outlined text-sm">add</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</aside>

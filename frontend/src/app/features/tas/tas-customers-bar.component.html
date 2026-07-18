@@ -1,0 +1,51 @@
+<!-- Customer tabs -->
+<div class="flex items-center gap-2 px-3 py-2 bg-surface-container-low border-b border-outline-variant overflow-x-auto">
+  <button
+    (click)="state().selectedCustomerId.set(null)"
+    class="px-3 py-1.5 rounded-disher-full text-sm font-medium whitespace-nowrap transition-colors"
+    [class.bg-primary]="state().selectedCustomerId() === null"
+    [class.text-on-primary]="state().selectedCustomerId() === null"
+    [class.bg-surface-container-high]="state().selectedCustomerId() !== null"
+    [class.text-on-surface-variant]="state().selectedCustomerId() !== null"
+  >
+    {{ 'tas.all' | translate }}
+  </button>
+  @for (customer of customers(); track customer._id!) {
+    <button
+      (click)="state().selectedCustomerId.set(customer._id!)"
+      class="px-3 py-1.5 rounded-disher-full text-sm font-medium whitespace-nowrap transition-colors"
+      [class.bg-primary]="state().selectedCustomerId() === customer._id"
+      [class.text-on-primary]="state().selectedCustomerId() === customer._id"
+      [class.bg-surface-container-high]="state().selectedCustomerId() !== customer._id"
+      [class.text-on-surface-variant]="state().selectedCustomerId() !== customer._id"
+    >
+      {{ customer.customer_name }} ({{ state().getCustomerItemCount(customer._id!) }})
+    </button>
+  }
+  <button
+    (click)="showAddCustomer.set(!showAddCustomer())"
+    class="px-3 py-1.5 rounded-disher-full text-sm font-medium whitespace-nowrap bg-surface-container-high text-on-surface-variant"
+    [attr.aria-label]="i18n.translate('tas.add_customer_label')"
+  >
+    <span class="material-symbols-outlined text-sm align-middle">person_add</span>
+  </button>
+</div>
+
+@if (showAddCustomer()) {
+  <div class="flex items-center gap-2 px-3 py-2 bg-surface border-b border-outline-variant">
+    <input
+      type="text"
+      [ngModel]="newCustomerName()"
+      (ngModelChange)="newCustomerName.set($event)"
+      (keyup.enter)="addCustomer.emit()"
+      [placeholder]="i18n.translate('tas.customer_name')"
+      class="admin-input flex-1 text-sm"
+    />
+    <button (click)="addCustomer.emit()" class="btn-primary btn-admin px-3" [attr.aria-label]="i18n.translate('common.add')">
+      <span class="material-symbols-outlined text-sm">check</span>
+    </button>
+    <button (click)="showAddCustomer.set(false)" class="btn-icon" [attr.aria-label]="i18n.translate('common.close')">
+      <span class="material-symbols-outlined text-sm">close</span>
+    </button>
+  </div>
+}
