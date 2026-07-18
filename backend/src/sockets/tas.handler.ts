@@ -1,5 +1,15 @@
 import { Server } from 'socket.io';
 import i18next from 'i18next';
+import type {
+  ItemCancelPayload,
+  ItemIdPayload,
+  TASAddItemData,
+  TASCallWaiterResponsePayload,
+  TASCustomerBillRequestEvent,
+  TASHelpRequest,
+  TASNotifyCustomersPayload,
+  TASRequestBillPayload,
+} from '@disherio/shared';
 import { ItemOrder, IItemOrder } from '../models/order.model';
 import { TotemSession } from '../models/totem.model';
 import { logger } from '../config/logger';
@@ -231,15 +241,7 @@ export function registerTasHandlers(io: Server, socket: AuthenticatedSocket): vo
    *   extras?: string[]
    * }
    */
-  socket.on('tas:add_item', rateLimitMiddleware(socket, 'tas:add_item', async (data: {
-    sessionId: string;
-    orderId: string;
-    dishId: string;
-    customerId?: string;
-    variantId?: string;
-    extras?: string[];
-    itemData: Partial<IItemOrder>;
-  }) => {
+  socket.on('tas:add_item', rateLimitMiddleware(socket, 'tas:add_item', async (data: TASAddItemData) => {
     try {
       const { sessionId, orderId, dishId, customerId, variantId, extras } = data;
 
@@ -290,8 +292,8 @@ export function registerTasHandlers(io: Server, socket: AuthenticatedSocket): vo
         timestamp: new Date().toISOString(),
       });
 
-      logger.info({ sessionId, staffId, dishId, itemType: (newItem as any).item_disher_type }, 'TAS added item');
-    } catch (err: any) {
+      logger.info({ sessionId, staffId, dishId, itemType: newItem.item_disher_type }, 'TAS added item');
+    } catch (err: unknown) {
       logger.error({ err, staffId }, 'tas:add_item error');
       socket.emit('tas:error', { message: sanitizeSocketError(err) });
     }
@@ -302,7 +304,7 @@ export function registerTasHandlers(io: Server, socket: AuthenticatedSocket): vo
    * Kitchen items are handled by KDS handler
    * Payload: { itemId: string }
    */
-  socket.on('tas:serve_service_item', rateLimitMiddleware(socket, 'tas:serve_service_item', async ({ itemId }: { itemId: string }) => {
+  socket.on('tas:serve_service_item', rateLimitMiddleware(socket, 'tas:serve_service_item', async ({ itemId }: ItemIdPayload) => {
     try {
       if (!itemId || typeof itemId !== 'string') {
         socket.emit('tas:error', { message: 'INVALID_ITEM_ID' });
@@ -361,7 +363,7 @@ export function registerTasHandlers(io: Server, socket: AuthenticatedSocket): vo
       });
 
       logger.info({ itemId, staffId, sessionId }, 'TAS served SERVICE item');
-    } catch (err: any) {
+    } catch (err: unknown) {
       logger.error({ err, itemId, staffId }, 'tas:serve_service_item error');
       socket.emit('tas:error', { message: 'INTERNAL_ERROR' });
     }
@@ -371,7 +373,7 @@ export function registerTasHandlers(io: Server, socket: AuthenticatedSocket): vo
    * Cancel an item (waiter cancels an item from the order)
    * Payload: { itemId: string, reason?: string }
    */
-  socket.on('tas:cancel_item', rateLimitMiddleware(socket, 'tas:cancel_item', async ({ itemId, reason }: { itemId: string; reason?: string }) => {
+  socket.on('tas:cancel_item', rateLimitMiddleware(socket, 'tas:cancel_item', async ({ itemId, reason }: ItemCancelPayload) => {
     try {
       if (!itemId || typeof itemId !== 'string') {
         socket.emit('tas:error', { message: 'INVALID_ITEM_ID' });
@@ -397,8 +399,8 @@ export function registerTasHandlers(io: Server, socket: AuthenticatedSocket): vo
       let item: IItemOrder | null;
       try {
         item = (await updateItemState(itemId, 'CANCELED', staffId, user.permissions ?? [], 'TAS')) as IItemOrder | null;
-      } catch (serviceErr: any) {
-        const msg = serviceErr.message || 'CANCEL_FAILED';
+      } catch (serviceErr: unknown) {
+        const msg = serviceErr instanceof Error && serviceErr.message ? serviceErr.message : 'CANCEL_FAILED';
         socket.emit('tas:error', { message: msg });
         return;
       }
@@ -462,7 +464,7 @@ export function registerTasHandlers(io: Server, socket: AuthenticatedSocket): vo
 
       socket.emit('tas:item_canceled_confirm', { success: true, itemId });
       logger.info({ itemId, staffId, sessionId, reason }, 'TAS canceled item');
-    } catch (err: any) {
+    } catch (err: unknown) {
       logger.error({ err, itemId, staffId }, 'tas:cancel_item error');
       socket.emit('tas:error', { message: 'INTERNAL_ERROR' });
     }
@@ -474,12 +476,7 @@ export function registerTasHandlers(io: Server, socket: AuthenticatedSocket): vo
    * Request bill/check for a session
    * Payload: { sessionId: string, requestedBy: 'waiter' | 'customer', customerId?: string }
    */
-  socket.on('tas:request_bill', rateLimitMiddleware(socket, 'tas:request_bill', async (data: {
-    sessionId: string;
-    requestedBy: 'waiter' | 'customer';
-    customerId?: string;
-    splitType?: 'ALL' | 'BY_USER' | 'SHARED';
-  }) => {
+  socket.on('tas:request_bill', rateLimitMiddleware(socket, 'tas:request_bill', async (data: TASRequestBillPayload) => {
     try {
       const { sessionId, requestedBy, customerId, splitType } = data;
 
@@ -541,7 +538,7 @@ export function registerTasHandlers(io: Server, socket: AuthenticatedSocket): vo
 
       socket.emit('tas:bill_request_confirm', { success: true, sessionId });
       logger.info({ sessionId, staffId, requestedBy }, 'Bill requested - session closed for customers');
-    } catch (err: any) {
+    } catch (err: unknown) {
       logger.error({ err, staffId }, 'tas:request_bill error');
       socket.emit('tas:error', { message: 'INTERNAL_ERROR' });
     }
@@ -556,13 +553,7 @@ export function registerTasHandlers(io: Server, socket: AuthenticatedSocket): vo
    * Customer calls waiter (this is received from customer client and forwarded to TAS)
    * Note: This event is typically emitted by customer clients, TAS receives it
    */
-  socket.on('tas:call_waiter_response', rateLimitMiddleware(socket, 'tas:call_waiter_response', async (data: {
-    sessionId: string;
-    customerId?: string;
-    tableId?: string;
-    acknowledged: boolean;
-    message?: string;
-  }) => {
+  socket.on('tas:call_waiter_response', rateLimitMiddleware(socket, 'tas:call_waiter_response', async (data: TASCallWaiterResponsePayload) => {
     try {
       const { sessionId, acknowledged, message } = data;
 
@@ -591,7 +582,7 @@ export function registerTasHandlers(io: Server, socket: AuthenticatedSocket): vo
         socket.emit('tas:call_acknowledged_confirm', { success: true, sessionId });
         logger.info({ sessionId, staffId }, 'Waiter acknowledged customer call');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       logger.error({ err, staffId }, 'tas:call_waiter_response error');
       socket.emit('tas:error', { message: 'INTERNAL_ERROR' });
     }
@@ -601,11 +592,7 @@ export function registerTasHandlers(io: Server, socket: AuthenticatedSocket): vo
    * Send message to customers at a table
    * Payload: { sessionId: string, message: string, type?: 'info' | 'warning' | 'success' }
    */
-  socket.on('tas:notify_customers', rateLimitMiddleware(socket, 'tas:notify_customers', async (data: {
-    sessionId: string;
-    message: string;
-    type?: 'info' | 'warning' | 'success';
-  }) => {
+  socket.on('tas:notify_customers', rateLimitMiddleware(socket, 'tas:notify_customers', async (data: TASNotifyCustomersPayload) => {
     try {
       const { sessionId, message, type } = data;
 
@@ -626,7 +613,7 @@ export function registerTasHandlers(io: Server, socket: AuthenticatedSocket): vo
 
       socket.emit('tas:notify_confirm', { success: true, sessionId });
       logger.info({ sessionId, staffId }, 'TAS notified customers');
-    } catch (err: any) {
+    } catch (err: unknown) {
       logger.error({ err, staffId }, 'tas:notify_customers error');
       socket.emit('tas:error', { message: 'INTERNAL_ERROR' });
     }
@@ -674,7 +661,7 @@ export function registerTasHandlers(io: Server, socket: AuthenticatedSocket): vo
  * Helper function to emit events to TAS from other parts of the system
  * (e.g., when a customer places an order via totem)
  */
-export function emitToTAS(sessionId: string, event: string, data: any): void {
+export function emitToTAS(sessionId: string, event: string, data: unknown): void {
   try {
     const io = getIO();
     io.to(`tas:session:${sessionId}`).emit(event, data);
@@ -685,9 +672,11 @@ export function emitToTAS(sessionId: string, event: string, data: any): void {
 }
 
 /**
- * Notify TAS when a customer places a new order via totem/app
+ * Notify TAS when a customer places a new order via totem/app.
+ * orderData is passed through verbatim; callers send ad-hoc payloads mixing
+ * Mongoose item documents and metadata, so no shared contract models it exactly.
  */
-export function notifyTASNewOrder(sessionId: string, orderData: any): void {
+export function notifyTASNewOrder(sessionId: string, orderData: object): void {
   emitToTAS(sessionId, 'tas:new_customer_order', {
     ...orderData,
     timestamp: new Date().toISOString(),
@@ -697,7 +686,7 @@ export function notifyTASNewOrder(sessionId: string, orderData: any): void {
 /**
  * Notify TAS when a customer requests help
  */
-export function notifyTASHelpRequest(sessionId: string, customerData: any): void {
+export function notifyTASHelpRequest(sessionId: string, customerData: TASHelpRequest): void {
   emitToTAS(sessionId, 'tas:help_requested', {
     ...customerData,
     timestamp: new Date().toISOString(),
@@ -707,7 +696,7 @@ export function notifyTASHelpRequest(sessionId: string, customerData: any): void
 /**
  * Notify TAS when a customer requests the bill from their device
  */
-export function notifyTASBillRequest(sessionId: string, customerData: any): void {
+export function notifyTASBillRequest(sessionId: string, customerData: TASCustomerBillRequestEvent): void {
   emitToTAS(sessionId, 'tas:customer_bill_request', {
     ...customerData,
     timestamp: new Date().toISOString(),
@@ -717,7 +706,7 @@ export function notifyTASBillRequest(sessionId: string, customerData: any): void
 /**
  * Emit event to customers in a session
  */
-function emitToCustomers(sessionId: string, event: string, data: any): void {
+function emitToCustomers(sessionId: string, event: string, data: unknown): void {
   try {
     const io = getIO();
     io.to(`customer:session:${sessionId}`).emit(event, data);

@@ -1,4 +1,5 @@
 import { Server } from 'socket.io';
+import type { ItemCancelPayload, ItemIdPayload } from '@disherio/shared';
 import { IItemOrder, ItemOrder } from '../models/order.model';
 import { logger } from '../config/logger';
 import { AuthenticatedSocket } from '../middlewares/socketAuth';
@@ -195,7 +196,7 @@ export function registerKdsHandlers(_io: Server, socket: AuthenticatedSocket): v
    * Mark item as being prepared
    * Payload: { itemId: string }
    */
-  socket.on('kds:item_prepare', rateLimitMiddleware(socket, 'kds:item_prepare', async ({ itemId }: { itemId: string }) => {
+  socket.on('kds:item_prepare', rateLimitMiddleware(socket, 'kds:item_prepare', async ({ itemId }: ItemIdPayload) => {
     try {
       if (!itemId || typeof itemId !== 'string') {
         socket.emit('kds:error', { message: 'INVALID_ITEM_ID', itemId });
@@ -234,8 +235,11 @@ export function registerKdsHandlers(_io: Server, socket: AuthenticatedSocket): v
       let item;
       try {
         item = await updateItemState(itemId, 'ON_PREPARE', staffId, user.permissions, 'KDS') as IItemOrder;
-      } catch (serviceError: any) {
-        socket.emit('kds:error', { message: serviceError.message || 'UPDATE_FAILED', itemId });
+      } catch (serviceError: unknown) {
+        const message = serviceError instanceof Error && serviceError.message
+          ? serviceError.message
+          : 'UPDATE_FAILED';
+        socket.emit('kds:error', { message, itemId });
         return;
       }
 
@@ -253,7 +257,7 @@ export function registerKdsHandlers(_io: Server, socket: AuthenticatedSocket): v
 
       socket.emit('kds:item_prepared', { itemId, newState: 'ON_PREPARE' });
       logger.info({ itemId, staffId, sessionId }, 'Item marked as ON_PREPARE');
-    } catch (err: any) {
+    } catch (err: unknown) {
       logger.error({ err, itemId, staffId }, 'kds:item_prepare error');
       socket.emit('kds:error', {
         message: 'INTERNAL_ERROR',
@@ -266,7 +270,7 @@ export function registerKdsHandlers(_io: Server, socket: AuthenticatedSocket): v
    * Cancel an item (only if in ORDERED state)
    * Payload: { itemId: string, reason?: string }
    */
-  socket.on('kds:item_cancel', rateLimitMiddleware(socket, 'kds:item_cancel', async ({ itemId, reason }: { itemId: string; reason?: string }) => {
+  socket.on('kds:item_cancel', rateLimitMiddleware(socket, 'kds:item_cancel', async ({ itemId, reason }: ItemCancelPayload) => {
     try {
       if (!itemId || typeof itemId !== 'string') {
         socket.emit('kds:error', { message: 'INVALID_ITEM_ID', itemId });
@@ -305,8 +309,11 @@ export function registerKdsHandlers(_io: Server, socket: AuthenticatedSocket): v
       let item;
       try {
         item = await updateItemState(itemId, 'CANCELED', staffId, user.permissions, 'KDS') as IItemOrder;
-      } catch (serviceError: any) {
-        socket.emit('kds:error', { message: serviceError.message || 'UPDATE_FAILED', itemId });
+      } catch (serviceError: unknown) {
+        const message = serviceError instanceof Error && serviceError.message
+          ? serviceError.message
+          : 'UPDATE_FAILED';
+        socket.emit('kds:error', { message, itemId });
         return;
       }
 
@@ -325,7 +332,7 @@ export function registerKdsHandlers(_io: Server, socket: AuthenticatedSocket): v
 
       socket.emit('kds:item_canceled', { itemId, newState: 'CANCELED' });
       logger.info({ itemId, staffId, sessionId, reason }, 'Item marked as CANCELED by KDS');
-    } catch (err: any) {
+    } catch (err: unknown) {
       logger.error({ err, itemId, staffId }, 'kds:item_cancel error');
       socket.emit('kds:error', {
         message: 'INTERNAL_ERROR',
@@ -338,7 +345,7 @@ export function registerKdsHandlers(_io: Server, socket: AuthenticatedSocket): v
    * Mark item as served/ready
    * Payload: { itemId: string }
    */
-  socket.on('kds:item_serve', rateLimitMiddleware(socket, 'kds:item_serve', async ({ itemId }: { itemId: string }) => {
+  socket.on('kds:item_serve', rateLimitMiddleware(socket, 'kds:item_serve', async ({ itemId }: ItemIdPayload) => {
     try {
       if (!itemId || typeof itemId !== 'string') {
         socket.emit('kds:error', { message: 'INVALID_ITEM_ID', itemId });
@@ -367,8 +374,11 @@ export function registerKdsHandlers(_io: Server, socket: AuthenticatedSocket): v
       let item;
       try {
         item = await updateItemState(itemId, 'SERVED', staffId, user.permissions, 'KDS') as IItemOrder;
-      } catch (serviceError: any) {
-        socket.emit('kds:error', { message: serviceError.message || 'UPDATE_FAILED', itemId });
+      } catch (serviceError: unknown) {
+        const message = serviceError instanceof Error && serviceError.message
+          ? serviceError.message
+          : 'UPDATE_FAILED';
+        socket.emit('kds:error', { message, itemId });
         return;
       }
 
@@ -386,7 +396,7 @@ export function registerKdsHandlers(_io: Server, socket: AuthenticatedSocket): v
 
       socket.emit('kds:item_served', { itemId, newState: 'SERVED' });
       logger.info({ itemId, staffId, sessionId }, 'Item marked as SERVED');
-    } catch (err: any) {
+    } catch (err: unknown) {
       logger.error({ err, itemId, staffId }, 'kds:item_serve error');
       socket.emit('kds:error', {
         message: 'INTERNAL_ERROR',
@@ -437,7 +447,7 @@ export function registerKdsHandlers(_io: Server, socket: AuthenticatedSocket): v
 /**
  * Emit event to all KDS in a session
  */
-export function emitToKDS(sessionId: string, event: string, data: any): void {
+export function emitToKDS(sessionId: string, event: string, data: unknown): void {
   try {
     const io = getIO();
     io.to(`kitchen:session:${sessionId}`).emit(event, data);
@@ -450,7 +460,7 @@ export function emitToKDS(sessionId: string, event: string, data: any): void {
 /**
  * Emit event to TAS in a session
  */
-function emitToTAS(sessionId: string, event: string, data: any): void {
+function emitToTAS(sessionId: string, event: string, data: unknown): void {
   try {
     const io = getIO();
     io.to(`tas:session:${sessionId}`).emit(event, data);
@@ -461,9 +471,12 @@ function emitToTAS(sessionId: string, event: string, data: any): void {
 }
 
 /**
- * Notify KDS of new kitchen items
+ * Notify KDS of new kitchen items.
+ * itemData is passed through verbatim: callers send Mongoose item documents
+ * (or plain objects derived from them), which do not match the shared ItemOrder
+ * contract structurally, hence `object` — it still guarantees a spreadable payload.
  */
-export function notifyKDSNewItem(sessionId: string, itemData: any): void {
+export function notifyKDSNewItem(sessionId: string, itemData: object): void {
   emitToKDS(sessionId, 'kds:new_item', {
     ...itemData,
     timestamp: new Date().toISOString(),
@@ -473,7 +486,7 @@ export function notifyKDSNewItem(sessionId: string, itemData: any): void {
 /**
  * Notify KDS when item is canceled
  */
-export function notifyKDSItemCanceled(sessionId: string, itemData: any): void {
+export function notifyKDSItemCanceled(sessionId: string, itemData: object): void {
   emitToKDS(sessionId, 'kds:item_canceled', {
     ...itemData,
     timestamp: new Date().toISOString(),

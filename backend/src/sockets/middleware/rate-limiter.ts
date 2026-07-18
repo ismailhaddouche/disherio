@@ -99,19 +99,27 @@ export function bindSocketRateLimitToCustomer(socket: AuthenticatedSocket, custo
 }
 
 /**
+ * Membership check for the `as const` event lists above. Widening to
+ * readonly string[] avoids casting the event name at each call site.
+ */
+function includesEvent(events: readonly string[], eventType: string): boolean {
+  return events.includes(eventType);
+}
+
+/**
  * Get the rate limit configuration for a specific event type
  */
 function getRateLimitConfig(eventType: string): { maxRequests: number; windowMs: number } {
-  if (RATE_LIMITS.JOIN_LEAVE.events.includes(eventType as any)) {
+  if (includesEvent(RATE_LIMITS.JOIN_LEAVE.events, eventType)) {
     return { maxRequests: RATE_LIMITS.JOIN_LEAVE.maxRequests, windowMs: RATE_LIMITS.JOIN_LEAVE.windowMs };
   }
-  if (RATE_LIMITS.ORDER.events.includes(eventType as any)) {
+  if (includesEvent(RATE_LIMITS.ORDER.events, eventType)) {
     return { maxRequests: RATE_LIMITS.ORDER.maxRequests, windowMs: RATE_LIMITS.ORDER.windowMs };
   }
-  if (RATE_LIMITS.MESSAGE.events.includes(eventType as any)) {
+  if (includesEvent(RATE_LIMITS.MESSAGE.events, eventType)) {
     return { maxRequests: RATE_LIMITS.MESSAGE.maxRequests, windowMs: RATE_LIMITS.MESSAGE.windowMs };
   }
-  if (RATE_LIMITS.CUSTOMER.events.includes(eventType as any)) {
+  if (includesEvent(RATE_LIMITS.CUSTOMER.events, eventType)) {
     return { maxRequests: RATE_LIMITS.CUSTOMER.maxRequests, windowMs: RATE_LIMITS.CUSTOMER.windowMs };
   }
   return DEFAULT_RATE_LIMIT;
@@ -237,6 +245,9 @@ export async function cleanupExpiredRateLimits(): Promise<void> {
  *
  * Usage: socket.on('event', rateLimitMiddleware(socket, 'event', handler))
  */
+// The `any` in the handler constraint is intentional: the wrapper must accept
+// any handler signature, and `unknown[]` would break Parameters<T> inference
+// under strictFunctionTypes (same pattern used by socket.io's own typings).
 export function rateLimitMiddleware<T extends (...args: any[]) => any>(
   socket: AuthenticatedSocket,
   eventType: string,

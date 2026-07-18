@@ -346,6 +346,97 @@ export interface PosBillRequestedEvent {
 }
 
 // ============================================
+// Inbound Socket Payload Types (client -> server)
+// ============================================
+
+/**
+ * Payload for socket events that reference a single item by id
+ * (kds:item_prepare, kds:item_serve, tas:serve_service_item)
+ */
+export interface ItemIdPayload {
+  itemId: string;
+}
+
+/**
+ * Payload for item cancellation socket events
+ * (kds:item_cancel, tas:cancel_item)
+ */
+export interface ItemCancelPayload {
+  itemId: string;
+  reason?: string;
+}
+
+/**
+ * Payload for the tas:request_bill socket event
+ */
+export interface TASRequestBillPayload {
+  sessionId: string;
+  requestedBy: 'waiter' | 'customer';
+  customerId?: string;
+  splitType?: PaymentType;
+}
+
+/**
+ * Payload for the tas:call_waiter_response socket event
+ */
+export interface TASCallWaiterResponsePayload {
+  sessionId: string;
+  customerId?: string;
+  tableId?: string;
+  acknowledged: boolean;
+  message?: string;
+}
+
+/**
+ * Payload for the tas:notify_customers socket event
+ */
+export interface TASNotifyCustomersPayload {
+  sessionId: string;
+  message: string;
+  type?: WaiterNotification['type'];
+}
+
+/**
+ * Payload for the totem:join_session socket event.
+ * Validated at runtime by TotemJoinSessionPayloadSchema (shared/schemas/totem.schema.ts)
+ */
+export interface TotemJoinSessionPayload {
+  sessionId: string;
+  qr: string;
+  customerName?: string;
+  customerId?: string;
+  sessionToken?: string;
+}
+
+/**
+ * Payload for the totem:call_waiter socket event.
+ * Validated at runtime by TotemCallWaiterPayloadSchema (shared/schemas/totem.schema.ts)
+ */
+export interface TotemCallWaiterPayload {
+  sessionId: string;
+  tableId?: string;
+  message?: string;
+}
+
+/**
+ * Payload for the totem:request_bill socket event.
+ * Validated at runtime by TotemRequestBillPayloadSchema (shared/schemas/totem.schema.ts)
+ */
+export interface TotemRequestBillPayload {
+  sessionId: string;
+  splitType?: PaymentType;
+}
+
+/**
+ * Payload for totem socket events that only carry a session id
+ * (totem:subscribe_items, totem:get_table_info, totem:get_my_orders).
+ * Validated at runtime by TotemSessionIdPayloadSchema (shared/schemas/totem.schema.ts)
+ */
+export interface TotemSessionIdPayload {
+  sessionId: string;
+}
+
+// ============================================
 // API Response Types
 // ============================================
 

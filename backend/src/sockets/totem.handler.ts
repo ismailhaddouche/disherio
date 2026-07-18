@@ -11,6 +11,13 @@ import { trackSocketConnection, cleanupSocketConnection, trackSocketJoinRoom, tr
 import { bindSocketRateLimitToCustomer, rateLimitMiddleware } from './middleware/rate-limiter';
 import { validateSocketPayload } from './middleware/validate-payload';
 import * as TotemService from '../services/totem.service';
+import type {
+  LocalizedField,
+  TotemCallWaiterPayload,
+  TotemJoinSessionPayload,
+  TotemRequestBillPayload,
+  TotemSessionIdPayload,
+} from '@disherio/shared';
 import {
   TotemJoinSessionPayloadSchema,
   TotemRequestBillPayloadSchema,
@@ -348,13 +355,7 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
    * Customer joins a session room (after scanning QR)
    * Payload: { sessionId: string, customerName?: string }
    */
-  socket.on('totem:join_session', rateLimitMiddleware(socket, 'totem:join_session', async (data: {
-    sessionId: string;
-    qr: string;
-    customerName?: string;
-    customerId?: string;
-    sessionToken?: string;
-  }) => {
+  socket.on('totem:join_session', rateLimitMiddleware(socket, 'totem:join_session', async (data: TotemJoinSessionPayload) => {
     try {
       const { sessionId, qr, customerName, customerId, sessionToken } = data;
 
@@ -513,7 +514,7 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
         logger.info({ socketId, sessionId }, 'Customer left session');
         socket.emit('totem:session_left', { sessionId });
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       logger.error({ err, socketId }, 'totem:leave_session error');
       socket.emit('totem:error', { message: 'INTERNAL_ERROR' });
     }
@@ -531,11 +532,7 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
   /**
    * Customer requests help/waiter
    */
-  socket.on('totem:call_waiter', rateLimitMiddleware(socket, 'totem:call_waiter', async (data: {
-    sessionId: string;
-    tableId?: string;
-    message?: string;
-  }) => {
+  socket.on('totem:call_waiter', rateLimitMiddleware(socket, 'totem:call_waiter', async (data: TotemCallWaiterPayload) => {
     try {
       const { sessionId, tableId, message } = data;
 
@@ -578,7 +575,7 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
       });
 
       logger.info({ socketId, sessionId, customerId: boundCustomer.customerId }, 'Customer requested help');
-    } catch (err: any) {
+    } catch (err: unknown) {
       logger.error({ err, socketId }, 'totem:call_waiter error');
       socket.emit('totem:error', { message: 'INTERNAL_ERROR' });
     }
@@ -587,10 +584,7 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
   /**
    * Customer requests the bill
    */
-  socket.on('totem:request_bill', rateLimitMiddleware(socket, 'totem:request_bill', async (data: {
-    sessionId: string;
-    splitType?: 'ALL' | 'BY_USER' | 'SHARED';
-  }) => {
+  socket.on('totem:request_bill', rateLimitMiddleware(socket, 'totem:request_bill', async (data: TotemRequestBillPayload) => {
     try {
       const { sessionId, splitType } = data;
 
@@ -664,7 +658,7 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
       });
 
       logger.info({ socketId, sessionId, customerId: boundCustomer.customerId }, 'Customer requested bill - session closed');
-    } catch (err: any) {
+    } catch (err: unknown) {
       logger.error({ err, socketId }, 'totem:request_bill error');
       socket.emit('totem:error', { message: 'INTERNAL_ERROR' });
     }
@@ -675,9 +669,7 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
   /**
    * Customer subscribes to item updates for their session
    */
-  socket.on('totem:subscribe_items', rateLimitMiddleware(socket, 'totem:subscribe_items', async (data: {
-    sessionId: string;
-  }) => {
+  socket.on('totem:subscribe_items', rateLimitMiddleware(socket, 'totem:subscribe_items', async (data: TotemSessionIdPayload) => {
     try {
       const { sessionId } = data;
 
@@ -698,7 +690,7 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
 
       socket.emit('totem:items_subscribed', { sessionId });
       logger.info({ socketId, sessionId }, 'Customer subscribed to item updates');
-    } catch (err: any) {
+    } catch (err: unknown) {
       logger.error({ err, socketId }, 'totem:subscribe_items error');
       socket.emit('totem:error', { message: 'INTERNAL_ERROR' });
     }
@@ -707,9 +699,7 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
   /**
    * Get table info - who's at the table and current orders
    */
-  socket.on('totem:get_table_info', rateLimitMiddleware(socket, 'totem:get_table_info', async (data: {
-    sessionId: string;
-  }) => {
+  socket.on('totem:get_table_info', rateLimitMiddleware(socket, 'totem:get_table_info', async (data: TotemSessionIdPayload) => {
     try {
       const { sessionId } = data;
 
@@ -745,7 +735,7 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
       });
 
       logger.info({ socketId, sessionId, customerCount: customersAtTable.length }, 'Table info sent');
-    } catch (err: any) {
+    } catch (err: unknown) {
       logger.error({ err, socketId }, 'totem:get_table_info error');
       socket.emit('totem:error', { message: 'INTERNAL_ERROR' });
     }
@@ -754,9 +744,7 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
   /**
    * Get my orders - orders placed by this specific customer
    */
-  socket.on('totem:get_my_orders', rateLimitMiddleware(socket, 'totem:get_my_orders', async (data: {
-    sessionId: string;
-  }) => {
+  socket.on('totem:get_my_orders', rateLimitMiddleware(socket, 'totem:get_my_orders', async (data: TotemSessionIdPayload) => {
     try {
       const { sessionId } = data;
 
@@ -787,7 +775,7 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
       });
 
       logger.info({ socketId, sessionId, customerId: myInfo.customerId }, 'My orders requested');
-    } catch (err: any) {
+    } catch (err: unknown) {
       logger.error({ err, socketId }, 'totem:get_my_orders error');
       socket.emit('totem:error', { message: 'INTERNAL_ERROR' });
     }
@@ -852,7 +840,7 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
 
 
       logger.info({ socketId }, 'Totem client disconnected and cleaned up');
-    } catch (err: any) {
+    } catch (err: unknown) {
       logger.error({ err, socketId }, 'Error handling customer disconnect');
     }
   });
@@ -863,7 +851,7 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
 /**
  * Emit event to all customers in a session
  */
-export function emitToCustomers(sessionId: string, event: string, data: any): void {
+export function emitToCustomers(sessionId: string, event: string, data: unknown): void {
   try {
     const io = getIO();
     io.to(`customer:session:${sessionId}`).emit(event, data);
@@ -876,7 +864,7 @@ export function emitToCustomers(sessionId: string, event: string, data: any): vo
 /**
  * Notify customers when their item state changes
  */
-export function notifyCustomerItemUpdate(sessionId: string, itemId: string, newState: string, itemName?: any): void {
+export function notifyCustomerItemUpdate(sessionId: string, itemId: string, newState: string, itemName?: LocalizedField): void {
   emitToCustomers(sessionId, 'order:item_update', {
     itemId,
     newState,

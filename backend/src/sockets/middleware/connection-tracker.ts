@@ -7,6 +7,7 @@
 
 import { Server, Socket } from 'socket.io';
 import { logger } from '../../config/logger';
+import type { AuthenticatedSocket } from '../../middlewares/socketAuth';
 
 // Connection metadata interface
 interface ConnectionMetadata {
@@ -38,7 +39,10 @@ export function trackSocketConnection(
   handlerType: string,
   metadata?: Partial<ConnectionMetadata>
 ): void {
-  const user = (socket as any).user;
+  // Sockets are registered as AuthenticatedSocket by every handler; the base
+  // Socket type is kept in the signature so the tracker also accepts plain sockets.
+  // The `id` fallback covers user payloads that expose the id as `id` instead of `staffId`.
+  const user = (socket as AuthenticatedSocket).user as (AuthenticatedSocket['user'] & { id?: string });
   const socketId = socket.id;
 
   const connectionMeta: ConnectionMetadata = {

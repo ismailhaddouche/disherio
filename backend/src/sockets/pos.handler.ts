@@ -192,14 +192,20 @@ export function emitSessionArchived(
 /**
  * Notify POS when a customer places a new order via totem/socket.
  * Emits kds:new_item per item — the event name the POS frontend listens for.
+ *
+ * orderData is an opaque pass-through built by the order services (its items
+ * are Mongoose documents or plain objects); the handler only spreads each item
+ * and attaches a timestamp, so no shared contract models it exactly.
  */
-export function notifyPOSNewOrder(sessionId: string, orderData: any): void {
+export function notifyPOSNewOrder(sessionId: string, orderData: Record<string, unknown>): void {
   try {
     const io = getIO();
-    const items: any[] = Array.isArray(orderData.items) ? orderData.items : [orderData.items];
+    const items: unknown[] = Array.isArray(orderData.items) ? orderData.items : [orderData.items];
     items.forEach((item) => {
       io.to(`pos:session:${sessionId}`).emit('kds:new_item', {
-        ...item,
+        // Type-level cast only: enables the spread of an opaque item object;
+        // the emitted runtime payload is unchanged.
+        ...(item as Record<string, unknown>),
         timestamp: new Date().toISOString(),
       });
     });
