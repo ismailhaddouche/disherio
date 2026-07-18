@@ -1,0 +1,133 @@
+import { z } from 'zod';
+import { logger } from './logger';
+import { loadSecretFiles } from './secret-files';
+
+const DEFAULT_JWT_SECRET = 'changeme_in_production';
+
+/**
+ * Zod schema for environment variables validation
+ * Ensures all required env vars are present and valid
+ */
+export const envSchema = z.object({
+  // JWT Secret validation - strict security requirements
+  JWT_SECRET: z
+    .string()
+    .min(1, 'JWT_SECRET cannot be empty')
+    .refine((val) => val !== DEFAULT_JWT_SECRET, {
+      message: `JWT_SECRET cannot be the default value '${DEFAULT_JWT_SECRET}'`,
+    })
+    .refine((val) => val.length >= 32, {
+      message: 'JWT_SECRET must be at least 32 characters long',
+    }),
+
+  // Database connection
+  MONGODB_URI: z.string().min(1, 'MONGODB_URI is required'),
+
+  // Server configuration
+  PORT: z
+    .string()
+    .default('3000')
+    .transform((val) => parseInt(val, 10)),
+
+  // Optional: Node environment
+  NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+
+  // Optional: Redis configuration
+  REDIS_URL: z.string().default('redis://localhost:6379'),
+  REDIS_PASSWORD: z.string().optional(),
+
+  // Access token lifetime (short-lived)
+  JWT_EXPIRES: z.string().default('15m'),
+
+  // Refresh token configuration. The secret derives deterministic successor
+  // tokens during the short idempotent rotation window; refresh tokens remain
+  // opaque values and only their hashes are persisted.
+  JWT_REFRESH_SECRET: z
+    .string()
+    .min(1, 'JWT_REFRESH_SECRET cannot be empty')
+    .refine((val) => val !== DEFAULT_JWT_SECRET, {
+      message: `JWT_REFRESH_SECRET cannot be the default value '${DEFAULT_JWT_SECRET}'`,
+    })
+    .refine((val) => val.length >= 32, {
+      message: 'JWT_REFRESH_SECRET must be at least 32 characters long',
+    }),
+
+  JWT_REFRESH_EXPIRES: z.string().default('7d'),
+
+  // Reverse proxy trust flag
+  TRUST_PROXY: z.enum(['true', 'false']).default('false'),
+
+  // Bcrypt cost factor for staff credentials.
+  BCRYPT_ROUNDS: z
+    .string()
+    .default('12')
+    .transform((val) => parseInt(val, 10))
+    .refine((val) => val >= 10 && val <= 15, {
+      message: 'BCRYPT_ROUNDS must be between 10 and 15',
+    }),
+
+  // Server-side pepper for the deterministic PIN lookup key (HMAC-SHA256).
+  // The lookup key lets PIN login run an indexed O(1) query instead of one
+  // bcrypt.compare per staff member. Rotating it invalidates stored lookup
+  // keys; affected staff fall back to the legacy scan once and re-register
+  // on their next successful PIN login.
+  PIN_LOOKUP_PEPPER: z
+    .string()
+    .min(1, 'PIN_LOOKUP_PEPPER cannot be empty')
+    .refine((val) => val !== DEFAULT_JWT_SECRET, {
+      message: `PIN_LOOKUP_PEPPER cannot be the default value '${DEFAULT_JWT_SECRET}'`,
+    })
+    .refine((val) => val.length >= 32, {
+      message: 'PIN_LOOKUP_PEPPER must be at least 32 characters long',
+    }),
+});
+
+/**
+ * Parsed and validated environment variables
+ * Throws error if validation fails
+ */
+export type EnvConfig = z.infer<typeof envSchema>;
+
+/**
+ * Validates environment variables and returns parsed config
+ * Exits process if validation fails
+ */
+export function validateEnv(): EnvConfig {
+  try {
+    loadSecretFiles();
+    const config = envSchema.parse(process.env);
+    return config;
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      const issues = error.issues.map(
+        (issue) => `  - ${issue.path.join('.')}: ${issue.message}`
+      );
+
+      logger.error('[ERROR] Environment validation failed:');
+      issues.forEach((issue) => logger.error(issue));
+      logger.error('\nPlease check your .env file and ensure all required variables are set correctly.');
+    } else {
+      logger.error({ err: error }, '[ERROR] Unexpected error validating environment');
+    }
+
+    process.exit(1);
+  }
+}
+
+/**
+ * Lazy-loaded validated environment config
+ * Use this to access validated env vars after initial validation
+ */
+let _validatedEnv: EnvConfig | null = null;
+
+export function getEnv(): EnvConfig {
+  if (!_validatedEnv) {
+    _validatedEnv = validateEnv();
+  }
+  return _validatedEnv;
+}
+
+// Re-validate function for testing purposes
+export function __resetEnv(): void {
+  _validatedEnv = null;
+}

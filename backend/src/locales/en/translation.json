@@ -1,0 +1,133 @@
+{
+  "errors": {
+    "INVALID_CREDENTIALS": "Invalid credentials",
+    "AMBIGUOUS_USERNAME": "Username exists in multiple restaurants. Please specify the restaurant.",
+    "INVALID_PIN": "Invalid PIN",
+    "UNAUTHORIZED": "Unauthorized",
+    "AUTHENTICATION_REQUIRED": "Authentication required",
+    "FORBIDDEN": "Access denied",
+    "NOT_FOUND": "Resource not found",
+    "SERVICE_UNAVAILABLE": "Service temporarily unavailable. Please try again.",
+    "SERVER_ERROR": "Internal server error",
+    "SERVER_CONFIGURATION_ERROR": "Server configuration error",
+    "DATABASE_ERROR": "Database error",
+    "INVALID_ID_FORMAT": "Invalid identifier format",
+    "VALIDATION_ERROR": "Validation error",
+    "INVALID_PRICE": "Invalid price",
+    "JWT_SECRET_MISSING": "JWT_SECRET environment variable is required",
+    "INVALID_TOKEN": "Invalid or expired token",
+
+    "DISH_NOT_FOUND": "Dish not found",
+    "DISH_NOT_AVAILABLE": "Dish not available",
+    "CATEGORY_HAS_DISHES": "Category has associated dishes",
+    "SESSION_HAS_ITEMS": "The session has orders. Close it or cancel the orders before cancelling the session",
+    "CATEGORY_NOT_FOUND": "Category not found",
+
+    "SESSION_NOT_ACTIVE": "Session is not active",
+    "ACTIVE_SESSION_EXISTS": "There is already an active session. Close it before opening another one",
+    "SESSION_NOT_FOUND": "Session not found",
+    "SESSION_EXPIRED": "Session has expired",
+
+    "ORDER_NOT_FOUND": "Order not found",
+    "ORDER_ALREADY_PAID": "Order is already paid",
+    "SESSION_ALREADY_PAID": "Session is already paid and cannot be reopened",
+    "ORDER_CANCELLED": "Order has been cancelled",
+    "ORDER_LIMIT_REACHED": "The maximum number of orders for this session has been reached",
+    "ORDER_INTERVAL_ACTIVE": "The minimum time between orders has not passed yet",
+
+    "ITEM_NOT_FOUND": "Item not found",
+    "ITEM_NOT_FOUND_OR_ALREADY_PROCESSED": "Item not found or already processed",
+    "CANNOT_DELETE_ITEM_NOT_ORDERED": "Cannot delete item that is not ordered",
+    "INVALID_STATE_TRANSITION": "Invalid state transition",
+    "REQUIRES_POS_AUTHORIZATION": "Requires POS authorization",
+    "REQUIRES_AUTHORIZATION": "Authorization required",
+
+    "PAYMENT_NOT_FOUND": "Payment not found",
+    "TICKET_NOT_FOUND": "Ticket not found",
+    "NO_ITEMS_TO_PAY": "No items to pay",
+    "PAYMENT_FAILED": "Payment failed",
+
+    "TOTEM_NOT_FOUND": "Totem not found",
+    "TOTEM_NOT_ACTIVE": "Totem is not active",
+    "TOTEM_QR_INVALID": "Invalid totem QR",
+
+    "RESTAURANT_NOT_FOUND": "Restaurant not found",
+    "RESTAURANT_NOT_ACTIVE": "Restaurant is not active",
+
+    "STAFF_NOT_FOUND": "Staff member not found",
+    "ROLE_NOT_FOUND": "Role not found",
+    "USER_NOT_FOUND": "User not found",
+    "CUSTOMER_NOT_FOUND": "Customer not found",
+    "TABLE_NOT_FOUND": "Table not found",
+    "USER_ALREADY_EXISTS": "User already exists in this restaurant",
+    "CUSTOMER_NAME_TAKEN": "That name is already taken at this table. Choose another",
+    "CUSTOMER_NAME_REQUIRED": "A name of at least 2 characters is required",
+
+    "FILE_TOO_LARGE": "File too large",
+    "INVALID_FILE_TYPE": "Invalid file type",
+    "UPLOAD_FAILED": "Upload failed",
+    "NO_FILE_UPLOADED": "No file uploaded",
+    "INVALID_FILE": "Invalid file",
+    "INVALID_IMAGE_DIMENSIONS": "Invalid image dimensions",
+    "UNEXPECTED_FIELD": "Unexpected file field",
+    "TOO_MANY_FILES": "Too many files",
+    "UPLOAD_ERROR": "Upload error",
+
+    "RATE_LIMIT_EXCEEDED": "Too many requests. Please try again later",
+    "AUTH_RATE_LIMIT_EXCEEDED": "Too many login attempts. Please try again later",
+    "API_RATE_LIMIT_EXCEEDED": "Too many requests. Please slow down",
+    "STRICT_RATE_LIMIT_EXCEEDED": "Too many operations. Please wait before trying again",
+    "UPLOAD_RATE_LIMIT_EXCEEDED": "Upload limit reached. Please try again later",
+    "QR_RATE_LIMIT_EXCEEDED": "Too many QR scans. Please try again later",
+    "QR_BRUTE_FORCE_DETECTED": "Too many attempts. QR code may be invalid",
+
+    "SOCKET_NOT_INITIALIZED": "Socket.io not initialized",
+    "UPDATE_FAILED": "Update failed",
+    "DUPLICATE_RESOURCE": "Resource already exists",
+    "IDEMPOTENCY_CONFLICT": "This request key was already used with different order details",
+
+    "DASHBOARD_ERROR": "Error getting dashboard statistics",
+    "LOGS_ERROR": "Error getting logs",
+    "LOGS_USERS_ERROR": "Error getting users"
+  },
+  "success": {
+    "LOGIN_SUCCESS": "Login successful",
+    "LOGOUT_SUCCESS": "Logout successful",
+    "CREATED": "Created successfully",
+    "UPDATED": "Updated successfully",
+    "DELETED": "Deleted successfully",
+    "ORDER_CREATED": "Order created successfully",
+    "PAYMENT_PROCESSED": "Payment processed successfully",
+    "PREFERENCES_UPDATED": "Preferences updated",
+    "SETTINGS_UPDATED": "Settings updated successfully"
+  },
+  "mail": {
+    "welcome_subject": "Welcome to DisherIo",
+    "welcome_body": "Hello {{name}}, your account has been successfully created."
+  },
+  "common": {
+    "UNKNOWN": "Unknown",
+    "UNCATEGORIZED": "Uncategorized",
+    "UNKNOWN_ACTION": "Unknown action",
+    "ORDERED": "Dish ordered",
+    "ON_PREPARE": "Preparation started",
+    "SERVED": "Dish served",
+    "CANCELED": "Dish cancelled",
+    "CUSTOMER": "Customer"
+  },
+  "sockets": {
+    "BILL_REQUESTED": "Bill requested",
+    "SESSION_CLOSED_NO_MORE_ORDERS": "The bill has been requested. No more orders can be placed.",
+    "MUST_JOIN_SESSION": "Must join session first",
+    "NEEDS_HELP": "Needs help",
+    "WAITER_COMING": "A waiter is coming right away",
+    "BILL_ALREADY_REQUESTED": "The bill has already been requested.",
+    "BILL_REQUEST_SENT": "Your bill request has been sent. The session will close shortly.",
+    "BILL_REQUESTED_BY_CUSTOMER": "Bill requested by customer",
+    "BILL_REQUESTED_BY_WAITER": "Bill requested by waiter",
+    "WAITER_COMING_ASSIST": "A waiter is coming to assist you",
+    "SESSION_ENDED_THANK_YOU": "The session has ended. Thank you for your visit.",
+    "SESSION_CLOSED_BY_STAFF": "Session closed by the staff",
+    "SESSION_CANCELLED": "Session cancelled"
+  }
+}
