@@ -1,0 +1,682 @@
+import { Component, OnInit, OnDestroy, inject, signal, computed, ChangeDetectionStrategy } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { A11yModule } from '@angular/cdk/a11y';
+import { Subject } from 'rxjs';
+import { switchMap, takeUntil } from 'rxjs/operators';
+import { TasService } from '../../services/tas.service';
+import type { PaymentHistoryEntry } from '../../services/tas.service';
+import { SocketService } from '../../services/socket/socket.service';
+import { cartStore } from '../../store/cart.store';
+import { CurrencyFormatPipe } from '../../shared/pipes/currency-format.pipe';
+import { CaslCanDirective } from '../../shared/directives/casl.directive';
+import { TranslatePipe } from '../../shared/pipes/translate.pipe';
+import { LocalizePipe } from '../../shared/pipes/localize.pipe';
+import { I18nService } from '../../core/services/i18n.service';
+import { NotificationService } from '../../core/services/notification.service';
+import { getActiveItemTotal, getSessionListItemCount } from '../../shared/utils/order-item.utils';
+import { ConfirmationService } from '../../core/services/confirmation.service';
+import { OrderWorkspaceState } from '../../shared/state/order-workspace.state';
+import { PosTicketHistoryService } from './pos-ticket-history.service';
+import {
+  removeOperationalSession,
+  removeTemporaryTotem,
+  replaceOperationalSession,
+  setOperationalSessionState,
+} from '../../shared/utils/operational-session.utils';
+import type {
+  TotemSession,
+  ItemOrder,
+  Customer,
+  Dish,
+  LocalizedField,
+  PaymentTicket,
+  SessionArchivedEvent,
+  SessionClosedEvent,
+  SessionReopenedEvent,
+} from '../../types';
+
+@Component({
+  selector: 'app-pos',
+  standalone: true,
+  imports: [CommonModule, FormsModule, A11yModule, CurrencyFormatPipe, CaslCanDirective, TranslatePipe, LocalizePipe],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  templateUrl: './pos.component.html',
+  providers: [PosTicketHistoryService],
+})
+export class PosComponent extends OrderWorkspaceState implements OnInit, OnDestroy {
+  private tasService = inject(TasService);
+  private socketService = inject(SocketService);
+  private i18n = inject(I18nService);
+  private notify = inject(NotificationService);
+  private confirmation = inject(ConfirmationService);
+  private ticketHistoryState = inject(PosTicketHistoryService);
+  private destroy$ = new Subject<void>();
+  private socketListenerDisposers: Array<() => void> = [];
+  private connectionStatusInitialized = false;
+
+  // State
+  isLoading = signal(false);
+  isConnected = signal(false);
+  sessions = signal<TotemSession[]>([]);
+  selectedSession = signal<TotemSession | null>(null);
+  sessionItems = signal<ItemOrder[]>([]);
+  allTotems = signal<Array<{ _id: string; totem_name: string; totem_type: string }>>([]);
+  customers = signal<Customer[]>([]);
+  showAddCustomer = signal(false);
+  newCustomerName = signal('');
+
+  // Temporary totem creation
+  newTotemName = signal('');
+  isCreatingTotem = signal(false);
+  isStartingSession = signal(false);
+  isClosingSession = signal(false);
+  isReopeningSession = signal(false);
+  isArchivingSession = signal(false);
+  isCancellingSession = signal(false);
+
+  // Menu data
+  showMenu = signal(false);
+  dishes = signal<Dish[]>([]);
+  categories = signal<Array<{ _id: string; category_name: LocalizedField }>>([]);
+  isSendingOrder = signal(false);
+
+  // Ticket history state
+  showTicketHistory = this.ticketHistoryState.isOpen;
+  isLoadingHistory = this.ticketHistoryState.isLoading;
+  ticketHistory = this.ticketHistoryState.payments;
+  ticketHistorySearch = this.ticketHistoryState.search;
+  ticketHistoryFrom = this.ticketHistoryState.from;
+  ticketHistoryTo = this.ticketHistoryState.to;
+
+  // Cart (from store, for manual POS items)
+  cartItems = cartStore.items;
+  subtotal = cartStore.subtotal;
+  total = cartStore.total;
+
+  activeSessions = computed(() =>
+    this.sessions().filter(s => s.totem_state === 'STARTED')
+  );
+
+  closedSessions = computed(() =>
+    this.sessions().filter(s => s.totem_state === 'COMPLETE')
+  );
+
+  isSessionClosed = computed(() => this.selectedSession()?.totem_state === 'COMPLETE');
+
+  hasOpenSession = computed(() => this.activeSessions().length > 0);
+
+  availableTotems = computed(() => {
+    const activeTotemIds = new Set(
+      this.activeSessions().map(s => s.totem_id?.toString())
+    );
+    return this.allTotems().filter(t => t.totem_type === 'STANDARD' && !activeTotemIds.has(t._id?.toString()));
+  });
+
+  sessionTotal = computed(() =>
+    getActiveItemTotal(this.sessionItems())
+  );
+
+
+  protected override getWorkspaceItems(): ItemOrder[] {
+    return this.sessionItems();
+  }
+
+  protected override getWorkspaceCustomers(): Customer[] {
+    return this.customers();
+  }
+
+  protected override getWorkspaceDishes(): Dish[] {
+    return this.dishes();
+  }
+
+  protected override getWorkspaceTotal(): number {
+    return this.sessionTotal();
+  }
+
+  protected override getFallbackCustomerName(part: number): string {
+    return `${this.i18n.translate('logs.customer_label')} ${part}`;
+  }
+
+  protected override canQueueDish(): boolean {
+    return this.selectedSession() !== null;
+  }
+
+  protected override afterDishQueued(): void {
+    this.selectedDish.set(null);
+    this.notify.success(this.i18n.translate('totem.item_added_to_cart'));
+  }
+
+  ngOnInit() {
+    this.socketService.acquireConnection();
+    this.loadData();
+    this.setupSocketListeners();
+    this.checkConnection();
+    const connInterval = setInterval(() => this.checkConnection(), 2000);
+    this.destroy$.subscribe(() => clearInterval(connInterval));
+  }
+
+  ngOnDestroy() {
+    const selectedSessionId = this.selectedSession()?._id;
+    if (selectedSessionId) this.socketService.leaveSession(selectedSessionId);
+    this.destroy$.next();
+    this.destroy$.complete();
+    this.disposeSocketListeners();
+    this.socketService.releaseConnection();
+  }
+
+  private listen<T>(event: string, callback: (data: T) => void): void {
+    this.socketListenerDisposers.push(this.socketService.on(event, callback));
+  }
+
+  private disposeSocketListeners(): void {
+    this.socketListenerDisposers.forEach(dispose => dispose());
+    this.socketListenerDisposers = [];
+  }
+
+  private checkConnection() {
+    const wasConnected = this.isConnected();
+    const connected = this.socketService.isConnected();
+    this.isConnected.set(connected);
+    if (this.connectionStatusInitialized && !wasConnected && connected) {
+      this.loadData();
+    }
+    this.connectionStatusInitialized = true;
+  }
+
+  private loadData() {
+    this.isLoading.set(true);
+
+    this.tasService.getActiveSessions()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (sessions) => {
+          this.sessions.set(sessions);
+          const selected = this.selectedSession();
+          if (selected?._id) {
+            const refreshed = sessions.find(session => session._id === selected._id);
+            if (refreshed) {
+              this.loadSessionDetails({ ...selected, ...refreshed });
+            } else {
+              this.selectedSession.set(null);
+              this.sessionItems.set([]);
+              this.customers.set([]);
+            }
+          }
+          this.isLoading.set(false);
+        },
+        error: () => this.isLoading.set(false),
+      });
+
+    // Refresh totems so terminal temporary tables disappear after reconnect.
+    this.tasService.getTotems()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (totems) => {
+          const validTotems = totems
+            .filter((t): t is typeof t & { _id: string } => !!t._id)
+            .map(t => ({ _id: t._id, totem_name: t.totem_name, totem_type: t.totem_type }));
+          this.allTotems.set(validTotems);
+        },
+        error: () => undefined,
+      });
+
+    // Load dishes and categories
+    this.tasService.getDishes()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: ({ dishes, categories }) => {
+          this.dishes.set(dishes);
+          this.categories.set(categories);
+        },
+        error: () => undefined,
+      });
+
+  }
+
+  private setupSocketListeners() {
+    this.listen('item:state_changed', (data: { itemId: string; newState: string }) => {
+      this.sessionItems.update(items =>
+        items.map(i => i._id === data.itemId ? { ...i, item_state: data.newState as ItemOrder['item_state'] } : i)
+      );
+    });
+
+    this.listen('kds:new_item', (item: ItemOrder) => {
+      if (item.session_id === this.selectedSession()?._id) {
+        this.sessionItems.update(items => [...items, item]);
+      }
+    });
+
+    this.listen('pos:session_closed', (data: SessionClosedEvent) => {
+      const wasSelected = data.sessionId === this.selectedSession()?._id;
+      if (data.state === 'CANCELLED') {
+        this.removeSessionFromActiveView(data.sessionId);
+        if (wasSelected && !this.isCancellingSession()) {
+          this.notify.warning(this.i18n.translate('tas.session_cancelled'));
+        }
+      } else {
+        this.markSessionComplete(data.sessionId);
+        if (wasSelected && !this.isClosingSession()) {
+          this.notify.warning(this.i18n.translate('tas.session_closed_by_pos'));
+        }
+      }
+    });
+
+    this.listen('pos:session_reopened', (data: SessionReopenedEvent) => {
+      const wasSelected = data.sessionId === this.selectedSession()?._id;
+      this.markSessionStarted(data.sessionId);
+      if (wasSelected && !this.isReopeningSession()) {
+        this.notify.info(this.i18n.translate('tas.session_reopened'));
+      }
+    });
+
+    this.listen('pos:session_archived', (data: SessionArchivedEvent) => {
+      const wasSelected = data.sessionId === this.selectedSession()?._id;
+      this.removeSessionFromActiveView(data.sessionId);
+      if (wasSelected && !this.isArchivingSession() && !this.isProcessingPayment()) {
+        this.notify.success(this.i18n.translate('tas.session_archived'));
+      }
+    });
+
+    // Listen for customer assignments
+    this.listen('item:customer_assigned', ({ itemId, customerId }: { itemId: string; customerId: string | null }) => {
+      this.sessionItems.update(items =>
+        items.map(i => (i._id === itemId ? { ...i, customer_id: customerId || undefined } : i))
+      );
+    });
+
+    this.listen('pos:item_canceled', ({ itemId }: { itemId: string }) => {
+      this.sessionItems.update(items =>
+        items.map(item => item._id === itemId ? { ...item, item_state: 'CANCELED' } : item)
+      );
+    });
+
+    this.listen('pos:ticket_paid', ({ sessionId }: { sessionId: string }) => {
+      const selected = this.selectedSession();
+      if (selected?._id === sessionId) {
+        this.loadSessionDetails(selected);
+      }
+    });
+
+    this.listen('pos:bill_requested', ({ sessionId }: { sessionId: string }) => {
+      this.markSessionComplete(sessionId);
+    });
+  }
+
+  selectSession(session: TotemSession) {
+    this.showTicketHistory.set(false);
+    this.showMenu.set(false);
+    this.selectedCustomerId.set(null);
+    this.loadSessionDetails(session);
+  }
+
+  private loadSessionDetails(session: TotemSession): void {
+    const sessionId = session._id!;
+    this.selectedSession.set(session);
+    this.sessionItems.set([]);
+    this.customers.set([]);
+
+    this.tasService.getSessionItems(sessionId)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (items) => {
+          if (this.selectedSession()?._id === sessionId) this.sessionItems.set(items);
+        },
+        error: () => undefined,
+      });
+
+    // Load customers for this session
+    this.tasService.getCustomers(sessionId)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (customers) => {
+          if (this.selectedSession()?._id === sessionId) this.customers.set(customers);
+        },
+        error: () => undefined,
+      });
+
+    this.socketService.joinSession(sessionId, 'POS');
+  }
+
+  startSession(totemId: string) {
+    if (this.isStartingSession()) return;
+    this.isStartingSession.set(true);
+
+    this.tasService.startSession(totemId)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (session) => {
+          this.sessions.update(s => [...s, session]);
+          this.selectSession(session);
+          this.isStartingSession.set(false);
+          this.notify.success(this.i18n.translate('tas.session_started'));
+        },
+        error: (err) => {
+          this.isStartingSession.set(false);
+          this.notify.error(err.error?.message || this.i18n.translate('errors.SERVER_ERROR'));
+        },
+      });
+  }
+
+  closeSession(sessionId: string) {
+    if (this.isClosingSession()) return;
+    this.isClosingSession.set(true);
+
+    this.tasService.closeSession(sessionId)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (updated) => {
+          this.markSessionComplete(sessionId, updated);
+          this.isClosingSession.set(false);
+          this.notify.success(this.i18n.translate('tas.session_closed'));
+        },
+        error: (err) => {
+          this.isClosingSession.set(false);
+          const code = err.error?.errorCode;
+          if (code === 'SESSION_NOT_ACTIVE') {
+            this.notify.error(this.i18n.translate('tas.session_already_closed'));
+          } else {
+            this.notify.error(err.error?.message || this.i18n.translate('errors.SERVER_ERROR'));
+          }
+        },
+      });
+  }
+
+  reopenSession(sessionId: string) {
+    if (this.isReopeningSession()) return;
+    this.isReopeningSession.set(true);
+
+    this.tasService.reopenSession(sessionId)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (session) => {
+          this.sessions.update(current => replaceOperationalSession(current, session));
+          if (this.selectedSession()?._id === sessionId) {
+            this.selectedSession.set(session);
+          }
+          this.isReopeningSession.set(false);
+          this.notify.success(this.i18n.translate('tas.session_reopened'));
+        },
+        error: (err) => {
+          this.isReopeningSession.set(false);
+          this.notify.error(err.error?.message || this.i18n.translate('tas.session_reopen_error'));
+        },
+      });
+  }
+
+  /**
+   * Remove a temporary totem from the sidebar after its session reaches a
+   * terminal state. The backend already deletes it; this keeps the UI in sync.
+   */
+  private removeTemporaryTotemIfAny(totemId: string | undefined): void {
+    this.allTotems.update(current => removeTemporaryTotem(current, totemId));
+  }
+
+  private markSessionComplete(sessionId: string, updated?: TotemSession): void {
+    this.sessions.update(sessions => setOperationalSessionState(
+      sessions,
+      sessionId,
+      'COMPLETE',
+      updated
+    ));
+    const selected = this.selectedSession();
+    if (selected?._id === sessionId) {
+      this.selectedSession.set({ ...selected, ...updated, totem_state: 'COMPLETE' });
+    }
+  }
+
+  private markSessionStarted(sessionId: string): void {
+    this.sessions.update(sessions => setOperationalSessionState(sessions, sessionId, 'STARTED'));
+    const selected = this.selectedSession();
+    if (selected?._id === sessionId) {
+      this.selectedSession.set({ ...selected, totem_state: 'STARTED' });
+    }
+  }
+
+  private removeSessionFromActiveView(sessionId: string, updated?: TotemSession): void {
+    const session = this.sessions().find(candidate => candidate._id === sessionId) ?? updated;
+    this.sessions.update(sessions => removeOperationalSession(sessions, sessionId));
+    if (this.selectedSession()?._id === sessionId) {
+      this.selectedSession.set(null);
+      this.sessionItems.set([]);
+      this.customers.set([]);
+    }
+    this.socketService.leaveSession(sessionId);
+    this.removeTemporaryTotemIfAny(session?.totem_id?.toString());
+  }
+
+  archiveSession(sessionId: string) {
+    if (this.isArchivingSession()) return;
+    this.confirmation.confirm(this.i18n.translate('tas.confirm_archive_session'), { destructive: true })
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(confirmed => {
+        if (confirmed) this.archiveSessionConfirmed(sessionId);
+      });
+  }
+
+  private archiveSessionConfirmed(sessionId: string): void {
+    if (this.isArchivingSession()) return;
+    this.isArchivingSession.set(true);
+    this.tasService.archiveSession(sessionId)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (updated) => {
+          this.isArchivingSession.set(false);
+          this.removeSessionFromActiveView(sessionId, updated);
+          this.notify.success(this.i18n.translate('tas.session_archived'));
+        },
+        error: (err) => {
+          this.isArchivingSession.set(false);
+          this.notify.error(err.error?.message || this.i18n.translate('errors.SERVER_ERROR'));
+        },
+      });
+  }
+
+  cancelSession(sessionId: string) {
+    if (this.isCancellingSession()) return;
+    this.confirmation.confirm(this.i18n.translate('tas.confirm_cancel_session') + '?', { destructive: true })
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(confirmed => {
+        if (confirmed) this.cancelSessionConfirmed(sessionId);
+      });
+  }
+
+  private cancelSessionConfirmed(sessionId: string): void {
+    if (this.isCancellingSession()) return;
+    this.isCancellingSession.set(true);
+    this.tasService.cancelSession(sessionId)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (updated) => {
+          this.isCancellingSession.set(false);
+          this.removeSessionFromActiveView(sessionId, updated);
+          this.notify.success(this.i18n.translate('tas.session_cancelled'));
+        },
+        error: (err) => {
+          this.isCancellingSession.set(false);
+          this.notify.error(err.error?.message || this.i18n.translate('errors.SERVER_ERROR'));
+        },
+      });
+  }
+
+  createTemporaryTotem() {
+    const name = this.newTotemName().trim();
+    if (!name) return;
+
+    this.isCreatingTotem.set(true);
+    this.tasService.createTotem({
+      totem_name: name,
+      totem_type: 'TEMPORARY',
+    })
+    .pipe(takeUntil(this.destroy$))
+    .subscribe({
+      next: (totem) => {
+        this.allTotems.update(current => [...current, { ...totem, totem_type: 'TEMPORARY' }]);
+        this.newTotemName.set('');
+        this.isCreatingTotem.set(false);
+        this.notify.success(this.i18n.translate('tas.totem_created'));
+
+        // Auto-start session
+        this.startSession(totem._id!);
+      },
+      error: (err) => {
+        this.isCreatingTotem.set(false);
+        this.notify.error(this.i18n.translate('errors.SERVER_ERROR'));
+      },
+    });
+  }
+
+  getSessionItemCount(session: TotemSession): number {
+    return getSessionListItemCount(session, this.selectedSession()?._id, this.sessionItems());
+  }
+
+  getStateLabel(state: string): string {
+    switch (state) {
+      case 'ORDERED': return this.i18n.translate('order_state.ordered');
+      case 'ON_PREPARE': return this.i18n.translate('order_state.preparing');
+      case 'SERVED': return this.i18n.translate('order_state.served');
+      case 'CANCELED': return this.i18n.translate('order_state.canceled');
+      default: return state;
+    }
+  }
+
+  openTicketHistory() {
+    this.showMenu.set(false);
+    this.selectedSession.set(null);
+    this.sessionItems.set([]);
+    this.customers.set([]);
+    this.ticketHistoryState.open();
+  }
+
+  loadTicketHistory() {
+    this.ticketHistoryState.load();
+  }
+
+  clearTicketHistoryFilters() {
+    this.ticketHistoryState.clearFilters();
+  }
+
+  getPaymentTypeLabel(type: PaymentHistoryEntry['payment_type']): string {
+    return this.ticketHistoryState.paymentTypeLabel(type);
+  }
+
+  formatDateTime(value: string): string {
+    return this.ticketHistoryState.formatDateTime(value);
+  }
+
+  printHistoryTicket(payment: PaymentHistoryEntry, ticket: PaymentTicket) {
+    this.ticketHistoryState.print(payment, ticket);
+  }
+
+  addCustomer() {
+    const name = this.newCustomerName().trim();
+    if (!name || !this.selectedSession()) return;
+
+    this.tasService.createCustomer(this.selectedSession()!._id!, name)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (customer) => {
+          this.customers.update(current => [...current, customer]);
+          this.newCustomerName.set('');
+          this.showAddCustomer.set(false);
+          this.notify.success(this.i18n.translate('tas.customer_added'));
+        },
+        error: (err) => {
+          this.notify.error(this.i18n.translate('errors.SERVER_ERROR'));
+        },
+      });
+  }
+
+  assignItemToCustomer(itemId: string, customerId: string | null) {
+    this.tasService.assignItemToCustomer(itemId, customerId)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: () => {
+          this.sessionItems.update(items =>
+            items.map(i => (i._id === itemId ? { ...i, customer_id: customerId || undefined } : i))
+          );
+          this.notify.info(this.i18n.translate('tas.item_assigned'));
+        },
+        error: (err) => {
+          this.notify.error(this.i18n.translate('errors.SERVER_ERROR'));
+        },
+      });
+  }
+
+  assignItemFromSelect(itemId: string, event: Event): void {
+    const customerId = (event.target as HTMLSelectElement | null)?.value || null;
+    this.assignItemToCustomer(itemId, customerId);
+  }
+
+  getSelectedCustomerTotal(): number {
+    const customerId = this.selectedCustomerId();
+    if (!customerId) return this.sessionTotal();
+    return this.sessionItems()
+      .filter(i => i.customer_id === customerId && i.item_state !== 'CANCELED')
+      .reduce((sum, item) => sum + this.getItemTotal(item), 0);
+  }
+
+  sendOrder() {
+    const session = this.selectedSession();
+    if (!session || this.pendingItems().length === 0) return;
+
+    this.isSendingOrder.set(true);
+    const batchItems = this.pendingItems().map(item => ({
+      dishId: item.dish._id!,
+      quantity: item.quantity,
+      customerId: item.customerId || undefined,
+      variantId: item.variantId || undefined,
+      extras: item.extras,
+    }));
+
+    this.tasService.addBatchItems(session._id!, batchItems, this.isSessionClosed())
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (result) => {
+          this.sessionItems.update(items => [...items, ...result.items]);
+          this.pendingItems.set([]);
+          this.isSendingOrder.set(false);
+          this.showMenu.set(false);
+          this.notify.success(this.i18n.translate('tas.order_sent'));
+        },
+        error: (err) => {
+          this.isSendingOrder.set(false);
+          this.notify.error(this.i18n.translate('errors.SERVER_ERROR'));
+        },
+      });
+  }
+
+  processPayment() {
+    const session = this.selectedSession();
+    if (!session || !this.paymentType()) return;
+
+    this.isProcessingPayment.set(true);
+
+    const paymentType = this.paymentType()!;
+    const parts = paymentType === 'SHARED' ? this.splitCount() : 1;
+
+    this.tasService.createPayment({
+      session_id: session._id!,
+      payment_type: paymentType,
+      parts,
+    })
+    .pipe(
+      switchMap(() => this.tasService.archiveSession(session._id!)),
+      takeUntil(this.destroy$)
+    )
+    .subscribe({
+      next: (updated) => {
+        this.isProcessingPayment.set(false);
+        this.removeSessionFromActiveView(session._id!, updated);
+        this.notify.success(this.i18n.translate('pos.payment.success'));
+        this.closePaymentModal();
+      },
+      error: (err) => {
+        this.isProcessingPayment.set(false);
+        this.notify.error(err.error?.message || this.i18n.translate('errors.SERVER_ERROR'));
+      },
+    });
+  }
+
+  protected readonly Math = Math;
+}
