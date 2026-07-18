@@ -17,8 +17,8 @@ concurrency:
 
 env:
   REGISTRY: ghcr.io
-  BACKEND_IMAGE: ghcr.io/${{ github.repository }}/backend
-  FRONTEND_IMAGE: ghcr.io/${{ github.repository }}/frontend
+  BACKEND_IMAGE: ghcr.io/${{ github.repository_owner }}/disherio-backend
+  FRONTEND_IMAGE: ghcr.io/${{ github.repository_owner }}/disherio-frontend
 
 jobs:
   # ============================================
@@ -350,7 +350,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PACKAGE_OWNER: ${{ github.repository_owner }}
-          PACKAGE_NAME: disherio/${{ matrix.component }}
+          PACKAGE_NAME: disherio-${{ matrix.component }}
         shell: bash
         run: |
           encoded_package="${PACKAGE_NAME//\//%2F}"

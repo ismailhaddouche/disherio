@@ -430,8 +430,8 @@ installation, status inspection, logs, backups, restarts, and maintenance.
 
 GHCR uses two stable package names:
 
-- `ghcr.io/ismailhaddouche/disherio/backend`
-- `ghcr.io/ismailhaddouche/disherio/frontend`
+- `ghcr.io/ismailhaddouche/disherio-backend`
+- `ghcr.io/ismailhaddouche/disherio-frontend`
 
 Successful `main` builds publish multi-platform images and retain only the five
 records required by the latest image group.
