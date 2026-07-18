@@ -1,0 +1,27 @@
+{
+  "name": "disherio",
+  "version": "1.0.0",
+  "description": "DisherIo Restaurant Management System",
+  "private": true,
+  "workspaces": [
+    "shared",
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "build:shared": "npm run build --workspace=shared",
+    "dev:backend": "npm run dev --workspace=backend",
+    "dev:frontend": "npm run start --workspace=frontend",
+    "build": "npm run build --workspace=shared && npm run build --workspace=backend && npm run build --workspace=frontend",
+    "system:install": "bash scripts/install.sh install",
+    "start": "bash scripts/install.sh start",
+    "stop": "bash scripts/install.sh stop",
+    "restart": "bash scripts/install.sh restart",
+    "status": "bash scripts/install.sh status",
+    "logs": "bash scripts/install.sh logs",
+    "backup": "bash scripts/install.sh backup"
+  },
+  "keywords": [],
+  "author": "Ismail Haddouche Rhali",
+  "license": "AGPL-3.0-only"
+}

@@ -1,0 +1,30 @@
+{
+  "name": "@disherio/shared",
+  "version": "1.0.0",
+  "description": "Shared types and schemas for DisherIo",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./errors": {
+      "types": "./dist/errors/error-codes.d.ts",
+      "default": "./dist/errors/error-codes.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "keywords": [],
+  "author": "Ismail Haddouche Rhali",
+  "license": "AGPL-3.0-only",
+  "dependencies": {
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5"
+  }
+}
