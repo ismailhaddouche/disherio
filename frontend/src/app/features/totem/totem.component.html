@@ -1,0 +1,476 @@
+    @if (sessionClosedScreen()) {
+      <!-- Session closed screen: the waiter closed the table -->
+      <div class="min-h-screen bg-surface-container-low text-on-surface flex flex-col items-center justify-center px-6 text-center">
+        <div class="w-20 h-20 bg-primary-container rounded-full flex items-center justify-center mb-6">
+          <span class="material-symbols-outlined text-5xl text-primary">storefront</span>
+        </div>
+        <h1 class="text-2xl font-bold text-on-surface mb-3">
+          {{ 'totem.closed_title' | translate }}
+        </h1>
+        <p class="text-on-surface-variant text-base mb-8 max-w-sm">
+          {{ 'totem.closed_message' | translate }}
+        </p>
+        <button
+          (click)="exitToHome()"
+          class="px-6 py-3 rounded-full bg-primary text-on-primary font-semibold text-base active:scale-95 transition-transform"
+        >
+          {{ 'totem.closed_exit' | translate }}
+        </button>
+      </div>
+    } @else {
+    <div class="min-h-screen bg-surface-container-low text-on-surface pb-20">
+      <!-- Header -->
+      <header class="sticky top-0 z-10 bg-surface shadow px-4 py-3 flex items-center justify-between">
+        <h1 class="text-xl font-bold text-on-surface">{{ restaurantName() }}</h1>
+        <div class="flex items-center gap-2">
+          <!-- Customer Badge -->
+          @if (customerInfo() && currentView() !== 'menu') {
+            <div class="flex items-center gap-1 bg-primary-container text-on-primary-container px-3 py-1 rounded-full text-sm">
+              <span class="material-symbols-outlined text-base">person</span>
+              <span>{{ customerInfo()?.customer_name }}</span>
+            </div>
+          }
+          <!-- Theme Toggle -->
+          <button
+            (click)="themeService.toggleTheme()"
+            class="p-2 rounded-full bg-surface-container-high text-on-surface-variant hover:bg-surface-container-highest transition-colors"
+            [title]="i18n.translate('common.toggle_theme')"
+            [attr.aria-label]="i18n.translate('common.toggle_theme')"
+          >
+            @if (themeService.isDark()) {
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
+              </svg>
+            } @else {
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
+              </svg>
+            }
+          </button>
+          <!-- Cart Button (only in menu view) -->
+          @if (currentView() === 'menu') {
+            <button
+              (click)="toggleCart()"
+              class="relative flex items-center gap-1 bg-primary text-on-primary rounded-full px-4 py-2"
+              [attr.aria-label]="i18n.translate('totem.my_order')"
+            >
+              <span class="material-symbols-outlined">shopping_cart</span>
+              @if (cartCount() > 0) {
+                <span class="absolute -top-1 -right-1 bg-error text-on-error rounded-full w-5 h-5 flex items-center justify-center">
+                  {{ cartCount() }}
+                </span>
+              }
+            </button>
+          }
+        </div>
+      </header>
+
+      <!-- MENU VIEW -->
+      @if (currentView() === 'menu') {
+        <!-- Categories -->
+        <nav class="flex gap-2 overflow-x-auto px-4 py-3 border-b border-outline-variant bg-surface">
+          @for (cat of categories(); track cat._id) {
+            <button
+              (click)="selectCategory(cat._id!)"
+              class="whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium border transition-all active:scale-95"
+              [class.bg-primary]="selectedCategory() === cat._id"
+              [class.text-on-primary]="selectedCategory() === cat._id"
+              [class.border-primary]="selectedCategory() === cat._id"
+              [class.bg-surface]="selectedCategory() !== cat._id"
+              [class.bg-surface-container-high]="selectedCategory() !== cat._id"
+              [class.text-on-surface-variant]="selectedCategory() !== cat._id"
+              [class.border-outline-variant]="selectedCategory() !== cat._id"
+            >
+              {{ cat.category_name | localize }}
+            </button>
+          }
+        </nav>
+
+        <!-- Dishes grid -->
+        <main class="p-4 grid grid-cols-2 gap-4">
+          @for (dish of filteredDishes(); track dish._id) {
+            <button
+              type="button"
+              (click)="addToCart(dish)"
+              class="w-full text-left bg-surface rounded-xl shadow overflow-hidden active:scale-95 transition-transform cursor-pointer border border-outline-variant"
+            >
+              @if (dish.disher_url_image) {
+                <img [src]="dish.disher_url_image" [alt]="dish.disher_name | localize" class="w-full h-32 object-cover" />
+              } @else {
+                <span class="w-full h-32 bg-surface-container bg-surface-container-high flex items-center justify-center">
+                  <span class="material-symbols-outlined text-4xl text-on-surface-variant">restaurant_menu</span>
+                </span>
+              }
+              <span class="block p-3">
+                <span class="block font-semibold text-sm text-on-surface">{{ dish.disher_name | localize }}</span>
+                <span class="block text-primary font-bold mt-1">{{ dish.disher_price | currencyFormat }}</span>
+              </span>
+            </button>
+          }
+          @if (filteredDishes().length === 0) {
+            <div class="col-span-2 text-center py-12 text-on-surface-variant">
+              <span class="material-symbols-outlined text-5xl mb-2">restaurant_menu</span>
+              <p>{{ 'totem.no_dishes' | translate }}</p>
+            </div>
+          }
+        </main>
+      }
+
+      <!-- MY ORDERS VIEW -->
+      @if (currentView() === 'my-orders') {
+        <div class="p-4">
+          <h2 class="text-lg font-bold mb-4 text-on-surface flex items-center gap-2">
+            <span class="material-symbols-outlined text-primary">person</span>
+            {{ 'totem.my_orders' | translate }}
+            @if (loadingMyOrders()) {
+              <svg class="animate-spin h-5 w-5 text-primary ml-auto" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"/>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+              </svg>
+            }
+          </h2>
+
+          @if (myOrders().length === 0 && !loadingMyOrders()) {
+            <div class="text-center py-12 text-on-surface-variant">
+              <span class="material-symbols-outlined text-5xl mb-2">receipt_long</span>
+              <p>{{ 'totem.no_my_orders' | translate }}</p>
+            </div>
+          }
+
+          <div class="space-y-3">
+            @for (item of myOrders(); track item._id) {
+              <div class="rounded-xl p-4 shadow border"
+                   [class.bg-surface]="item.item_state !== 'CANCELED'"
+                   [class.bg-error-container]="item.item_state === 'CANCELED'"
+                   [class.border-outline-variant]="item.item_state !== 'CANCELED'"
+                   [class.border-error]="item.item_state === 'CANCELED'">
+                <div class="flex justify-between items-start">
+                  <div>
+                    <p class="font-semibold text-on-surface"
+                       [class.line-through]="item.item_state === 'CANCELED'"
+                       [class.opacity-60]="item.item_state === 'CANCELED'">
+                      {{ item.item_name_snapshot | localize }}
+                    </p>
+                    <p class="text-sm text-on-surface-variant"
+                       [class.opacity-60]="item.item_state === 'CANCELED'">
+                      {{ item.item_base_price | currencyFormat }}
+                      @if (item.item_disher_extras && item.item_disher_extras.length > 0) {
+                        <span class="text-xs"> + {{ item.item_disher_extras.length }} {{ 'totem.extras' | translate }}</span>
+                      }
+                    </p>
+                  </div>
+                  <span class="px-3 py-1 rounded-full text-xs font-medium" [class]="getStateClass(item.item_state)">
+                    {{ getStateLabel(item.item_state) }}
+                  </span>
+                </div>
+                @if (item.customer_name) {
+                  <p class="text-xs text-on-surface-variant mt-2" [class.opacity-60]="item.item_state === 'CANCELED'">
+                    {{ 'totem.ordered_by' | translate }}: {{ item.customer_name }}
+                  </p>
+                }
+                @if (item.item_state === 'CANCELED') {
+                  <p class="text-xs text-error mt-2 flex items-center gap-1">
+                    <span class="material-symbols-outlined text-sm">info</span>
+                    {{ 'totem.order_canceled_info' | translate }}
+                  </p>
+                }
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- ALL ORDERS VIEW -->
+      @if (currentView() === 'all-orders') {
+        <div class="p-4">
+          <h2 class="text-lg font-bold mb-4 text-on-surface flex items-center gap-2">
+            <span class="material-symbols-outlined text-primary">groups</span>
+            {{ 'totem.all_orders' | translate }}
+            @if (loadingAllOrders()) {
+              <svg class="animate-spin h-5 w-5 text-primary ml-auto" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"/>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+              </svg>
+            }
+          </h2>
+
+          @if (allOrders().length === 0 && !loadingAllOrders()) {
+            <div class="text-center py-12 text-on-surface-variant">
+              <span class="material-symbols-outlined text-5xl mb-2">receipt_long</span>
+              <p>{{ 'totem.no_orders_yet' | translate }}</p>
+            </div>
+          }
+
+          <div class="space-y-3">
+            @for (item of allOrders(); track item._id) {
+              <div class="bg-surface rounded-xl p-4 shadow border border-outline-variant"
+                   [class.border-primary]="item.customer_id === customerInfo()?.customer_id"
+                   [class.border-2]="item.customer_id === customerInfo()?.customer_id">
+                <div class="flex justify-between items-start">
+                  <div>
+                    <p class="font-semibold text-on-surface">{{ item.item_name_snapshot | localize }}</p>
+                    <p class="text-sm text-on-surface-variant">
+                      {{ item.item_base_price | currencyFormat }}
+                      @if (item.item_disher_extras && item.item_disher_extras.length > 0) {
+                        <span class="text-xs"> + {{ item.item_disher_extras.length }} {{ 'totem.extras' | translate }}</span>
+                      }
+                    </p>
+                  </div>
+                  <span class="px-3 py-1 rounded-full text-xs font-medium" [class]="getStateClass(item.item_state)">
+                    {{ getStateLabel(item.item_state) }}
+                  </span>
+                </div>
+                <div class="flex justify-between items-center mt-2">
+                  @if (item.customer_name) {
+                    <p class="text-xs" [class.text-primary]="item.customer_id === customerInfo()?.customer_id" [class.text-on-surface-variant]="item.customer_id !== customerInfo()?.customer_id">
+                      {{ item.customer_id === customerInfo()?.customer_id ? ('totem.you' | translate) : item.customer_name }}
+                    </p>
+                  } @else {
+                    <p class="text-xs text-on-surface-variant">{{ 'totem.staff_order' | translate }}</p>
+                  }
+                  <span class="text-xs text-on-surface-variant">{{ formatTime(item.createdAt) }}</span>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- Bottom Navigation -->
+      <nav class="fixed bottom-0 left-0 right-0 bg-surface border-t border-outline-variant z-30">
+        <div class="flex justify-around items-center h-16">
+          <button
+            (click)="setView('menu')"
+            class="flex flex-col items-center justify-center w-full h-full transition-colors"
+            [class.text-primary]="currentView() === 'menu'"
+            [class.text-on-surface-variant]="currentView() !== 'menu'"
+          >
+            <span class="material-symbols-outlined text-2xl">restaurant_menu</span>
+            <span class="text-xs mt-0.5">{{ 'totem.menu_tab' | translate }}</span>
+          </button>
+
+          <button
+            (click)="setView('my-orders')"
+            class="flex flex-col items-center justify-center w-full h-full transition-colors"
+            [class.text-primary]="currentView() === 'my-orders'"
+            [class.text-on-surface-variant]="currentView() !== 'my-orders'"
+          >
+            <span class="material-symbols-outlined text-2xl">person</span>
+            <span class="text-xs mt-0.5">{{ 'totem.my_orders_tab' | translate }}</span>
+          </button>
+
+          <button
+            (click)="setView('all-orders')"
+            class="flex flex-col items-center justify-center w-full h-full transition-colors"
+            [class.text-primary]="currentView() === 'all-orders'"
+            [class.text-on-surface-variant]="currentView() !== 'all-orders'"
+          >
+            <span class="material-symbols-outlined text-2xl">groups</span>
+            <span class="text-xs mt-0.5">{{ 'totem.orders_tab' | translate }}</span>
+          </button>
+        </div>
+      </nav>
+
+      <!-- Cart drawer -->
+      @if (showCart()) {
+        <div class="fixed inset-0 z-40 flex">
+          <div class="flex-1 bg-scrim/50" (click)="toggleCart()"></div>
+          <aside class="w-80 bg-surface flex flex-col h-full shadow-xl" role="dialog" aria-modal="true" aria-labelledby="totem-cart-drawer-title" cdkTrapFocus cdkTrapFocusAutoCapture>
+            <div class="flex items-center justify-between p-4 border-b border-outline-variant">
+              <h2 id="totem-cart-drawer-title" class="font-bold text-lg text-on-surface">{{ 'totem.my_order' | translate }}</h2>
+              <button (click)="toggleCart()" class="text-on-surface-variant hover:text-on-surface" [attr.aria-label]="i18n.translate('common.close')">
+                <span class="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <div class="flex-1 overflow-auto p-4 flex flex-col gap-3">
+              @for (item of cartItems(); track item.dishId + (item.variantId || '')) {
+                <div class="flex justify-between items-center bg-surface-container-low bg-surface-container-high p-3 rounded-lg">
+                  <div class="flex-1">
+                    <p class="font-medium text-sm text-on-surface">{{ item.name }}</p>
+                    @if (item.variantPrice) {
+                      <p class="text-xs text-on-surface-variant">+{{ item.variantPrice | currencyFormat }}</p>
+                    }
+                    @if (item.extras.length > 0) {
+                      <p class="text-xs text-on-surface-variant">+{{ item.extras.length }} {{ 'totem.extras' | translate }}</p>
+                    }
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <button (click)="decrementCartItem(item)" class="w-11 h-11 rounded-full bg-surface-container-high flex items-center justify-center text-on-surface-variant active:scale-90 transition-transform" [attr.aria-label]="i18n.translate('common.decrease_quantity')">
+                      <span class="text-lg leading-none">−</span>
+                    </button>
+                    <span class="text-sm font-medium w-6 text-center">{{ item.quantity }}</span>
+                    <button (click)="incrementCartItem(item)" class="w-11 h-11 rounded-full bg-primary text-on-primary flex items-center justify-center active:scale-90 transition-transform" [attr.aria-label]="i18n.translate('common.increase_quantity')">
+                      <span class="text-lg leading-none">+</span>
+                    </button>
+                    <button (click)="removeCartItem(item)" class="ml-1 w-11 h-11 flex items-center justify-center text-error" [attr.aria-label]="i18n.translate('common.delete_item')">
+                      <span class="material-symbols-outlined text-base">delete</span>
+                    </button>
+                  </div>
+                  <p class="font-semibold text-sm text-on-surface ml-2">{{ (item.price + (item.variantPrice || 0)) * item.quantity | currencyFormat }}</p>
+                </div>
+              }
+              @if (cartItems().length === 0) {
+                <div class="text-center py-8 text-on-surface-variant">
+                  <span class="material-symbols-outlined text-4xl mb-2">shopping_cart</span>
+                  <p>{{ 'totem.cart_empty' | translate }}</p>
+                </div>
+              }
+            </div>
+            <div class="p-4 border-t border-outline-variant bg-surface-container-low bg-surface-container-high">
+              <div class="flex justify-between font-bold text-base mb-3 text-on-surface">
+                <span>{{ 'totem.total' | translate }}</span>
+                <span>{{ cartTotal() | currencyFormat }}</span>
+              </div>
+              <button
+                (click)="submitOrder()"
+                [disabled]="cartItems().length === 0 || submittingOrder() || !customerInfo()"
+                class="w-full bg-success text-on-success disabled:bg-on-surface-variant py-3 rounded-xl font-bold text-lg active:scale-95 transition-transform"
+              >
+                @if (submittingOrder()) {
+                  {{ 'totem.sending' | translate }}
+                } @else if (!customerInfo()) {
+                  {{ 'totem.enter_name_first' | translate }}
+                } @else {
+                  {{ 'totem.place_order' | translate }}
+                }
+              </button>
+            </div>
+          </aside>
+        </div>
+      }
+
+      <!-- Dish Detail Modal -->
+      @if (selectedDish(); as dish) {
+        <div class="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-scrim/60 p-4">
+          <div class="bg-surface rounded-t-2xl sm:rounded-2xl shadow-xl w-full max-w-md max-h-[85vh] overflow-auto" role="dialog" aria-modal="true" aria-labelledby="totem-dish-modal-title" cdkTrapFocus cdkTrapFocusAutoCapture>
+            <div class="relative">
+              @if (dish.disher_url_image) {
+                <img [src]="dish.disher_url_image" [alt]="dish.disher_name | localize" class="w-full h-40 object-cover rounded-t-2xl" />
+              } @else {
+                <div class="w-full h-40 bg-surface-container bg-surface-container-high flex items-center justify-center rounded-t-2xl">
+                  <span class="material-symbols-outlined text-5xl text-on-surface-variant">restaurant_menu</span>
+                </div>
+              }
+              <button (click)="closeDishModal()" class="absolute top-2 right-2 w-8 h-8 rounded-full bg-scrim/40 text-on-surface flex items-center justify-center" [attr.aria-label]="i18n.translate('common.close')">
+                <span class="material-symbols-outlined text-base">close</span>
+              </button>
+            </div>
+            <div class="p-5">
+              <h3 id="totem-dish-modal-title" class="text-xl font-bold text-on-surface">{{ dish.disher_name | localize }}</h3>
+              <p class="text-primary font-bold text-lg mt-1">{{ dish.disher_price | currencyFormat }}</p>
+              @if (dish.disher_description) {
+                <p class="text-sm text-on-surface-variant mt-2">{{ dish.disher_description | localize }}</p>
+              }
+
+              @if (dish.variants.length > 0) {
+                <div class="mt-4">
+                  <h4 class="text-sm font-semibold text-on-surface-variant mb-2">{{ 'tas.variant' | translate }}</h4>
+                  @for (variant of dish.variants; track variant._id) {
+                    <button
+                      (click)="selectVariant(variant._id!, variant.variant_price)"
+                      class="w-full flex justify-between items-center p-3 rounded-lg border mb-1.5 transition-colors"
+                      [class.border-primary]="selectedVariantId() === variant._id"
+                      [class.bg-primary-container]="selectedVariantId() === variant._id"
+                      [class.border-outline-variant]="selectedVariantId() !== variant._id"
+                    >
+                      <span class="text-sm text-on-surface">{{ variant.variant_name | localize }}</span>
+                      <span class="text-sm text-on-surface-variant">+{{ variant.variant_price | currencyFormat }}</span>
+                    </button>
+                  }
+                </div>
+              }
+
+              @if (dish.extras.length > 0) {
+                <div class="mt-4">
+                  <h4 class="text-sm font-semibold text-on-surface-variant mb-2">{{ 'dish.extras' | translate }}</h4>
+                  @for (extra of dish.extras; track extra._id) {
+                    <button
+                      (click)="toggleExtraSelection(extra._id!, extra.extra_price)"
+                      class="w-full flex justify-between items-center p-3 rounded-lg border mb-1.5 transition-colors"
+                      [class.border-primary]="isExtraSelected(extra._id!)"
+                      [class.bg-primary-container]="isExtraSelected(extra._id!)"
+                      [class.border-outline-variant]="!isExtraSelected(extra._id!)"
+                    >
+                      <span class="text-sm text-on-surface">{{ extra.extra_name | localize }}</span>
+                      <span class="text-sm text-on-surface-variant">+{{ extra.extra_price | currencyFormat }}</span>
+                    </button>
+                  }
+                </div>
+              }
+
+              <div class="flex items-center justify-between mt-5">
+                <div class="flex items-center gap-3">
+                  <button (click)="detailQuantity.set(Math.max(1, detailQuantity() - 1))" class="w-11 h-11 rounded-full bg-surface-container-high flex items-center justify-center text-on-surface-variant active:scale-90 transition-transform" [attr.aria-label]="i18n.translate('common.decrease_quantity')">
+                    <span class="text-xl leading-none">−</span>
+                  </button>
+                  <span class="text-lg font-semibold w-8 text-center">{{ detailQuantity() }}</span>
+                  <button (click)="detailQuantity.set(detailQuantity() + 1)" class="w-11 h-11 rounded-full bg-primary text-on-primary flex items-center justify-center active:scale-90 transition-transform" [attr.aria-label]="i18n.translate('common.increase_quantity')">
+                    <span class="text-xl leading-none">+</span>
+                  </button>
+                </div>
+                <button
+                  (click)="addDishWithDetails(dish)"
+                  class="flex-1 ml-3 bg-success text-on-success py-3 rounded-xl font-bold active:scale-95 transition-transform"
+                >
+                  {{ 'common.add' | translate }} · {{ calculateDetailTotal(dish) | currencyFormat }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- Customer Name Modal -->
+      @if (showNameModal()) {
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-scrim/60 p-4">
+          <div class="bg-surface rounded-2xl shadow-xl w-full max-w-sm p-6" role="dialog" aria-modal="true" aria-labelledby="totem-name-modal-title" cdkTrapFocus cdkTrapFocusAutoCapture>
+            <div class="text-center mb-6">
+              <div class="w-16 h-16 bg-primary-container rounded-full flex items-center justify-center mx-auto mb-4">
+                <span class="material-symbols-outlined text-3xl text-primary">person</span>
+              </div>
+              <h2 id="totem-name-modal-title" class="text-xl font-bold text-on-surface mb-2">
+                {{ 'totem.welcome' | translate }}
+              </h2>
+              <p class="text-on-surface-variant text-sm">
+                {{ 'totem.enter_name_prompt' | translate }}
+              </p>
+            </div>
+
+            <div class="mb-6">
+              <input
+                #nameInput
+                type="text"
+                [value]="customerNameInput()"
+                (input)="customerNameInput.set(nameInput.value)"
+                (keyup.enter)="saveCustomerName()"
+                placeholder="{{ 'totem.your_name' | translate }}"
+                class="w-full px-4 py-3 rounded-xl border border-outline-variant bg-surface bg-surface-container-high text-on-surface focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                maxlength="50"
+              />
+              @if (nameError()) {
+                <p class="text-error text-sm mt-2">{{ nameError() }}</p>
+              }
+            </div>
+
+            <button
+              (click)="saveCustomerName()"
+              [disabled]="!customerNameInput().trim() || savingName()"
+              class="w-full bg-primary hover:shadow-disher-2 disabled:bg-surface-container-high text-on-primary py-3 rounded-xl font-bold text-lg active:scale-95 transition-transform"
+            >
+              @if (savingName()) {
+                <span class="flex items-center justify-center gap-2">
+                  <svg class="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"/>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                  </svg>
+                  {{ 'common.saving' | translate }}
+                </span>
+              } @else {
+                {{ 'totem.continue' | translate }}
+              }
+            </button>
+          </div>
+        </div>
+      }
+    </div>
+    }
