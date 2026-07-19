@@ -1,7 +1,8 @@
 import { Injectable, inject } from '@angular/core';
 import { I18nService } from '../../core/services/i18n.service';
 import { NotificationService } from '../../core/services/notification.service';
-import { SocketService } from '../../core/services/socket/socket.service';
+import { SocketConnectionService } from '../../core/services/socket/socket-connection.service';
+import { TasSocketService } from '../../core/services/socket/tas-socket.service';
 import { authStore } from '../../store/auth.store';
 import { tasStore } from '../../store/tas.store';
 import type {
@@ -26,14 +27,15 @@ export interface TasSocketContext {
 
 @Injectable()
 export class TasSocketCoordinator {
-  private readonly socket = inject(SocketService);
+  private readonly connection = inject(SocketConnectionService);
+  private readonly tasSocket = inject(TasSocketService);
   private readonly i18n = inject(I18nService);
   private readonly notification = inject(NotificationService);
   private disposers: Array<() => void> = [];
 
   register(context: TasSocketContext): void {
     this.disposeConsumers();
-    this.socket.registerTasListeners();
+    this.tasSocket.registerTasListeners();
 
     this.listen('kds:new_item', (item: ItemOrder) => {
       if (item.session_id !== context.selectedSessionId()) return;
@@ -234,11 +236,11 @@ export class TasSocketCoordinator {
 
   dispose(): void {
     this.disposeConsumers();
-    this.socket.unregisterTasListeners();
+    this.tasSocket.unregisterTasListeners();
   }
 
   private listen<T>(event: string, callback: (data: T) => void): void {
-    this.disposers.push(this.socket.on(event, callback));
+    this.disposers.push(this.connection.on(event, callback));
   }
 
   private disposeConsumers(): void {

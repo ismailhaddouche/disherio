@@ -1,14 +1,14 @@
 import { TestBed } from '@angular/core/testing';
-import { SocketService } from './socket.service';
+import { SocketConnectionService } from './socket-connection.service';
 
-describe('SocketService', () => {
-  let service: SocketService;
+describe('SocketConnectionService', () => {
+  let service: SocketConnectionService;
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [SocketService]
+      providers: [SocketConnectionService]
     });
-    service = TestBed.inject(SocketService);
+    service = TestBed.inject(SocketConnectionService);
   });
 
   afterEach(() => {
@@ -61,122 +61,6 @@ describe('SocketService', () => {
     });
   });
 
-  describe('Session Management', () => {
-    it('should have joinSession method', () => {
-      expect(typeof service.joinSession).toBe('function');
-    });
-
-    it('should have leaveSession method', () => {
-      expect(typeof service.leaveSession).toBe('function');
-    });
-  });
-
-  describe('TAS Methods', () => {
-    it('should have joinTasSession method', () => {
-      expect(typeof service.joinTasSession).toBe('function');
-    });
-
-    it('should have leaveTasSession method', () => {
-      expect(typeof service.leaveTasSession).toBe('function');
-    });
-
-    it('should have tasAddItem method', () => {
-      expect(typeof service.tasAddItem).toBe('function');
-    });
-
-    it('should have tasServeServiceItem method', () => {
-      expect(typeof service.tasServeServiceItem).toBe('function');
-    });
-
-    it('should have tasCancelItem method', () => {
-      expect(typeof service.tasCancelItem).toBe('function');
-    });
-
-    it('should have tasRequestBill method', () => {
-      expect(typeof service.tasRequestBill).toBe('function');
-    });
-
-    it('should have tasAcknowledgeCustomerCall method', () => {
-      expect(typeof service.tasAcknowledgeCustomerCall).toBe('function');
-    });
-
-    it('should have tasNotifyCustomers method', () => {
-      expect(typeof service.tasNotifyCustomers).toBe('function');
-    });
-  });
-
-  describe('Totem Methods', () => {
-    it('should have joinTotemSession method', () => {
-      expect(typeof service.joinTotemSession).toBe('function');
-    });
-
-    it('should have leaveTotemSession method', () => {
-      expect(typeof service.leaveTotemSession).toBe('function');
-    });
-
-    it('should have getTotemSessionId method', () => {
-      expect(typeof service.getTotemSessionId).toBe('function');
-    });
-
-    it('should have getTotemCustomerName method', () => {
-      expect(typeof service.getTotemCustomerName).toBe('function');
-    });
-
-    it('should have isTotemSessionClosedState method', () => {
-      expect(typeof service.isTotemSessionClosedState).toBe('function');
-    });
-
-    it('should have totemSubscribeToItems method', () => {
-      expect(typeof service.totemSubscribeToItems).toBe('function');
-    });
-
-    it('should have totemCallWaiter method', () => {
-      expect(typeof service.totemCallWaiter).toBe('function');
-    });
-
-    it('should have totemRequestBill method', () => {
-      expect(typeof service.totemRequestBill).toBe('function');
-    });
-
-    it('should have totemGetTableInfo method', () => {
-      expect(typeof service.totemGetTableInfo).toBe('function');
-    });
-
-    it('should have totemGetMyOrders method', () => {
-      expect(typeof service.totemGetMyOrders).toBe('function');
-    });
-
-    it('should return null for getTotemSessionId when not joined', () => {
-      expect(service.getTotemSessionId()).toBeNull();
-    });
-
-    it('should return null for getTotemCustomerName when not joined', () => {
-      expect(service.getTotemCustomerName()).toBeNull();
-    });
-
-    it('should return false for isTotemSessionClosedState initially', () => {
-      expect(service.isTotemSessionClosedState()).toBe(false);
-    });
-  });
-
-  describe('KDS Methods', () => {
-    it('should have joinKdsSession method', () => {
-      expect(typeof service.joinKdsSession).toBe('function');
-    });
-
-    it('should have leaveKdsSession method', () => {
-      expect(typeof service.leaveKdsSession).toBe('function');
-    });
-
-    it('should have kdsItemPrepare method', () => {
-      expect(typeof service.kdsItemPrepare).toBe('function');
-    });
-
-    it('should have kdsItemServe method', () => {
-      expect(typeof service.kdsItemServe).toBe('function');
-    });
-  });
-
   describe('Generic Methods', () => {
     it('should have emit method', () => {
       expect(typeof service.emit).toBe('function');
@@ -223,16 +107,16 @@ describe('SocketService', () => {
   });
 
   describe('TAS Listeners', () => {
-    it('should have registerTasListeners method', () => {
-      expect(typeof service.registerTasListeners).toBe('function');
+    it('should have reregisterTasListeners method', () => {
+      expect(typeof service.reregisterTasListeners).toBe('function');
     });
 
     it('should have unregisterTasListeners method', () => {
       expect(typeof service.unregisterTasListeners).toBe('function');
     });
 
-    it('should not throw when calling registerTasListeners', () => {
-      expect(() => service.registerTasListeners()).not.toThrow();
+    it('should not throw when calling reregisterTasListeners', () => {
+      expect(() => service.reregisterTasListeners()).not.toThrow();
     });
 
     it('should not throw when calling unregisterTasListeners', () => {
@@ -263,8 +147,8 @@ describe('SocketService', () => {
       };
       Reflect.set(service, 'socket', fakeSocket);
 
-      service.registerTasListeners();
-      service.registerTasListeners();
+      service.reregisterTasListeners();
+      service.reregisterTasListeners();
 
       expect(listeners.get('tas:item_added')?.size).toBe(1);
       expect(listeners.get('tas:bill_requested')?.size).toBe(1);
@@ -301,7 +185,7 @@ describe('SocketService', () => {
       };
       Reflect.set(service, 'socket', fakeSocket);
 
-      service.registerTasListeners();
+      service.reregisterTasListeners();
       const consumerListener = jasmine.createSpy('consumerListener');
       const disposeConsumer = service.on('tas:item_added', consumerListener);
 
@@ -348,6 +232,10 @@ describe('SocketService', () => {
       expect(service.totemItemsAdded$).toBeDefined();
     });
 
+    it('should have totemMyOrders$ observable', () => {
+      expect(service.totemMyOrders$).toBeDefined();
+    });
+
     it('should have totemWaiterNotification$ observable', () => {
       expect(service.totemWaiterNotification$).toBeDefined();
     });
@@ -390,6 +278,10 @@ describe('SocketService', () => {
 
     it('should have totemError$ observable', () => {
       expect(service.totemError$).toBeDefined();
+    });
+
+    it('should have kdsNewItem$ observable', () => {
+      expect(service.kdsNewItem$).toBeDefined();
     });
 
     it('should have tasItemAdded$ observable', () => {

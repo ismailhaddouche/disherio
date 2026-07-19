@@ -10,7 +10,8 @@ import { CurrencyFormatPipe } from '../../shared/pipes/currency-format.pipe';
 import { TranslatePipe } from '../../shared/pipes/translate.pipe';
 import { ThemeService } from '../../core/services/theme.service';
 import { I18nService } from '../../core/services/i18n.service';
-import { SocketService } from '../../core/services/socket/socket.service';
+import { SocketConnectionService } from '../../core/services/socket/socket-connection.service';
+import { TotemSocketService } from '../../core/services/socket/totem-socket.service';
 import { NotificationService } from '../../core/services/notification.service';
 import {
   TotemService,
@@ -45,7 +46,8 @@ type ViewTab = 'menu' | 'my-orders' | 'all-orders';
 export class TotemComponent implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
-  private socket = inject(SocketService);
+  private connection = inject(SocketConnectionService);
+  private totemSocket = inject(TotemSocketService);
   themeService = inject(ThemeService);
   protected i18n = inject(I18nService);
   private notify = inject(NotificationService);
@@ -120,7 +122,7 @@ export class TotemComponent implements OnInit, OnDestroy {
     const qr = this.route.snapshot.paramMap.get('qr');
     if (!qr) return;
     this.qrToken = qr;
-    this.socket.acquireConnection(qr);
+    this.connection.acquireConnection(qr);
 
     // Load menu dishes
     this.totemService.getMenuByQR(qr)
@@ -167,10 +169,10 @@ export class TotemComponent implements OnInit, OnDestroy {
 
     // When the waiter closes the session, kick the customer to the closed
     // screen, drop persisted session/customer state, and leave the socket room.
-    this.socket.totemSessionClosed$
+    this.connection.totemSessionClosed$
       .pipe(takeUntil(this.destroy$))
       .subscribe(() => this.handleSessionClosed());
-    this.socket.totemForceDisconnect$
+    this.connection.totemForceDisconnect$
       .pipe(takeUntil(this.destroy$))
       .subscribe(() => this.handleSessionClosed());
   }
@@ -206,7 +208,7 @@ export class TotemComponent implements OnInit, OnDestroy {
     this.sessionClosedScreen.set(true);
     this.showNameModal.set(false);
     this.customerInfo.set(null);
-    this.socket.leaveTotemSession();
+    this.totemSocket.leaveTotemSession();
   }
 
   /** Remove persisted session token and customer for a given session. */
@@ -221,8 +223,8 @@ export class TotemComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.socket.leaveTotemSession();
-    this.socket.releaseConnection();
+    this.totemSocket.leaveTotemSession();
+    this.connection.releaseConnection();
     this.destroy$.next();
     this.destroy$.complete();
   }
@@ -304,7 +306,7 @@ export class TotemComponent implements OnInit, OnDestroy {
   private joinSession(sessionId: string, customer: CustomerInfo): void {
     const session = this.sessionInfo();
     if (!this.qrToken || !session?.session_token || session.session_id !== sessionId) return;
-    this.socket.joinTotemSession(
+    this.totemSocket.joinTotemSession(
       sessionId,
       this.qrToken,
       customer.customer_name,

@@ -5,7 +5,7 @@ import { I18nService } from '../../core/services/i18n.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { ConfirmationService } from '../../core/services/confirmation.service';
 import { TasService } from '../../core/services/tas.service';
-import { SocketService } from '../../core/services/socket/socket.service';
+import { PosSocketService } from '../../core/services/socket/pos-socket.service';
 import type { Customer, ItemOrder, TotemSession } from '../../types';
 import {
   PosSessionActionsService,
@@ -26,7 +26,7 @@ function createSession(overrides: Partial<TotemSession> = {}): TotemSession {
 describe('PosSessionActionsService', () => {
   let service: PosSessionActionsService;
   let tasService: jasmine.SpyObj<TasService>;
-  let socketService: { leaveSession: jasmine.Spy };
+  let posSocket: { leaveSession: jasmine.Spy };
   let notification: { success: jasmine.Spy; error: jasmine.Spy };
   let confirmation: { confirm: jasmine.Spy };
   let context: PosSessionActionsContext;
@@ -41,7 +41,7 @@ describe('PosSessionActionsService', () => {
       'cancelSession',
       'createTotem',
     ]);
-    socketService = { leaveSession: jasmine.createSpy('leaveSession') };
+    posSocket = { leaveSession: jasmine.createSpy('leaveSession') };
     notification = {
       success: jasmine.createSpy('success'),
       error: jasmine.createSpy('error'),
@@ -52,7 +52,7 @@ describe('PosSessionActionsService', () => {
       providers: [
         PosSessionActionsService,
         { provide: TasService, useValue: tasService },
-        { provide: SocketService, useValue: socketService },
+        { provide: PosSocketService, useValue: posSocket },
         { provide: I18nService, useValue: { translate: (key: string) => key } },
         { provide: NotificationService, useValue: notification },
         { provide: ConfirmationService, useValue: confirmation },
@@ -199,7 +199,7 @@ describe('PosSessionActionsService', () => {
       expect(context.selectedSession()).toBeNull();
       expect(context.sessionItems()).toEqual([]);
       expect(context.customers()).toEqual([]);
-      expect(socketService.leaveSession).toHaveBeenCalledOnceWith('session-1');
+      expect(posSocket.leaveSession).toHaveBeenCalledOnceWith('session-1');
       expect(notification.success).toHaveBeenCalledOnceWith('tas.session_archived');
       // The temporary totem backing the archived session disappears from the sidebar
       expect(service.allTotems()).toEqual([
@@ -226,7 +226,7 @@ describe('PosSessionActionsService', () => {
 
       expect(context.sessions()).toEqual([]);
       expect(service.isCancellingSession()).toBeFalse();
-      expect(socketService.leaveSession).toHaveBeenCalledOnceWith('session-1');
+      expect(posSocket.leaveSession).toHaveBeenCalledOnceWith('session-1');
       expect(notification.success).toHaveBeenCalledOnceWith('tas.session_cancelled');
     });
   });

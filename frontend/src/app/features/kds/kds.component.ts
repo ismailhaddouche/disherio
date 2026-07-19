@@ -3,7 +3,8 @@ import { CommonModule } from '@angular/common';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs';
 import { kdsStore, type KdsItem } from '../../store/kds.store';
-import { SocketService } from '../../core/services/socket/socket.service';
+import { SocketConnectionService } from '../../core/services/socket/socket-connection.service';
+import { KdsSocketService } from '../../core/services/socket/kds-socket.service';
 import { LocalizePipe } from '../../shared/pipes/localize.pipe';
 import { TranslatePipe } from '../../shared/pipes/translate.pipe';
 import { NotificationService } from '../../core/services/notification.service';
@@ -82,7 +83,8 @@ function groupBySessionAndOrder(items: KdsItem[]): SessionGroup[] {
   templateUrl: './kds.component.html',
 })
 export class KdsComponent implements OnInit, OnDestroy {
-  private socketService = inject(SocketService);
+  private connection = inject(SocketConnectionService);
+  private kdsSocket = inject(KdsSocketService);
   private kdsService = inject(KdsService);
   private dishService = inject(DishService);
   private confirmation = inject(ConfirmationService);
@@ -129,7 +131,7 @@ export class KdsComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     kdsStore.acquireReference();
-    this.socketService.acquireConnection();
+    this.connection.acquireConnection();
 
     this.checkConnection();
     const connectionInterval = setInterval(() => this.checkConnection(), 2000);
@@ -143,14 +145,14 @@ export class KdsComponent implements OnInit, OnDestroy {
     this.destroy$.next();
     this.destroy$.complete();
     this.disposeSocketListeners();
-    this.socketService.releaseConnection();
+    this.connection.releaseConnection();
     kdsStore.releaseReference();
     this.activeTimeouts.forEach(timeout => clearTimeout(timeout));
     this.activeTimeouts = [];
   }
 
   private listen<T>(event: string, callback: (data: T) => void): void {
-    this.socketListenerDisposers.push(this.socketService.on(event, callback));
+    this.socketListenerDisposers.push(this.connection.on(event, callback));
   }
 
   private disposeSocketListeners(): void {
@@ -159,7 +161,7 @@ export class KdsComponent implements OnInit, OnDestroy {
   }
 
   private checkConnection() {
-    this.isConnected.set(this.socketService.isConnected());
+    this.isConnected.set(this.connection.isConnected());
   }
 
   loadItems() {
@@ -180,11 +182,11 @@ export class KdsComponent implements OnInit, OnDestroy {
   }
 
   private setupSocketListeners() {
-    this.socketService.kdsNewItem$
+    this.connection.kdsNewItem$
       .pipe(takeUntil(this.destroy$))
       .subscribe(item => {
         const sessionId = item['session_id']?.toString();
-        if (sessionId) this.socketService.joinKdsSession(sessionId);
+        if (sessionId) this.kdsSocket.joinKdsSession(sessionId);
         this.notify.info(this.i18n.translate('kds.new_item_received'));
       });
 
@@ -231,7 +233,7 @@ export class KdsComponent implements OnInit, OnDestroy {
         .filter((sessionId): sessionId is string => !!sessionId)
     );
 
-    sessionIds.forEach(sessionId => this.socketService.joinKdsSession(sessionId));
+    sessionIds.forEach(sessionId => this.kdsSocket.joinKdsSession(sessionId));
   }
 
   private emitWithTimeout(itemId: string, action: 'prepare' | 'serve' | 'cancel') {
@@ -254,7 +256,7 @@ export class KdsComponent implements OnInit, OnDestroy {
     this.processingItem.set(itemId);
     this.processingAction.set('prepare');
     this.emitWithTimeout(itemId, 'prepare');
-    this.socketService.emit('kds:item_prepare', { itemId });
+    this.connection.emit('kds:item_prepare', { itemId });
   }
 
   serveItem(itemId: string) {
@@ -262,7 +264,7 @@ export class KdsComponent implements OnInit, OnDestroy {
     this.processingItem.set(itemId);
     this.processingAction.set('serve');
     this.emitWithTimeout(itemId, 'serve');
-    this.socketService.emit('kds:item_serve', { itemId });
+    this.connection.emit('kds:item_serve', { itemId });
   }
 
   cancelItem(itemId: string) {
@@ -279,7 +281,7 @@ export class KdsComponent implements OnInit, OnDestroy {
     this.processingItem.set(itemId);
     this.processingAction.set('cancel');
     this.emitWithTimeout(itemId, 'cancel');
-    this.socketService.emit('kds:item_cancel', { itemId, reason: this.i18n.translate('kds.cancel_reason_kitchen') });
+    this.connection.emit('kds:item_cancel', { itemId, reason: this.i18n.translate('kds.cancel_reason_kitchen') });
   }
 
   loadDishes() {

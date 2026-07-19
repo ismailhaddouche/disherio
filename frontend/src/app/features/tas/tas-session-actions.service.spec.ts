@@ -4,7 +4,7 @@ import { I18nService } from '../../core/services/i18n.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { ConfirmationService } from '../../core/services/confirmation.service';
 import { TasService } from '../../core/services/tas.service';
-import { SocketService } from '../../core/services/socket/socket.service';
+import { TasSocketService } from '../../core/services/socket/tas-socket.service';
 import { tasStore } from '../../store/tas.store';
 import type { TotemSession } from '../../types';
 import { TasSessionActionsService } from './tas-session-actions.service';
@@ -22,7 +22,7 @@ function createSession(overrides: Partial<TotemSession> = {}): TotemSession {
 describe('TasSessionActionsService', () => {
   let service: TasSessionActionsService;
   let tasService: jasmine.SpyObj<TasService>;
-  let socketService: { leaveTasSession: jasmine.Spy };
+  let tasSocket: { leaveTasSession: jasmine.Spy };
   let notification: { success: jasmine.Spy; error: jasmine.Spy };
   let confirmation: { confirm: jasmine.Spy };
   let selectSession: jasmine.Spy;
@@ -38,7 +38,7 @@ describe('TasSessionActionsService', () => {
       'archiveSession',
       'cancelSession',
     ]);
-    socketService = { leaveTasSession: jasmine.createSpy('leaveTasSession') };
+    tasSocket = { leaveTasSession: jasmine.createSpy('leaveTasSession') };
     notification = {
       success: jasmine.createSpy('success'),
       error: jasmine.createSpy('error'),
@@ -50,7 +50,7 @@ describe('TasSessionActionsService', () => {
       providers: [
         TasSessionActionsService,
         { provide: TasService, useValue: tasService },
-        { provide: SocketService, useValue: socketService },
+        { provide: TasSocketService, useValue: tasSocket },
         { provide: I18nService, useValue: { translate: (key: string) => key } },
         { provide: NotificationService, useValue: notification },
         { provide: ConfirmationService, useValue: confirmation },
@@ -198,7 +198,7 @@ describe('TasSessionActionsService', () => {
 
       expect(tasStore.sessions()).toEqual([]);
       expect(service.totemSessions()).toEqual([]);
-      expect(socketService.leaveTasSession).toHaveBeenCalledOnceWith('session-1');
+      expect(tasSocket.leaveTasSession).toHaveBeenCalledOnceWith('session-1');
       expect(service.isArchivingSession()).toBeFalse();
       expect(notification.success).toHaveBeenCalledOnceWith('tas.session_archived');
       // The temporary totem backing the archived session disappears from the sidebar
@@ -218,7 +218,7 @@ describe('TasSessionActionsService', () => {
 
       expect(tasStore.sessions()).toEqual([]);
       expect(service.isCancellingSession()).toBeFalse();
-      expect(socketService.leaveTasSession).toHaveBeenCalledOnceWith('session-1');
+      expect(tasSocket.leaveTasSession).toHaveBeenCalledOnceWith('session-1');
       expect(notification.success).toHaveBeenCalledOnceWith('tas.session_cancelled');
     });
   });

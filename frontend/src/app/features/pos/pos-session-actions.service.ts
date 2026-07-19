@@ -2,7 +2,7 @@ import { Injectable, OnDestroy, inject, signal, type WritableSignal } from '@ang
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { TasService } from '../../core/services/tas.service';
-import { SocketService } from '../../core/services/socket/socket.service';
+import { PosSocketService } from '../../core/services/socket/pos-socket.service';
 import { I18nService } from '../../core/services/i18n.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { ConfirmationService } from '../../core/services/confirmation.service';
@@ -27,7 +27,7 @@ export interface PosSessionActionsContext {
 @Injectable()
 export class PosSessionActionsService implements OnDestroy {
   private readonly tasService = inject(TasService);
-  private readonly socketService = inject(SocketService);
+  private readonly posSocket = inject(PosSocketService);
   private readonly i18n = inject(I18nService);
   private readonly notify = inject(NotificationService);
   private readonly confirmation = inject(ConfirmationService);
@@ -229,7 +229,7 @@ export class PosSessionActionsService implements OnDestroy {
       this.context.sessionItems.set([]);
       this.context.customers.set([]);
     }
-    this.socketService.leaveSession(sessionId);
+    this.posSocket.leaveSession(sessionId);
     this.removeTemporaryTotemIfAny(session?.totem_id?.toString());
   }
 

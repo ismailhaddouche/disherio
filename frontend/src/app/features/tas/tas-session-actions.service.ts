@@ -2,7 +2,7 @@ import { Injectable, OnDestroy, inject, signal } from '@angular/core';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { TasService } from '../../core/services/tas.service';
-import { SocketService } from '../../core/services/socket/socket.service';
+import { TasSocketService } from '../../core/services/socket/tas-socket.service';
 import { tasStore } from '../../store/tas.store';
 import { I18nService } from '../../core/services/i18n.service';
 import { NotificationService } from '../../core/services/notification.service';
@@ -24,7 +24,7 @@ export interface TasSessionActionsContext {
 @Injectable()
 export class TasSessionActionsService implements OnDestroy {
   private readonly tasService = inject(TasService);
-  private readonly socketService = inject(SocketService);
+  private readonly tasSocket = inject(TasSocketService);
   private readonly i18n = inject(I18nService);
   private readonly notify = inject(NotificationService);
   private readonly confirmation = inject(ConfirmationService);
@@ -305,7 +305,7 @@ export class TasSessionActionsService implements OnDestroy {
       ?? updated;
     tasStore.removeSession(sessionId);
     this.totemSessions.update(sessions => removeOperationalSession(sessions, sessionId));
-    this.socketService.leaveTasSession(sessionId);
+    this.tasSocket.leaveTasSession(sessionId);
     this.removeTemporaryTotemIfAny(session?.totem_id?.toString());
   }
 

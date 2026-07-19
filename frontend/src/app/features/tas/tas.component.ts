@@ -2,7 +2,8 @@ import { Component, OnInit, OnDestroy, signal, computed, inject, ChangeDetection
 import { Subject } from 'rxjs';
 import { switchMap, takeUntil } from 'rxjs/operators';
 import { TasService } from '../../core/services/tas.service';
-import { SocketService } from '../../core/services/socket/socket.service';
+import { SocketConnectionService } from '../../core/services/socket/socket-connection.service';
+import { TasSocketService } from '../../core/services/socket/tas-socket.service';
 import { tasStore } from '../../store/tas.store';
 import type {
   TotemSession,
@@ -49,7 +50,8 @@ import { TasPaymentModalComponent } from './tas-payment-modal.component';
 })
 export class TasComponent extends OrderWorkspaceState implements OnInit, OnDestroy {
   private tasService = inject(TasService);
-  private socketService = inject(SocketService);
+  private connection = inject(SocketConnectionService);
+  private tasSocket = inject(TasSocketService);
   protected i18n = inject(I18nService);
   private notify = inject(NotificationService);
   private confirmation = inject(ConfirmationService);
@@ -129,7 +131,7 @@ export class TasComponent extends OrderWorkspaceState implements OnInit, OnDestr
   ngOnInit() {
     // Acquire store reference (auto-clears on destroy for memory optimization)
     tasStore.acquireReference();
-    this.socketService.acquireConnection();
+    this.connection.acquireConnection();
 
     this.loadData();
     this.setupSocketListeners();
@@ -140,7 +142,7 @@ export class TasComponent extends OrderWorkspaceState implements OnInit, OnDestr
 
   private checkConnection() {
     const wasConnected = this.isConnected();
-    const connected = this.socketService.isConnected();
+    const connected = this.connection.isConnected();
     this.isConnected.set(connected);
     if (this.connectionStatusInitialized && !wasConnected && connected) {
       this.loadData();
@@ -156,12 +158,12 @@ export class TasComponent extends OrderWorkspaceState implements OnInit, OnDestr
 
     // Leave TAS session if active
     if (this.selectedSession()?._id) {
-      this.socketService.leaveTasSession(this.selectedSession()!._id!);
+      this.tasSocket.leaveTasSession(this.selectedSession()!._id!);
     }
 
     // Release references (store auto-clears when count reaches 0)
     tasStore.releaseReference();
-    this.socketService.releaseConnection();
+    this.connection.releaseConnection();
   }
 
   private loadData() {
@@ -255,7 +257,7 @@ export class TasComponent extends OrderWorkspaceState implements OnInit, OnDestr
       });
 
     // Join socket rooms
-    this.socketService.joinTasSession(sessionId);
+    this.tasSocket.joinTasSession(sessionId);
   }
 
   addCustomer() {
@@ -376,7 +378,7 @@ export class TasComponent extends OrderWorkspaceState implements OnInit, OnDestr
 
   private deleteItemConfirmed(itemId: string): void {
     // Use WebSocket to cancel item (emits to all connected clients)
-    this.socketService.tasCancelItem(itemId, 'Canceled by waiter');
+    this.tasSocket.tasCancelItem(itemId, 'Canceled by waiter');
 
     // Optimistically update UI
     tasStore.updateItemState(itemId, 'CANCELED');
@@ -403,7 +405,7 @@ export class TasComponent extends OrderWorkspaceState implements OnInit, OnDestr
 
   markServiceItemServed(itemId: string) {
     // Use WebSocket for real-time update
-    this.socketService.tasServeServiceItem(itemId);
+    this.tasSocket.tasServeServiceItem(itemId);
 
     // Optimistically update UI
     tasStore.updateItemState(itemId, 'SERVED');

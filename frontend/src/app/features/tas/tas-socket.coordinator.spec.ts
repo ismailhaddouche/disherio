@@ -1,7 +1,8 @@
 import { TestBed } from '@angular/core/testing';
 import { I18nService } from '../../core/services/i18n.service';
 import { NotificationService } from '../../core/services/notification.service';
-import { SocketService } from '../../core/services/socket/socket.service';
+import { SocketConnectionService } from '../../core/services/socket/socket-connection.service';
+import { TasSocketService } from '../../core/services/socket/tas-socket.service';
 import { tasStore } from '../../store/tas.store';
 import type { ItemOrder } from '../../types';
 import { TasSocketCoordinator, type TasSocketContext } from './tas-socket.coordinator';
@@ -25,9 +26,11 @@ describe('TasSocketCoordinator', () => {
   let coordinator: TasSocketCoordinator;
   let listeners: Map<string, (data: unknown) => void>;
   let disposers: jasmine.Spy[];
-  let socket: {
+  let tasSocket: {
     registerTasListeners: jasmine.Spy;
     unregisterTasListeners: jasmine.Spy;
+  };
+  let connection: {
     on: (event: string, callback: (data: unknown) => void) => () => void;
   };
   let notification: {
@@ -40,9 +43,11 @@ describe('TasSocketCoordinator', () => {
   beforeEach(() => {
     listeners = new Map();
     disposers = [];
-    socket = {
+    tasSocket = {
       registerTasListeners: jasmine.createSpy('registerTasListeners'),
       unregisterTasListeners: jasmine.createSpy('unregisterTasListeners'),
+    };
+    connection = {
       on: (event, callback) => {
         listeners.set(event, callback);
         const disposer = jasmine.createSpy(`dispose ${event}`);
@@ -70,7 +75,8 @@ describe('TasSocketCoordinator', () => {
     TestBed.configureTestingModule({
       providers: [
         TasSocketCoordinator,
-        { provide: SocketService, useValue: socket },
+        { provide: TasSocketService, useValue: tasSocket },
+        { provide: SocketConnectionService, useValue: connection },
         { provide: I18nService, useValue: { translate: (key: string) => key } },
         { provide: NotificationService, useValue: notification },
       ],
@@ -112,6 +118,6 @@ describe('TasSocketCoordinator', () => {
 
     expect(disposers.length).toBeGreaterThan(0);
     expect(disposers.every(disposer => disposer.calls.count() === 1)).toBeTrue();
-    expect(socket.unregisterTasListeners).toHaveBeenCalled();
+    expect(tasSocket.unregisterTasListeners).toHaveBeenCalled();
   });
 });

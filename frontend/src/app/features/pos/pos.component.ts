@@ -2,7 +2,8 @@ import { Component, OnInit, OnDestroy, inject, signal, computed, ChangeDetection
 import { Subject } from 'rxjs';
 import { switchMap, takeUntil } from 'rxjs/operators';
 import { TasService } from '../../core/services/tas.service';
-import { SocketService } from '../../core/services/socket/socket.service';
+import { SocketConnectionService } from '../../core/services/socket/socket-connection.service';
+import { PosSocketService } from '../../core/services/socket/pos-socket.service';
 import { cartStore } from '../../store/cart.store';
 import { TranslatePipe } from '../../shared/pipes/translate.pipe';
 import { I18nService } from '../../core/services/i18n.service';
@@ -48,7 +49,8 @@ import type {
 })
 export class PosComponent extends OrderWorkspaceState implements OnInit, OnDestroy {
   private tasService = inject(TasService);
-  private socketService = inject(SocketService);
+  private connection = inject(SocketConnectionService);
+  private posSocket = inject(PosSocketService);
   private i18n = inject(I18nService);
   private notify = inject(NotificationService);
   private ticketHistoryState = inject(PosTicketHistoryService);
@@ -148,7 +150,7 @@ export class PosComponent extends OrderWorkspaceState implements OnInit, OnDestr
   }
 
   ngOnInit() {
-    this.socketService.acquireConnection();
+    this.connection.acquireConnection();
     this.loadData();
     this.setupSocketListeners();
     this.checkConnection();
@@ -158,15 +160,15 @@ export class PosComponent extends OrderWorkspaceState implements OnInit, OnDestr
 
   ngOnDestroy() {
     const selectedSessionId = this.selectedSession()?._id;
-    if (selectedSessionId) this.socketService.leaveSession(selectedSessionId);
+    if (selectedSessionId) this.posSocket.leaveSession(selectedSessionId);
     this.destroy$.next();
     this.destroy$.complete();
     this.disposeSocketListeners();
-    this.socketService.releaseConnection();
+    this.connection.releaseConnection();
   }
 
   private listen<T>(event: string, callback: (data: T) => void): void {
-    this.socketListenerDisposers.push(this.socketService.on(event, callback));
+    this.socketListenerDisposers.push(this.connection.on(event, callback));
   }
 
   private disposeSocketListeners(): void {
@@ -176,7 +178,7 @@ export class PosComponent extends OrderWorkspaceState implements OnInit, OnDestr
 
   private checkConnection() {
     const wasConnected = this.isConnected();
-    const connected = this.socketService.isConnected();
+    const connected = this.connection.isConnected();
     this.isConnected.set(connected);
     if (this.connectionStatusInitialized && !wasConnected && connected) {
       this.loadData();
@@ -335,7 +337,7 @@ export class PosComponent extends OrderWorkspaceState implements OnInit, OnDestr
         error: () => undefined,
       });
 
-    this.socketService.joinSession(sessionId, 'POS');
+    this.posSocket.joinSession(sessionId, 'POS');
   }
 
   openTicketHistory() {
