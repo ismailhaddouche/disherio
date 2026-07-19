@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { RequestIdSchema } from './order.schema';
 
 export const TotemSchema = z.object({
   restaurant_id: z.string(),
@@ -54,4 +55,46 @@ export const SessionCustomerSchema = z.object({
   customer_name: z.string().min(1),
   session_id: z.string(),
   restaurant_id: z.string(),  // Added to link customer to restaurant
+});
+
+// ---------------------------------------------------------------------------
+// HTTP request bodies for /api/totems routes (validated by the backend's
+// `validate` middleware). Kept in shared because the frontend totem and TAS
+// flows produce these payloads.
+// ---------------------------------------------------------------------------
+
+const objectIdHex = z.string().regex(/^[a-f\d]{24}$/i);
+
+// Ephemeral per-session credential echoed back by the public totem client.
+// Required for any session whose session_token has been back-filled.
+export const SessionTokenFieldSchema = z.string().trim().max(200).optional();
+
+export const CreateSessionCustomerBodySchema = z.object({
+  customer_name: z.string().trim().min(2).max(100),
+  session_token: SessionTokenFieldSchema,
+});
+
+export const CreateTotemBodySchema = z.object({
+  totem_name: z.string().trim().min(1).max(100),
+  totem_type: z.enum(['STANDARD', 'TEMPORARY']),
+  totem_start_date: z.coerce.date().optional(),
+});
+
+// A totem's type is immutable after creation: allowing it in an update body
+// would let TAS promote a TEMPORARY totem to STANDARD, because
+// assertCanMutateTotem authorizes against the EXISTING type. Only the mutable
+// display fields are accepted here.
+export const UpdateTotemBodySchema = CreateTotemBodySchema.partial().omit({ totem_type: true });
+
+export const PublicOrderBodySchema = z.object({
+  request_id: RequestIdSchema,
+  session_id: objectIdHex,
+  customer_id: objectIdHex.optional(),
+  session_token: SessionTokenFieldSchema,
+  items: z.array(z.object({
+    dishId: objectIdHex,
+    quantity: z.number().int().min(1).max(50),
+    variantId: objectIdHex.optional(),
+    extras: z.array(objectIdHex).max(50).optional(),
+  })).min(1).max(100),
 });

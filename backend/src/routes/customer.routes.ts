@@ -7,14 +7,10 @@ import { asyncHandler, createError } from '../utils/async-handler';
 import * as OrderOwnershipService from '../services/order-ownership.service';
 import * as TotemService from '../services/totem.service';
 import { validate } from '../middlewares/validate';
-import { z } from 'zod';
+import { CreateCustomerBodySchema } from '@disherio/shared';
 
 const router = Router();
 const customerRepo = new CustomerRepository();
-const createCustomerBody = z.object({
-  session_id: z.string().regex(/^[a-f\d]{24}$/i),
-  customer_name: z.string().trim().min(2).max(100),
-});
 
 router.use(authMiddleware);
 
@@ -27,7 +23,7 @@ router.get('/session/:sessionId', requirePermission('read', 'Customer'), asyncHa
 }));
 
 // Create customer
-router.post('/', strictLimiter, requirePermission('create', 'Customer'), validate(createCustomerBody), asyncHandler(async (req, res) => {
+router.post('/', strictLimiter, requirePermission('create', 'Customer'), validate(CreateCustomerBodySchema), asyncHandler(async (req, res) => {
   const { session_id, customer_name } = req.body;
 
   await OrderOwnershipService.assertSessionInRestaurant(session_id, req.user!.restaurantId);
