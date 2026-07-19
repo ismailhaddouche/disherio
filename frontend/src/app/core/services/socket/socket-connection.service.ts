@@ -279,11 +279,15 @@ export class SocketConnectionService implements OnDestroy {
 
   // ---- Generic emit / listener registry ------------------------------------
 
-  emit<T = unknown>(event: string, data: T): boolean {
+  emit<T = unknown>(event: string, data?: T): boolean {
     if (!this.socket?.connected) {
       return false;
     }
-    this.socket.emit(event, data);
+    if (data === undefined) {
+      this.socket.emit(event);
+    } else {
+      this.socket.emit(event, data);
+    }
     return true;
   }
 

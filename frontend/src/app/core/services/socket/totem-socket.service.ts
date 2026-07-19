@@ -114,7 +114,7 @@ export class TotemSocketService implements TotemEventDelegate {
 
   leaveTotemSession(): void {
     if (this.connection.isConnected() && this.currentTotemSessionId) {
-      this.connection.emit('totem:leave_session', undefined);
+      this.connection.emit('totem:leave_session');
     }
     this.currentTotemSessionId = null;
     this.currentTotemQr = null;
