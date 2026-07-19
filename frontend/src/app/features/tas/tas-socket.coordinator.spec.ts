@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { I18nService } from '../../core/services/i18n.service';
 import { NotificationService } from '../../core/services/notification.service';
-import { SocketService } from '../../services/socket/socket.service';
+import { SocketService } from '../../core/services/socket/socket.service';
 import { tasStore } from '../../store/tas.store';
 import type { ItemOrder } from '../../types';
 import { TasSocketCoordinator, type TasSocketContext } from './tas-socket.coordinator';

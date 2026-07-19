@@ -12,9 +12,9 @@ import { ImageUploaderComponent } from '../../../shared/components/image-uploade
 import { LocalizedInputComponent } from '../../../shared/components/localized-input.component';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../core/services/i18n.service';
-import { LocalizationService } from '../../../services/localization.service';
+import { LocalizationService } from '../../../core/services/localization.service';
 import { NotificationService } from '../../../core/services/notification.service';
-import { CategoryService } from '../../../services/category.service';
+import { CategoryService } from '../../../core/services/category.service';
 import type { Category, LocalizedField } from '../../../types';
 
 type CategoryFormData = Omit<Partial<Category>, 'category_name' | 'category_description' | 'category_image_url'> & {

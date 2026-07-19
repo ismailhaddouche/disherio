@@ -1,8 +1,8 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { environment } from '../../environments/environment';
-import { Category } from '../types';
+import { environment } from '../../../environments/environment';
+import { Category } from '../../types';
 
 export type CategoryPayload = Omit<Partial<Category>, 'category_image_url'> & {
   category_image_url?: string | null;

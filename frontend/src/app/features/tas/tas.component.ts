@@ -1,8 +1,8 @@
 import { Component, OnInit, OnDestroy, signal, computed, inject, ChangeDetectionStrategy } from '@angular/core';
 import { Subject } from 'rxjs';
 import { switchMap, takeUntil } from 'rxjs/operators';
-import { TasService } from '../../services/tas.service';
-import { SocketService } from '../../services/socket/socket.service';
+import { TasService } from '../../core/services/tas.service';
+import { SocketService } from '../../core/services/socket/socket.service';
 import { tasStore } from '../../store/tas.store';
 import type {
   TotemSession,
@@ -15,7 +15,7 @@ import { I18nService } from '../../core/services/i18n.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { getActiveItemTotal } from '../../shared/utils/order-item.utils';
 import { ConfirmationService } from '../../core/services/confirmation.service';
-import { OrderWorkspaceState } from '../../shared/state/order-workspace.state';
+import { OrderWorkspaceState } from '../../store/order-workspace.state';
 import { TasSocketCoordinator } from './tas-socket.coordinator';
 import { TasSessionActionsService } from './tas-session-actions.service';
 import { TasTablesSidebarComponent } from './tas-tables-sidebar.component';

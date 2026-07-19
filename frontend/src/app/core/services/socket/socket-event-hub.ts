@@ -1,7 +1,7 @@
 import { Subject } from 'rxjs';
 import { Socket } from 'socket.io-client';
-import { kdsStore } from '../../store/kds.store';
-import { tasStore } from '../../store/tas.store';
+import { kdsStore } from '../../../store/kds.store';
+import { tasStore } from '../../../store/tas.store';
 import type {
   ItemDeletedPayload,
   ItemStateChangedPayload,
@@ -26,7 +26,7 @@ import type {
   TotemTableInfoEvent,
   TotemTableOrderUpdateEvent,
   WaiterNotification,
-} from '../../types/socket.types';
+} from '../../../types/socket.types';
 
 export interface SocketEventState {
   isBuffering(): boolean;

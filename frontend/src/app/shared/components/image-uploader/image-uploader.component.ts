@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { NotificationService } from '../../../core/services/notification.service';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../core/services/i18n.service';
-import { UploadService, type UploadFolder } from '../../../services/upload.service';
+import { UploadService, type UploadFolder } from '../../../core/services/upload.service';
 
 @Component({
   selector: 'app-image-uploader',

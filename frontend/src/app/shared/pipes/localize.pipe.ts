@@ -1,5 +1,5 @@
 import { Pipe, PipeTransform, inject } from '@angular/core';
-import { LocalizationService } from '../../services/localization.service';
+import { LocalizationService } from '../../core/services/localization.service';
 import type { LocalizedField } from '../../types';
 
 @Pipe({ name: 'localize', standalone: true, pure: false })

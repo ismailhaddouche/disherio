@@ -1,14 +1,14 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
-import { NotificationService } from '../core/services/notification.service';
-import { I18nService } from '../core/services/i18n.service';
+import { NotificationService } from './notification.service';
+import { I18nService } from './i18n.service';
 import {
   ErrorCode,
   ErrorContext,
   AppError,
   ServerErrorResponse,
   getErrorFallbackKey,
-} from '../types/error.types';
+} from '../../types/error.types';
 
 const ERROR_NOTIFICATION_DURATION = 5000;
 

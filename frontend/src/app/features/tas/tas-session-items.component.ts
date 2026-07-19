@@ -5,7 +5,7 @@ import { CurrencyFormatPipe } from '../../shared/pipes/currency-format.pipe';
 import { LocalizePipe } from '../../shared/pipes/localize.pipe';
 import { TranslatePipe } from '../../shared/pipes/translate.pipe';
 import { I18nService } from '../../core/services/i18n.service';
-import type { OrderWorkspaceState } from '../../shared/state/order-workspace.state';
+import type { OrderWorkspaceState } from '../../store/order-workspace.state';
 import type { Customer, ItemOrder } from '../../types';
 
 export interface TasAssignItemEvent {

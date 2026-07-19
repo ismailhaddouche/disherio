@@ -1,7 +1,7 @@
 import { Injectable, computed, inject } from '@angular/core';
-import { I18nService } from '../core/services/i18n.service';
-import { authStore, type Language } from '../store/auth.store';
-import type { LocalizedField } from '../types';
+import { I18nService } from './i18n.service';
+import { authStore, type Language } from '../../store/auth.store';
+import type { LocalizedField } from '../../types';
 
 /**
  * Native display names for each supported app language. Used as tab labels

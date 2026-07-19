@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { TranslatePipe } from '../../shared/pipes/translate.pipe';
 import { I18nService } from '../../core/services/i18n.service';
-import type { OrderWorkspaceState } from '../../shared/state/order-workspace.state';
+import type { OrderWorkspaceState } from '../../store/order-workspace.state';
 import type { Customer } from '../../types';
 
 @Component({

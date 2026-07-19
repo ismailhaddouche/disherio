@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { I18nService } from '../../core/services/i18n.service';
 import { NotificationService } from '../../core/services/notification.service';
-import { LocalizationService } from '../../services/localization.service';
+import { LocalizationService } from '../../core/services/localization.service';
 import { cartStore } from '../../store/cart.store';
 import type { Dish, LocalizedField } from '../../types';
 import { TotemCartService } from './totem-cart.service';

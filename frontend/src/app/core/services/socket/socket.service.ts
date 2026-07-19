@@ -1,8 +1,8 @@
 import { Injectable, OnDestroy } from '@angular/core';
 import { io, Socket } from 'socket.io-client';
-import { environment } from '../../../environments/environment';
-import { authStore } from '../../store/auth.store';
-import type { TASAddItemData } from '../../types/socket.types';
+import { environment } from '../../../../environments/environment';
+import { authStore } from '../../../store/auth.store';
+import type { TASAddItemData } from '../../../types/socket.types';
 import { SocketEventHub, SocketEventState } from './socket-event-hub';
 
 type SocketEventCallback<T> = (data: T) => void;

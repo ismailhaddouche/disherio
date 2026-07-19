@@ -1,8 +1,8 @@
 import { TestBed } from '@angular/core/testing';
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
 import { StaffService, CreateStaffRequest, UpdateStaffRequest } from './staff.service';
-import { environment } from '../../environments/environment';
-import type { Staff, Role } from '../types';
+import { environment } from '../../../environments/environment';
+import type { Staff, Role } from '../../types';
 
 describe('StaffService', () => {
   let service: StaffService;

@@ -4,8 +4,8 @@ import { Subject, of, throwError } from 'rxjs';
 import { I18nService } from '../../core/services/i18n.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { ConfirmationService } from '../../core/services/confirmation.service';
-import { TasService } from '../../services/tas.service';
-import { SocketService } from '../../services/socket/socket.service';
+import { TasService } from '../../core/services/tas.service';
+import { SocketService } from '../../core/services/socket/socket.service';
 import type { Customer, ItemOrder, TotemSession } from '../../types';
 import {
   PosSessionActionsService,

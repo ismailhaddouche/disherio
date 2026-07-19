@@ -1,7 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
-import { NotificationService } from '../core/services/notification.service';
-import { I18nService } from '../core/services/i18n.service';
+import { NotificationService } from './notification.service';
+import { I18nService } from './i18n.service';
 import { ErrorHandlerService } from './error-handler.service';
 
 describe('ErrorHandlerService', () => {

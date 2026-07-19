@@ -1,7 +1,7 @@
 import { Component, Input, Output, EventEmitter, inject, signal, effect, ChangeDetectionStrategy, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { LocalizationService, type LanguageDescriptor } from '../../services/localization.service';
+import { LocalizationService, type LanguageDescriptor } from '../../core/services/localization.service';
 import type { LocalizedEntry } from '../../types';
 
 let nextLocalizedInputId = 0;

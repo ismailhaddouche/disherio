@@ -1,8 +1,8 @@
 import { TestBed } from '@angular/core/testing';
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
 import { TasService, CreateTotemData, AddItemData, CreateOrderData } from './tas.service';
-import { environment } from '../../environments/environment';
-import type { Totem, TotemSession, ItemOrder, Customer, Dish, LocalizedField } from '../types';
+import { environment } from '../../../environments/environment';
+import type { Totem, TotemSession, ItemOrder, Customer, Dish, LocalizedField } from '../../types';
 import { retry } from 'rxjs';
 
 describe('TasService', () => {

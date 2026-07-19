@@ -12,7 +12,7 @@ import { I18nService } from '../../../core/services/i18n.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { authStore } from '../../../store/auth.store';
 import type { Category } from '../../../types';
-import { CategoryService } from '../../../services/category.service';
+import { CategoryService } from '../../../core/services/category.service';
 import { ConfirmationService } from '../../../core/services/confirmation.service';
 
 @Component({

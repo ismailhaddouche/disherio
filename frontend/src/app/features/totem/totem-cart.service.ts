@@ -1,7 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { I18nService } from '../../core/services/i18n.service';
 import { NotificationService } from '../../core/services/notification.service';
-import { LocalizationService } from '../../services/localization.service';
+import { LocalizationService } from '../../core/services/localization.service';
 import { cartStore, type CartItem } from '../../store/cart.store';
 import type { Dish } from '../../types';
 

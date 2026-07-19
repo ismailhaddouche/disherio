@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { A11yModule } from '@angular/cdk/a11y';
 import { CurrencyFormatPipe } from '../../shared/pipes/currency-format.pipe';
 import { TranslatePipe } from '../../shared/pipes/translate.pipe';
-import type { OrderWorkspaceState } from '../../shared/state/order-workspace.state';
+import type { OrderWorkspaceState } from '../../store/order-workspace.state';
 
 @Component({
   selector: 'app-pos-payment-modal',

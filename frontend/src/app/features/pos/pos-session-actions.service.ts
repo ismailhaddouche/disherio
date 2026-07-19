@@ -1,8 +1,8 @@
 import { Injectable, OnDestroy, inject, signal, type WritableSignal } from '@angular/core';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
-import { TasService } from '../../services/tas.service';
-import { SocketService } from '../../services/socket/socket.service';
+import { TasService } from '../../core/services/tas.service';
+import { SocketService } from '../../core/services/socket/socket.service';
 import { I18nService } from '../../core/services/i18n.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { ConfirmationService } from '../../core/services/confirmation.service';

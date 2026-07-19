@@ -2,9 +2,9 @@ import { HttpInterceptorFn, HttpErrorResponse, HttpRequest, HttpHandlerFn } from
 import { inject } from '@angular/core';
 import { catchError, throwError, Observable, retry, timer } from 'rxjs';
 import { ErrorHandlerService } from '../services/error-handler.service';
-import { I18nService } from '../core/services/i18n.service';
-import { ErrorCode } from '../types/error.types';
-import { environment } from '../../environments/environment';
+import { I18nService } from '../services/i18n.service';
+import { ErrorCode } from '../../types/error.types';
+import { environment } from '../../../environments/environment';
 
 /**
  * Maximum retry count for transient failures.

@@ -4,7 +4,7 @@ import { I18nService } from '../../core/services/i18n.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { RestaurantService } from '../../core/services/restaurant.service';
 import { LANG_LOCALES } from '../../shared/pipes/currency-format.pipe';
-import { TasService, type PaymentHistoryEntry } from '../../services/tas.service';
+import { TasService, type PaymentHistoryEntry } from '../../core/services/tas.service';
 import type { PaymentTicket } from '../../types';
 
 @Injectable()

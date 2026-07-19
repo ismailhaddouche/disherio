@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { OfflineIndicatorComponent, ConnectionStatus } from './offline-indicator.component';
-import { I18nService } from '../../core/services/i18n.service';
+import { I18nService } from '../../../core/services/i18n.service';
 
 describe('OfflineIndicatorComponent', () => {
   let component: OfflineIndicatorComponent;

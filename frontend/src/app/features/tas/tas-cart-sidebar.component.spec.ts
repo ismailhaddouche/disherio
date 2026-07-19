@@ -2,8 +2,8 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { I18nService } from '../../core/services/i18n.service';
 import { RestaurantService } from '../../core/services/restaurant.service';
-import { LocalizationService } from '../../services/localization.service';
-import { OrderWorkspaceState } from '../../shared/state/order-workspace.state';
+import { LocalizationService } from '../../core/services/localization.service';
+import { OrderWorkspaceState } from '../../store/order-workspace.state';
 import type { Customer, Dish, ItemOrder, LocalizedField } from '../../types';
 import { TasCartSidebarComponent } from './tas-cart-sidebar.component';
 

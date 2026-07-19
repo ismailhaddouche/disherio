@@ -12,7 +12,7 @@ import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { CurrencyFormatPipe } from '../../../shared/pipes/currency-format.pipe';
 import { I18nService } from '../../../core/services/i18n.service';
 import { NotificationService } from '../../../core/services/notification.service';
-import { DishService } from '../../../services/dish.service';
+import { DishService } from '../../../core/services/dish.service';
 import type { Dish } from '../../../types';
 
 @Component({

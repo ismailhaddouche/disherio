@@ -1,7 +1,7 @@
 import { computed, signal } from '@angular/core';
-import type { Customer, Dish, ItemOrder, PaymentTicket } from '../../types';
-import { getItemOrderTotal } from '../utils/order-item.utils';
-import { getDishCategoryId } from '../utils/dish-category.utils';
+import type { Customer, Dish, ItemOrder, PaymentTicket } from '../types';
+import { getItemOrderTotal } from '../shared/utils/order-item.utils';
+import { getDishCategoryId } from '../shared/utils/dish-category.utils';
 
 export type PaymentType = 'ALL' | 'SHARED' | 'BY_USER';
 

@@ -1,9 +1,9 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { environment } from '../../environments/environment';
-import type { Category, Dish, ItemOrder, OrderLimitStatus, Totem } from '../types';
-import { createRequestId } from '../core/utils/request-id';
+import { environment } from '../../../environments/environment';
+import type { Category, Dish, ItemOrder, OrderLimitStatus, Totem } from '../../types';
+import { createRequestId } from '../utils/request-id';
 export type { Totem };
 
 export interface CreateTotemRequest {

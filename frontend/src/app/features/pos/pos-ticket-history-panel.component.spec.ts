@@ -2,7 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { I18nService } from '../../core/services/i18n.service';
 import { RestaurantService } from '../../core/services/restaurant.service';
-import type { PaymentHistoryEntry } from '../../services/tas.service';
+import type { PaymentHistoryEntry } from '../../core/services/tas.service';
 import { PosTicketHistoryService } from './pos-ticket-history.service';
 import { PosTicketHistoryPanelComponent } from './pos-ticket-history-panel.component';
 

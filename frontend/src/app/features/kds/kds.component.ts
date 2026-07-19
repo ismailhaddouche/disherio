@@ -3,14 +3,14 @@ import { CommonModule } from '@angular/common';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs';
 import { kdsStore, type KdsItem } from '../../store/kds.store';
-import { SocketService } from '../../services/socket/socket.service';
+import { SocketService } from '../../core/services/socket/socket.service';
 import { LocalizePipe } from '../../shared/pipes/localize.pipe';
 import { TranslatePipe } from '../../shared/pipes/translate.pipe';
 import { NotificationService } from '../../core/services/notification.service';
 import { I18nService } from '../../core/services/i18n.service';
 import type { SocketError } from '../../types';
-import { KdsService } from '../../services/kds.service';
-import { DishService } from '../../services/dish.service';
+import { KdsService } from '../../core/services/kds.service';
+import { DishService } from '../../core/services/dish.service';
 import { ConfirmationService } from '../../core/services/confirmation.service';
 
 interface OrderGroup {

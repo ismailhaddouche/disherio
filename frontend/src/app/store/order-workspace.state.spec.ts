@@ -1,5 +1,5 @@
-import type { Customer, Dish, ItemOrder } from '../../types';
-import { getActiveItemTotal } from '../utils/order-item.utils';
+import type { Customer, Dish, ItemOrder } from '../types';
+import { getActiveItemTotal } from '../shared/utils/order-item.utils';
 import { OrderWorkspaceState } from './order-workspace.state';
 
 class TestOrderWorkspaceState extends OrderWorkspaceState {

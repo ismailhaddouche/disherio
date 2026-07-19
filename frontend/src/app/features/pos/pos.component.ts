@@ -1,14 +1,14 @@
 import { Component, OnInit, OnDestroy, inject, signal, computed, ChangeDetectionStrategy } from '@angular/core';
 import { Subject } from 'rxjs';
 import { switchMap, takeUntil } from 'rxjs/operators';
-import { TasService } from '../../services/tas.service';
-import { SocketService } from '../../services/socket/socket.service';
+import { TasService } from '../../core/services/tas.service';
+import { SocketService } from '../../core/services/socket/socket.service';
 import { cartStore } from '../../store/cart.store';
 import { TranslatePipe } from '../../shared/pipes/translate.pipe';
 import { I18nService } from '../../core/services/i18n.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { getActiveItemTotal } from '../../shared/utils/order-item.utils';
-import { OrderWorkspaceState } from '../../shared/state/order-workspace.state';
+import { OrderWorkspaceState } from '../../store/order-workspace.state';
 import { PosTicketHistoryService } from './pos-ticket-history.service';
 import { PosSessionActionsService } from './pos-session-actions.service';
 import { PosSessionsSidebarComponent } from './pos-sessions-sidebar.component';

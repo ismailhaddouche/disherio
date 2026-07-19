@@ -1,8 +1,8 @@
 import { TestBed } from '@angular/core/testing';
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
 import { TotemService, CreateTotemRequest, UpdateTotemRequest } from './totem.service';
-import { environment } from '../../environments/environment';
-import type { Totem } from '../types';
+import { environment } from '../../../environments/environment';
+import type { Totem } from '../../types';
 import { retry } from 'rxjs';
 
 describe('TotemService', () => {

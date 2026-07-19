@@ -1,6 +1,6 @@
 import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-import { OfflineIndicatorComponent } from './components/offline-indicator';
+import { OfflineIndicatorComponent } from './shared/components/offline-indicator';
 import { UpdateService } from './core/services/update.service';
 
 /**

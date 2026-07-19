@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { I18nService } from '../../core/services/i18n.service';
-import { OrderWorkspaceState } from '../../shared/state/order-workspace.state';
+import { OrderWorkspaceState } from '../../store/order-workspace.state';
 import type { Customer, Dish, ItemOrder } from '../../types';
 import { TasCustomersBarComponent } from './tas-customers-bar.component';
 

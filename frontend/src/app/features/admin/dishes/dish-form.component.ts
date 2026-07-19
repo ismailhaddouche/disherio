@@ -15,10 +15,10 @@ import { DishOptionListComponent, OptionItem } from './dish-option-list.componen
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../core/services/i18n.service';
 import { NotificationService } from '../../../core/services/notification.service';
-import { DishService } from '../../../services/dish.service';
-import { CategoryService } from '../../../services/category.service';
+import { DishService } from '../../../core/services/dish.service';
+import { CategoryService } from '../../../core/services/category.service';
 import { Dish, Variant, Extra, Category, LocalizedField } from '../../../types';
-import { LocalizationService } from '../../../services/localization.service';
+import { LocalizationService } from '../../../core/services/localization.service';
 
 const ALLERGEN_CODES = ['GLUTEN','CRUSTACEANS','EGGS','FISH','PEANUTS','SOY','MILK','NUTS','CELERY','MUSTARD','SESAME','SULPHITES','LUPINE','MOLLUSCS'] as const;
 

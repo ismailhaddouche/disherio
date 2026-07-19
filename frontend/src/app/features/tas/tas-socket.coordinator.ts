@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { I18nService } from '../../core/services/i18n.service';
 import { NotificationService } from '../../core/services/notification.service';
-import { SocketService } from '../../services/socket/socket.service';
+import { SocketService } from '../../core/services/socket/socket.service';
 import { authStore } from '../../store/auth.store';
 import { tasStore } from '../../store/tas.store';
 import type {

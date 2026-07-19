@@ -9,7 +9,7 @@ import {
 import { CommonModule } from '@angular/common';
 import { Subject, interval } from 'rxjs';
 import { takeUntil, filter } from 'rxjs/operators';
-import { TranslatePipe } from '../../shared/pipes/translate.pipe';
+import { TranslatePipe } from '../../pipes/translate.pipe';
 
 export type ConnectionStatus = 'online' | 'offline' | 'reconnecting';
 

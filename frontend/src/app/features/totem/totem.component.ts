@@ -10,13 +10,13 @@ import { CurrencyFormatPipe } from '../../shared/pipes/currency-format.pipe';
 import { TranslatePipe } from '../../shared/pipes/translate.pipe';
 import { ThemeService } from '../../core/services/theme.service';
 import { I18nService } from '../../core/services/i18n.service';
-import { SocketService } from '../../services/socket/socket.service';
+import { SocketService } from '../../core/services/socket/socket.service';
 import { NotificationService } from '../../core/services/notification.service';
 import {
   TotemService,
   type PublicTotemCustomer,
   type PublicTotemSession,
-} from '../../services/totem.service';
+} from '../../core/services/totem.service';
 import type { Dish, Category, ItemOrder, OrderLimitStatus } from '../../types';
 import { ConfirmationService } from '../../core/services/confirmation.service';
 import { getDishCategoryId } from '../../shared/utils/dish-category.utils';

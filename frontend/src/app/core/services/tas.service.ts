@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, forkJoin } from 'rxjs';
 import { map } from 'rxjs/operators';
-import { environment } from '../../environments/environment';
+import { environment } from '../../../environments/environment';
 import type {
   TotemSession,
   ItemOrder,
@@ -11,9 +11,9 @@ import type {
   LocalizedField,
   PaymentTicket,
   PaymentType,
-} from '../types';
+} from '../../types';
 import type { Totem } from '@disherio/shared';
-import { createRequestId } from '../core/utils/request-id';
+import { createRequestId } from '../utils/request-id';
 
 export interface CreateTotemData {
   totem_name: string;
