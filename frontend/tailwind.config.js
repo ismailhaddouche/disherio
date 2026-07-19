@@ -31,12 +31,6 @@ module.exports = {
         primary: {
           DEFAULT: m3Color('primary'),
           container: m3Color('primary-container'),
-          // Legacy tonal aliases for backward compat during migration (Phases 2-4)
-          50: m3Color('primary-container'),
-          100: m3Color('primary-container'),
-          600: m3Color('primary'),
-          700: m3Color('primary'),
-          dark: m3Color('primary'),
         },
         'on-primary': {
           DEFAULT: m3Color('on-primary'),
@@ -76,12 +70,6 @@ module.exports = {
           container: m3Color('surface-container'),
           'container-high': m3Color('surface-container-high'),
           'container-highest': m3Color('surface-container-highest'),
-          // Legacy aliases for backward compat during migration (Phases 2-4)
-          muted: m3Color('surface-container-low'),
-          line: m3Color('outline-variant'),
-          dark: m3Color('surface-container'),
-          'dark-muted': m3Color('surface-container-low'),
-          'dark-line': m3Color('outline-variant'),
         },
         'on-surface': {
           DEFAULT: m3Color('on-surface'),
@@ -113,9 +101,6 @@ module.exports = {
         'disher-3': 'var(--disher-elevation-3)',
         'disher-4': 'var(--disher-elevation-4)',
         'disher-5': 'var(--disher-elevation-5)',
-        // Legacy aliases for backward compat
-        'material-sm': 'var(--disher-elevation-1)',
-        'material-md': 'var(--disher-elevation-2)',
       },
       borderRadius: {
         'disher-xs': 'var(--disher-shape-xs)',

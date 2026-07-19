@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, ChangeDetectionStrategy } from '@angular/core';
+import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { OfflineIndicatorComponent } from './components/offline-indicator';
 import { UpdateService } from './core/services/update.service';
@@ -17,11 +17,9 @@ import { UpdateService } from './core/services/update.service';
   templateUrl: './app.html',
   styleUrl: './app.scss',
 })
-export class App implements OnInit {
+export class App {
+  // UpdateService activates on construction (subscribes to versionUpdates and
+  // schedules periodic update checks); injecting it here is what wires SW
+  // update detection up. Do not remove the injection.
   private updateService = inject(UpdateService);
-
-  ngOnInit(): void {
-    if (this.updateService.isEnabled) {
-    }
-  }
 }
