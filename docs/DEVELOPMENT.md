@@ -93,7 +93,7 @@ Angular is configured with:
 
 Keep these rules:
 
-- Import services/types with paths relative to `src/app`, for example `../types` from `src/app/services`.
+- Import services/types with paths relative to `src/app`, for example `../types` from `src/app/core/services`.
 - Use existing service wrappers (`DishService`, `CategoryService`, etc.) instead of injecting `HttpClient` directly inside feature components.
 - Remove unused standalone imports. Angular reports them as `NG8113`.
 - Do not use optional chaining on non-nullable template values. Angular reports this as `NG8107`.
