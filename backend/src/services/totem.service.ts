@@ -44,15 +44,6 @@ async function getStartedSessionForTotem(totemId: Types.ObjectId): Promise<ITote
 async function startOrGetTotemSession(totem: ITotem): Promise<ITotemSession> {
   const activeSession = await getStartedSessionForTotem(totem._id);
   if (activeSession) {
-    // Back-fill a session token on legacy sessions so every active session
-    // carries the ephemeral per-table credential.
-    if (!activeSession.session_token) {
-      activeSession.session_token = crypto.randomUUID();
-      await totemSessionRepo.setSessionToken(
-        activeSession._id.toString(),
-        activeSession.session_token
-      );
-    }
     return activeSession;
   }
 
@@ -67,13 +58,6 @@ async function startOrGetTotemSession(totem: ITotem): Promise<ITotemSession> {
 async function getOrCreateSessionForQR(totem: ITotem): Promise<ITotemSession> {
   const activeSession = await getStartedSessionForTotem(totem._id);
   if (activeSession) {
-    if (!activeSession.session_token) {
-      activeSession.session_token = crypto.randomUUID();
-      await totemSessionRepo.setSessionToken(
-        activeSession._id.toString(),
-        activeSession.session_token
-      );
-    }
     return activeSession;
   }
 
@@ -325,8 +309,8 @@ export async function getPublicSessionByQR(
 
 /**
  * Verify the caller knows the session's ephemeral token. An active (STARTED)
- * session must always carry a session_token: getOrCreateSessionByQR /
- * startOrGetTotemSession back-fill it whenever they touch a session. A session
+ * session must always carry a session_token: migration 0002 back-filled legacy
+ * sessions and every new session is created with one. A session
  * without one is in an inconsistent state and is rejected rather than allowed
  * through with QR-only knowledge, which would silently downgrade the session
  * model. This mirrors the stricter check the socket layer already applies.

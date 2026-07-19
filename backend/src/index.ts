@@ -29,7 +29,8 @@ import healthRoutes from './routes/health.routes';
 import metricsRoutes, { metricsMiddleware } from './routes/metrics.routes';
 import { ensureRefreshTokenLookupIndex } from './services/refresh-token.service';
 import { closeRedisConnections } from './config/redis';
-import { ensureUniqueStaffPinIndex } from './services/staff-security-index.service';
+import { runMigrations } from './migrations/migration.runner';
+import { allMigrations } from './migrations';
 
 // CRITICAL: Validate all environment variables before starting
 const env = validateEnv();
@@ -43,7 +44,7 @@ logger.info('[OK] JWT_SECRET validation passed');
 
 async function bootstrap() {
   await connectDB();
-  await ensureUniqueStaffPinIndex();
+  await runMigrations(allMigrations);
   // i18n is non-blocking: a missing locale file shouldn't prevent startup
   await initI18n().catch((err) => {
     logger.warn({ err }, '[WARN]  i18n initialization failed - running without translations');

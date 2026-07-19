@@ -42,8 +42,8 @@ const TotemSessionSchema = new Schema<ITotemSession>(
     totem_state: { type: String, enum: ['STARTED', 'COMPLETE', 'PAID', 'CANCELLED'], default: 'STARTED' },
     // Ephemeral per-session credential. Required to join a session room and to
     // emit totem socket events, so a printed QR alone cannot impersonate a
-    // customer or close another table's session. Sparse so legacy sessions and
-    // staff-only sessions may omit it during migration.
+    // customer or close another table's session. Sparse so legacy sessions
+    // predating migration 0002 may omit it.
     session_token: { type: String, index: true, sparse: true },
     version: { type: Number, default: 0 },
   },

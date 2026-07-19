@@ -17,7 +17,7 @@ export const TotemSessionSchema = z.object({
   session_date_start: z.string().datetime().optional(),
   totem_state: z.enum(['STARTED', 'COMPLETE', 'PAID', 'CANCELLED']).default('STARTED'),
   // Ephemeral per-session credential required to join a session room and to
-  // emit totem socket events. Back-filled on legacy sessions on first access.
+  // emit totem socket events. Back-filled on legacy sessions by migration 0002.
   session_token: z.string().optional(),
   version: z.number().default(0),  // Added for optimistic concurrency
 });
