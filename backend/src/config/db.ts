@@ -17,27 +17,30 @@ const INITIAL_RETRY_DELAY_MS = 1000;
  * Connection options for MongoDB
  * Provides secure and optimized connection settings
  */
-const getConnectionOptions = (): mongoose.ConnectOptions => ({
-  // Connection pool settings
-  maxPoolSize: parseInt(process.env.MONGODB_MAX_POOL_SIZE || '50', 10),
-  minPoolSize: 5,
+const getConnectionOptions = (): mongoose.ConnectOptions => {
+  const env = getEnv();
+  return {
+    // Connection pool settings
+    maxPoolSize: env.MONGODB_MAX_POOL_SIZE,
+    minPoolSize: 5,
 
-  // Timeout settings (in milliseconds)
-  serverSelectionTimeoutMS: parseInt(process.env.MONGODB_SERVER_SELECTION_TIMEOUT || '30000', 10),
-  socketTimeoutMS: parseInt(process.env.MONGODB_SOCKET_TIMEOUT || '45000', 10),
-  connectTimeoutMS: 10000,
+    // Timeout settings (in milliseconds)
+    serverSelectionTimeoutMS: env.MONGODB_SERVER_SELECTION_TIMEOUT,
+    socketTimeoutMS: env.MONGODB_SOCKET_TIMEOUT,
+    connectTimeoutMS: 10000,
 
-  // Heartbeat settings to detect stale connections
-  heartbeatFrequencyMS: 10000,
+    // Heartbeat settings to detect stale connections
+    heartbeatFrequencyMS: 10000,
 
-  // Retry settings
-  retryWrites: true,
-  retryReads: true,
+    // Retry settings
+    retryWrites: true,
+    retryReads: true,
 
-  // Buffer settings - disable buffering when not connected
-  // to fail fast instead of queuing operations
-  bufferCommands: false,
-});
+    // Buffer settings - disable buffering when not connected
+    // to fail fast instead of queuing operations
+    bufferCommands: false,
+  };
+};
 
 /**
  * Calculate delay for retry with exponential backoff

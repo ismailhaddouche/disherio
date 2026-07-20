@@ -1,6 +1,6 @@
 import { Injectable, inject, OnDestroy } from '@angular/core';
 import { SwUpdate, VersionReadyEvent } from '@angular/service-worker';
-import { filter, Subject } from 'rxjs';
+import { filter, Subject, Subscription } from 'rxjs';
 import { NotificationService } from './notification.service';
 import { I18nService } from './i18n.service';
 
@@ -20,10 +20,11 @@ export class UpdateService implements OnDestroy {
   private updateAvailable$ = new Subject<UpdateInfo>();
   public updateAvailable = this.updateAvailable$.asObservable();
   private intervalId?: ReturnType<typeof setInterval>;
+  private versionUpdatesSub?: Subscription;
 
   constructor() {
     if (this.swUpdate.isEnabled) {
-      this.swUpdate.versionUpdates
+      this.versionUpdatesSub = this.swUpdate.versionUpdates
         .pipe(
           filter(
             (event): event is VersionReadyEvent =>
@@ -50,6 +51,7 @@ export class UpdateService implements OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.versionUpdatesSub?.unsubscribe();
     if (this.intervalId) {
       clearInterval(this.intervalId);
     }

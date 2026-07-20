@@ -17,6 +17,7 @@ import {
   generateAccessToken,
 } from '../services/refresh-token.service';
 import { disconnectStaffSockets } from '../services/socket-session.service';
+import { getEnv } from '../config/env';
 
 const ACCESS_COOKIE = 'auth_token';
 const REFRESH_COOKIE = 'refresh_token';
@@ -44,23 +45,23 @@ function cookieOptions(maxAge: number, isSecure: boolean): { [key: string]: unkn
   return {
     httpOnly: true,
     secure: isSecure,
-    sameSite: 'strict',
+    sameSite: 'lax',
     maxAge,
     path: '/',
   };
 }
 
 function setAccessCookie(res: Response, token: string, isSecure: boolean): void {
-  const maxAge = parseDurationToMs(process.env.JWT_EXPIRES || '15m');
+  const maxAge = parseDurationToMs(getEnv().JWT_EXPIRES);
   res.cookie(ACCESS_COOKIE, token, cookieOptions(maxAge, isSecure));
 }
 
 function accessTokenExpiresInMs(): number {
-  return parseDurationToMs(process.env.JWT_EXPIRES || '15m');
+  return parseDurationToMs(getEnv().JWT_EXPIRES);
 }
 
 function setRefreshCookie(res: Response, token: string, isSecure: boolean): void {
-  const maxAge = parseDurationToMs(process.env.JWT_REFRESH_EXPIRES || '7d');
+  const maxAge = parseDurationToMs(getEnv().JWT_REFRESH_EXPIRES);
   res.cookie(REFRESH_COOKIE, token, cookieOptions(maxAge, isSecure));
 }
 

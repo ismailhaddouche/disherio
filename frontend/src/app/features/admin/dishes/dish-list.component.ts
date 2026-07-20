@@ -10,6 +10,7 @@ import { authStore } from '../../../store/auth.store';
 import { LocalizePipe } from '../../../shared/pipes/localize.pipe';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { CurrencyFormatPipe } from '../../../shared/pipes/currency-format.pipe';
+import { SafeUrlPipe } from '../../../shared/pipes/safe-url.pipe';
 import { I18nService } from '../../../core/services/i18n.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { DishService } from '../../../core/services/dish.service';
@@ -18,7 +19,7 @@ import type { Dish } from '../../../types';
 @Component({
   selector: 'app-dish-list',
   standalone: true,
-  imports: [CommonModule, RouterModule, LocalizePipe, TranslatePipe, CurrencyFormatPipe, MatButtonModule, MatIconModule, MatProgressSpinnerModule],
+  imports: [CommonModule, RouterModule, LocalizePipe, TranslatePipe, CurrencyFormatPipe, SafeUrlPipe, MatButtonModule, MatIconModule, MatProgressSpinnerModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="admin-container">
@@ -54,7 +55,7 @@ import type { Dish } from '../../../types';
           <div class="admin-card disher-dish-card">
             <div class="disher-dish-image">
               @if (dish.disher_url_image) {
-                <img [src]="dish.disher_url_image" class="w-full h-full object-cover" alt="" />
+                <img [src]="dish.disher_url_image | safeUrl" class="w-full h-full object-cover" alt="" />
               } @else {
                 <div class="disher-dish-placeholder">
                   <span class="material-symbols-outlined" aria-hidden="true">restaurant</span>

@@ -41,7 +41,7 @@
         class="w-full text-left bg-surface-container-low rounded-lg p-3 cursor-pointer hover:bg-surface-container-high hover:bg-surface-container-high transition-colors"
       >
         @if (dish.disher_url_image) {
-          <img [src]="dish.disher_url_image" [alt]="dish.disher_name | localize" class="w-full h-24 object-cover rounded-lg mb-2" />
+          <img [src]="dish.disher_url_image | safeUrl" [alt]="dish.disher_name | localize" class="w-full h-24 object-cover rounded-lg mb-2" />
         } @else {
           <span class="w-full h-24 bg-surface-container-high bg-surface-container-high rounded-lg mb-2 flex items-center justify-center">
             <span class="material-symbols-outlined text-3xl text-on-surface-variant">restaurant</span>

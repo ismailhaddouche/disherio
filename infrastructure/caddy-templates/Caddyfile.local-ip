@@ -36,6 +36,11 @@
         header Content-Security-Policy "default-src 'none'; img-src 'self'"
     }
 
+    # Block internal metrics endpoint from public access
+    handle /metrics {
+        respond 403
+    }
+
     @health path /health /health/*
     handle @health {
         reverse_proxy backend:3000

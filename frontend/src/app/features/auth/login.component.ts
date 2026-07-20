@@ -240,9 +240,7 @@ export class LoginComponent {
           const expiresAt = Date.now() + res.expires_in_ms;
           authStore.setAuth(res.user, expiresAt);
           const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
-          const destination = returnUrl?.startsWith('/') && !returnUrl.startsWith('//')
-            ? returnUrl
-            : this.defaultRouteFor(res.user.permissions);
+          const destination = this.resolveSafeReturnUrl(returnUrl, res.user.permissions);
           void this.router.navigateByUrl(destination);
           this.loading.set(false);
         },
@@ -265,5 +263,14 @@ export class LoginComponent {
     if (permissions.includes('TAS')) return '/tas';
     if (permissions.includes('POS')) return '/pos';
     return '/pos';
+  }
+
+  private resolveSafeReturnUrl(returnUrl: string | null, permissions: string[]): string {
+    if (!returnUrl) return this.defaultRouteFor(permissions);
+    const allowedPrefixes = ['/admin', '/pos', '/kds', '/tas'];
+    const isAllowed = allowedPrefixes.some(
+      (prefix) => returnUrl === prefix || returnUrl.startsWith(`${prefix}/`)
+    );
+    return isAllowed ? returnUrl : this.defaultRouteFor(permissions);
   }
 }

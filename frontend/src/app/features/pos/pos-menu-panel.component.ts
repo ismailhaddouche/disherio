@@ -3,13 +3,14 @@ import { CommonModule } from '@angular/common';
 import { CurrencyFormatPipe } from '../../shared/pipes/currency-format.pipe';
 import { LocalizePipe } from '../../shared/pipes/localize.pipe';
 import { TranslatePipe } from '../../shared/pipes/translate.pipe';
+import { SafeUrlPipe } from '../../shared/pipes/safe-url.pipe';
 import type { OrderWorkspaceState } from '../../store/order-workspace.state';
 import type { LocalizedField } from '../../types';
 
 @Component({
   selector: 'app-pos-menu-panel',
   standalone: true,
-  imports: [CommonModule, CurrencyFormatPipe, LocalizePipe, TranslatePipe],
+  imports: [CommonModule, CurrencyFormatPipe, LocalizePipe, TranslatePipe, SafeUrlPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './pos-menu-panel.component.html',
   styles: [':host { display: contents; }'],

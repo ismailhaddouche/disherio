@@ -87,7 +87,7 @@ import { DashboardService, LogEntry } from '../../../core/services/dashboard.ser
                     </td>
                     <td class="admin-td text-on-surface-variant text-xs">
                       @if (log.userName) { <span>{{ log.userName }}</span> }
-                      @if (log.details['basePrice']) { <span class="ml-2">{{ $any(log.details['basePrice']) | currencyFormat }}</span> }
+                      @if (getBasePrice(log) !== undefined) { <span class="ml-2">{{ getBasePrice(log) | currencyFormat }}</span> }
                     </td>
                   </tr>
                 }
@@ -188,5 +188,10 @@ export class LogsViewerComponent implements OnInit, OnDestroy {
           this.loading.set(false);
         },
       });
+  }
+
+  getBasePrice(log: LogEntry): number | undefined {
+    const value = log.details['basePrice'];
+    return typeof value === 'number' ? value : undefined;
   }
 }

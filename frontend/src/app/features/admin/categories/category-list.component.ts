@@ -8,6 +8,7 @@ import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { LocalizePipe } from '../../../shared/pipes/localize.pipe';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
+import { SafeUrlPipe } from '../../../shared/pipes/safe-url.pipe';
 import { I18nService } from '../../../core/services/i18n.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { authStore } from '../../../store/auth.store';
@@ -18,7 +19,7 @@ import { ConfirmationService } from '../../../core/services/confirmation.service
 @Component({
   selector: 'app-category-list',
   standalone: true,
-  imports: [CommonModule, RouterModule, LocalizePipe, TranslatePipe, MatButtonModule, MatIconModule, MatProgressSpinnerModule],
+  imports: [CommonModule, RouterModule, LocalizePipe, TranslatePipe, SafeUrlPipe, MatButtonModule, MatIconModule, MatProgressSpinnerModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="admin-container">
@@ -54,7 +55,7 @@ import { ConfirmationService } from '../../../core/services/confirmation.service
           <div class="admin-card disher-cat-card">
             <div class="disher-cat-image">
               @if (cat.category_image_url) {
-                <img [src]="cat.category_image_url" class="w-full h-full object-cover" alt="" />
+                <img [src]="cat.category_image_url | safeUrl" class="w-full h-full object-cover" alt="" />
               } @else {
                 <div class="disher-cat-placeholder">
                   <span class="material-symbols-outlined" aria-hidden="true">category</span>

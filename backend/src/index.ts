@@ -13,6 +13,9 @@ import { languageMiddleware } from './middlewares/language';
 import { logger } from './config/logger';
 import requestLogger from './middlewares/request-logger';
 import { errorHandler, notFoundHandler } from './middlewares/error-handler';
+import { internalOnly } from './middlewares/internal-only';
+import { createError } from './utils/async-handler';
+import { ErrorCode } from '@disherio/shared';
 import { validateJWTSecretOrExit } from './utils/jwt-validation';
 import { validateEnv } from './config/env';
 import { cache } from './services/cache.service';
@@ -66,8 +69,10 @@ async function bootstrap() {
   const httpServer = http.createServer(app);
 
   if (env.TRUST_PROXY === 'true') {
-    app.set('trust proxy', 1);
-    logger.info('Trust proxy enabled');
+    // Trust only the internal Docker network where Caddy lives.
+    // Use the actual proxy IP(s) in production if different.
+    app.set('trust proxy', ['127.0.0.1', '172.16.0.0/12', '192.168.0.0/16', '10.0.0.0/8']);
+    logger.info('Trust proxy enabled for internal networks');
   }
 
   applySecurityMiddleware(app);
@@ -75,6 +80,19 @@ async function bootstrap() {
   app.use(requestLogger);
   app.use(pinoHttp({ logger, autoLogging: false }));
   app.use(express.json({ limit: '500kb' }));
+
+  // Reject JSON mutations without a proper Content-Type header.
+  app.use((req, _res, next) => {
+    if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method) && req.path.startsWith('/api/')) {
+      const contentType = req.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        next(createError.badRequest(ErrorCode.VALIDATION_ERROR));
+        return;
+      }
+    }
+    next();
+  });
+
   app.use(languageMiddleware);
 
   // Metrics middleware must be BEFORE routes so it can track all HTTP requests
@@ -83,7 +101,7 @@ async function bootstrap() {
   // Serve uploaded files statically (in dev/local; Caddy handles this in prod).
   // Deny dotfiles and restrict to image extensions as defense in depth, even
   // though the upload pipeline already validates content and converts to WebP.
-  const uploadsDir = process.env.UPLOADS_DIR || path.join(process.cwd(), 'uploads');
+  const uploadsDir = env.UPLOADS_DIR || path.join(process.cwd(), 'uploads');
   app.use(
     '/uploads',
     (req, res, next) => {
@@ -110,12 +128,13 @@ async function bootstrap() {
   app.use('/api/staff', staffRoutes);
   app.use('/api/customers', customerRoutes);
 
-  // Health check endpoints
-  app.use('/health', healthRoutes);
+  // Health check endpoints (restricted to internal networks)
+  app.use('/health', internalOnly, healthRoutes);
 
-  // Optional metrics endpoint. Caddy does not route it publicly, so operators
-  // must attach any external collector to the internal Docker network.
-  app.use('/metrics', metricsRoutes);
+  // Optional metrics endpoint (restricted to internal networks).
+  // Caddy blocks it publicly, so operators must attach any external collector
+  // to the internal Docker network or present the x-internal-token header.
+  app.use('/metrics', internalOnly, metricsRoutes);
 
   // 404 handler - must go after all routes
   app.use(notFoundHandler);

@@ -36,7 +36,7 @@ function refreshSession(http: HttpClient): Observable<RefreshResult> {
         finalize(() => {
           refreshRequest$ = null;
         }),
-        shareReplay({ bufferSize: 1, refCount: false })
+        shareReplay({ bufferSize: 1, refCount: true })
       );
   }
   return refreshRequest$;

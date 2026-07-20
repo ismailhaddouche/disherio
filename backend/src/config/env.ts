@@ -32,6 +32,12 @@ export const envSchema = z.object({
   // Optional: Node environment
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
 
+  // Logging level
+  LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error', 'silent']).default('info'),
+
+  // Frontend URL used for CORS and cookies
+  FRONTEND_URL: z.string().optional(),
+
   // Optional: Redis configuration
   REDIS_URL: z.string().default('redis://localhost:6379'),
   REDIS_PASSWORD: z.string().optional(),
@@ -80,6 +86,26 @@ export const envSchema = z.object({
     .refine((val) => val.length >= 32, {
       message: 'PIN_LOOKUP_PEPPER must be at least 32 characters long',
     }),
+
+  // Internal token for health/metrics endpoints
+  INTERNAL_API_TOKEN: z.string().optional(),
+
+  // MongoDB connection pool settings
+  MONGODB_MAX_POOL_SIZE: z
+    .string()
+    .default('50')
+    .transform((val) => parseInt(val, 10)),
+  MONGODB_SERVER_SELECTION_TIMEOUT: z
+    .string()
+    .default('30000')
+    .transform((val) => parseInt(val, 10)),
+  MONGODB_SOCKET_TIMEOUT: z
+    .string()
+    .default('45000')
+    .transform((val) => parseInt(val, 10)),
+
+  // Directory where processed images are stored
+  UPLOADS_DIR: z.string().optional(),
 });
 
 /**

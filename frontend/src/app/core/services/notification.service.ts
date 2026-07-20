@@ -27,6 +27,7 @@ export class NotificationService {
   private i18n = inject(I18nService);
 
   private _nextId = 0;
+  private readonly dismissTimeouts = new Map<number, ReturnType<typeof setTimeout>>();
   readonly notifications = signal<Notification[]>([]);
 
   private getAnnouncementMessage(message: string, type: NotificationType): string {
@@ -58,7 +59,8 @@ export class NotificationService {
     this.liveAnnouncer.announce(this.getAnnouncementMessage(message, type), 'polite');
     this.snackBar.open(message, this.i18n.translate('common.close'), this.getSnackBarConfig(type, duration));
     if (duration > 0) {
-      setTimeout(() => this.dismiss(id), duration);
+      const timeoutId = setTimeout(() => this.dismiss(id), duration);
+      this.dismissTimeouts.set(id, timeoutId);
     }
   }
 
@@ -79,6 +81,11 @@ export class NotificationService {
   }
 
   dismiss(id: number): void {
+    const timeoutId = this.dismissTimeouts.get(id);
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+      this.dismissTimeouts.delete(id);
+    }
     this.notifications.update((list) => list.filter((n) => n.id !== id));
   }
 }

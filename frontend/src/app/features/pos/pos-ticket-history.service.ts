@@ -90,44 +90,72 @@ export class PosTicketHistoryService implements OnDestroy {
       currency: this.restaurant.currency(),
     }).format(ticket.ticket_amount);
     const customer = ticket.ticket_customer_name || this.i18n.translate('tas.all');
-    const html = (value: string) => this.escapeHtml(value);
 
-    printWindow.document.write(`
-      <!doctype html>
-      <html>
-        <head>
-          <title>${html(title)}</title>
-          <style>
-            body { font-family: Arial, sans-serif; margin: 0; padding: 16px; color: #111; }
-            .ticket { max-width: 320px; margin: 0 auto; }
-            h1 { font-size: 20px; margin: 0 0 12px; text-align: center; }
-            .row { display: flex; justify-content: space-between; gap: 12px; margin: 8px 0; }
-            .muted { color: #555; font-size: 12px; }
-            .total { border-top: 1px dashed #333; margin-top: 14px; padding-top: 14px; font-size: 18px; font-weight: 700; }
-            @media print { body { padding: 0; } }
-          </style>
-        </head>
-        <body>
-          <div class="ticket">
-            <h1>${html(this.i18n.translate('pos.history.reprint_title'))}</h1>
-            <div class="row"><span>${html(this.i18n.translate('pos.history.table'))}</span><strong>${html(payment.totem.totem_name)}</strong></div>
-            <div class="row"><span>${html(this.i18n.translate('pos.history.date'))}</span><span>${html(this.formatDateTime(payment.payment_date))}</span></div>
-            <div class="row"><span>${html(this.i18n.translate('pos.history.payment_type'))}</span><span>${html(this.paymentTypeLabel(payment.payment_type))}</span></div>
-            <div class="row"><span>${html(this.i18n.translate('pos.history.customer'))}</span><span>${html(customer)}</span></div>
-            <div class="row"><span>${html(this.i18n.translate('pos.payment.ticket'))}</span><span>${ticket.ticket_part}/${ticket.ticket_total_parts}</span></div>
-            <div class="row total"><span>${html(this.i18n.translate('pos.total'))}</span><span>${html(amount)}</span></div>
-            <p class="muted">${html(this.i18n.translate('pos.history.reprint_note'))}</p>
-          </div>
-          <script>
-            window.onload = () => {
-              window.print();
-              window.onafterprint = () => window.close();
-            };
-          </script>
-        </body>
-      </html>
-    `);
-    printWindow.document.close();
+    const doc = printWindow.document;
+    doc.title = title;
+
+    const style = doc.createElement('style');
+    style.textContent = `
+      body { font-family: Arial, sans-serif; margin: 0; padding: 16px; color: #111; }
+      .ticket { max-width: 320px; margin: 0 auto; }
+      h1 { font-size: 20px; margin: 0 0 12px; text-align: center; }
+      .row { display: flex; justify-content: space-between; gap: 12px; margin: 8px 0; }
+      .muted { color: #555; font-size: 12px; }
+      .total { border-top: 1px dashed #333; margin-top: 14px; padding-top: 14px; font-size: 18px; font-weight: 700; }
+      @media print { body { padding: 0; } }
+    `;
+    doc.head.appendChild(style);
+
+    const ticketDiv = doc.createElement('div');
+    ticketDiv.className = 'ticket';
+
+    const h1 = doc.createElement('h1');
+    h1.textContent = this.i18n.translate('pos.history.reprint_title');
+    ticketDiv.appendChild(h1);
+
+    const addRow = (label: string, value: string, strong = false): void => {
+      const row = doc.createElement('div');
+      row.className = 'row';
+      const labelSpan = doc.createElement('span');
+      labelSpan.textContent = label;
+      const valueEl = strong ? doc.createElement('strong') : doc.createElement('span');
+      valueEl.textContent = value;
+      row.appendChild(labelSpan);
+      row.appendChild(valueEl);
+      ticketDiv.appendChild(row);
+    };
+
+    addRow(this.i18n.translate('pos.history.table'), payment.totem.totem_name, true);
+    addRow(this.i18n.translate('pos.history.date'), this.formatDateTime(payment.payment_date));
+    addRow(this.i18n.translate('pos.history.payment_type'), this.paymentTypeLabel(payment.payment_type));
+    addRow(this.i18n.translate('pos.history.customer'), customer);
+    addRow(this.i18n.translate('pos.payment.ticket'), `${ticket.ticket_part}/${ticket.ticket_total_parts}`);
+
+    const totalRow = doc.createElement('div');
+    totalRow.className = 'row total';
+    const totalLabel = doc.createElement('span');
+    totalLabel.textContent = this.i18n.translate('pos.total');
+    const totalValue = doc.createElement('span');
+    totalValue.textContent = amount;
+    totalRow.appendChild(totalLabel);
+    totalRow.appendChild(totalValue);
+    ticketDiv.appendChild(totalRow);
+
+    const note = doc.createElement('p');
+    note.className = 'muted';
+    note.textContent = this.i18n.translate('pos.history.reprint_note');
+    ticketDiv.appendChild(note);
+
+    doc.body.appendChild(ticketDiv);
+
+    const script = doc.createElement('script');
+    script.textContent = `
+      window.onload = () => {
+        window.print();
+        window.onafterprint = () => window.close();
+      };
+    `;
+    doc.body.appendChild(script);
   }
 
   ngOnDestroy(): void {

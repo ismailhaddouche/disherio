@@ -10,10 +10,10 @@ let pubClient: DisherRedisClient | null = null;
 let subClient: DisherRedisClient | null = null;
 
 /**
- * Get Redis URL from environment
+ * Get Redis URL from validated environment
  */
 function getRedisUrl(): string {
-  return process.env.REDIS_URL || 'redis://localhost:6379';
+  return getEnv().REDIS_URL;
 }
 
 function getRedisPassword(): string | undefined {

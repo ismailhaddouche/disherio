@@ -302,12 +302,17 @@ export class SocketConnectionService implements OnDestroy {
 
   on<T = unknown>(event: string, callback: SocketEventCallback<T>): () => void {
     const wrappedCallback = callback as (data: unknown) => void;
-    this.socket?.on(event, wrappedCallback);
 
     if (!this.activeListeners.has(event)) {
       this.activeListeners.set(event, new Set());
     }
-    this.activeListeners.get(event)!.add(wrappedCallback);
+    const listeners = this.activeListeners.get(event)!;
+    if (listeners.has(wrappedCallback)) {
+      return () => this.off(event, callback);
+    }
+
+    this.socket?.on(event, wrappedCallback);
+    listeners.add(wrappedCallback);
 
     return () => this.off(event, callback);
   }

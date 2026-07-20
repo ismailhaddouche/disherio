@@ -100,7 +100,7 @@ export const updateCategory = asyncHandler(async (req: Request, res: Response): 
   if (!existing) {
     throw createError.notFound('CATEGORY_NOT_FOUND');
   }
-  const category = await DishService.updateCategory(String(req.params.id), req.body);
+  const category = await DishService.updateCategory(String(req.params.id), req.user!.restaurantId, req.body);
   if (!category) {
     throw createError.notFound('CATEGORY_NOT_FOUND');
   }
@@ -116,6 +116,6 @@ export const deleteCategory = asyncHandler(async (req: Request, res: Response): 
   if (!existing) {
     throw createError.notFound('CATEGORY_NOT_FOUND');
   }
-  await DishService.deleteCategory(String(req.params.id));
+  await DishService.deleteCategory(String(req.params.id), req.user!.restaurantId);
   res.status(204).end();
 });

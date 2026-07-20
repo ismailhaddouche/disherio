@@ -150,7 +150,7 @@ export class PaymentRepository extends BaseRepository<IPayment> {
       },
     ];
 
-    const search = filters.search?.trim();
+    const search = filters.search?.trim().slice(0, 100);
     if (search) {
       const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       pipeline.push({

@@ -240,6 +240,8 @@ function calculateOverallHealth(checks: HealthStatusResponse['checks']): HealthS
  * - Service uptime and version
  */
 router.get('/', async (_req: Request, res: Response): Promise<void> => {
+  const isProduction = process.env.NODE_ENV === 'production';
+
   const [dbCheck, redisCheck] = await Promise.all([
     checkDatabase(),
     checkRedis()
@@ -262,6 +264,17 @@ router.get('/', async (_req: Request, res: Response): Promise<void> => {
     statusCode = 503; // Service Unavailable
   } else if (overallStatus === 'degraded') {
     statusCode = 200; // Still return 200 but with degraded status
+  }
+
+  if (isProduction) {
+    // In production, return only the minimal status needed for monitoring.
+    // Detailed infrastructure metrics are available via /metrics for internal
+    // collectors and via /health/ready for orchestrators.
+    res.status(statusCode).json({
+      status: overallStatus,
+      timestamp: new Date().toISOString(),
+    });
+    return;
   }
 
   const response: HealthStatusResponse = {

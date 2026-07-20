@@ -34,7 +34,12 @@ async function getRedis(): Promise<DisherRedisClient | null> {
     redis = await initRedis();
     return redis;
   } catch (err) {
-    logger.warn({ err }, 'Redis unavailable for PIN security; using in-memory fallback');
+    const isProduction = process.env.NODE_ENV === 'production';
+    if (isProduction) {
+      logger.error({ err }, 'Redis unavailable for PIN security in production; rejecting login');
+      throw new Error(ErrorCode.SERVER_CONFIGURATION_ERROR);
+    }
+    logger.warn({ err }, 'Redis unavailable for PIN security; using in-memory fallback (development only)');
     return null;
   }
 }

@@ -3,9 +3,11 @@ import helmet from 'helmet';
 import cors from 'cors';
 import compression from 'compression';
 import { logger } from '../config/logger';
+import { getEnv } from '../config/env';
 
 export function applySecurityMiddleware(app: Express): void {
-  const isProduction = process.env.NODE_ENV === 'production';
+  const env = getEnv();
+  const isProduction = env.NODE_ENV === 'production';
   app.use(helmet({
     contentSecurityPolicy: {
       directives: {
@@ -27,8 +29,8 @@ export function applySecurityMiddleware(app: Express): void {
   // Build allowed origins list
   const allowedOrigins: string[] = [];
 
-  if (process.env.FRONTEND_URL) {
-    const frontendUrl = process.env.FRONTEND_URL;
+  if (env.FRONTEND_URL) {
+    const frontendUrl = env.FRONTEND_URL;
     allowedOrigins.push(frontendUrl);
 
     try {
@@ -47,11 +49,11 @@ export function applySecurityMiddleware(app: Express): void {
   }
 
   // Development origins
-  if (process.env.NODE_ENV !== 'production') {
+  if (env.NODE_ENV !== 'production') {
     allowedOrigins.push('http://localhost:4200', 'http://localhost:3000');
   }
 
-  if (process.env.NODE_ENV === 'production' && allowedOrigins.length === 0) {
+  if (env.NODE_ENV === 'production' && allowedOrigins.length === 0) {
     logger.error('ERROR: FRONTEND_URL must be set in production');
     process.exit(1);
   }

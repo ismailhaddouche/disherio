@@ -276,13 +276,10 @@ export async function createRole(
   });
 }
 
-export interface UpdatePreferencesInput {
-  language?: string;
-  theme?: string;
-}
-
-const ALLOWED_LANGUAGES: ReadonlyArray<'es' | 'en' | 'fr'> = ['es', 'en', 'fr'];
-const ALLOWED_THEMES: ReadonlyArray<'light' | 'dark'> = ['light', 'dark'];
+export type UpdatePreferencesInput = {
+  language?: 'es' | 'en' | 'fr';
+  theme?: 'light' | 'dark';
+};
 
 /**
  * Update the authenticated user's own preferences (language/theme).
@@ -293,11 +290,11 @@ export async function updateMyPreferences(staffId: string, input: UpdatePreferen
     throw createError.notFound('USER_NOT_FOUND');
   }
 
-  if (input.language && ALLOWED_LANGUAGES.includes(input.language as 'es' | 'en' | 'fr')) {
-    staff.language = input.language as 'es' | 'en' | 'fr';
+  if (input.language) {
+    staff.language = input.language;
   }
-  if (input.theme && ALLOWED_THEMES.includes(input.theme as 'light' | 'dark')) {
-    staff.theme = input.theme as 'light' | 'dark';
+  if (input.theme) {
+    staff.theme = input.theme;
   }
 
   await staff.save();

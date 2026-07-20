@@ -81,6 +81,9 @@ export async function updateDish(
     }
   }
 
+  // Defense in depth: never allow restaurant_id reassignment from the request body
+  delete (data as Partial<UpdateDishData>).restaurant_id;
+
   const updated = await dishRepo.updateDish(dishId, restaurantId, data);
   await invalidateDishCaches(dishId, restaurantId);
 
@@ -132,23 +135,22 @@ export async function createCategory(data: CreateCategoryData): Promise<ICategor
   return category;
 }
 
-export async function updateCategory(id: string, data: UpdateCategoryData): Promise<ICategory | null> {
-  const existing = await categoryRepo.findById(id);
+export async function updateCategory(id: string, restaurantId: string, data: UpdateCategoryData): Promise<ICategory | null> {
+  const existing = await categoryRepo.findByIdAndRestaurant(id, restaurantId);
   if (!existing) return null;
 
-  const updated = await categoryRepo.updateCategory(id, data);
-  const restaurantId = data.restaurant_id || existing.restaurant_id.toString();
+  const updated = await categoryRepo.updateCategory(id, restaurantId, data);
   await invalidateCategoryCaches(id, restaurantId);
 
   return updated;
 }
 
-export async function deleteCategory(id: string): Promise<ICategory | null> {
-  const existing = await categoryRepo.findById(id);
+export async function deleteCategory(id: string, restaurantId: string): Promise<ICategory | null> {
+  const existing = await categoryRepo.findByIdAndRestaurant(id, restaurantId);
   if (!existing) return null;
 
   // Verify no dishes are using this category
-  const dishesInCategory = await dishRepo.countByCategory(id, existing.restaurant_id.toString());
+  const dishesInCategory = await dishRepo.countByCategory(id, restaurantId);
   if (dishesInCategory > 0) {
     throw new Error(ErrorCode.CATEGORY_HAS_DISHES);
   }
@@ -157,8 +159,8 @@ export async function deleteCategory(id: string): Promise<ICategory | null> {
     await deleteImage(existing.category_image_url);
   }
 
-  const deleted = await categoryRepo.deleteCategory(id);
-  await invalidateCategoryCaches(id, existing.restaurant_id.toString());
+  const deleted = await categoryRepo.deleteCategory(id, restaurantId);
+  await invalidateCategoryCaches(id, restaurantId);
 
   return deleted;
 }

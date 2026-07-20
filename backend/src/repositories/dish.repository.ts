@@ -517,11 +517,12 @@ export class CategoryRepository extends BaseRepository<ICategory> {
     });
   }
 
-  async updateCategory(id: string, data: UpdateCategoryData): Promise<ICategory | null> {
+  async updateCategory(id: string, restaurantId: string, data: UpdateCategoryData): Promise<ICategory | null> {
     validateObjectId(id, 'category_id');
+    validateObjectId(restaurantId, 'restaurant_id');
     const { restaurant_id, ...rest } = data;
-    return this.model.findByIdAndUpdate(
-      id,
+    return this.model.findOneAndUpdate(
+      { _id: new Types.ObjectId(id), restaurant_id: new Types.ObjectId(restaurantId) },
       {
         ...rest,
         ...(restaurant_id !== undefined && { restaurant_id: new Types.ObjectId(restaurant_id) }),
@@ -530,9 +531,13 @@ export class CategoryRepository extends BaseRepository<ICategory> {
     ).exec();
   }
 
-  async deleteCategory(id: string): Promise<ICategory | null> {
+  async deleteCategory(id: string, restaurantId: string): Promise<ICategory | null> {
     validateObjectId(id, 'category_id');
-    return this.model.findByIdAndDelete(id).exec();
+    validateObjectId(restaurantId, 'restaurant_id');
+    return this.model.findOneAndDelete({
+      _id: new Types.ObjectId(id),
+      restaurant_id: new Types.ObjectId(restaurantId),
+    }).exec();
   }
 
   async getMaxOrder(restaurantId: string): Promise<number> {

@@ -7,7 +7,7 @@ import {
   APP_INITIALIZER,
 } from '@angular/core';
 import { provideServiceWorker } from '@angular/service-worker';
-import { provideRouter, withPreloading, PreloadAllModules } from '@angular/router';
+import { provideRouter, withPreloading } from '@angular/router';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { provideAnimations } from '@angular/platform-browser/animations';
 import { provideNativeDateAdapter } from '@angular/material/core';
@@ -18,6 +18,7 @@ import { errorInterceptor } from './core/interceptors/error.interceptor';
 import { GlobalErrorHandler } from './core/services/global-error.handler';
 import { AuthService } from './core/services/auth.service';
 import { I18nService } from './core/services/i18n.service';
+import { AuthPreloadingStrategy } from './core/strategies/auth-preloading.strategy';
 import { authStore } from './store/auth.store';
 import { firstValueFrom } from 'rxjs';
 
@@ -61,7 +62,7 @@ function initializeI18n(): () => Promise<void> {
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
-    provideRouter(routes, withPreloading(PreloadAllModules)),
+    provideRouter(routes, withPreloading(AuthPreloadingStrategy)),
     provideHttpClient(withInterceptors([errorInterceptor, jwtInterceptor])),
     provideAnimations(),
     provideNativeDateAdapter(),

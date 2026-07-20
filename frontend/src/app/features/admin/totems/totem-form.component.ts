@@ -161,6 +161,7 @@ export class TotemFormComponent implements OnInit, OnDestroy {
   protected i18n = inject(I18nService);
   private notify = inject(NotificationService);
   private destroy$ = new Subject<void>();
+  private navigateTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
   totemForm!: FormGroup;
   isEditMode = false;
@@ -180,8 +181,22 @@ export class TotemFormComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    if (this.navigateTimeoutId !== null) {
+      clearTimeout(this.navigateTimeoutId);
+      this.navigateTimeoutId = null;
+    }
     this.destroy$.next();
     this.destroy$.complete();
+  }
+
+  private scheduleNavigateBack(): void {
+    if (this.navigateTimeoutId !== null) {
+      clearTimeout(this.navigateTimeoutId);
+    }
+    this.navigateTimeoutId = setTimeout(() => {
+      this.navigateTimeoutId = null;
+      void this.router.navigate(['/admin/totems']);
+    }, 1500);
   }
 
   initForm(): void {
@@ -227,7 +242,7 @@ export class TotemFormComponent implements OnInit, OnDestroy {
           next: () => {
             this.submitting.set(false);
             this.notify.success(this.i18n.translate('totem.updated'));
-            setTimeout(() => this.router.navigate(['/admin/totems']), 1500);
+            this.scheduleNavigateBack();
           },
           error: (err) => {
             this.notify.error(err.error?.message || this.i18n.translate('errors.SERVER_ERROR'));
@@ -241,7 +256,7 @@ export class TotemFormComponent implements OnInit, OnDestroy {
           next: () => {
             this.submitting.set(false);
             this.notify.success(this.i18n.translate('totem.created'));
-            setTimeout(() => this.router.navigate(['/admin/totems']), 1500);
+            this.scheduleNavigateBack();
           },
           error: (err) => {
             this.notify.error(err.error?.message || this.i18n.translate('errors.SERVER_ERROR'));

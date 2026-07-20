@@ -88,7 +88,7 @@ export class PosSocketService {
   private getRequiredPermission(sessionType: string): string | null {
     switch (sessionType) {
       case 'KDS': return 'KTS';
-      case 'TOTEM': return null;
+      case 'TOTEM': return 'POS';
       case 'TAS': return 'TAS';
       case 'POS': return 'POS';
       default: return null;

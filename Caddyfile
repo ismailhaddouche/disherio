@@ -72,6 +72,11 @@
 
     # Public readiness/liveness probes must reach the backend, not Angular's
     # index.html fallback.
+    # Block internal metrics endpoint from public access
+    handle /metrics {
+        respond 403
+    }
+
     @health path /health /health/*
     handle @health {
         reverse_proxy backend:3000

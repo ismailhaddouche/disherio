@@ -1,7 +1,9 @@
 import { Request, Response } from 'express';
-import { asyncHandler } from '../utils/async-handler';
+import { asyncHandler, createError } from '../utils/async-handler';
+import { ErrorCode } from '@disherio/shared';
 import * as OrderService from '../services/order.service';
 import * as OrderOwnershipService from '../services/order-ownership.service';
+import { PaymentHistoryQuerySchema } from '../schemas/order.schema';
 
 function staffActivitySource(permissions: string[]): 'POS' | 'TAS' {
   return permissions.includes('TAS') && !permissions.includes('POS') ? 'TAS' : 'POS';
@@ -83,15 +85,15 @@ export const createPayment = asyncHandler(async (req: Request, res: Response): P
 });
 
 export const getPaymentHistory = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-  const from = typeof req.query.from === 'string' ? new Date(req.query.from) : undefined;
-  const to = typeof req.query.to === 'string' ? new Date(req.query.to) : undefined;
-  const search = typeof req.query.search === 'string' ? req.query.search : undefined;
-  const parsedLimit = typeof req.query.limit === 'string' ? Number(req.query.limit) : undefined;
-  const limit = Number.isFinite(parsedLimit) ? parsedLimit : undefined;
+  const parsed = PaymentHistoryQuerySchema.safeParse(req.query);
+  if (!parsed.success) {
+    throw createError.badRequest(ErrorCode.VALIDATION_ERROR);
+  }
+  const { from, to, search, limit } = parsed.data;
 
   const payments = await OrderService.getPaymentHistory(req.user!.restaurantId, {
-    from: from && !Number.isNaN(from.getTime()) ? from : undefined,
-    to: to && !Number.isNaN(to.getTime()) ? to : undefined,
+    from: from ? new Date(from) : undefined,
+    to: to ? new Date(to) : undefined,
     search,
     limit,
   });

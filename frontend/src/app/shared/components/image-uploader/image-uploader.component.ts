@@ -100,6 +100,19 @@ export class ImageUploaderComponent {
     const file = target.files?.[0];
     if (!file) return;
 
+    // Client-side validation (backend validates again as defense in depth)
+    if (!file.type.startsWith('image/')) {
+      this.notify.error(this.i18n.translate('image_uploader.invalid_type'));
+      target.value = '';
+      return;
+    }
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      this.notify.error(this.i18n.translate('image_uploader.too_large'));
+      target.value = '';
+      return;
+    }
+
     // Show local preview immediately
     const reader = new FileReader();
     reader.onload = (e) => this.previewUrl.set(e.target?.result as string);

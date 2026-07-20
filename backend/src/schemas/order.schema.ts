@@ -35,6 +35,13 @@ export const PaymentRequestSchema = z.object({
 });
 export const TicketRequestSchema = z.object({ ticket_part: z.number().int().min(1) });
 
+export const PaymentHistoryQuerySchema = z.object({
+  from: z.string().datetime().optional(),
+  to: z.string().datetime().optional(),
+  search: z.string().max(100).optional(),
+  limit: z.coerce.number().int().min(1).max(300).optional(),
+});
+
 export {
   OrderSchema,
   ItemOrderSchema,

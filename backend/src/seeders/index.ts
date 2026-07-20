@@ -1,10 +1,34 @@
 import 'dotenv/config';
 import mongoose from 'mongoose';
+import { z } from 'zod';
 import { Restaurant } from '../models/restaurant.model';
 import { Role, Staff } from '../models/staff.model';
 import { logger } from '../config/logger';
 import { hashPassword, hashPin, computePinLookup } from '../services/auth.service';
 import { getEnv } from '../config/env';
+
+const adminCredentialsSchema = z.object({
+  username: z.string().min(3).max(50).regex(/^[a-zA-Z0-9_-]+$/),
+  password: z.string().min(12).regex(/[A-Z]/).regex(/[a-z]/).regex(/[0-9]/),
+  pin: z.string().min(6).max(8).regex(/^\d+$/),
+});
+
+const trivialPasswords = new Set([
+  'admin', 'admin123', 'password', 'password123', '123456', '12345678',
+  'qwerty', 'letmein', 'welcome', 'disherio', 'restaurant',
+]);
+
+function validateAdminCredentials(username: string, password: string, pin: string): void {
+  const parsed = adminCredentialsSchema.safeParse({ username, password, pin });
+  if (!parsed.success) {
+    logger.error({ issues: parsed.error.issues }, 'Admin credentials do not meet security requirements');
+    process.exit(1);
+  }
+  if (trivialPasswords.has(password.toLowerCase())) {
+    logger.error('Admin password is too trivial; use a strong unique password');
+    process.exit(1);
+  }
+}
 
 async function seed() {
   const uri = getEnv().MONGODB_URI;
@@ -32,6 +56,8 @@ async function seed() {
       logger.error('ADMIN_PIN env var is required');
       process.exit(1);
     }
+
+    validateAdminCredentials(adminUsername, adminPassword, adminPin);
 
     // Create or update default restaurant (matched by name to stay idempotent)
     let restaurant = await Restaurant.findOne({ restaurant_name: restaurantName });

@@ -1,4 +1,4 @@
-import { createHash, createHmac, randomBytes } from 'crypto';
+import { createHash, randomBytes } from 'crypto';
 import jwt from 'jsonwebtoken';
 import { ErrorCode } from '@disherio/shared';
 import { logger } from '../config/logger';
@@ -12,6 +12,7 @@ const REFRESH_LOOKUP_PREFIX = 'refresh_lookup:';
 const BLOCKLIST_PREFIX = 'blocklist:access:';
 const FAMILY_PREFIX = 'refresh_family:';
 const CONSUMED_REFRESH_PREFIX = 'refresh_consumed:';
+const RETRY_INDEX_PREFIX = 'refresh_retry:';
 const ROTATION_RETRY_GRACE_MS = 10_000;
 
 // Minimum refresh token length we will accept
@@ -105,15 +106,8 @@ interface ConsumedRefreshTokenMetadata extends RefreshTokenMetadata {
   successorTokenHash: string;
 }
 
-function deriveSuccessorRefreshToken(token: string): string {
-  return createHmac('sha256', env().JWT_REFRESH_SECRET)
-    .update(`refresh-successor:${token}`)
-    .digest('hex');
-}
-
 async function resolveConsumedRefreshToken(
   redisClient: DisherRedisClient,
-  token: string,
   tokenHash: string,
   serializedMetadata: string
 ): Promise<{ userId: string; family: string; refreshToken: string }> {
@@ -125,28 +119,29 @@ async function resolveConsumedRefreshToken(
     throw new Error(ErrorCode.INVALID_TOKEN);
   }
 
-  const successorToken = deriveSuccessorRefreshToken(token);
-  const successorTokenHash = hashToken(successorToken);
   const consumedAt = Date.parse(metadata.consumedAt);
   const ageMs = Date.now() - consumedAt;
   const isRetryCandidate = Number.isFinite(consumedAt)
     && ageMs >= 0
-    && ageMs <= ROTATION_RETRY_GRACE_MS
-    && metadata.successorTokenHash === successorTokenHash;
+    && ageMs <= ROTATION_RETRY_GRACE_MS;
 
   if (isRetryCandidate) {
-    const successorKey = `${REFRESH_TOKEN_PREFIX}${metadata.staffId}:${successorTokenHash}`;
-    if (await redisClient.get(successorKey)) {
-      logRefreshAuditEvent(metadata.staffId, metadata.family, {
-        event: 'rotation_retry',
-        tokenHash,
-        at: new Date().toISOString(),
-      });
-      return {
-        userId: metadata.staffId,
-        family: metadata.family,
-        refreshToken: successorToken,
-      };
+    const retryIndexKey = `${RETRY_INDEX_PREFIX}${tokenHash}`;
+    const successorToken = await redisClient.get(retryIndexKey);
+    if (successorToken && hashToken(successorToken) === metadata.successorTokenHash) {
+      const successorKey = `${REFRESH_TOKEN_PREFIX}${metadata.staffId}:${metadata.successorTokenHash}`;
+      if (await redisClient.get(successorKey)) {
+        logRefreshAuditEvent(metadata.staffId, metadata.family, {
+          event: 'rotation_retry',
+          tokenHash,
+          at: new Date().toISOString(),
+        });
+        return {
+          userId: metadata.staffId,
+          family: metadata.family,
+          refreshToken: successorToken,
+        };
+      }
     }
   }
 
@@ -321,7 +316,7 @@ export async function rotateRefreshToken(
   // impossible.
   const consumedMetadata = await redisClient.get(consumedKey);
   if (consumedMetadata) {
-    return resolveConsumedRefreshToken(redisClient, token, tokenHash, consumedMetadata);
+    return resolveConsumedRefreshToken(redisClient, tokenHash, consumedMetadata);
   }
 
   const verification = await verifyRefreshToken(token);
@@ -333,7 +328,7 @@ export async function rotateRefreshToken(
   const family = verification.family ?? randomBytes(16).toString('hex');
   const familyKey = `${FAMILY_PREFIX}${family}`;
   const currentKey = `${REFRESH_TOKEN_PREFIX}${userId}:${tokenHash}`;
-  const newRefreshToken = deriveSuccessorRefreshToken(token);
+  const newRefreshToken = generateRefreshTokenValue();
   const newTokenHash = hashToken(newRefreshToken);
   const newKey = `${REFRESH_TOKEN_PREFIX}${userId}:${newTokenHash}`;
   const currentLookupKey = `${REFRESH_LOOKUP_PREFIX}${tokenHash}`;
@@ -352,10 +347,10 @@ export async function rotateRefreshToken(
     successorTokenHash: newTokenHash,
   };
 
-  // Consume the old token, persist its tombstone, and create its replacement
-  // in one Redis operation. A concurrent replay observes the tombstone only
-  // after the replacement is already a family member, so revoking the family
-  // cannot miss the newly rotated token.
+  // Consume the old token, persist its tombstone, create its replacement and
+  // store a short-lived retry index in one Redis operation. A concurrent replay
+  // observes the tombstone only after the replacement is already a family
+  // member, so revoking the family cannot miss the newly rotated token.
   const rotationScript = `
     local tombstone = redis.call('GET', KEYS[3])
     if tombstone then return {0, tombstone} end
@@ -367,12 +362,13 @@ export async function rotateRefreshToken(
     redis.call('SETEX', KEYS[3], ARGV[4], ARGV[6])
     redis.call('SETEX', KEYS[4], ARGV[4], ARGV[3])
     redis.call('SETEX', KEYS[6], ARGV[4], ARGV[5])
+    redis.call('SETEX', KEYS[7], ARGV[7], ARGV[8])
     redis.call('SADD', KEYS[2], ARGV[2])
     redis.call('EXPIRE', KEYS[2], ARGV[4])
     return {1, current}
   `;
   const rotationResult = await redisClient.eval(rotationScript, {
-    keys: [currentKey, familyKey, consumedKey, newKey, currentLookupKey, newLookupKey],
+    keys: [currentKey, familyKey, consumedKey, newKey, currentLookupKey, newLookupKey, `${RETRY_INDEX_PREFIX}${tokenHash}`],
     arguments: [
       tokenHash,
       newTokenHash,
@@ -380,13 +376,15 @@ export async function rotateRefreshToken(
       String(ttlSeconds),
       userId,
       JSON.stringify(consumedTokenMetadata),
+      String(Math.ceil(ROTATION_RETRY_GRACE_MS / 1000)),
+      newRefreshToken,
     ],
   }) as unknown as [number, string];
 
   if (Number(rotationResult[0]) !== 1) {
     const serializedTombstone = String(rotationResult[1] ?? '');
     if (serializedTombstone) {
-      return resolveConsumedRefreshToken(redisClient, token, tokenHash, serializedTombstone);
+      return resolveConsumedRefreshToken(redisClient, tokenHash, serializedTombstone);
     }
     await revokeRefreshFamily(family);
     throw new Error(ErrorCode.INVALID_TOKEN);

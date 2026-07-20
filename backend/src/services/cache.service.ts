@@ -40,15 +40,12 @@ class CacheService {
 
   private async doConnect(): Promise<void> {
     try {
-      const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
+      const redisUrl = getEnv().REDIS_URL || 'redis://localhost:6379';
       const redisPassword = getEnv().REDIS_PASSWORD;
 
-      const url = redisPassword
-        ? `${redisUrl.replace('://', `://:${redisPassword}@`)}`
-        : redisUrl;
-
       this.client = createClient({
-        url,
+        url: redisUrl,
+        password: redisPassword,
         socket: {
           reconnectStrategy: (retries) => {
             if (retries > 5) {

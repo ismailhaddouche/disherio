@@ -89,7 +89,7 @@ describe('AuthController', () => {
         expect.objectContaining({
           httpOnly: true,
           secure: false,
-          sameSite: 'strict',
+          sameSite: 'lax',
           path: '/'
         })
       );
@@ -100,7 +100,7 @@ describe('AuthController', () => {
         expect.objectContaining({
           httpOnly: true,
           secure: false,
-          sameSite: 'strict',
+          sameSite: 'lax',
           path: '/'
         })
       );
@@ -162,7 +162,7 @@ describe('AuthController', () => {
         expect.objectContaining({
           httpOnly: true,
           secure: true,
-          sameSite: 'strict'
+          sameSite: 'lax'
         })
       );
     });
@@ -192,7 +192,7 @@ describe('AuthController', () => {
         'jwt_token',
         expect.objectContaining({
           secure: true,
-          sameSite: 'strict'
+          sameSite: 'lax'
         })
       );
     });
@@ -304,7 +304,7 @@ describe('AuthController', () => {
         expect.objectContaining({
           path: '/',
           secure: false,
-          sameSite: 'strict'
+          sameSite: 'lax'
         })
       );
       expect(jsonMock).toHaveBeenCalledWith({ message: 'LOGOUT_SUCCESS' });
@@ -330,7 +330,7 @@ describe('AuthController', () => {
         'auth_token',
         expect.objectContaining({
           secure: true,
-          sameSite: 'strict'
+          sameSite: 'lax'
         })
       );
     });

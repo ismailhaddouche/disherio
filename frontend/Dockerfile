@@ -16,3 +16,4 @@ FROM caddy:2-alpine@sha256:5f5c8640aae01df9654968d946d8f1a56c497f1dd5c5cda4cf95a
 COPY --from=builder /app/frontend/dist/frontend/browser /srv
 COPY frontend/Caddyfile.frontend /etc/caddy/Caddyfile
 EXPOSE 4200
+USER caddy

@@ -8,6 +8,7 @@ import { cartStore, CartItem } from '../../store/cart.store';
 import { LocalizePipe } from '../../shared/pipes/localize.pipe';
 import { CurrencyFormatPipe } from '../../shared/pipes/currency-format.pipe';
 import { TranslatePipe } from '../../shared/pipes/translate.pipe';
+import { SafeUrlPipe } from '../../shared/pipes/safe-url.pipe';
 import { ThemeService } from '../../core/services/theme.service';
 import { I18nService } from '../../core/services/i18n.service';
 import { SocketConnectionService } from '../../core/services/socket/socket-connection.service';
@@ -38,7 +39,7 @@ type ViewTab = 'menu' | 'my-orders' | 'all-orders';
 @Component({
   selector: 'app-totem',
   standalone: true,
-  imports: [CommonModule, A11yModule, LocalizePipe, CurrencyFormatPipe, TranslatePipe],
+  imports: [CommonModule, A11yModule, LocalizePipe, CurrencyFormatPipe, TranslatePipe, SafeUrlPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './totem.component.html',
   providers: [TotemCartService],

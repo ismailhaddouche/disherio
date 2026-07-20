@@ -71,14 +71,17 @@ describe('refresh-token rotation reuse detection', () => {
 
   it('returns the same successor for a concurrent retry without revoking the family', async () => {
     let consumedMetadata: string | undefined;
+    let successorToken: string | undefined;
     redis.get.mockImplementation(async (key: string) => {
       if (key === `refresh_consumed:${hashToken(TOKEN)}`) return consumedMetadata ?? null;
+      if (key === `refresh_retry:${hashToken(TOKEN)}`) return successorToken ?? null;
       if (key === `refresh_lookup:${hashToken(TOKEN)}`) return USER_ID;
       if (key.startsWith(`refresh:${USER_ID}:`)) return METADATA;
       return null;
     });
     redis.eval.mockImplementation(async (_script: string, options: { arguments: string[] }) => {
       consumedMetadata = options.arguments[5];
+      successorToken = options.arguments[7];
       return [1, METADATA];
     });
 
@@ -91,15 +94,17 @@ describe('refresh-token rotation reuse detection', () => {
   });
 
   it('treats an atomic rotation race as an idempotent retry', async () => {
+    let successorToken: string | undefined;
     redis.get.mockImplementation(async (key: string) => {
+      if (key === `refresh_retry:${hashToken(TOKEN)}`) return successorToken ?? null;
       if (key === `refresh_lookup:${hashToken(TOKEN)}`) return USER_ID;
       if (key.startsWith(`refresh:${USER_ID}:`)) return METADATA;
       return null;
     });
-    redis.eval.mockImplementation(async (_script: string, options: { arguments: string[] }) => [
-      0,
-      options.arguments[5],
-    ]);
+    redis.eval.mockImplementation(async (_script: string, options: { arguments: string[] }) => {
+      successorToken = options.arguments[7];
+      return [0, options.arguments[5]];
+    });
 
     await expect(rotateRefreshToken(TOKEN)).resolves.toEqual(expect.objectContaining({
       userId: USER_ID,

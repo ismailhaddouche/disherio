@@ -75,6 +75,7 @@ const _preferences = signal<UserPreferences | null>(loadPreferences());
 const _enabledLanguages = signal<Language[]>(
   initialUser?.enabled_languages?.length ? initialUser.enabled_languages : ['es', 'en', 'fr']
 );
+const _expiresAt = signal<number | null>(null);
 let _revision = 0;
 
 function applyAuth(user: AuthUser): void {
@@ -91,21 +92,29 @@ function applyAuth(user: AuthUser): void {
 
 export const authStore: AuthStore = {
   user: _user.asReadonly(),
-  isAuthenticated: computed(() => _user() !== null),
+  isAuthenticated: computed(() => {
+    const user = _user();
+    const expiresAt = _expiresAt();
+    if (!user) return false;
+    if (expiresAt !== null && Date.now() > expiresAt) return false;
+    return true;
+  }),
   hasPermission: (perm: string) => computed(() => _user()?.permissions.includes(perm) ?? false),
   preferences: _preferences.asReadonly(),
   enabledLanguages: _enabledLanguages.asReadonly(),
 
-  setAuth(user: AuthUser, _expiresAt: number) {
+  setAuth(user: AuthUser, expiresAt: number) {
     _revision++;
+    _expiresAt.set(expiresAt);
     // Persist only non-secret UI/session context. Access and refresh tokens
     // remain exclusively in HttpOnly cookies.
     applyAuth(user);
   },
 
-  setAuthIfCurrent(user: AuthUser, _expiresAt: number, revision: number) {
+  setAuthIfCurrent(user: AuthUser, expiresAt: number, revision: number) {
     if (_revision !== revision || !_user()) return false;
     _revision++;
+    _expiresAt.set(expiresAt);
     applyAuth(user);
     return true;
   },
@@ -119,6 +128,7 @@ export const authStore: AuthStore = {
     _user.set(null);
     _preferences.set(null);
     _enabledLanguages.set(['es', 'en', 'fr']);
+    _expiresAt.set(null);
     sessionStorage.removeItem(PREFS_KEY);
     sessionStorage.removeItem(AUTH_STATE_KEY);
   },

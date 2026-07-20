@@ -7,18 +7,13 @@ import {
   PopularDishesQuerySchema,
 } from '../schemas/dashboard.schema';
 
-function parseDateRange(query: Request['query']): DashboardService.DashboardDateRange {
-  const parsed = DashboardDateRangeQuerySchema.safeParse(query);
+export const getDashboardStats = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  const parsed = DashboardDateRangeQuerySchema.safeParse(req.query);
   if (!parsed.success) {
     throw createError.badRequest(ErrorCode.VALIDATION_ERROR);
   }
-  return parsed.data;
-}
-
-export const getDashboardStats = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-  const dateRange = parseDateRange(req.query);
-  const stats = await DashboardService.getDashboardStats(req.user!.restaurantId, dateRange);
-  res.json({ ...stats, dateRange: { from: req.query.from, to: req.query.to } });
+  const stats = await DashboardService.getDashboardStats(req.user!.restaurantId, parsed.data);
+  res.json({ ...stats, dateRange: { from: parsed.data.from, to: parsed.data.to } });
 });
 
 export const getPopularDishes = asyncHandler(async (req: Request, res: Response): Promise<void> => {

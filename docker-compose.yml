@@ -2,7 +2,7 @@ services:
   mongo:
     image: mongo:7@sha256:340c1c56fb10e95cf79ff547f8664b96bc6ead9909bc355238cbf865a9695a6f
     restart: unless-stopped
-    command: ["--replSet", "rs0", "--bind_ip_all", "--keyFile", "/data/db/mongo-keyfile"]
+    command: ["--replSet", "rs0", "--bind_ip", "127.0.0.1,mongo", "--keyFile", "/data/db/mongo-keyfile"]
     volumes:
       - mongo_data:/data/db
       # Mount initialization script for creating app user and indexes
@@ -10,7 +10,7 @@ services:
       # Mount keyFile for replica set authentication (required with --auth + replSet)
       - ./config/mongo-keyfile:/data/db/mongo-keyfile:ro
     networks:
-      - disherio_net
+      - backend_net
     environment:
       MONGO_INITDB_DATABASE: disherio
       # Root credentials for MongoDB admin user
@@ -53,7 +53,7 @@ services:
       mongo:
         condition: service_healthy
     networks:
-      - disherio_net
+      - backend_net
     environment:
       MONGO_ROOT_USER: ${MONGO_ROOT_USER:-admin}
       MONGO_ROOT_PASSWORD_FILE: /run/secrets/mongo_root_password
@@ -64,30 +64,34 @@ services:
       - |
         echo "[init-replica] Waiting for MongoDB to accept connections..."
         attempts=0
-        until mongosh --quiet --host mongo --eval "db.adminCommand('ping').ok" \
-          -u "$${MONGO_ROOT_USER}" -p "$$(cat "$${MONGO_ROOT_PASSWORD_FILE}")" --authenticationDatabase admin \
-          >/dev/null 2>&1; do
+        until mongosh --quiet --host mongo --eval "
+          const pw = require('fs').readFileSync('/run/secrets/mongo_root_password','utf8').trim();
+          db.getSiblingDB('admin').auth(process.env.MONGO_ROOT_USER, pw);
+          print(db.adminCommand('ping').ok);
+        " >/dev/null 2>&1; do
           attempts=$$((attempts + 1))
           [ "$$attempts" -lt 60 ] || { echo "[init-replica] Timed out waiting for MongoDB" >&2; exit 1; }
           sleep 2
         done
         echo "[init-replica] Initiating replica set rs0..."
-        mongosh --quiet --host mongo \
-          -u "$${MONGO_ROOT_USER}" -p "$$(cat "$${MONGO_ROOT_PASSWORD_FILE}")" --authenticationDatabase admin \
-          --eval "
-            try {
-              const s = rs.status();
-              print('[init-replica] Replica set already initialized (state=' + s.myState + ')');
-            } catch (e) {
-              rs.initiate({ _id: 'rs0', members: [{ _id: 0, host: 'mongo:27017' }] });
-              print('[init-replica] Replica set initiated.');
-            }
-          "
+        mongosh --quiet --host mongo --eval "
+          const pw = require('fs').readFileSync('/run/secrets/mongo_root_password','utf8').trim();
+          db.getSiblingDB('admin').auth(process.env.MONGO_ROOT_USER, pw);
+          try {
+            const s = rs.status();
+            print('[init-replica] Replica set already initialized (state=' + s.myState + ')');
+          } catch (e) {
+            rs.initiate({ _id: 'rs0', members: [{ _id: 0, host: 'mongo:27017' }] });
+            print('[init-replica] Replica set initiated.');
+          }
+        "
         echo "[init-replica] Waiting for primary..."
         attempts=0
-        until mongosh --quiet --host mongo --eval "db.hello().isWritablePrimary" \
-          -u "$${MONGO_ROOT_USER}" -p "$$(cat "$${MONGO_ROOT_PASSWORD_FILE}")" --authenticationDatabase admin \
-          >/dev/null 2>&1; do
+        until mongosh --quiet --host mongo --eval "
+          const pw = require('fs').readFileSync('/run/secrets/mongo_root_password','utf8').trim();
+          db.getSiblingDB('admin').auth(process.env.MONGO_ROOT_USER, pw);
+          print(db.hello().isWritablePrimary);
+        " >/dev/null 2>&1; do
           attempts=$$((attempts + 1))
           [ "$$attempts" -lt 60 ] || { echo "[init-replica] Timed out waiting for primary" >&2; exit 1; }
           sleep 2
@@ -102,12 +106,12 @@ services:
       - /bin/sh
       - -c
       - |
-        printf 'appendonly yes\nappendfsync everysec\nrequirepass %s\n' "$$(cat /run/secrets/redis_password)" > /tmp/redis.conf
+        printf 'bind 127.0.0.1\nappendonly yes\nappendfsync everysec\nrequirepass %s\n' "$$(cat /run/secrets/redis_password)" > /tmp/redis.conf
         exec redis-server /tmp/redis.conf
     volumes:
       - redis_data:/data
     networks:
-      - disherio_net
+      - backend_net
     secrets:
       - redis_password
     # Resource limits for Redis
@@ -141,9 +145,10 @@ services:
     hostname: backend
     user: "1001:1001"
     networks:
-      disherio_net:
+      frontend_net:
         aliases:
           - backend
+      backend_net: {}
     restart: unless-stopped
     depends_on:
       mongo:
@@ -213,7 +218,7 @@ services:
       dockerfile: frontend/Dockerfile
     hostname: frontend
     networks:
-      disherio_net:
+      frontend_net:
         aliases:
           - frontend
     restart: unless-stopped
@@ -252,7 +257,7 @@ services:
       mongo-init-replica:
         condition: service_completed_successfully
     networks:
-      - disherio_net
+      - backend_net
     environment:
       NODE_ENV: production
       MONGODB_URI_FILE: /run/secrets/mongodb_uri
@@ -286,7 +291,7 @@ services:
       seed:
         condition: service_completed_successfully
     networks:
-      - disherio_net
+      - backend_net
     environment:
       NODE_ENV: production
       MONGODB_URI_FILE: /run/secrets/mongodb_uri
@@ -322,7 +327,7 @@ services:
       - caddy_data:/data
       - caddy_config:/config
     networks:
-      - disherio_net
+      - frontend_net
     # Resource limits
     deploy:
       resources:
@@ -346,9 +351,13 @@ services:
       start_period: 10s
 
 networks:
-  disherio_net:
+  frontend_net:
+    name: disherio_frontend_net
     driver: bridge
-    name: disherio_disherio_net
+  backend_net:
+    name: disherio_backend_net
+    driver: bridge
+    internal: true
 
 volumes:
   mongo_data:
