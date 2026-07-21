@@ -51,12 +51,17 @@ jobs:
       - name: TypeScript compilation check
         run: npx tsc --noEmit
 
+      # ESLint is intentionally optional: the project does not depend on
+      # eslint (checked 2026-07), so this step is a no-op until an eslint
+      # devDependency plus config (.eslintrc.* or eslint.config.*) is added.
+      # Keeping the step documents the intent and activates linting
+      # automatically once ESLint is introduced.
       - name: Run ESLint
         run: |
-          if [ -f .eslintrc.js ] || [ -f .eslintrc.json ]; then
+          if [ -f .eslintrc.js ] || [ -f .eslintrc.json ] || [ -f eslint.config.js ] || [ -f eslint.config.mjs ]; then
             npx eslint src/**/*.ts
           else
-            echo "No ESLint config found, skipping..."
+            echo "ESLint not configured (no eslint dependency in package.json); skipping."
           fi
 
   lint-frontend:
@@ -86,12 +91,17 @@ jobs:
       - name: TypeScript compilation check
         run: npx tsc --noEmit
 
+      # ESLint is intentionally optional: the project does not depend on
+      # eslint (checked 2026-07), so this step is a no-op until an eslint
+      # devDependency plus config (.eslintrc.* or eslint.config.*) is added.
+      # Keeping the step documents the intent and activates linting
+      # automatically once ESLint is introduced.
       - name: Run ESLint
         run: |
-          if [ -f .eslintrc.js ] || [ -f .eslintrc.json ]; then
+          if [ -f .eslintrc.js ] || [ -f .eslintrc.json ] || [ -f eslint.config.js ] || [ -f eslint.config.mjs ]; then
             npx eslint src/**/*.ts
           else
-            echo "No ESLint config found, skipping..."
+            echo "ESLint not configured (no eslint dependency in package.json); skipping."
           fi
 
   # ============================================

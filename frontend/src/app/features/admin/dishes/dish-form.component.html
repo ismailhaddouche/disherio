@@ -20,12 +20,18 @@
       <div class="admin-card p-6 flex flex-col gap-6">
         <section class="flex flex-col gap-2">
           <label class="admin-label text-base font-bold">{{ 'dish.image' | translate }}</label>
-          <app-image-uploader
-            folder="dishes"
-            [resourceId]="dish()._id ?? null"
-            [currentImage]="dish().disher_url_image ?? null"
-            (imageUploaded)="onImageUploaded($event)"
-          />
+          @if (isEdit) {
+            <app-image-uploader
+              folder="dishes"
+              [resourceId]="dish()._id ?? null"
+              [currentImage]="dish().disher_url_image ?? null"
+              (imageUploaded)="onImageUploaded($event)"
+            />
+          } @else {
+            <!-- New dishes have no id yet: the upload endpoint is ownership-scoped
+                 to an existing dish, so uploading is enabled after the first save. -->
+            <p class="text-sm" style="color: var(--mat-sys-on-surface-variant)">{{ 'image_uploader.save_first' | translate }}</p>
+          }
         </section>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-5">

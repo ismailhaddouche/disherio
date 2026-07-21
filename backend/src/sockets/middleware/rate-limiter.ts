@@ -243,32 +243,43 @@ export function rateLimitMiddleware<T extends (...args: any[]) => any>(
   handler: T
 ): (...args: Parameters<T>) => void {
   return async (...args: Parameters<T>) => {
-    const identity = getSocketRateLimitIdentity(socket);
-    const { allowed, remaining } = await checkRateLimit(identity, eventType);
+    try {
+      const identity = getSocketRateLimitIdentity(socket);
+      const { allowed, remaining } = await checkRateLimit(identity, eventType);
 
-    if (!allowed) {
-      const config = getRateLimitConfig(eventType);
+      if (!allowed) {
+        const config = getRateLimitConfig(eventType);
 
-      logger.warn(
-        { socketId: socket.id, identity, eventType },
-        'Socket rate limit exceeded'
-      );
+        logger.warn(
+          { socketId: socket.id, identity, eventType },
+          'Socket rate limit exceeded'
+        );
 
-      socket.emit('error', {
-        code: 'RATE_LIMITED',
-        message: 'Too many requests',
-        event: eventType,
-        retryAfter: Math.ceil(config.windowMs / 1000),
-        remaining,
-      });
+        socket.emit('error', {
+          code: 'RATE_LIMITED',
+          message: 'Too many requests',
+          event: eventType,
+          retryAfter: Math.ceil(config.windowMs / 1000),
+          remaining,
+        });
 
-      return;
+        return;
+      }
+
+      // Record the request
+      await recordRequest(identity, eventType);
+
+      // Execute the handler. Awaiting is required so a handler that throws
+      // synchronously (e.g. destructuring a null payload) or rejects is
+      // caught here instead of surfacing as an unhandledRejection that
+      // crashes the process (socket.io ignores the listener return value).
+      return await handler(...args);
+    } catch (err) {
+      logger.error({ err, socketId: socket.id, eventType }, 'Socket event handler failed unexpectedly');
+      // Namespace the error to the event's prefix (kds/tas/pos/totem) so
+      // clients receive it on their usual error channel.
+      const namespace = eventType.split(':')[0] || 'socket';
+      socket.emit(`${namespace}:error`, { message: 'INTERNAL_ERROR' });
     }
-
-    // Record the request
-    await recordRequest(identity, eventType);
-
-    // Execute the handler
-    return handler(...args);
   };
 }

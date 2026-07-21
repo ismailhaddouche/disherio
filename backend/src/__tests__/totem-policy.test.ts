@@ -10,6 +10,11 @@ jest.mock('../utils/transactions', () => ({
   withTransaction: (operations: (session: unknown) => Promise<unknown>) => operations(undefined),
 }));
 
+// Unit tests run without Redis: execute the locked section directly.
+jest.mock('../utils/locks', () => ({
+  withLock: (_key: string, fn: () => Promise<unknown>) => fn(),
+}));
+
 describe('TotemService.assertCanMutateTotem', () => {
   // A policy violation throws an operational AppError whose message is the
   // FORBIDDEN error code and whose statusCode is 403. The global error handler

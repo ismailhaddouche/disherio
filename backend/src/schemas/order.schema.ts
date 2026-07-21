@@ -27,12 +27,22 @@ export const BatchItemsRequestSchema = z.object({
 });
 export const ItemStateRequestSchema = z.object({ state: z.enum(['ORDERED', 'ON_PREPARE', 'SERVED', 'CANCELED']) });
 export const AssignItemRequestSchema = z.object({ customer_id: objectId.nullable() });
-export const PaymentRequestSchema = z.object({
+// `parts` only has meaning for SHARED payments: ALL always settles in a
+// single ticket and BY_USER splits by customer, ignoring `parts`. The
+// frontend sends `parts: 1` for ALL/BY_USER, so a literal 1 stays valid.
+const paymentBaseFields = {
   session_id: objectId,
-  payment_type: z.enum(['ALL', 'BY_USER', 'SHARED']),
-  parts: z.number().int().min(1).max(100).optional(),
   tips: z.number().min(0).max(999999).optional(),
-});
+};
+export const PaymentRequestSchema = z.discriminatedUnion('payment_type', [
+  z.object({ ...paymentBaseFields, payment_type: z.literal('ALL'), parts: z.literal(1).optional() }),
+  z.object({ ...paymentBaseFields, payment_type: z.literal('BY_USER'), parts: z.literal(1).optional() }),
+  z.object({
+    ...paymentBaseFields,
+    payment_type: z.literal('SHARED'),
+    parts: z.number().int().min(2).max(100),
+  }),
+]);
 export const TicketRequestSchema = z.object({ ticket_part: z.number().int().min(1) });
 
 export const PaymentHistoryQuerySchema = z.object({

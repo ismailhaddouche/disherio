@@ -11,6 +11,7 @@ const REFRESH_TOKEN_PREFIX = 'refresh:';
 const REFRESH_LOOKUP_PREFIX = 'refresh_lookup:';
 const BLOCKLIST_PREFIX = 'blocklist:access:';
 const FAMILY_PREFIX = 'refresh_family:';
+const FAMILY_REVOKED_PREFIX = 'refresh_family_revoked:';
 const CONSUMED_REFRESH_PREFIX = 'refresh_consumed:';
 const RETRY_INDEX_PREFIX = 'refresh_retry:';
 const ROTATION_RETRY_GRACE_MS = 10_000;
@@ -103,6 +104,17 @@ async function resolveConsumedRefreshToken(
     metadata = JSON.parse(serializedMetadata) as ConsumedRefreshTokenMetadata;
   } catch (err) {
     logger.warn({ err, tokenHash }, 'Invalid consumed refresh-token tombstone');
+    throw new Error(ErrorCode.INVALID_TOKEN);
+  }
+
+  // A revoked family must reject every token, including a successor created
+  // by a rotation that raced with the revocation cleanup.
+  if (await redisClient.get(`${FAMILY_REVOKED_PREFIX}${metadata.family}`)) {
+    logRefreshAuditEvent(metadata.staffId, metadata.family, {
+      event: 'reuse_detected',
+      tokenHash,
+      at: new Date().toISOString(),
+    });
     throw new Error(ErrorCode.INVALID_TOKEN);
   }
 
@@ -309,7 +321,12 @@ export async function rotateRefreshToken(
   // store a short-lived retry index in one Redis operation. A concurrent replay
   // observes the tombstone only after the replacement is already a family
   // member, so revoking the family cannot miss the newly rotated token.
+  // The revoked-family flag is checked first: revokeRefreshFamily sets it
+  // before reading the family members, so a rotation that races a revocation
+  // either committed before the flag (and its successor is deleted by the
+  // revocation cleanup) or observes the flag here and creates nothing.
   const rotationScript = `
+    if redis.call('GET', KEYS[8]) then return {0, ''} end
     local tombstone = redis.call('GET', KEYS[3])
     if tombstone then return {0, tombstone} end
     local current = redis.call('GET', KEYS[1])
@@ -326,7 +343,7 @@ export async function rotateRefreshToken(
     return {1, current}
   `;
   const rotationResult = await redisClient.eval(rotationScript, {
-    keys: [currentKey, familyKey, consumedKey, newKey, currentLookupKey, newLookupKey, `${RETRY_INDEX_PREFIX}${tokenHash}`],
+    keys: [currentKey, familyKey, consumedKey, newKey, currentLookupKey, newLookupKey, `${RETRY_INDEX_PREFIX}${tokenHash}`, `${FAMILY_REVOKED_PREFIX}${family}`],
     arguments: [
       tokenHash,
       newTokenHash,
@@ -360,10 +377,20 @@ export async function rotateRefreshToken(
 
 /**
  * Revoke all refresh tokens in a family.
+ * Sets a revoked-family flag (TTL = refresh token lifetime) before reading the
+ * family members. The rotation script checks that flag atomically, so a
+ * concurrent rotation either committed before the flag was set — in which case
+ * its successor is already a family member and is deleted by the cleanup
+ * below — or observes the flag and refuses to create a successor. Either way
+ * no token of the family survives the revocation.
  */
 export async function revokeRefreshFamily(family: string): Promise<void> {
   const redisClient = await getRedis();
   const familyKey = `${FAMILY_PREFIX}${family}`;
+  const ttlSeconds = parseDurationSeconds(env().JWT_REFRESH_EXPIRES);
+
+  await redisClient.setEx(`${FAMILY_REVOKED_PREFIX}${family}`, ttlSeconds, 'revoked');
+
   const tokenHashes = await redisClient.sMembers(familyKey);
 
   for (const tokenHash of tokenHashes) {

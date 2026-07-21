@@ -147,6 +147,7 @@
   "image_uploader.error": "Error al subir la imagen",
   "image_uploader.hint": "Subir imagen (WebP, JPG, PNG)",
   "image_uploader.preview": "Vista previa de la imagen actual",
+  "image_uploader.save_first": "Guarda primero para poder subir una imagen",
   "kds.available": "Disponible",
   "kds.cancel_reason_kitchen": "Cancelado por el personal de cocina",
   "kds.cancel_item": "Cancelar artículo",

@@ -95,7 +95,8 @@ const createPaymentBreaker = new CircuitBreaker(
       if (total <= 0) throw new Error(ErrorCode.NO_ITEMS_TO_PAY);
       const tickets = paymentType === 'BY_USER'
         ? buildByUserTickets(activeItems, total)
-        : buildSharedTickets(total, parts);
+        // ALL always settles in a single ticket; only SHARED honors `parts`.
+        : buildSharedTickets(total, paymentType === 'SHARED' ? parts : 1);
       const totem = await totemRepository.findById(completedSession.totem_id.toString());
       if (!totem) throw new Error(ErrorCode.TOTEM_NOT_FOUND);
 

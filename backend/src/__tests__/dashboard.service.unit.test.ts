@@ -1,10 +1,11 @@
 const paymentGetStats = jest.fn();
+const mockGetSalesByDish = jest.fn().mockResolvedValue([]);
 
 jest.mock('../repositories', () => ({
   CategoryRepository: jest.fn().mockImplementation(() => ({ findByRestaurantId: jest.fn().mockResolvedValue([]) })),
   DishRepository: jest.fn().mockImplementation(() => ({ findByRestaurantId: jest.fn().mockResolvedValue([]) })),
   ItemOrderRepository: jest.fn().mockImplementation(() => ({
-    getSalesByDish: jest.fn().mockResolvedValue([]),
+    getSalesByDish: mockGetSalesByDish,
     getOrderStatusCounts: jest.fn().mockResolvedValue([]),
   })),
   PaymentRepository: jest.fn().mockImplementation(() => ({ getPaymentStats: paymentGetStats })),
@@ -46,5 +47,35 @@ describe('DashboardService.getDashboardStats', () => {
 
     expect(paymentGetStats).toHaveBeenCalledWith(restaurantId, dateRange);
     expect(stats.paymentStats.totalRevenue).toBe(42);
+  });
+
+  it('keeps sales of deleted dishes using their snapshot data', async () => {
+    const restaurantId = '507f1f77bcf86cd799439016';
+    const dateRange = { from: new Date('2026-01-01T00:00:00.000Z') };
+    // Sale whose dishId no longer resolves to a live dish (the dish repo
+    // mock returns []), so only the item snapshot name is available.
+    mockGetSalesByDish.mockResolvedValue([
+      {
+        dishId: { toString: () => '507f1f77bcf86cd799439099' },
+        dishName: 'Paella (snapshot)',
+        quantity: 3,
+        revenue: 45,
+      },
+    ]);
+
+    const stats = await getDashboardStats(restaurantId, dateRange);
+
+    // Sales are scoped by the restaurant's sessions, not by live dish ids.
+    expect(mockGetSalesByDish).toHaveBeenCalledWith(['paid-session'], dateRange);
+
+    // The deleted dish still appears with its snapshot name.
+    expect(stats.salesByDish).toEqual([
+      expect.objectContaining({ dishName: 'Paella (snapshot)', quantity: 3, revenue: 45 }),
+    ]);
+
+    // Its revenue is not dropped from the category totals.
+    expect(stats.salesByCategory).toEqual([
+      expect.objectContaining({ categoryId: 'uncategorized', revenue: 45, quantity: 3 }),
+    ]);
   });
 });

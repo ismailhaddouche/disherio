@@ -196,7 +196,9 @@ export function registerKdsHandlers(_io: Server, socket: AuthenticatedSocket): v
    * Mark item as being prepared
    * Payload: { itemId: string }
    */
-  socket.on('kds:item_prepare', rateLimitMiddleware(socket, 'kds:item_prepare', async ({ itemId }: ItemIdPayload) => {
+  socket.on('kds:item_prepare', rateLimitMiddleware(socket, 'kds:item_prepare', async (payload: ItemIdPayload) => {
+    // Optional chaining: payload may be null/undefined from a malformed client event
+    const itemId = payload?.itemId;
     try {
       if (!itemId || typeof itemId !== 'string') {
         socket.emit('kds:error', { message: 'INVALID_ITEM_ID', itemId });
@@ -270,7 +272,10 @@ export function registerKdsHandlers(_io: Server, socket: AuthenticatedSocket): v
    * Cancel an item (only if in ORDERED state)
    * Payload: { itemId: string, reason?: string }
    */
-  socket.on('kds:item_cancel', rateLimitMiddleware(socket, 'kds:item_cancel', async ({ itemId, reason }: ItemCancelPayload) => {
+  socket.on('kds:item_cancel', rateLimitMiddleware(socket, 'kds:item_cancel', async (payload: ItemCancelPayload) => {
+    // Optional chaining: payload may be null/undefined from a malformed client event
+    const itemId = payload?.itemId;
+    const reason = payload?.reason;
     try {
       if (!itemId || typeof itemId !== 'string') {
         socket.emit('kds:error', { message: 'INVALID_ITEM_ID', itemId });
@@ -345,7 +350,9 @@ export function registerKdsHandlers(_io: Server, socket: AuthenticatedSocket): v
    * Mark item as served/ready
    * Payload: { itemId: string }
    */
-  socket.on('kds:item_serve', rateLimitMiddleware(socket, 'kds:item_serve', async ({ itemId }: ItemIdPayload) => {
+  socket.on('kds:item_serve', rateLimitMiddleware(socket, 'kds:item_serve', async (payload: ItemIdPayload) => {
+    // Optional chaining: payload may be null/undefined from a malformed client event
+    const itemId = payload?.itemId;
     try {
       if (!itemId || typeof itemId !== 'string') {
         socket.emit('kds:error', { message: 'INVALID_ITEM_ID', itemId });

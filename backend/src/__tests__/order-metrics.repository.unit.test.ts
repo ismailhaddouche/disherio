@@ -58,4 +58,38 @@ describe('order metric repository policies', () => {
     expect(result.get(firstSessionId.toString())).toBe(3);
     expect(result.get(secondSessionId.toString())).toBe(1);
   });
+
+  it('scopes sales by session ids so items of deleted dishes stay in the aggregate', async () => {
+    const sessionId = new Types.ObjectId();
+    const deletedDishId = new Types.ObjectId();
+    itemAggregateExec.mockResolvedValue([
+      { dishId: deletedDishId, dishName: 'Paella (snapshot)', quantity: 2, revenue: 25 },
+    ]);
+
+    const result = await new ItemOrderRepository().getSalesByDish([sessionId.toString()], {
+      from: new Date('2026-01-01T00:00:00.000Z'),
+    });
+
+    const pipeline = itemAggregate.mock.calls[0][0] as Array<Record<string, unknown>>;
+    const sessionMatch = pipeline.find(
+      (stage) => (stage['$match'] as Record<string, unknown> | undefined)?.['session_id'] !== undefined
+    )?.['$match'] as Record<string, any>;
+
+    // The match gates on sessions, not on live dish ids.
+    expect(sessionMatch['session_id']['$in'].map((id: Types.ObjectId) => id.toString())).toEqual([
+      sessionId.toString(),
+    ]);
+    expect(sessionMatch['item_dish_id']).toBeUndefined();
+    expect(sessionMatch['item_state']).toEqual({ $ne: 'CANCELED' });
+
+    // The group stage still projects the stored name snapshot, so the row
+    // for a deleted dish keeps its historical name.
+    expect(JSON.stringify(pipeline)).toContain('item_name_snapshot');
+    expect(result[0]).toEqual({
+      dishId: deletedDishId,
+      dishName: 'Paella (snapshot)',
+      quantity: 2,
+      revenue: 25,
+    });
+  });
 });

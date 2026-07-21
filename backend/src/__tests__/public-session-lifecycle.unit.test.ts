@@ -26,6 +26,11 @@ jest.mock('../repositories/order.repository', () => ({
   PaymentRepository: jest.fn().mockImplementation(() => ({})),
 }));
 
+// Unit tests run without Redis: execute the locked section directly.
+jest.mock('../utils/locks', () => ({
+  withLock: (_key: string, fn: () => Promise<unknown>) => fn(),
+}));
+
 import { TotemSession } from '../models/totem.model';
 import { getOrCreateSessionByQR } from '../services/totem.service';
 

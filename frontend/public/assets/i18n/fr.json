@@ -147,6 +147,7 @@
   "image_uploader.error": "Erreur lors du téléchargement de l'image",
   "image_uploader.hint": "Télécharger image (WebP, JPG, PNG)",
   "image_uploader.preview": "Aperçu de l'image actuelle",
+  "image_uploader.save_first": "Enregistrez d'abord pour télécharger une image",
   "kds.available": "Disponible",
   "kds.cancel_reason_kitchen": "Annulé par le personnel de cuisine",
   "kds.cancel_item": "Annuler l'article",

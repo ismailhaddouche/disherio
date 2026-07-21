@@ -5,6 +5,34 @@ import { loadSecretFiles } from './secret-files';
 const DEFAULT_JWT_SECRET = 'changeme_in_production';
 
 /**
+ * Strict integer env var: rejects NaN and non-numeric input (e.g. PORT=abc,
+ * PORT=3000x) and enforces an inclusive [min, max] range.
+ */
+const intInRange = (name: string, min: number, max: number, defaultValue: number) =>
+  z
+    .string()
+    .default(String(defaultValue))
+    .refine((val) => /^\d+$/.test(val), {
+      message: `${name} must be an integer`,
+    })
+    .transform((val) => parseInt(val, 10))
+    .refine((val) => val >= min && val <= max, {
+      message: `${name} must be between ${min} and ${max}`,
+    });
+
+/**
+ * JWT duration env var: matches the compact "zeit/ms" format accepted by
+ * jsonwebtoken (e.g. 60s, 15m, 8h, 1d, 7d). Rejects arbitrary text.
+ */
+const jwtDuration = (name: string, defaultValue: string) =>
+  z
+    .string()
+    .regex(/^\d+[smhd]$/, {
+      message: `${name} must be a duration like 60s, 15m, 8h, 1d or 7d (number followed by s, m, h or d)`,
+    })
+    .default(defaultValue);
+
+/**
  * Zod schema for environment variables validation
  * Ensures all required env vars are present and valid
  */
@@ -24,10 +52,7 @@ export const envSchema = z.object({
   MONGODB_URI: z.string().min(1, 'MONGODB_URI is required'),
 
   // Server configuration
-  PORT: z
-    .string()
-    .default('3000')
-    .transform((val) => parseInt(val, 10)),
+  PORT: intInRange('PORT', 1, 65535, 3000),
 
   // Optional: Node environment
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
@@ -43,7 +68,7 @@ export const envSchema = z.object({
   REDIS_PASSWORD: z.string().optional(),
 
   // Access token lifetime (short-lived)
-  JWT_EXPIRES: z.string().default('15m'),
+  JWT_EXPIRES: jwtDuration('JWT_EXPIRES', '15m'),
 
   // Refresh token configuration. The secret derives deterministic successor
   // tokens during the short idempotent rotation window; refresh tokens remain
@@ -58,36 +83,26 @@ export const envSchema = z.object({
       message: 'JWT_REFRESH_SECRET must be at least 32 characters long',
     }),
 
-  JWT_REFRESH_EXPIRES: z.string().default('7d'),
+  JWT_REFRESH_EXPIRES: jwtDuration('JWT_REFRESH_EXPIRES', '7d'),
 
   // Reverse proxy trust flag
   TRUST_PROXY: z.enum(['true', 'false']).default('false'),
 
   // Bcrypt cost factor for staff credentials.
-  BCRYPT_ROUNDS: z
-    .string()
-    .default('12')
-    .transform((val) => parseInt(val, 10))
-    .refine((val) => val >= 10 && val <= 15, {
-      message: 'BCRYPT_ROUNDS must be between 10 and 15',
-    }),
+  BCRYPT_ROUNDS: intInRange('BCRYPT_ROUNDS', 10, 15, 12),
 
   // Internal token for health/metrics endpoints
   INTERNAL_API_TOKEN: z.string().optional(),
 
   // MongoDB connection pool settings
-  MONGODB_MAX_POOL_SIZE: z
-    .string()
-    .default('50')
-    .transform((val) => parseInt(val, 10)),
-  MONGODB_SERVER_SELECTION_TIMEOUT: z
-    .string()
-    .default('30000')
-    .transform((val) => parseInt(val, 10)),
-  MONGODB_SOCKET_TIMEOUT: z
-    .string()
-    .default('45000')
-    .transform((val) => parseInt(val, 10)),
+  MONGODB_MAX_POOL_SIZE: intInRange('MONGODB_MAX_POOL_SIZE', 1, 1000, 50),
+  MONGODB_SERVER_SELECTION_TIMEOUT: intInRange(
+    'MONGODB_SERVER_SELECTION_TIMEOUT',
+    1000,
+    120000,
+    30000
+  ),
+  MONGODB_SOCKET_TIMEOUT: intInRange('MONGODB_SOCKET_TIMEOUT', 1000, 300000, 45000),
 
   // Directory where processed images are stored
   UPLOADS_DIR: z.string().optional(),

@@ -304,7 +304,9 @@ export function registerTasHandlers(io: Server, socket: AuthenticatedSocket): vo
    * Kitchen items are handled by KDS handler
    * Payload: { itemId: string }
    */
-  socket.on('tas:serve_service_item', rateLimitMiddleware(socket, 'tas:serve_service_item', async ({ itemId }: ItemIdPayload) => {
+  socket.on('tas:serve_service_item', rateLimitMiddleware(socket, 'tas:serve_service_item', async (payload: ItemIdPayload) => {
+    // Optional chaining: payload may be null/undefined from a malformed client event
+    const itemId = payload?.itemId;
     try {
       if (!itemId || typeof itemId !== 'string') {
         socket.emit('tas:error', { message: 'INVALID_ITEM_ID' });
@@ -373,7 +375,10 @@ export function registerTasHandlers(io: Server, socket: AuthenticatedSocket): vo
    * Cancel an item (waiter cancels an item from the order)
    * Payload: { itemId: string, reason?: string }
    */
-  socket.on('tas:cancel_item', rateLimitMiddleware(socket, 'tas:cancel_item', async ({ itemId, reason }: ItemCancelPayload) => {
+  socket.on('tas:cancel_item', rateLimitMiddleware(socket, 'tas:cancel_item', async (payload: ItemCancelPayload) => {
+    // Optional chaining: payload may be null/undefined from a malformed client event
+    const itemId = payload?.itemId;
+    const reason = payload?.reason;
     try {
       if (!itemId || typeof itemId !== 'string') {
         socket.emit('tas:error', { message: 'INVALID_ITEM_ID' });

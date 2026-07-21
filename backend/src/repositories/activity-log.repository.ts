@@ -2,7 +2,7 @@ import { PipelineStage, Types } from 'mongoose';
 import { Dish } from '../models/dish.model';
 import { ItemOrder, Order } from '../models/order.model';
 import { Staff } from '../models/staff.model';
-import { SessionCustomer } from '../models/totem.model';
+import { SessionCustomer, Totem, TotemSession } from '../models/totem.model';
 import { validateObjectId } from './base.repository';
 
 export type ActivityLogType = 'KDS' | 'POS' | 'TAS' | 'CUSTOMER';
@@ -63,8 +63,30 @@ export class ActivityLogRepository {
           as: 'dish',
         },
       },
-      { $unwind: '$dish' },
-      { $match: { 'dish.restaurant_id': restaurantId } },
+      // Left outer join: the dish may have been deleted. Historical items
+      // carry their own snapshots, so they must survive the missing dish.
+      { $unwind: { path: '$dish', preserveNullAndEmptyArrays: true } },
+      // Scope by restaurant through the session's totem instead of the live
+      // dish, so items whose dish was deleted stay in the report.
+      {
+        $lookup: {
+          from: TotemSession.collection.name,
+          localField: 'session_id',
+          foreignField: '_id',
+          as: 'session',
+        },
+      },
+      { $unwind: '$session' },
+      {
+        $lookup: {
+          from: Totem.collection.name,
+          localField: 'session.totem_id',
+          foreignField: '_id',
+          as: 'totem',
+        },
+      },
+      { $unwind: '$totem' },
+      { $match: { 'totem.restaurant_id': restaurantId } },
       {
         $lookup: {
           from: Order.collection.name,
@@ -156,16 +178,25 @@ export class ActivityLogRepository {
       ItemOrder.aggregate<{ _id: Types.ObjectId }>([
         {
           $lookup: {
-            from: Dish.collection.name,
-            localField: 'item_dish_id',
+            from: TotemSession.collection.name,
+            localField: 'session_id',
             foreignField: '_id',
-            as: 'dish',
+            as: 'session',
           },
         },
-        { $unwind: '$dish' },
+        { $unwind: '$session' },
+        {
+          $lookup: {
+            from: Totem.collection.name,
+            localField: 'session.totem_id',
+            foreignField: '_id',
+            as: 'totem',
+          },
+        },
+        { $unwind: '$totem' },
         {
           $match: {
-            'dish.restaurant_id': restaurantId,
+            'totem.restaurant_id': restaurantId,
             customer_id: { $type: 'objectId' },
           },
         },

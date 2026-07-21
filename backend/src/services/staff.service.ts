@@ -8,6 +8,7 @@ import { IRole } from '../models/staff.model';
 import { Request } from 'express';
 import { revokeAllUserRefreshTokens } from './refresh-token.service';
 import { disconnectStaffSockets } from './socket-session.service';
+import { withLock } from '../utils/locks';
 
 const userRepo = new UserRepository();
 const roleRepo = new RoleRepository();
@@ -199,6 +200,12 @@ export async function updateStaff(
  * Delete a staff member scoped to a restaurant. Throws NOT_FOUND if missing,
  * FORBIDDEN on self-deletion, and LAST_ADMIN when the target is the last
  * user holding ADMIN permission in the restaurant.
+ *
+ * The last-admin check and the delete run under a per-restaurant distributed
+ * lock: a Mongo transaction alone would not help here, because two concurrent
+ * transactions can both count "another admin exists" before either commits
+ * (snapshot isolation). Serializing the check+delete critical section makes
+ * the second deletion observe the first and refuse with LAST_ADMIN.
  */
 export async function deleteStaff(id: string, restaurantId: string, callerStaffId: string): Promise<void> {
   // A staff member cannot delete their own account.
@@ -211,21 +218,24 @@ export async function deleteStaff(id: string, restaurantId: string, callerStaffI
     throw createError.notFound('STAFF_NOT_FOUND');
   }
 
-  // Protect the last ADMIN: deleting them would leave the restaurant
-  // without any administrator.
-  const role = await roleRepo.findById(staff.role_id.toString());
-  if (role?.permissions.includes('ADMIN')) {
-    const restaurantRoles = await roleRepo.findByRestaurantId(restaurantId);
-    const adminRoleIds = restaurantRoles
-      .filter((candidate) => candidate.permissions.includes('ADMIN'))
-      .map((candidate) => candidate._id as Types.ObjectId);
-    const otherAdmins = await userRepo.countByRoleIds(restaurantId, adminRoleIds, id);
-    if (otherAdmins === 0) {
-      throw createError.conflict(ErrorCode.LAST_ADMIN);
+  await withLock(`staff-delete:${restaurantId}`, async () => {
+    // Protect the last ADMIN: deleting them would leave the restaurant
+    // without any administrator.
+    const role = await roleRepo.findById(staff.role_id.toString());
+    if (role?.permissions.includes('ADMIN')) {
+      const restaurantRoles = await roleRepo.findByRestaurantId(restaurantId);
+      const adminRoleIds = restaurantRoles
+        .filter((candidate) => candidate.permissions.includes('ADMIN'))
+        .map((candidate) => candidate._id as Types.ObjectId);
+      const otherAdmins = await userRepo.countByRoleIds(restaurantId, adminRoleIds, id);
+      if (otherAdmins === 0) {
+        throw createError.conflict(ErrorCode.LAST_ADMIN);
+      }
     }
-  }
 
-  await userRepo.findByIdAndRestaurantAndDelete(id, restaurantId);
+    await userRepo.findByIdAndRestaurantAndDelete(id, restaurantId);
+  });
+
   await Promise.all([
     revokeAllUserRefreshTokens(id),
     disconnectStaffSockets(id),

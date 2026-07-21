@@ -33,11 +33,12 @@ export async function getDashboardStats(restaurantId: string, dateRange: Dashboa
     dishRepo.findByRestaurantId(restaurantId),
     categoryRepo.findByRestaurantId(restaurantId),
   ]);
-  const dishIds = dishes.map((dish) => dish._id.toString());
   const dishById = new Map(dishes.map((dish) => [dish._id.toString(), dish]));
   const categoryById = new Map(categories.map((category) => [category._id.toString(), category]));
 
-  const salesByDish = await itemOrderRepo.getSalesByDish(dishIds, dateRange);
+  // Scoped by the restaurant's sessions, not by live dish ids: items whose
+  // dish was deleted keep contributing through their stored snapshots.
+  const salesByDish = await itemOrderRepo.getSalesByDish(allSessionIds, dateRange);
   const salesByDishWithNames = salesByDish.map((sale) => ({
     ...sale,
     dishName: dishById.get(sale.dishId.toString())?.disher_name?.[0]?.value

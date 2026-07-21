@@ -364,21 +364,23 @@ export class ItemOrderRepository extends BaseRepository<IItemOrder> {
   }
 
   /**
-   * Get sales by dish with aggregation pipeline.
+   * Get sales by dish with aggregation pipeline, scoped to a set of sessions.
    * Efficiently calculates revenue and quantity per dish.
+   * Scoped by session (not by live dish ids) so historical items whose dish
+   * was deleted still contribute, using their stored name/price snapshots.
    */
   async getSalesByDish(
-    dishIds: string[],
+    sessionIds: string[],
     dateRange?: { from?: Date; to?: Date }
   ): Promise<SalesByDish[]> {
-    if (dishIds.length === 0) return [];
+    if (sessionIds.length === 0) return [];
 
-    const validDishIds = dishIds
+    const validSessionIds = sessionIds
       .filter(id => Types.ObjectId.isValid(id))
       .map(id => new Types.ObjectId(id));
 
     const matchStage: Record<string, unknown> = {
-      item_dish_id: { $in: validDishIds },
+      session_id: { $in: validSessionIds },
       item_state: { $ne: 'CANCELED' },
     };
 

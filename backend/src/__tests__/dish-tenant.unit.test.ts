@@ -23,6 +23,10 @@ jest.mock('../services/cache.service', () => ({
   fetchWithCache: jest.fn(),
 }));
 jest.mock('../services/image.service', () => ({ deleteImage: jest.fn() }));
+// Unit tests run without Redis: execute the locked section directly.
+jest.mock('../utils/locks', () => ({
+  withLock: (_key: string, fn: () => Promise<unknown>) => fn(),
+}));
 
 import { createDish, updateDish } from '../services/dish.service';
 

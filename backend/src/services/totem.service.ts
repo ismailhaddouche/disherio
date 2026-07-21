@@ -10,6 +10,18 @@ import { circuitBreakerMonitor } from '../utils/circuit-breaker-monitor';
 import { createError } from '../utils/async-handler';
 import { logger } from '../config/logger';
 import { withTransaction } from '../utils/transactions';
+import { withLock } from '../utils/locks';
+
+/**
+ * Lock key serializing "delete totem" against "create session for totem".
+ * The delete runs inside a Mongo transaction, but session creation does not
+ * (its repo upsert is intentionally session-less and idempotent), so a
+ * transaction alone cannot close the race: the create side would never join
+ * it. Both sides therefore serialize on this per-totem distributed lock.
+ */
+function totemWriteLockKey(totemId: string): string {
+  return `totem-write:${totemId}`;
+}
 
 // Repository instances
 const totemRepo = new TotemRepository();
@@ -42,12 +54,14 @@ async function getStartedSessionForTotem(totemId: Types.ObjectId): Promise<ITote
  * return it (idempotent); otherwise create a new one.
  */
 async function startOrGetTotemSession(totem: ITotem): Promise<ITotemSession> {
-  const activeSession = await getStartedSessionForTotem(totem._id);
-  if (activeSession) {
-    return activeSession;
-  }
+  return withLock(totemWriteLockKey(totem._id.toString()), async () => {
+    const activeSession = await getStartedSessionForTotem(totem._id);
+    if (activeSession) {
+      return activeSession;
+    }
 
-  return totemSessionRepo.createSession(totem._id.toString(), crypto.randomUUID());
+    return totemSessionRepo.createSession(totem._id.toString(), crypto.randomUUID());
+  });
 }
 
 /**
@@ -56,12 +70,14 @@ async function startOrGetTotemSession(totem: ITotem): Promise<ITotemSession> {
  * prevent a later customer from using the same permanent table QR.
  */
 async function getOrCreateSessionForQR(totem: ITotem): Promise<ITotemSession> {
-  const activeSession = await getStartedSessionForTotem(totem._id);
-  if (activeSession) {
-    return activeSession;
-  }
+  return withLock(totemWriteLockKey(totem._id.toString()), async () => {
+    const activeSession = await getStartedSessionForTotem(totem._id);
+    if (activeSession) {
+      return activeSession;
+    }
 
-  return totemSessionRepo.createSession(totem._id.toString(), crypto.randomUUID());
+    return totemSessionRepo.createSession(totem._id.toString(), crypto.randomUUID());
+  });
 }
 
 // ============================================================================
@@ -117,14 +133,19 @@ const totemWriteBreaker = new CircuitBreaker(
     if (operation.type === 'delete') {
       // The operational-session check and the delete must run atomically:
       // startOrGetTotemSession could otherwise create a STARTED session
-      // between the check and the delete.
-      return withTransaction(async (dbSession) => {
-        const operationalSession = await totemSessionRepo.findOperationalByTotemId(operation.totemId, dbSession);
-        if (operationalSession) {
-          throw createError.conflict(ErrorCode.ACTIVE_SESSION_EXISTS);
-        }
-        return totemRepo.deleteTotem(operation.totemId, dbSession);
-      });
+      // between the check and the delete. The transaction makes the
+      // check+delete atomic; the per-totem lock (also held by the session
+      // creation paths) provides the mutual exclusion a transaction alone
+      // cannot give against writers that run outside any transaction.
+      return withLock(totemWriteLockKey(operation.totemId), () =>
+        withTransaction(async (dbSession) => {
+          const operationalSession = await totemSessionRepo.findOperationalByTotemId(operation.totemId, dbSession);
+          if (operationalSession) {
+            throw createError.conflict(ErrorCode.ACTIVE_SESSION_EXISTS);
+          }
+          return totemRepo.deleteTotem(operation.totemId, dbSession);
+        })
+      );
     }
 
     throw new Error('INVALID_TOTEM_WRITE_OPERATION');

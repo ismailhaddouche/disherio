@@ -289,26 +289,37 @@ export class DishRepository extends BaseRepository<IDish> {
 
     const { dateRange, limit = 10 } = options ?? {};
 
-    // First, get all dishes for this restaurant
-    const dishes = await this.model
-      .find({ restaurant_id: new Types.ObjectId(restaurantId) })
-      .select('_id disher_name category_id')
-      .lean()
-      .exec();
-
-    if (dishes.length === 0) return [];
-
-    const dishIds = dishes.map(d => d._id.toString());
-
+    // Aggregate from the item snapshots (itemorders), not from the live
+    // dishes collection: historical items must survive dish deletion.
+    // Restaurant scoping goes through session -> totem; the live dish is
+    // joined afterwards with a left outer join for enrichment only.
     const pipeline: PipelineStage[] = [
       {
         $match: {
-          item_dish_id: { $in: dishIds.map(id => new Types.ObjectId(id)) },
           item_state: { $ne: 'CANCELED' },
           ...(dateRange?.from && { createdAt: { $gte: dateRange.from } }),
           ...(dateRange?.to && { createdAt: { $lte: dateRange.to } }),
         },
       },
+      {
+        $lookup: {
+          from: 'totemsessions',
+          localField: 'session_id',
+          foreignField: '_id',
+          as: 'session',
+        },
+      },
+      { $unwind: '$session' },
+      {
+        $lookup: {
+          from: 'totems',
+          localField: 'session.totem_id',
+          foreignField: '_id',
+          as: 'totem',
+        },
+      },
+      { $unwind: '$totem' },
+      { $match: { 'totem.restaurant_id': new Types.ObjectId(restaurantId) } },
       {
         $group: {
           _id: '$item_dish_id',
@@ -322,10 +333,22 @@ export class DishRepository extends BaseRepository<IDish> {
               ],
             },
           },
+          nameSnapshot: { $first: '$item_name_snapshot' },
         },
       },
       { $sort: { totalRevenue: -1 } },
       { $limit: limit },
+      // Left outer join with the live dish: a deleted dish no longer drops
+      // its historical stats; the name falls back to the stored snapshot.
+      {
+        $lookup: {
+          from: this.model.collection.name,
+          localField: '_id',
+          foreignField: '_id',
+          as: 'dish',
+        },
+      },
+      { $unwind: { path: '$dish', preserveNullAndEmptyArrays: true } },
     ];
 
     const stats = await QueryProfiler.profileAggregation(
@@ -335,17 +358,15 @@ export class DishRepository extends BaseRepository<IDish> {
       { explain: false }
     );
 
-    // Map back to dish details
-    return stats.map(stat => {
-      const dish = dishes.find(d => d._id.equals(stat._id));
-      return {
-        dishId: stat._id,
-        dishName: dish?.disher_name?.[0]?.value ?? 'Unknown',
-        totalOrdered: stat.totalOrdered,
-        totalRevenue: Math.round(stat.totalRevenue * 100) / 100,
-        categoryId: dish?.category_id,
-      };
-    });
+    // Map back to dish details, falling back to the item name snapshot when
+    // the dish no longer exists.
+    return stats.map(stat => ({
+      dishId: stat._id,
+      dishName: stat.dish?.disher_name?.[0]?.value ?? stat.nameSnapshot?.[0]?.value ?? 'Unknown',
+      totalOrdered: stat.totalOrdered,
+      totalRevenue: Math.round(stat.totalRevenue * 100) / 100,
+      categoryId: stat.dish?.category_id,
+    }));
   }
 
   /**

@@ -55,12 +55,18 @@ type CategoryFormData = Omit<Partial<Category>, 'category_name' | 'category_desc
       <div class="admin-card p-6 flex flex-col gap-6">
         <section class="flex flex-col gap-2">
           <label class="admin-label text-base font-bold">{{ 'category.image' | translate }}</label>
-          <app-image-uploader
-            folder="categories"
-            [resourceId]="category()._id ?? null"
-            [currentImage]="category().category_image_url"
-            (imageUploaded)="onImageUploaded($event)"
-          />
+          @if (isEdit) {
+            <app-image-uploader
+              folder="categories"
+              [resourceId]="category()._id ?? null"
+              [currentImage]="category().category_image_url"
+              (imageUploaded)="onImageUploaded($event)"
+            />
+          } @else {
+            <!-- New categories have no id yet: the upload endpoint is ownership-scoped
+                 to an existing category, so uploading is enabled after the first save. -->
+            <p class="text-sm" style="color: var(--mat-sys-on-surface-variant)">{{ 'image_uploader.save_first' | translate }}</p>
+          }
         </section>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -182,9 +188,13 @@ export class CategoryFormComponent implements OnInit, OnDestroy {
     }
 
     this.saving.set(true);
+    // The backend schema rejects category_image_url: null; omit it when
+    // no image has been uploaded yet.
+    const { category_image_url, ...rest } = this.category();
+    const payload = category_image_url ? { ...rest, category_image_url } : rest;
     const obs = this.isEdit
-      ? this.categoryService.update(this.category()._id!, this.category())
-      : this.categoryService.create(this.category());
+      ? this.categoryService.update(this.category()._id!, payload)
+      : this.categoryService.create(payload);
 
     obs.pipe(takeUntil(this.destroy$)).subscribe({
       next: () => {

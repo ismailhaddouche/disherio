@@ -147,6 +147,7 @@
   "image_uploader.error": "Error uploading image",
   "image_uploader.hint": "Upload image (WebP, JPG, PNG)",
   "image_uploader.preview": "Current image preview",
+  "image_uploader.save_first": "Save first to upload an image",
   "kds.available": "Available",
   "kds.cancel_reason_kitchen": "Cancelled by kitchen staff",
   "kds.cancel_item": "Cancel item",

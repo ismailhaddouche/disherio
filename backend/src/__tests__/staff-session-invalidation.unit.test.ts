@@ -26,6 +26,10 @@ jest.mock('../services/auth.service', () => ({
 }));
 jest.mock('../services/refresh-token.service', () => ({ revokeAllUserRefreshTokens }));
 jest.mock('../services/socket-session.service', () => ({ disconnectStaffSockets }));
+// Unit tests run without Redis: execute the locked section directly.
+jest.mock('../utils/locks', () => ({
+  withLock: (_key: string, fn: () => Promise<unknown>) => fn(),
+}));
 
 import { deleteStaff, updateStaff } from '../services/staff.service';
 
