@@ -228,7 +228,6 @@ DEPLOYMENT_MODE=local
 
 # URLs
 FRONTEND_URL=http://localhost:$CADDY_PORT
-BACKEND_URL=http://localhost:$BACKEND_PORT
 
 # Puertos
 PORT=$BACKEND_PORT
@@ -292,15 +291,11 @@ DEPLOYMENT_MODE=local-ip
 
 # URLs (usar la IP seleccionada)
 FRONTEND_URL=http://$SELECTED_IP:$HTTP_PORT
-BACKEND_URL=http://$SELECTED_IP:$HTTP_PORT/api
 
 # Configuración de red
 LOCAL_IP=$SELECTED_IP
 PORT=3000
 HTTP_PORT=$HTTP_PORT
-
-# Deshabilitar HTTPS en Caddy
-TLS_ENABLED=false
 
 # Seguridad
 JWT_SECRET=${JWT_SECRET}
@@ -433,10 +428,8 @@ CF_TUNNEL_DOMAIN=${CF_TUNNEL_DOMAIN:-}
 # URLs (se usarán las del túnel)
 TUNNEL_URL=https://$CF_TUNNEL_DOMAIN
 FRONTEND_URL=https://$CF_TUNNEL_DOMAIN
-BACKEND_URL=https://$CF_TUNNEL_DOMAIN/api
 
 # Configuración de red
-PUBLIC_IP=$public_ip
 PORT=3000
 
 # Puerto interno de Caddy (el túnel se conecta aquí)
@@ -515,10 +508,8 @@ NGROK_DOMAIN=$NGROK_DOMAIN
 # URLs (ngrok generará una URL temporal)
 TUNNEL_URL=https://$NGROK_DOMAIN
 FRONTEND_URL=https://$NGROK_DOMAIN
-BACKEND_URL=https://$NGROK_DOMAIN/api
 
 # Configuración de red
-PUBLIC_IP=$public_ip
 PORT=3000
 
 # Puerto interno de Caddy
@@ -605,11 +596,6 @@ EMAIL=$EMAIL
 
 # URLs
 FRONTEND_URL=https://$DOMAIN
-BACKEND_URL=https://$DOMAIN/api
-
-# HTTPS - Caddy / Let's Encrypt automático
-TLS_ENABLED=true
-TLS_AUTO=true
 
 # Configuración de red
 PORT=3000

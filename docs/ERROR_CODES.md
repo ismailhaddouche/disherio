@@ -16,6 +16,76 @@ All error codes are defined in `shared/errors/error-codes.ts` as a TypeScript en
 - **Validation**: `VALIDATION_ERROR`, `INVALID_ID_FORMAT`, etc.
 - **Server**: `SERVER_ERROR`, `DATABASE_ERROR`, etc.
 
+## Error Code Reference
+
+Enum members not covered elsewhere in this document, grouped by the enum's
+own categories. HTTP statuses come from `ERROR_HTTP_STATUS_MAP`.
+
+### Authentication & Authorization
+
+| Code | HTTP | Cause |
+|------|------|-------|
+| `FORBIDDEN` | 403 | Authenticated user lacks permission for the resource or action (`rbac.ts`, `internal-only.ts`) |
+| `REQUIRES_POS_AUTHORIZATION` | 403 | Order item operation requires POS authorization (`order-item.service.ts`) |
+| `REQUIRES_AUTHORIZATION` | 403 | Item state transition requires authorization (`item-transition-policy.ts`) |
+| `AUTHENTICATION_REQUIRED` | 401 | Socket connection attempted without valid authentication (`socketAuth.ts`) |
+| `SERVER_CONFIGURATION_ERROR` | 500 | Server is misconfigured, e.g. missing JWT secret (`auth.ts`, `socketAuth.ts`) |
+| `AMBIGUOUS_USERNAME` | 400 | Login username matches more than one staff account (`auth.service.ts`) |
+
+### Resource Not Found
+
+All map to HTTP 404.
+
+| Code | Cause |
+|------|-------|
+| `CATEGORY_NOT_FOUND` | Category does not exist (`dish.service.ts`) |
+| `SESSION_NOT_FOUND` | Table session does not exist (`order-access.service.ts`, `payment.service.ts`) |
+| `PAYMENT_NOT_FOUND` | Payment does not exist (`payment.service.ts`) |
+| `TICKET_NOT_FOUND` | Ticket does not exist when fetching receipts (`payment.service.ts`) |
+| `TOTEM_NOT_FOUND` | Totem/table does not exist (`order-access.service.ts`, `socketAuth.ts`) |
+| `RESTAURANT_NOT_FOUND` | Restaurant does not exist (`payment.service.ts`) |
+| `STAFF_NOT_FOUND` | Staff member does not exist (`staff.service.ts`) |
+| `ROLE_NOT_FOUND` | Role does not exist (`staff.service.ts`) |
+| `USER_NOT_FOUND` | User does not exist (`staff.service.ts`) |
+| `CUSTOMER_NOT_FOUND` | Customer does not exist in the session (`order-access.service.ts`) |
+
+### Business Logic
+
+| Code | HTTP | Cause |
+|------|------|-------|
+| `DISH_NOT_AVAILABLE` | 400 | Dish is unavailable and cannot be ordered (`order-item.service.ts`, `public-order.service.ts`) |
+| `ORDER_LIMIT_REACHED` | 409 | Session reached the maximum number of concurrent orders (`order-request-policy.service.ts`) |
+| `ORDER_INTERVAL_ACTIVE` | 409 | Minimum interval between orders has not elapsed (`order-request-policy.service.ts`) |
+| `ORDER_ALREADY_PAID` | 400 | Order is already paid and cannot be modified (`order-item.service.ts`, `payment.service.ts`) |
+| `SESSION_ALREADY_PAID` | 409 | Session is already fully paid (`totem.service.ts`) |
+| `NO_ITEMS_TO_PAY` | 400 | Payment requested with no payable items (`payment.service.ts`) |
+| `CANNOT_DELETE_ITEM_NOT_ORDERED` | 400 | Only items still in `ordered` state can be deleted (`order-item.service.ts`) |
+| `ITEM_NOT_FOUND_OR_ALREADY_PROCESSED` | 400 | Item does not exist or its state already changed (`order-item.service.ts`) |
+| `UPDATE_FAILED` | 500 | Database update did not affect the expected document (`order-item.service.ts`, `totem.service.ts`) |
+| `CATEGORY_HAS_DISHES` | 409 | Category cannot be deleted while it contains dishes (`dish.service.ts`) |
+| `SESSION_HAS_ITEMS` | 409 | Session cannot be closed while it has items (`totem.service.ts`) |
+| `LAST_ADMIN` | 409 | The last admin account cannot be deleted or demoted (`staff.service.ts`) |
+
+### Validation
+
+| Code | HTTP | Cause |
+|------|------|-------|
+| `INVALID_PRICE` | 400 | Price is invalid or inconsistent with the expected total (`order-price-policy.ts`, `payment.service.ts`) |
+
+### Data Conflicts
+
+| Code | HTTP | Cause |
+|------|------|-------|
+| `USER_ALREADY_EXISTS` | 409 | Username is already taken (`staff.service.ts`) |
+| `CUSTOMER_NAME_TAKEN` | 409 | Customer name is already used in the session (`totem.service.ts`) |
+| `IDEMPOTENCY_CONFLICT` | 409 | Idempotency key reused with a different payload (`order-request-policy.service.ts`) |
+
+### Server
+
+| Code | HTTP | Cause |
+|------|------|-------|
+| `SERVICE_UNAVAILABLE` | 503 | Dependency temporarily unavailable; circuit breaker open (`circuit-breaker.ts`) |
+
 ## Backend Usage
 
 ### Throwing Errors
@@ -90,38 +160,13 @@ catchError((error: HttpErrorResponse) => {
 })
 ```
 
-## Codes Emitted Outside the Shared Enum
+## Rate Limiting (429)
 
-Some operational errors are raised as string literals instead of `ErrorCode`
-members. They use the same `{ error, errorCode, status }` response shape.
-
-### Upload validation (400)
-
-Raised by the image-upload pipeline (`backend/src/controllers/image.controller.ts`):
-
-| Code | Cause |
-|------|-------|
-| `NO_FILE_UPLOADED` | Multipart request arrived without a file |
-| `INVALID_FILE` | File failed security/content validation; failing checks are returned in `details` |
-| `INVALID_IMAGE_DIMENSIONS` | Image exceeds 4000x4000 pixels |
-| `UNEXPECTED_FIELD` | Multipart field name is not the expected upload field |
-| `TOO_MANY_FILES` | More than one file was sent in a single upload request |
-| `UPLOAD_ERROR` | Any other Multer failure |
-
-`INVALID_FILE_TYPE` and `FILE_TOO_LARGE` (5 MB limit) belong to the same
-pipeline but are already part of the shared enum.
-
-### Public totem validation (400)
-
-| Code | Cause |
-|------|-------|
-| `CUSTOMER_NAME_REQUIRED` | `POST /totems/menu/:qr/session/:sessionId/customers` received a `customer_name` that is missing or shorter than 2 characters |
-
-### Rate limiting (429)
-
-Raised by `backend/src/middlewares/rateLimit.config.ts` alongside the enum
-members `AUTH_RATE_LIMIT_EXCEEDED`, `QR_RATE_LIMIT_EXCEEDED`, and
-`QR_BRUTE_FORCE_DETECTED`. Responses include a `retryAfter` field (seconds):
+The rate limiters in `backend/src/middlewares/rateLimit.config.ts` emit enum
+members `AUTH_RATE_LIMIT_EXCEEDED`, `API_RATE_LIMIT_EXCEEDED`,
+`STRICT_RATE_LIMIT_EXCEEDED`, `UPLOAD_RATE_LIMIT_EXCEEDED`,
+`QR_RATE_LIMIT_EXCEEDED`, and `QR_BRUTE_FORCE_DETECTED`. Responses include a
+`retryAfter` field (seconds):
 
 | Code | Limiter | Limit |
 |------|---------|-------|
