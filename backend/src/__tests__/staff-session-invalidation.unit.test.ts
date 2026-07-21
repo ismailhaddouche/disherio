@@ -14,7 +14,7 @@ const userRepo = {
   findByIdAndRestaurantAndDelete: jest.fn(),
   exists: jest.fn(),
 };
-const roleRepo = { findByIdAndRestaurant: jest.fn() };
+const roleRepo = { findByIdAndRestaurant: jest.fn(), findById: jest.fn() };
 const revokeAllUserRefreshTokens = jest.fn();
 const disconnectStaffSockets = jest.fn();
 
@@ -43,6 +43,7 @@ describe('staff socket session invalidation', () => {
     userRepo.findByIdAndRestaurant.mockResolvedValue(staffDocument);
     userRepo.findProfileById.mockResolvedValue({ _id: STAFF_ID });
     roleRepo.findByIdAndRestaurant.mockResolvedValue({ permissions: ['POS'] });
+    roleRepo.findById.mockResolvedValue({ permissions: ['POS'] });
     staffDocument.save.mockResolvedValue(staffDocument);
   });
 
@@ -65,7 +66,7 @@ describe('staff socket session invalidation', () => {
   it('revokes refresh sessions and disconnects sockets after deletion', async () => {
     userRepo.findByIdAndRestaurantAndDelete.mockResolvedValue({ _id: STAFF_ID });
 
-    await deleteStaff(STAFF_ID, RESTAURANT_ID);
+    await deleteStaff(STAFF_ID, RESTAURANT_ID, '507f1f77bcf86cd799439099');
 
     expect(revokeAllUserRefreshTokens).toHaveBeenCalledWith(STAFF_ID);
     expect(disconnectStaffSockets).toHaveBeenCalledWith(STAFF_ID);

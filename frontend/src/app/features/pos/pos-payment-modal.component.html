@@ -70,7 +70,7 @@
               <label class="text-sm text-on-surface-variant">{{ 'pos.payment.number_of_people' | translate }}</label>
               <div class="flex items-center gap-2 mt-1">
                 <button
-                  (click)="state().splitCount.set(Math.max(2, state().splitCount() - 1))"
+                  (click)="state().setSplitCount(state().splitCount() - 1)"
                   class="w-11 h-11 flex items-center justify-center rounded-lg bg-surface-container-high bg-surface-container-high hover:bg-surface-container-high"
                   [attr.aria-label]="'common.decrease_quantity' | translate"
                 >
@@ -79,13 +79,13 @@
                 <input
                   type="number"
                   [ngModel]="state().splitCount()"
-                  (ngModelChange)="state().splitCount.set(+$event)"
+                  (ngModelChange)="state().setSplitCount(+$event)"
                   min="2"
                   max="20"
                   class="w-20 text-center p-2 border rounded-lg bg-surface-container-high border-outline-variant"
                 />
                 <button
-                  (click)="state().splitCount.set(Math.min(20, state().splitCount() + 1))"
+                  (click)="state().setSplitCount(state().splitCount() + 1)"
                   class="w-11 h-11 flex items-center justify-center rounded-lg bg-surface-container-high bg-surface-container-high hover:bg-surface-container-high"
                   [attr.aria-label]="'common.increase_quantity' | translate"
                 >

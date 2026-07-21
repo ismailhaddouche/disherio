@@ -12,17 +12,18 @@ services:
       - "${CADDY_INTERNAL_PORT:-8080}"
     command: caddy run --config /etc/caddy/Caddyfile --adapter caddyfile
     networks:
-      - disherio_net
+      # frontend_net (definida en docker-compose.yml): alcanzar backend/frontend
+      - frontend_net
       - tunnel_net
 
   # Backend configurado para túnel
+  # No se sobrescribe `networks`: hereda frontend_net/backend_net del compose
+  # base para seguir alcanzando mongo/redis y al proxy.
   backend:
     environment:
       - NODE_ENV=production
       - FRONTEND_URL=${TUNNEL_URL:-https://localhost}
       - TRUST_PROXY=true
-    networks:
-      - disherio_net
 
   # Cloudflare Tunnel (opcional, si se seleccionó)
   cloudflared:

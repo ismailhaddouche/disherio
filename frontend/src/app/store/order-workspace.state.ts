@@ -189,6 +189,13 @@ export abstract class OrderWorkspaceState {
     this.paymentType.set(type);
   }
 
+  // Split count must stay within [2, 20] so SHARED payments never produce
+  // a zero/Infinity split amount or an invalid `parts` payload.
+  setSplitCount(count: number): void {
+    const parsed = Math.floor(count);
+    this.splitCount.set(Number.isFinite(parsed) ? Math.min(20, Math.max(2, parsed)) : 2);
+  }
+
   canPayByConsumption(): boolean {
     const activeItems = this.getWorkspaceItems().filter(item => item.item_state !== 'CANCELED');
     return activeItems.length > 0 && activeItems.every(item => Boolean(item.customer_id));

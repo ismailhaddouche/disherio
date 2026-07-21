@@ -168,6 +168,8 @@ check_environment() {
         secret_value=$(env_get "$secret_key" "")
         if [ -z "$secret_value" ] || printf '%s' "$secret_value" | grep -Eqi 'changeme|change[-_ ]?this|cambiar|placeholder|example|ejemplo|\.\.\.'; then
             print_error "$secret_key no está configurado o conserva un placeholder"
+        elif [ "$secret_key" = "ADMIN_PIN" ] && printf '%s' "$secret_value" | grep -Eqx '(0{4}|1{4}|2{4}|3{4}|4{4}|5{4}|6{4}|7{4}|8{4}|9{4}|1234|4321|0123|3210|1212|2121|2580|0852|6969|1122|2211)'; then
+            print_error "ADMIN_PIN es un PIN trivial; elige un PIN de 4 dígitos no predecible"
         else
             print_success "$secret_key configurado"
         fi

@@ -57,9 +57,9 @@ export class TotemRepository extends BaseRepository<ITotem> {
       .exec();
   }
 
-  async deleteTotem(id: string): Promise<ITotem | null> {
+  async deleteTotem(id: string, session?: ClientSession): Promise<ITotem | null> {
     validateObjectId(id, 'totem_id');
-    return this.model.findByIdAndDelete(id).exec();
+    return this.model.findByIdAndDelete(id, { session }).exec();
   }
 
   async findByRestaurantIdSelectId(restaurantId: string): Promise<Array<{ _id: Types.ObjectId; totem_name: string }>> {
@@ -139,12 +139,12 @@ export class TotemSessionRepository extends BaseRepository<ITotemSession> {
     }).exec();
   }
 
-  async findOperationalByTotemId(totemId: string): Promise<ITotemSession | null> {
+  async findOperationalByTotemId(totemId: string, session?: ClientSession): Promise<ITotemSession | null> {
     validateObjectId(totemId, 'totem_id');
     return this.model.findOne({
       totem_id: new Types.ObjectId(totemId),
       totem_state: { $in: ['STARTED', 'COMPLETE'] },
-    }).exec();
+    }, null, { session }).exec();
   }
 
   async createSession(totemId: string, sessionToken: string): Promise<ITotemSession> {

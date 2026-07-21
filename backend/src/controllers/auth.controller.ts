@@ -96,8 +96,7 @@ export const loginPin = asyncHandler(async (req: Request, res: Response) => {
   const { pin_code, restaurant_id } = req.body;
   const { accessToken, refreshToken, user } = await loginWithPin(
     pin_code,
-    restaurant_id,
-    req.ip
+    restaurant_id
   );
   const isSecure = isSecureRequest(req);
   setAccessCookie(res, accessToken, isSecure);

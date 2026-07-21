@@ -85,10 +85,10 @@ export abstract class BaseRepository<T extends Document> {
     validateObjectId(id, fieldName);
   }
 
-  async findById(id: string): Promise<T | null> {
+  async findById(id: string, session?: ClientSession): Promise<T | null> {
     try {
       this.validateId(id);
-      return await this.model.findById(id).exec();
+      return await this.model.findById(id, null, { session }).exec();
     } catch (err: any) {
       handleMongoError(err, 'findById');
     }

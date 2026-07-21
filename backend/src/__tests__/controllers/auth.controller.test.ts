@@ -226,7 +226,7 @@ describe('AuthController', () => {
       await loginPin(req as Request, res as Response, next);
 
       // Assert
-      expect(authService.loginWithPin).toHaveBeenCalledWith('1234', 'rest123', undefined);
+      expect(authService.loginWithPin).toHaveBeenCalledWith('1234', 'rest123');
       expect(cookieMock).toHaveBeenNthCalledWith(
         1,
         'auth_token',

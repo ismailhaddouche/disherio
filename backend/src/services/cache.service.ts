@@ -210,11 +210,15 @@ class CacheService {
   }
 
   /**
-   * Invalidate restaurant configuration cache
+   * Invalidate restaurant configuration cache.
+   * `restaurantUrls` must include every URL the restaurant has been cached
+   * under: getRestaurantByUrl stores entries as `restaurant:url:<url>`, which
+   * the id-based patterns below do not match.
    */
-  async invalidateRestaurantCache(restaurantId: string): Promise<void> {
+  async invalidateRestaurantCache(restaurantId: string, restaurantUrls: string[] = []): Promise<void> {
     await Promise.all([
       this.delete(`restaurant:${restaurantId}`),
+      ...restaurantUrls.map((url) => this.delete(`restaurant:url:${url}`)),
       this.deletePattern(`restaurant:*${restaurantId}*`),
       this.deletePattern(`http:*restaurant*${restaurantId}*`),
     ]);

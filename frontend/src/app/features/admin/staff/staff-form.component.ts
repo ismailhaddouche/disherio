@@ -141,9 +141,9 @@ export class StaffFormComponent implements OnInit, OnDestroy {
   submitting = signal(false);
 
   ngOnInit(): void {
-    this.initForm();
     this.staffId = this.route.snapshot.paramMap.get('id');
     this.isEditMode = !!this.staffId;
+    this.initForm();
     this.loadRoles().then(() => {
       if (this.isEditMode && this.staffId) {
         this.loadStaff(this.staffId);
@@ -152,8 +152,15 @@ export class StaffFormComponent implements OnInit, OnDestroy {
   }
 
   initForm(): void {
-    const passwordValidators = this.isEditMode ? [] : [Validators.required, Validators.minLength(6)];
-    const pinValidators = this.isEditMode ? [] : [Validators.required, Validators.pattern('^\\d{4}$')];
+    // Rules mirror shared/schemas/staff.schema.ts. In edit mode password/PIN
+    // are optional (empty = keep current) but must still be valid when set;
+    // Angular validators skip empty values, so only `required` is dropped.
+    const passwordValidators = this.isEditMode
+      ? [Validators.minLength(8), Validators.maxLength(128)]
+      : [Validators.required, Validators.minLength(8), Validators.maxLength(128)];
+    const pinValidators = this.isEditMode
+      ? [Validators.pattern('^\\d{4}$')]
+      : [Validators.required, Validators.pattern('^\\d{4}$')];
 
     this.staffForm = this.fb.group({
       staff_name: ['', [Validators.required, Validators.minLength(2)]],
@@ -201,10 +208,6 @@ export class StaffFormComponent implements OnInit, OnDestroy {
             username: staff.username,
             role_id: roleId
           });
-          this.staffForm.get('password')?.setValidators([]);
-          this.staffForm.get('password')?.updateValueAndValidity();
-          this.staffForm.get('pin_code')?.setValidators([]);
-          this.staffForm.get('pin_code')?.updateValueAndValidity();
         },
         error: (err) => {
           this.notify.error(err.error?.message || this.i18n.translate('error.staff_loading'));

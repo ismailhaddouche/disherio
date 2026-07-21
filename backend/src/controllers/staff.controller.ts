@@ -33,7 +33,7 @@ export const updateStaff = asyncHandler(async (req: Request, res: Response): Pro
 
 // Delete staff member
 export const deleteStaff = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-  await StaffService.deleteStaff(String(req.params.id), req.user!.restaurantId);
+  await StaffService.deleteStaff(String(req.params.id), req.user!.restaurantId, req.user!.staffId);
   res.status(204).end();
 });
 

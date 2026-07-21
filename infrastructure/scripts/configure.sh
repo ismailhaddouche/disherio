@@ -265,7 +265,7 @@ MONGO_ROOT_USER=admin
 MONGO_ROOT_PASS=${MONGO_ROOT_PASS}
 MONGO_APP_USER=disherio_app
 MONGO_APP_PASS=${MONGO_APP_PASS}
-MONGODB_URI=mongodb://\${MONGO_APP_USER}:\${MONGO_APP_PASS}@mongo:27017/disherio?authSource=disherio&replicaSet=rs0
+MONGODB_URI=mongodb://disherio_app:${MONGO_APP_PASS}@mongo:27017/disherio?authSource=disherio&replicaSet=rs0
 
 # Redis
 REDIS_URL=redis://redis:6379
@@ -335,7 +335,7 @@ MONGO_ROOT_USER=admin
 MONGO_ROOT_PASS=${MONGO_ROOT_PASS}
 MONGO_APP_USER=disherio_app
 MONGO_APP_PASS=${MONGO_APP_PASS}
-MONGODB_URI=mongodb://\${MONGO_APP_USER}:\${MONGO_APP_PASS}@mongo:27017/disherio?authSource=disherio&replicaSet=rs0
+MONGODB_URI=mongodb://disherio_app:${MONGO_APP_PASS}@mongo:27017/disherio?authSource=disherio&replicaSet=rs0
 
 # Redis
 REDIS_URL=redis://redis:6379
@@ -477,7 +477,7 @@ MONGO_ROOT_USER=admin
 MONGO_ROOT_PASS=${MONGO_ROOT_PASS}
 MONGO_APP_USER=disherio_app
 MONGO_APP_PASS=${MONGO_APP_PASS}
-MONGODB_URI=mongodb://\${MONGO_APP_USER}:\${MONGO_APP_PASS}@mongo:27017/disherio?authSource=disherio&replicaSet=rs0
+MONGODB_URI=mongodb://disherio_app:${MONGO_APP_PASS}@mongo:27017/disherio?authSource=disherio&replicaSet=rs0
 
 # Redis
 REDIS_URL=redis://redis:6379
@@ -561,7 +561,7 @@ MONGO_ROOT_USER=admin
 MONGO_ROOT_PASS=${MONGO_ROOT_PASS}
 MONGO_APP_USER=disherio_app
 MONGO_APP_PASS=${MONGO_APP_PASS}
-MONGODB_URI=mongodb://\${MONGO_APP_USER}:\${MONGO_APP_PASS}@mongo:27017/disherio?authSource=disherio&replicaSet=rs0
+MONGODB_URI=mongodb://disherio_app:${MONGO_APP_PASS}@mongo:27017/disherio?authSource=disherio&replicaSet=rs0
 
 # Redis
 REDIS_URL=redis://redis:6379
@@ -655,7 +655,7 @@ MONGO_ROOT_USER=admin
 MONGO_ROOT_PASS=${MONGO_ROOT_PASS}
 MONGO_APP_USER=disherio_app
 MONGO_APP_PASS=${MONGO_APP_PASS}
-MONGODB_URI=mongodb://\${MONGO_APP_USER}:\${MONGO_APP_PASS}@mongo:27017/disherio?authSource=disherio&replicaSet=rs0
+MONGODB_URI=mongodb://disherio_app:${MONGO_APP_PASS}@mongo:27017/disherio?authSource=disherio&replicaSet=rs0
 
 # Redis
 REDIS_URL=redis://redis:6379

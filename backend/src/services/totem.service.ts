@@ -115,11 +115,16 @@ const totemWriteBreaker = new CircuitBreaker(
     }
 
     if (operation.type === 'delete') {
-      const operationalSession = await totemSessionRepo.findOperationalByTotemId(operation.totemId);
-      if (operationalSession) {
-        throw createError.conflict(ErrorCode.ACTIVE_SESSION_EXISTS);
-      }
-      return totemRepo.deleteTotem(operation.totemId);
+      // The operational-session check and the delete must run atomically:
+      // startOrGetTotemSession could otherwise create a STARTED session
+      // between the check and the delete.
+      return withTransaction(async (dbSession) => {
+        const operationalSession = await totemSessionRepo.findOperationalByTotemId(operation.totemId, dbSession);
+        if (operationalSession) {
+          throw createError.conflict(ErrorCode.ACTIVE_SESSION_EXISTS);
+        }
+        return totemRepo.deleteTotem(operation.totemId, dbSession);
+      });
     }
 
     throw new Error('INVALID_TOTEM_WRITE_OPERATION');

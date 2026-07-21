@@ -391,6 +391,20 @@ export class ItemOrderRepository extends BaseRepository<IItemOrder> {
     const pipeline: PipelineStage[] = [
       { $match: matchStage },
       {
+        $lookup: {
+          from: 'totemsessions',
+          localField: 'session_id',
+          foreignField: '_id',
+          as: 'session',
+        },
+      },
+      { $unwind: '$session' },
+      // Only count items from paid sessions, so this revenue figure stays
+      // consistent with paymentStats (which sums real payments). A session
+      // only reaches PAID once its payment is fully settled (see
+      // payment.service markTicketPaid/archiveSession).
+      { $match: { 'session.totem_state': 'PAID' } },
+      {
         $group: {
           _id: '$item_dish_id',
           quantity: { $sum: 1 },

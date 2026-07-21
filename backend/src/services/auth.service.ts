@@ -139,10 +139,13 @@ export async function loginWithUsername(
 
 export async function loginWithPin(
   pin: string,
-  restaurantId: string,
-  ipAddress?: string
+  restaurantId: string
 ): Promise<AuthResult> {
-  const identifier = createIdentifier(`restaurant:${restaurantId}`, ipAddress);
+  // The lockout identifier is scoped per restaurant, NOT per IP: staff on the
+  // same local network share a public IP (NAT), so per-IP lockout would let a
+  // few failed attempts block the whole venue. Per-IP throttling is already
+  // enforced by the HTTP rate limiter (see middlewares/rateLimit.ts).
+  const identifier = createIdentifier(`restaurant:${restaurantId}`);
 
   // Check if account is locked before attempting validation
   if (await isLocked(identifier)) {

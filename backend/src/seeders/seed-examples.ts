@@ -9,6 +9,16 @@ import { hashPassword, hashPin, computePinLookup } from '../services/auth.servic
 import { getEnv } from '../config/env';
 
 async function seedExamples() {
+  // Demo data creates users with well-known credentials (cocinero/cocinero,
+  // PIN 1111). Refuse to run in production without explicit confirmation.
+  if (process.env.NODE_ENV === 'production' && process.env.SEED_EXAMPLES_CONFIRM !== 'true') {
+    logger.error(
+      'Example seed creates demo users with well-known credentials. ' +
+      'Set SEED_EXAMPLES_CONFIRM=true to run it in production.',
+    );
+    process.exit(1);
+  }
+
   const uri = getEnv().MONGODB_URI;
 
   logger.info('DisherIO example seeder starting...');

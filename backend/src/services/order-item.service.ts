@@ -444,7 +444,7 @@ export async function addBatchItems(
   if (transactionResult.created && !asServed) {
     for (const item of transactionResult.createdItems) {
       if (item.item_disher_type === 'KITCHEN') {
-        orderRealtimeEffects.notifyKDSNewItem(sessionId, {
+        orderRealtimeEffects.notifyKDSNewItem(sessionId, restaurantId, {
           ...item.toObject(),
           batch_id: transactionResult.batchId,
         });

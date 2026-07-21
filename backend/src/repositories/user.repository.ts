@@ -201,6 +201,23 @@ export class UserRepository extends BaseRepository<IStaff> {
   }
 
   /**
+   * Count staff in a restaurant holding any of the given roles, optionally
+   * excluding one staff member. Used to detect the last ADMIN.
+   */
+  async countByRoleIds(
+    restaurantId: string,
+    roleIds: Types.ObjectId[],
+    excludeStaffId?: string
+  ): Promise<number> {
+    validateObjectId(restaurantId, 'restaurant_id');
+    return this.model.countDocuments({
+      restaurant_id: new Types.ObjectId(restaurantId),
+      role_id: { $in: roleIds },
+      ...(excludeStaffId && { _id: { $ne: new Types.ObjectId(excludeStaffId) } }),
+    }).exec();
+  }
+
+  /**
    * Delete a staff member scoped to a restaurant.
    */
   async findByIdAndRestaurantAndDelete(id: string, restaurantId: string): Promise<IStaff | null> {

@@ -52,23 +52,34 @@ export async function updateRestaurant(
     }
   }
 
+  // Capture the current URL before updating so its cache key can also be
+  // invalidated when the URL itself changes (getRestaurantByUrl caches under
+  // `restaurant:url:<url>`).
+  const previousUrl = data.restaurant_url !== undefined
+    ? (await restaurantRepo.findByIdLean(id))?.restaurant_url
+    : undefined;
+
   const updated = await restaurantRepo.updateRestaurant(id, data);
 
   // If default_language is not in enabled_languages, auto-adjust it.
+  let result = updated;
   if (updated && data.enabled_languages !== undefined) {
     const enabled = updated.enabled_languages ?? ['es', 'en', 'fr'];
     if (!enabled.includes(updated.default_language)) {
       const adjusted = await restaurantRepo.updateRestaurant(id, {
         default_language: enabled[0] as 'es' | 'en' | 'fr',
       });
-      if (adjusted) return adjusted;
+      if (adjusted) result = adjusted;
     }
   }
 
-  // Invalidate all restaurant-related caches
-  await cache.invalidateRestaurantCache(id);
+  // Invalidate all restaurant-related caches (covers the auto-adjust path too)
+  const urlsToInvalidate = [...new Set(
+    [previousUrl, result?.restaurant_url].filter((url): url is string => Boolean(url))
+  )];
+  await cache.invalidateRestaurantCache(id, urlsToInvalidate);
 
-  return updated;
+  return result;
 }
 
 /**

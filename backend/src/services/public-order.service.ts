@@ -207,7 +207,7 @@ export async function createPublicOrderFromQR(
   if (created) {
     for (const item of createdItems) {
       if (item.item_disher_type === 'KITCHEN') {
-        notifyKDSNewItem(sessionIdStr, item);
+        notifyKDSNewItem(sessionIdStr, restaurantId, item);
       }
     }
 

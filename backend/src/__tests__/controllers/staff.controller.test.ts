@@ -219,7 +219,7 @@ describe('StaffController', () => {
 
       await deleteStaff(req as Request, res as Response, next);
 
-      expect(StaffService.deleteStaff).toHaveBeenCalledWith(STAFF_ID, RESTAURANT_ID);
+      expect(StaffService.deleteStaff).toHaveBeenCalledWith(STAFF_ID, RESTAURANT_ID, STAFF_ID);
       expect(statusMock).toHaveBeenCalledWith(204);
       expect(endMock).toHaveBeenCalled();
     });

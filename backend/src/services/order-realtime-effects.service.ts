@@ -28,10 +28,9 @@ export function emitCustomerAssigned(
 }
 
 export function emitNewKitchenItem(sessionId: string, restaurantId: string, item: unknown): void {
-  getIO()
-    .to(`kitchen:session:${sessionId}`)
-    .to(`kds:restaurant:${restaurantId}`)
-    .emit('kds:new_item', item);
+  // Delegate so every new kitchen item follows a single emission path covering
+  // both the session room and the restaurant-wide KDS room.
+  notifyKDSNewItem(sessionId, restaurantId, item as object);
 }
 
 export const orderRealtimeEffects = {

@@ -89,6 +89,22 @@ describe('OrderWorkspaceState', () => {
     expect(state.paymentTickets().reduce((sum, ticket) => sum + ticket.ticket_amount, 0)).toBe(10);
   });
 
+  it('clamps split count to the [2, 20] range', () => {
+    const state = new TestOrderWorkspaceState();
+
+    state.setSplitCount(0);
+    expect(state.splitCount()).toBe(2);
+
+    state.setSplitCount(500);
+    expect(state.splitCount()).toBe(20);
+
+    state.setSplitCount(NaN);
+    expect(state.splitCount()).toBe(2);
+
+    state.setSplitCount(5.9);
+    expect(state.splitCount()).toBe(5);
+  });
+
   it('excludes canceled items from customer tickets', () => {
     const state = new TestOrderWorkspaceState();
     state.customers = [{ _id: 'customer-1', session_id: 'session-1', customer_name: 'Alex' }];

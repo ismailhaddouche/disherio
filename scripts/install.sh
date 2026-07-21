@@ -900,21 +900,44 @@ cmd_backup() {
   (cd "$staging" && find database uploads config -type f -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS)
 
   tar -czf "$archive" -C "$staging" manifest SHA256SUMS database uploads config
+
+  # The archive contains .env and the MongoDB keyfile: encrypt it at rest.
+  # Password from DISHERIO_BACKUP_PASSWORD or interactive prompt.
+  local backup_pass="${DISHERIO_BACKUP_PASSWORD:-}"
+  if [[ -z "$backup_pass" ]]; then
+    if [[ -t 0 ]] && [[ "${DISHERIO_NONINTERACTIVE:-}" != "1" ]]; then
+      local backup_pass2=""
+      read -rsp "Contraseña para cifrar el backup: " backup_pass; echo
+      read -rsp "Repite la contraseña: " backup_pass2; echo
+      [[ -n "$backup_pass" && "$backup_pass" == "$backup_pass2" ]] \
+        || err "Las contraseñas no coinciden o están vacías"
+      unset backup_pass2
+    else
+      err "Define DISHERIO_BACKUP_PASSWORD para cifrar el backup (modo no interactivo)"
+    fi
+  fi
+  local enc_archive="${archive}.enc"
+  DISHERIO_BACKUP_PASS="$backup_pass" openssl enc -aes-256-cbc -pbkdf2 -salt \
+    -pass env:DISHERIO_BACKUP_PASS -in "$archive" -out "$enc_archive" \
+    || err "No se pudo cifrar el backup"
+  unset backup_pass
+  rm -f "$archive"
+  archive="$enc_archive"
   chmod 600 "$archive"
 
   local size
   size=$(du -sh "$archive" | cut -f1)
-  ok "Backup: ${archive} (${size})"
+  ok "Backup cifrado: ${archive} (${size})"
 
   # Rotation: remove backups older than seven days.
-  find "$backup_dir" -name "disherio_backup_*.tar.gz" -mtime +7 -delete 2>/dev/null || true
+  find "$backup_dir" -name "disherio_backup_*.tar.gz*" -mtime +7 -delete 2>/dev/null || true
   log "Backups >7 días eliminados"
 }
 
 cmd_restore() {
   [[ $EUID -eq 0 ]] || err "Ejecuta la restauración como root"
   local archive="${1:-}"
-  [[ -n "$archive" ]] || err "Uso: sudo ./scripts/install.sh restore /ruta/backup.tar.gz"
+  [[ -n "$archive" ]] || err "Uso: sudo ./scripts/install.sh restore /ruta/backup.tar.gz[.enc]"
   [[ -f "$archive" ]] || err "Backup no encontrado: $archive"
 
   local staging entry confirm=""
@@ -922,12 +945,31 @@ cmd_restore() {
   chmod 700 "$staging"
   trap 'rm -rf "$staging"' RETURN
 
+  # Encrypted backups (*.tar.gz.enc, openssl "Salted__" format) are decrypted
+  # first; legacy plain .tar.gz backups restore as before.
+  local work_archive="$archive"
+  if [[ "$archive" == *.enc ]]; then
+    local restore_pass="${DISHERIO_BACKUP_PASSWORD:-}"
+    if [[ -z "$restore_pass" ]]; then
+      if [[ -t 0 ]] && [[ "${DISHERIO_NONINTERACTIVE:-}" != "1" ]]; then
+        read -rsp "Contraseña del backup cifrado: " restore_pass; echo
+      else
+        err "Define DISHERIO_BACKUP_PASSWORD para restaurar un backup cifrado (modo no interactivo)"
+      fi
+    fi
+    work_archive="$staging/backup.tar.gz"
+    DISHERIO_BACKUP_PASS="$restore_pass" openssl enc -d -aes-256-cbc -pbkdf2 \
+      -pass env:DISHERIO_BACKUP_PASS -in "$archive" -out "$work_archive" \
+      || err "No se pudo descifrar el backup (¿contraseña incorrecta?)"
+    unset restore_pass
+  fi
+
   while IFS= read -r entry; do
     case "$entry" in
       /*|../*|*/../*|*/..) err "El backup contiene una ruta insegura: $entry" ;;
     esac
-  done < <(tar -tzf "$archive")
-  tar -xzf "$archive" --no-same-owner --no-same-permissions -C "$staging"
+  done < <(tar -tzf "$work_archive")
+  tar -xzf "$work_archive" --no-same-owner --no-same-permissions -C "$staging"
   if find "$staging" -type l -print -quit | grep -q .; then
     err "El backup contiene enlaces simbólicos no permitidos"
   fi

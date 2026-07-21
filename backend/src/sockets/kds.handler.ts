@@ -472,15 +472,26 @@ function emitToTAS(sessionId: string, event: string, data: unknown): void {
 
 /**
  * Notify KDS of new kitchen items.
+ * Emits to both the session room and the restaurant-wide KDS room (KDS
+ * clients auto-join `kds:restaurant:<restaurantId>` on connect), matching the
+ * coverage of emitNewKitchenItem used by the single-item flow.
  * itemData is passed through verbatim: callers send Mongoose item documents
  * (or plain objects derived from them), which do not match the shared ItemOrder
  * contract structurally, hence `object` — it still guarantees a spreadable payload.
  */
-export function notifyKDSNewItem(sessionId: string, itemData: object): void {
-  emitToKDS(sessionId, 'kds:new_item', {
-    ...itemData,
-    timestamp: new Date().toISOString(),
-  });
+export function notifyKDSNewItem(sessionId: string, restaurantId: string, itemData: object): void {
+  try {
+    const io = getIO();
+    io.to(`kitchen:session:${sessionId}`)
+      .to(`kds:restaurant:${restaurantId}`)
+      .emit('kds:new_item', {
+        ...itemData,
+        timestamp: new Date().toISOString(),
+      });
+    logger.debug({ sessionId, event: 'kds:new_item' }, 'Emitted event to KDS');
+  } catch (err) {
+    logger.error({ err, sessionId, event: 'kds:new_item' }, 'Failed to emit event to KDS');
+  }
 }
 
 /**

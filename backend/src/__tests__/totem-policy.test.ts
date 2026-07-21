@@ -3,6 +3,13 @@ import { ErrorCode } from '@disherio/shared';
 import { AppError } from '../utils/async-handler';
 import { TotemRepository, TotemSessionRepository } from '../repositories/totem.repository';
 
+// Unit tests run without a Mongo connection: execute the transactional
+// callback directly with a stand-in (undefined) session instead of opening a
+// real transaction.
+jest.mock('../utils/transactions', () => ({
+  withTransaction: (operations: (session: unknown) => Promise<unknown>) => operations(undefined),
+}));
+
 describe('TotemService.assertCanMutateTotem', () => {
   // A policy violation throws an operational AppError whose message is the
   // FORBIDDEN error code and whose statusCode is 403. The global error handler
@@ -70,6 +77,6 @@ describe('TotemService.deleteTotem', () => {
       .mockResolvedValue(null);
 
     await expect(deleteTotem('507f1f77bcf86cd799439011')).resolves.toBeNull();
-    expect(deleteSpy).toHaveBeenCalledWith('507f1f77bcf86cd799439011');
+    expect(deleteSpy).toHaveBeenCalledWith('507f1f77bcf86cd799439011', undefined);
   });
 });

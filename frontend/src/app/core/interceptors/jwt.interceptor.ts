@@ -54,8 +54,8 @@ export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
   // returnUrl when already on /login to avoid self-referential redirects.
   const navigateToLogin = (): void => {
     const currentUrl = router.url ?? '';
+    // Already on /login: stay put so an existing returnUrl query param survives.
     if (currentUrl.includes('/login')) {
-      void router.navigate(['/login']);
       return;
     }
     void router.navigate(['/login'], { queryParams: { returnUrl: currentUrl } });
@@ -91,7 +91,9 @@ export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
         );
       }
 
-      if (isAuthenticationError && !isPublicTotem) {
+      // Auth endpoints (login/refresh) surface their 401 to the caller so the
+      // login page can show the error; redirecting here would drop returnUrl.
+      if (isAuthenticationError && !isAuthEndpoint && !isPublicTotem) {
         authStore.clearAuth();
         navigateToLogin();
       }

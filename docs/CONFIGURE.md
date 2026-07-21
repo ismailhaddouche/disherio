@@ -194,21 +194,26 @@ Procedure:
 1. Runs `mongodump` inside the `mongo` container with root credentials
 2. Copies the database dump, persistent uploads, `.env`, Caddy configuration, MongoDB keyfile, and active Compose override into a private staging directory
 3. Writes an archive manifest and SHA-256 checksums
-4. Creates `/var/backups/disherio/disherio_backup_YYYYMMDD_HHMMSS.tar.gz` with mode `0600`
+4. Encrypts the archive with `openssl enc -aes-256-cbc -pbkdf2` (password from
+   `DISHERIO_BACKUP_PASSWORD` or an interactive prompt) and creates
+   `/var/backups/disherio/disherio_backup_YYYYMMDD_HHMMSS.tar.gz.enc` with mode `0600`
 5. Deletes backups older than 7 days (rotation)
 
 ### Restore
 
 ```bash
-sudo ./scripts/install.sh restore /var/backups/disherio/disherio_backup_YYYYMMDD_HHMMSS.tar.gz
+sudo ./scripts/install.sh restore /var/backups/disherio/disherio_backup_YYYYMMDD_HHMMSS.tar.gz.enc
 ```
 
-Restore validates archive paths, rejects symbolic links, verifies the manifest
-and checksums, and requires typing `RESTAURAR`. It then replaces MongoDB,
-uploads, and deployment configuration, initializes the replica set, runs
-`mongorestore --drop`, restores ownership, and waits for application health.
-Because this is destructive, test each backup against an isolated installation
-before relying on it for recovery.
+Encrypted backups (`*.tar.gz.enc`) are decrypted first (password from
+`DISHERIO_BACKUP_PASSWORD` or an interactive prompt); legacy unencrypted
+`.tar.gz` backups still restore as before. Restore validates archive paths,
+rejects symbolic links, verifies the manifest and checksums, and requires
+typing `RESTAURAR`. It then replaces MongoDB, uploads, and deployment
+configuration, initializes the replica set, runs `mongorestore --drop`,
+restores ownership, and waits for application health. Because this is
+destructive, test each backup against an isolated installation before relying
+on it for recovery.
 
 ### Manual backup
 

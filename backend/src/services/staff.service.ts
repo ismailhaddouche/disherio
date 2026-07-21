@@ -223,13 +223,36 @@ export async function updateStaff(
 }
 
 /**
- * Delete a staff member scoped to a restaurant. Throws NOT_FOUND if missing.
+ * Delete a staff member scoped to a restaurant. Throws NOT_FOUND if missing,
+ * FORBIDDEN on self-deletion, and LAST_ADMIN when the target is the last
+ * user holding ADMIN permission in the restaurant.
  */
-export async function deleteStaff(id: string, restaurantId: string): Promise<void> {
-  const staff = await userRepo.findByIdAndRestaurantAndDelete(id, restaurantId);
+export async function deleteStaff(id: string, restaurantId: string, callerStaffId: string): Promise<void> {
+  // A staff member cannot delete their own account.
+  if (id === callerStaffId) {
+    throw createError.forbidden(ErrorCode.FORBIDDEN);
+  }
+
+  const staff = await userRepo.findByIdAndRestaurant(id, restaurantId);
   if (!staff) {
     throw createError.notFound('STAFF_NOT_FOUND');
   }
+
+  // Protect the last ADMIN: deleting them would leave the restaurant
+  // without any administrator.
+  const role = await roleRepo.findById(staff.role_id.toString());
+  if (role?.permissions.includes('ADMIN')) {
+    const restaurantRoles = await roleRepo.findByRestaurantId(restaurantId);
+    const adminRoleIds = restaurantRoles
+      .filter((candidate) => candidate.permissions.includes('ADMIN'))
+      .map((candidate) => candidate._id as Types.ObjectId);
+    const otherAdmins = await userRepo.countByRoleIds(restaurantId, adminRoleIds, id);
+    if (otherAdmins === 0) {
+      throw createError.conflict(ErrorCode.LAST_ADMIN);
+    }
+  }
+
+  await userRepo.findByIdAndRestaurantAndDelete(id, restaurantId);
   await Promise.all([
     revokeAllUserRefreshTokens(id),
     disconnectStaffSockets(id),

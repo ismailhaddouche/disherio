@@ -59,17 +59,20 @@ function calculateBackoffLockDuration(attemptCount: number): number {
 
 interface StoredAttempt {
   count: number;
-  firstAttempt: string;
-  lastAttempt: string;
-  lockedUntil?: string;
+  // Epoch milliseconds. ISO strings are still accepted on read for entries
+  // written before the atomic Lua script existed (they expire within the
+  // attempt window anyway).
+  firstAttempt: string | number;
+  lastAttempt: string | number;
+  lockedUntil?: string | number;
 }
 
 function serialize(attempt: FailedAttempt): StoredAttempt {
   return {
     count: attempt.count,
-    firstAttempt: attempt.firstAttempt.toISOString(),
-    lastAttempt: attempt.lastAttempt.toISOString(),
-    lockedUntil: attempt.lockedUntil?.toISOString(),
+    firstAttempt: attempt.firstAttempt.getTime(),
+    lastAttempt: attempt.lastAttempt.getTime(),
+    lockedUntil: attempt.lockedUntil?.getTime(),
   };
 }
 
@@ -139,31 +142,67 @@ export function createIdentifier(username: string, ipAddress?: string): string {
 }
 
 /**
- * Records a failed PIN attempt for the given identifier
- * Implements exponential backoff for lock duration
+ * Atomic read-modify-write of the failed-attempt counter.
+ * With the lockout identifier scoped per restaurant (see auth.service), many
+ * staff members share one Redis key, so the previous GET/compute/SET sequence
+ * could lose concurrent increments. This script runs the whole update (window
+ * reset, increment, backoff lock) server-side in a single step.
+ * Returns the stored JSON (epoch millis) so the caller can deserialize it.
  */
-export async function recordFailedAttempt(identifier: string): Promise<FailedAttempt> {
+const RECORD_FAILED_ATTEMPT_LUA = `
+local raw = redis.call('GET', KEYS[1])
+local now = tonumber(ARGV[1])
+local windowMs = tonumber(ARGV[2])
+local maxAttempts = tonumber(ARGV[3])
+local baseLockMs = tonumber(ARGV[4])
+local maxLockMs = tonumber(ARGV[5])
+local ttlSeconds = ARGV[6]
+
+local count = 1
+local firstAttempt = now
+local lockedUntil = nil
+
+if raw then
+  local ok, existing = pcall(cjson.decode, raw)
+  local existingFirst = ok and tonumber(existing.firstAttempt) or nil
+  if existingFirst ~= nil and now - existingFirst <= windowMs then
+    count = existing.count + 1
+    firstAttempt = existingFirst
+    lockedUntil = tonumber(existing.lockedUntil)
+  end
+end
+
+if count >= maxAttempts then
+  local excess = count - maxAttempts
+  local multiplier = math.min(2 ^ math.floor(excess / maxAttempts), maxLockMs / baseLockMs)
+  lockedUntil = now + baseLockMs * multiplier
+end
+
+local encoded = cjson.encode({
+  count = count,
+  firstAttempt = firstAttempt,
+  lastAttempt = now,
+  lockedUntil = lockedUntil
+})
+redis.call('SET', KEYS[1], encoded, 'EX', ttlSeconds)
+return encoded
+`;
+
+/**
+ * In-memory version of the counter (development/tests only). Same semantics
+ * as RECORD_FAILED_ATTEMPT_LUA.
+ */
+function recordFailedAttemptInMemory(identifier: string): FailedAttempt {
   const now = new Date();
-  const existing = await load(identifier);
+  const existing = inMemoryFallback.get(identifier);
 
-  if (!existing) {
+  if (!existing || now.getTime() - existing.firstAttempt.getTime() > ATTEMPT_WINDOW_MS) {
     const attempt: FailedAttempt = {
       count: 1,
       firstAttempt: now,
       lastAttempt: now,
     };
-    await save(identifier, attempt);
-    return attempt;
-  }
-
-  // Reset counter if outside the attempt window (1 hour)
-  if (now.getTime() - existing.firstAttempt.getTime() > ATTEMPT_WINDOW_MS) {
-    const attempt: FailedAttempt = {
-      count: 1,
-      firstAttempt: now,
-      lastAttempt: now,
-    };
-    await save(identifier, attempt);
+    inMemoryFallback.set(identifier, attempt);
     return attempt;
   }
 
@@ -176,8 +215,35 @@ export async function recordFailedAttempt(identifier: string): Promise<FailedAtt
     existing.lockedUntil = new Date(now.getTime() + lockDuration);
   }
 
-  await save(identifier, existing);
+  inMemoryFallback.set(identifier, existing);
   return existing;
+}
+
+/**
+ * Records a failed PIN attempt for the given identifier
+ * Implements exponential backoff for lock duration
+ */
+export async function recordFailedAttempt(identifier: string): Promise<FailedAttempt> {
+  const redisClient = await getRedis();
+  if (redisClient) {
+    try {
+      const raw = await redisClient.eval(RECORD_FAILED_ATTEMPT_LUA, {
+        keys: [getKey(identifier)],
+        arguments: [
+          Date.now().toString(),
+          ATTEMPT_WINDOW_MS.toString(),
+          MAX_FAILED_ATTEMPTS.toString(),
+          BASE_LOCK_DURATION_MS.toString(),
+          MAX_LOCK_DURATION_MS.toString(),
+          Math.ceil(ATTEMPT_WINDOW_MS / 1000).toString(),
+        ],
+      });
+      return deserialize(JSON.parse(raw as string) as StoredAttempt);
+    } catch (err) {
+      logger.warn({ err, identifier }, 'Failed to record PIN attempt in Redis; using fallback');
+    }
+  }
+  return recordFailedAttemptInMemory(identifier);
 }
 
 /**

@@ -70,6 +70,7 @@ export enum ErrorCode {
   UPDATE_FAILED = 'UPDATE_FAILED',
   CATEGORY_HAS_DISHES = 'CATEGORY_HAS_DISHES',
   SESSION_HAS_ITEMS = 'SESSION_HAS_ITEMS',
+  LAST_ADMIN = 'LAST_ADMIN',
 
   // Validation Errors
   VALIDATION_ERROR = 'VALIDATION_ERROR',
@@ -161,6 +162,7 @@ export const ERROR_HTTP_STATUS_MAP: Record<ErrorCode, number> = {
   [ErrorCode.UPDATE_FAILED]: 500,
   [ErrorCode.CATEGORY_HAS_DISHES]: 409,
   [ErrorCode.SESSION_HAS_ITEMS]: 409,
+  [ErrorCode.LAST_ADMIN]: 409,
 
   [ErrorCode.VALIDATION_ERROR]: 400,
   [ErrorCode.INVALID_PRICE]: 400,

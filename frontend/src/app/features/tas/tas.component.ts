@@ -1,6 +1,7 @@
 import { Component, OnInit, OnDestroy, signal, computed, inject, ChangeDetectionStrategy } from '@angular/core';
-import { Subject } from 'rxjs';
-import { switchMap, takeUntil } from 'rxjs/operators';
+import { Subject, of, throwError } from 'rxjs';
+import { catchError, switchMap, takeUntil } from 'rxjs/operators';
+import { ErrorCode } from '@disherio/shared/errors';
 import { TasService } from '../../core/services/tas.service';
 import { SocketConnectionService } from '../../core/services/socket/socket-connection.service';
 import { TasSocketService } from '../../core/services/socket/tas-socket.service';
@@ -310,6 +311,13 @@ export class TasComponent extends OrderWorkspaceState implements OnInit, OnDestr
       parts: paymentType === 'SHARED' ? this.splitCount() : 1,
     })
       .pipe(
+        // If the payment was already persisted (e.g. archive failed after a
+        // successful charge and the user retried), do not charge again:
+        // treat ORDER_ALREADY_PAID as success and only redo the archive step.
+        catchError((err) => {
+          if (err.error?.errorCode === ErrorCode.ORDER_ALREADY_PAID) return of(null);
+          return throwError(() => err);
+        }),
         switchMap(() => this.tasService.archiveSession(session._id!)),
         takeUntil(this.destroy$)
       )

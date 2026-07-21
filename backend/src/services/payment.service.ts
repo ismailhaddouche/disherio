@@ -1,4 +1,5 @@
 import { ErrorCode } from '@disherio/shared';
+import { ClientSession } from 'mongoose';
 import { IItemOrder } from '../models/order.model';
 import { ITotemSession } from '../models/totem.model';
 import { AppError } from '../utils/async-handler';
@@ -29,7 +30,8 @@ const {
 export async function calculateSessionTotal(
   sessionId: string,
   customTip?: number,
-  activeItems?: IItemOrder[]
+  activeItems?: IItemOrder[],
+  dbSession?: ClientSession
 ): Promise<{ subtotal: number; tax: number; tips: number; total: number }> {
   if (customTip !== undefined) {
     const validation = validateOrderPrice(customTip, 'tips');
@@ -40,14 +42,14 @@ export async function calculateSessionTotal(
     }
   }
 
-  const session = await sessionRepository.findById(sessionId);
+  const session = await sessionRepository.findById(sessionId, dbSession);
   if (!session) throw new Error(ErrorCode.SESSION_NOT_FOUND);
-  const totem = await totemRepository.findById(session.totem_id.toString());
+  const totem = await totemRepository.findById(session.totem_id.toString(), dbSession);
   if (!totem) throw new Error(ErrorCode.TOTEM_NOT_FOUND);
-  const restaurant = await restaurantRepository.findById(totem.restaurant_id.toString());
+  const restaurant = await restaurantRepository.findById(totem.restaurant_id.toString(), dbSession);
   if (!restaurant) throw new Error(ErrorCode.RESTAURANT_NOT_FOUND);
 
-  const items = activeItems ?? await itemRepository.findActiveBySessionId(sessionId);
+  const items = activeItems ?? await itemRepository.findActiveBySessionId(sessionId, dbSession);
   const totalWithTax = items.reduce(
     (total, item) => total + calculateItemPrice(item).total,
     0
@@ -89,7 +91,7 @@ const createPaymentBreaker = new CircuitBreaker(
       }
 
       const activeItems = await itemRepository.findActiveBySessionId(sessionId, session);
-      const { total } = await calculateSessionTotal(sessionId, customTip, activeItems);
+      const { total } = await calculateSessionTotal(sessionId, customTip, activeItems, session);
       if (total <= 0) throw new Error(ErrorCode.NO_ITEMS_TO_PAY);
       const tickets = paymentType === 'BY_USER'
         ? buildByUserTickets(activeItems, total)
@@ -211,7 +213,7 @@ export async function archiveSession(sessionId: string) {
     if (!completedSession) throw new Error(ErrorCode.INVALID_STATE_TRANSITION);
 
     if ((await paymentRepository.findBySessionId(sessionId, session)).length === 0) {
-      const { total } = await calculateSessionTotal(sessionId);
+      const { total } = await calculateSessionTotal(sessionId, undefined, undefined, session);
       if (total <= 0) throw new Error(ErrorCode.NO_ITEMS_TO_PAY);
       const totem = await totemRepository.findById(completedSession.totem_id.toString());
       if (!totem) throw new Error(ErrorCode.TOTEM_NOT_FOUND);
