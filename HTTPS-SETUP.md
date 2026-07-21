@@ -46,7 +46,7 @@ Si tienes certificados propios (ej: wildcard de tu proveedor):
    }
    ```
 
-3. Actualiza docker-compose.prod.yml:
+3. Actualiza `infrastructure/docker-compose.prod.yml` (override de producción):
    ```yaml
    caddy:
      volumes:
@@ -96,14 +96,14 @@ LOG_LEVEL=info
 
 ```bash
 # Descargar imágenes y construir
-docker-compose -f docker-compose.prod.yml pull
-docker-compose -f docker-compose.prod.yml build
+docker compose -f docker-compose.yml -f infrastructure/docker-compose.prod.yml pull
+docker compose -f docker-compose.yml -f infrastructure/docker-compose.prod.yml build
 
 # Iniciar en modo detached
-docker-compose -f docker-compose.prod.yml up -d
+docker compose -f docker-compose.yml -f infrastructure/docker-compose.prod.yml up -d
 
 # Ver logs
-docker-compose -f docker-compose.prod.yml logs -f caddy
+docker compose -f docker-compose.yml -f infrastructure/docker-compose.prod.yml logs -f caddy
 ```
 
 ### 3. Verificar HTTPS
@@ -141,7 +141,7 @@ curl -I https://tudominio.com
 
 ```bash
 # Verificar logs de Caddy
-docker-compose -f docker-compose.prod.yml logs caddy
+docker compose -f docker-compose.yml -f infrastructure/docker-compose.prod.yml logs caddy
 
 # Verificar que los puertos estén abiertos
 sudo netstat -tlnp | grep -E '80|443'

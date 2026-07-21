@@ -106,7 +106,10 @@ services:
       - /bin/sh
       - -c
       - |
-        printf 'bind 127.0.0.1\nappendonly yes\nappendfsync everysec\nrequirepass %s\n' "$$(cat /run/secrets/redis_password)" > /tmp/redis.conf
+        # Listen on all container interfaces (loopback + backend_net): the backend
+        # connects from another container via redis://redis:6379. Safe because
+        # backend_net is internal:true and requirepass is set.
+        printf 'bind 0.0.0.0\nappendonly yes\nappendfsync everysec\nrequirepass %s\n' "$$(cat /run/secrets/redis_password)" > /tmp/redis.conf
         exec redis-server /tmp/redis.conf
     volumes:
       - redis_data:/data
@@ -248,6 +251,7 @@ services:
 
   # One-shot seed service: creates default restaurant, roles and admin user
   seed:
+    profiles: ["seed"]
     build:
       context: .
       dockerfile: backend/Dockerfile
@@ -284,6 +288,7 @@ services:
 
   # One-shot example seed: creates categories, dishes and demo staff users
   seed-examples:
+    profiles: ["seed"]
     build:
       context: .
       dockerfile: backend/Dockerfile
@@ -294,6 +299,9 @@ services:
       - backend_net
     environment:
       NODE_ENV: production
+      # Required by the production guard in seed-examples; the installer sets
+      # it to "true" only after the user opts in to demo data.
+      SEED_EXAMPLES_CONFIRM: ${SEED_EXAMPLES_CONFIRM:-false}
       MONGODB_URI_FILE: /run/secrets/mongodb_uri
       RESTAURANT_NAME: ${RESTAURANT_NAME:-DisherIo}
       DEFAULT_LANGUAGE: ${DEFAULT_LANGUAGE:-es}
@@ -328,6 +336,16 @@ services:
       - caddy_config:/config
     networks:
       - frontend_net
+    user: "65532:65532"
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
     # Resource limits
     deploy:
       resources:

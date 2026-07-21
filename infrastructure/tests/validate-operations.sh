@@ -40,7 +40,9 @@ for script in \
 done
 
 docker compose --env-file "$TEST_ENV" -f "$ROOT_DIR/docker-compose.yml" config --quiet
-docker compose --env-file "$TEST_ENV" -f "$ROOT_DIR/docker-compose.prod.yml" config --quiet
+docker compose --env-file "$TEST_ENV" \
+  -f "$ROOT_DIR/docker-compose.yml" \
+  -f "$ROOT_DIR/infrastructure/docker-compose.prod.yml" config --quiet
 docker compose --env-file "$TEST_ENV" \
   -f "$ROOT_DIR/docker-compose.yml" \
   -f "$ROOT_DIR/infrastructure/docker-compose.local.yml" config --quiet
@@ -70,7 +72,7 @@ if grep -R "unsafe-eval" "$ROOT_DIR/infrastructure/caddy-templates" >/dev/null; 
   exit 1
 fi
 
-if grep -R "container_name:" "$ROOT_DIR/docker-compose.yml" "$ROOT_DIR/docker-compose.prod.yml" >/dev/null; then
+if grep -R "container_name:" "$ROOT_DIR/docker-compose.yml" "$ROOT_DIR/infrastructure"/docker-compose.*.yml >/dev/null; then
   echo "Compose services must remain scalable" >&2
   exit 1
 fi

@@ -683,14 +683,16 @@ EOF
   # 7.7 — Seed through the Compose service at dist/seeders/index.js.
   log "Ejecutando seed (restaurante, roles, admin)..."
   # Build the seed image when missing, then run it.
-  docker compose up --force-recreate --exit-code-from seed seed >> "$LOG_FILE" 2>&1 \
+  docker compose --profile seed up --force-recreate --exit-code-from seed seed >> "$LOG_FILE" 2>&1 \
     || err "Seed falló. Ver $LOG_FILE"
   ok "Datos iniciales creados (restaurante, roles, admin)"
 
   # 7.7b — Seed example data when requested.
   if [[ "$SEED_EXAMPLES" =~ ^[yYsS] ]]; then
     log "Ejecutando seed de ejemplos (categorías, platos, usuarios demo)..."
-    docker compose up --force-recreate --exit-code-from seed-examples seed-examples >> "$LOG_FILE" 2>&1 \
+    # The user's opt-in above is the explicit confirmation required by the
+    # production guard in seed-examples (SEED_EXAMPLES_CONFIRM=true).
+    SEED_EXAMPLES_CONFIRM=true docker compose --profile seed up --force-recreate --exit-code-from seed-examples seed-examples >> "$LOG_FILE" 2>&1 \
       || err "Seed de ejemplos falló. Ver $LOG_FILE"
     ok "Datos de ejemplo creados (2 categorías, 8 platos, 3 usuarios demo)"
   fi

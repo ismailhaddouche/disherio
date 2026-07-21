@@ -1,0 +1,49 @@
+# ============================================
+# Docker Compose Override - Modo PRODUCCION
+# ============================================
+# Deltas de produccion sobre docker-compose.yml:
+# limites de recursos mas estrictos y HTTP/3 (QUIC) en Caddy.
+#
+# Uso:
+#   docker compose -f docker-compose.yml -f infrastructure/docker-compose.prod.yml up -d
+#
+# Los servicios seed/seed-examples estan en el profile "seed" del archivo base
+# y no arrancan con un simple `up -d`; para ejecutarlos:
+#   docker compose --profile seed up --exit-code-from seed seed
+# ============================================
+
+services:
+  mongo:
+    deploy:
+      resources:
+        limits:
+          cpus: '1.5'
+          memory: 1.5G
+
+  backend:
+    deploy:
+      resources:
+        limits:
+          cpus: '0.75'
+          memory: 768M
+
+  frontend:
+    deploy:
+      resources:
+        limits:
+          cpus: '0.4'
+          memory: 384M
+        reservations:
+          cpus: '0.2'
+
+  caddy:
+    ports:
+      - "443:443/udp"  # HTTP/3 (QUIC)
+    deploy:
+      resources:
+        limits:
+          cpus: '0.3'
+          memory: 192M
+        reservations:
+          cpus: '0.1'
+          memory: 64M

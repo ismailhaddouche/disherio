@@ -267,7 +267,7 @@ docker compose config
 For the hardened production topology, validate the explicit production file:
 
 ```bash
-docker compose --env-file .env -f docker-compose.prod.yml config --quiet
+docker compose --env-file .env -f docker-compose.yml -f infrastructure/docker-compose.prod.yml config --quiet
 ```
 
 ## Security Architecture

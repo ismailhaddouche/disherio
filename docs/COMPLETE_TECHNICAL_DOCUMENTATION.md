@@ -471,8 +471,8 @@ npm run test --workspace=frontend
 Production deployment validation also includes:
 
 ```bash
-docker compose --env-file .env -f docker-compose.prod.yml config --quiet
-docker compose --env-file .env -f docker-compose.prod.yml up -d --wait
+docker compose --env-file .env -f docker-compose.yml -f infrastructure/docker-compose.prod.yml config --quiet
+docker compose --env-file .env -f docker-compose.yml -f infrastructure/docker-compose.prod.yml up -d --wait
 curl --fail "${FRONTEND_URL}/health/ready"
 ```
 

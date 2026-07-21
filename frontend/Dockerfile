@@ -16,4 +16,10 @@ FROM caddy:2-alpine@sha256:5f5c8640aae01df9654968d946d8f1a56c497f1dd5c5cda4cf95a
 COPY --from=builder /app/frontend/dist/frontend/browser /srv
 COPY frontend/Caddyfile.frontend /etc/caddy/Caddyfile
 EXPOSE 4200
+# caddy:2-alpine does not ship a `caddy` user; create one with the same UID/GID
+# used for the caddy service in docker-compose.yml (65532:65532) so the
+# container does not run as root.
+RUN adduser -D -u 65532 caddy \
+    && mkdir -p /data /config \
+    && chown -R caddy:caddy /data /config
 USER caddy
