@@ -4,7 +4,6 @@ import { ErrorCode } from '@disherio/shared';
 import { parseDurationToMs } from '../utils/duration';
 import {
   loginWithUsername,
-  loginWithPin,
   buildPayloadById,
 } from '../services/auth.service';
 import { Restaurant } from '../models/restaurant.model';
@@ -81,21 +80,6 @@ export const loginUsername = asyncHandler(async (req: Request, res: Response) =>
   const { accessToken, refreshToken, user } = await loginWithUsername(
     username,
     password,
-    restaurant_id
-  );
-  const isSecure = isSecureRequest(req);
-  setAccessCookie(res, accessToken, isSecure);
-  setRefreshCookie(res, refreshToken, isSecure);
-  res.json({
-    user,
-    expires_in_ms: accessTokenExpiresInMs(),
-  });
-});
-
-export const loginPin = asyncHandler(async (req: Request, res: Response) => {
-  const { pin_code, restaurant_id } = req.body;
-  const { accessToken, refreshToken, user } = await loginWithPin(
-    pin_code,
     restaurant_id
   );
   const isSecure = isSecureRequest(req);

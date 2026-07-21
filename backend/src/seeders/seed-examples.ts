@@ -5,12 +5,12 @@ import { Role, Staff } from '../models/staff.model';
 import { Category, Dish } from '../models/dish.model';
 import { Totem } from '../models/totem.model';
 import { logger } from '../config/logger';
-import { hashPassword, hashPin, computePinLookup } from '../services/auth.service';
+import { hashPassword } from '../services/auth.service';
 import { getEnv } from '../config/env';
 
 async function seedExamples() {
-  // Demo data creates users with well-known credentials (cocinero/cocinero,
-  // PIN 1111). Refuse to run in production without explicit confirmation.
+  // Demo data creates users with well-known credentials (cocinero/cocinero).
+  // Refuse to run in production without explicit confirmation.
   if (process.env.NODE_ENV === 'production' && process.env.SEED_EXAMPLES_CONFIRM !== 'true') {
     logger.error(
       'Example seed creates demo users with well-known credentials. ' +
@@ -181,9 +181,9 @@ async function seedExamples() {
 
     // ── Example staff users (cook, waiter, cashier) ─────────────────────────
     const exampleUsers = [
-      { role_name: 'KTS', username: 'cocinero', staff_name: 'Cocinero Demo', password: 'cocinero', pin: '1111' },
-      { role_name: 'TAS', username: 'camarero', staff_name: 'Camarero Demo', password: 'camarero', pin: '1111' },
-      { role_name: 'POS', username: 'cajero', staff_name: 'Cajero Demo', password: 'cajero', pin: '1111' },
+      { role_name: 'KTS', username: 'cocinero', staff_name: 'Cocinero Demo', password: 'cocinero' },
+      { role_name: 'TAS', username: 'camarero', staff_name: 'Camarero Demo', password: 'camarero' },
+      { role_name: 'POS', username: 'cajero', staff_name: 'Cajero Demo', password: 'cajero' },
     ];
 
     for (const user of exampleUsers) {
@@ -196,21 +196,16 @@ async function seedExamples() {
       const existing = await Staff.findOne({ username: user.username, restaurant_id: restaurantId });
       if (existing) {
         const password_hash = await hashPassword(user.password);
-        const pin_code_hash = await hashPin(user.pin);
-        const pin_lookup = computePinLookup(user.pin);
-        await Staff.updateOne({ _id: existing._id }, { $set: { password_hash, pin_code_hash, pin_lookup } });
+        await Staff.updateOne({ _id: existing._id }, { $set: { password_hash } });
         logger.info(`Staff user updated: ${user.username} (${user.role_name})`);
       } else {
         const password_hash = await hashPassword(user.password);
-        const pin_code_hash = await hashPin(user.pin);
         await Staff.create({
           restaurant_id: restaurantId,
           role_id: role._id,
           staff_name: user.staff_name,
           username: user.username,
           password_hash,
-          pin_code_hash,
-          pin_lookup: computePinLookup(user.pin),
         });
         logger.info(`Staff user created: ${user.username} (${user.role_name})`);
       }
@@ -233,7 +228,7 @@ async function seedExamples() {
     }
 
     logger.info('=== DisherIO example seed completed successfully ===');
-    logger.info('Example users: cocinero/cocinero, camarero/camarero, cajero/cajero (PIN: 1111)');
+    logger.info('Example users: cocinero/cocinero, camarero/camarero, cajero/cajero');
     logger.info('Example totem: Mesa 1');
 
   } catch (err) {

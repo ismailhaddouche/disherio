@@ -247,11 +247,3 @@ export type UpdateCategoryData = Partial<CreateCategoryData>;
 export type CreateTotemData = Omit<Totem, '_id' | 'totem_qr'>;
 export type UpdateTotemData = Partial<CreateTotemData>;
 
-export type CreateOrderData = Omit<Order, '_id' | 'order_date'>;
-export type UpdateOrderData = Partial<CreateOrderData>;
-
-export type CreateItemOrderData = Omit<ItemOrder, '_id' | 'createdAt'>;
-export type UpdateItemOrderData = Partial<Pick<ItemOrder, 'item_state' | 'customer_id'>>;
-
-export type CreateStaffData = Omit<Staff, '_id'> & { password: string; pin_code: string };
-export type UpdateStaffData = Partial<Omit<Staff, '_id' | 'restaurant_id'>> & { password?: string; pin_code?: string };

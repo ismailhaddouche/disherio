@@ -146,34 +146,3 @@ export async function deleteImage(imagePath: string): Promise<boolean> {
     return false;
   }
 }
-
-export async function getImageInfo(imagePath: string): Promise<sharp.Metadata | null> {
-  try {
-    // Reject path traversal before reading the image.
-    if (imagePath.includes('..') || imagePath.includes('\\')) {
-      throw new Error('Invalid image path');
-    }
-
-    const filename = path.basename(imagePath);
-    const folder = path.dirname(imagePath).replace('/uploads/', '').split('/')[0];
-    const fullPath = path.join(UPLOADS_DIR, folder, filename);
-
-    // Verify it's within uploads directory
-    const resolvedPath = path.resolve(fullPath);
-    const resolvedUploadsDir = path.resolve(UPLOADS_DIR);
-
-    if (!resolvedPath.startsWith(resolvedUploadsDir)) {
-      throw new Error('Path traversal detected');
-    }
-
-    if (!fs.existsSync(fullPath)) {
-      return null;
-    }
-
-    const metadata = await sharp(fullPath).metadata();
-    return metadata;
-  } catch (error) {
-    logger.error({ error, imagePath }, 'Error getting image info');
-    return null;
-  }
-}

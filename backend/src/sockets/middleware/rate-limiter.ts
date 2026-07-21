@@ -229,17 +229,6 @@ export async function recordRequest(identity: string, eventType: string): Promis
 }
 
 /**
- * Clean up expired rate limit entries (for periodic maintenance)
- * Note: Redis automatically expires keys, so this is mostly a no-op
- * but can be used to verify Redis connectivity
- */
-export async function cleanupExpiredRateLimits(): Promise<void> {
-  // Redis handles expiration automatically via TTL
-  // This function is kept for API compatibility with the old implementation
-  logger.debug('Rate limit cleanup called (Redis handles expiration automatically)');
-}
-
-/**
  * Higher-order function to wrap socket event handlers with rate limiting
  * Emits error event if rate limit is exceeded
  *
@@ -282,38 +271,4 @@ export function rateLimitMiddleware<T extends (...args: any[]) => any>(
     // Execute the handler
     return handler(...args);
   };
-}
-
-/**
- * Get current rate limit status for a socket and event type
- */
-export async function getRateLimitStatus(
-  socketId: string,
-  eventType: string
-): Promise<{ count: number; resetTime: number; remaining: number } | null> {
-  const redis = await getRedis();
-  if (!redis) return null;
-
-  const key = getRateLimitKey(socketId, eventType);
-
-  try {
-    const [countStr, ttl] = await Promise.all([
-      redis.get(key),
-      redis.ttl(key),
-    ]);
-
-    if (!countStr) {
-      return null;
-    }
-
-    const count = parseInt(countStr, 10);
-    const config = getRateLimitConfig(eventType);
-    const remaining = Math.max(0, config.maxRequests - count);
-    const resetTime = ttl > 0 ? Date.now() + (ttl * 1000) : Date.now() + config.windowMs;
-
-    return { count, resetTime, remaining };
-  } catch (err) {
-    logger.debug({ err, socketId, eventType }, 'Failed to get rate limit status');
-    return null;
-  }
 }

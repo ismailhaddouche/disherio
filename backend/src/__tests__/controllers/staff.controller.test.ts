@@ -133,7 +133,6 @@ describe('StaffController', () => {
         staff_name: 'New Staff',
         username: 'NewStaff',
         password: 'password123',
-        pin_code: '1234',
         role_id: ROLE_ID
       };
       (StaffService.createStaff as jest.Mock).mockResolvedValue(mockPopulatedStaff);
@@ -146,7 +145,7 @@ describe('StaffController', () => {
     });
 
     it('should delegate role-not-found error to handler', async () => {
-      req.body = { staff_name: 'Test', username: 'test', password: 'pass', pin_code: '1234', role_id: OTHER_ROLE_ID };
+      req.body = { staff_name: 'Test', username: 'test', password: 'pass', role_id: OTHER_ROLE_ID };
       (StaffService.createStaff as jest.Mock).mockRejectedValue(new AppError('ROLE_NOT_FOUND', 404));
 
       await createStaff(req as Request, res as Response, next);
@@ -157,7 +156,7 @@ describe('StaffController', () => {
     });
 
     it('should delegate username-conflict error to handler', async () => {
-      req.body = { staff_name: 'Test', username: 'existing', password: 'pass', pin_code: '1234', role_id: ROLE_ID };
+      req.body = { staff_name: 'Test', username: 'existing', password: 'pass', role_id: ROLE_ID };
       (StaffService.createStaff as jest.Mock).mockRejectedValue(new AppError('USER_ALREADY_EXISTS', 409));
 
       await createStaff(req as Request, res as Response, next);

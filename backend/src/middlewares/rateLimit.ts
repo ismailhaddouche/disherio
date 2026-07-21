@@ -10,7 +10,7 @@ import { getHttpRouteLabel } from '../utils/http-route-label';
 
 /**
  * Auth limiter: 5 failed attempts per 15 minutes
- * Used for: /api/auth/login, /api/auth/pin
+ * Used for: /api/auth/login
  */
 export const authLimiter = rateLimit({
   ...getRateLimitConfig('AUTH', 'AUTH_RATE_LIMIT_EXCEEDED'),

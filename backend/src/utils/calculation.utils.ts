@@ -24,13 +24,6 @@ interface CustomerItem {
   item_disher_extras?: Array<{ price: number }>;
 }
 
-export interface SessionTotalResult {
-  subtotal: number;
-  tax: number;
-  tips: number;
-  total: number;
-}
-
 export interface Ticket {
   ticket_part: number;
   ticket_total_parts: number;
@@ -156,50 +149,3 @@ export function buildByUserTickets(items: CustomerItem[], paymentTotal: number):
   }));
 }
 
-// =============================================================================
-// SESSION TOTALS CALCULATION
-// =============================================================================
-
-export interface SessionTotalDependencies {
-  findById: (id: string) => Promise<{ totem_id: { toString(): string } } | null>;
-  findTotemById: (id: string) => Promise<{ restaurant_id: { toString(): string } } | null>;
-  findRestaurantById: (id: string) => Promise<{ tax_rate?: number } & RestaurantTipsConfig | null>;
-  findActiveBySessionId: (sessionId: string) => Promise<Array<{
-    item_base_price: number;
-    item_disher_variant?: { price?: number } | null;
-    item_disher_extras?: Array<{ price: number }>;
-  }>>;
-}
-
-export async function calculateSessionTotalPure(
-  sessionId: string,
-  customTip: number | undefined,
-  deps: SessionTotalDependencies
-): Promise<SessionTotalResult> {
-  const session = await deps.findById(sessionId);
-  if (!session) throw new Error('SESSION_NOT_FOUND');
-
-  const totem = await deps.findTotemById(session.totem_id.toString());
-  if (!totem) throw new Error('TOTEM_NOT_FOUND');
-
-  const restaurant = await deps.findRestaurantById(totem.restaurant_id.toString());
-  if (!restaurant) throw new Error('RESTAURANT_NOT_FOUND');
-
-  const items = await deps.findActiveBySessionId(sessionId);
-
-  const totalWithTax = items.reduce((acc, item) => {
-    const prices = calculateItemPrice(item);
-    return acc + prices.total;
-  }, 0);
-
-  const tax = TaxUtils.extractTax(totalWithTax, restaurant.tax_rate ?? 0);
-  const subtotal = parseFloat((totalWithTax - tax).toFixed(2));
-  const tips = calculateTips(totalWithTax, customTip, restaurant);
-
-  return {
-    subtotal,
-    tax,
-    tips,
-    total: parseFloat((totalWithTax + tips).toFixed(2)),
-  };
-}

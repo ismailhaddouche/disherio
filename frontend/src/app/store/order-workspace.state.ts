@@ -5,7 +5,7 @@ import { getDishCategoryId } from '../shared/utils/dish-category.utils';
 
 export type PaymentType = 'ALL' | 'SHARED' | 'BY_USER';
 
-export interface PendingOrderItem {
+interface PendingOrderItem {
   dish: Dish;
   quantity: number;
   variantId: string | null;

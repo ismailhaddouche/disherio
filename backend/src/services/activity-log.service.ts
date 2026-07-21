@@ -44,7 +44,7 @@ export async function getLogs(restaurantId: string, filters: ActivityLogFilters)
       extras: record.extrasCount,
       variant: record.variantName ?? null,
     },
-    dishName: record.dishName ?? i18next.t('common:UNKNOWN'),
+    dishName: record.dishName ?? i18next.t('common.UNKNOWN'),
     status: record.itemState,
   }));
 

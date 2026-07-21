@@ -1,15 +1,7 @@
 import bcrypt from 'bcryptjs';
-import crypto from 'crypto';
 import { ErrorCode } from '@disherio/shared';
 import { UserRepository, RoleRepository } from '../repositories/user.repository';
 import { Restaurant } from '../models/restaurant.model';
-import {
-  createIdentifier,
-  recordFailedAttempt,
-  isLocked,
-  getRemainingLockTime,
-  clearAttempts,
-} from './pin-security.service';
 import { JwtPayload } from '../middlewares/auth';
 import {
   generateAccessToken,
@@ -91,19 +83,6 @@ async function buildAuthResult(
 // dummy so that the response time is roughly the same as a failed login.
 const DUMMY_HASH = '$2a$12$kDQqjLl0tAK8h9xgDxiyzexc/juI9ToaCTc7zMTTmRsFjv0xb7lNW';
 
-/**
- * Deterministic lookup key for PIN login: HMAC-SHA256(pin, PIN_LOOKUP_PEPPER).
- * Indexed on the Staff document so authentication costs one query plus a
- * single bcrypt.compare instead of one compare per staff member. The bcrypt
- * hash remains the verifier; the lookup key only narrows the candidate.
- */
-export function computePinLookup(pin: string): string {
-  return crypto
-    .createHmac('sha256', getEnv().PIN_LOOKUP_PEPPER)
-    .update(pin)
-    .digest('hex');
-}
-
 export async function loginWithUsername(
   username: string,
   password: string,
@@ -137,63 +116,6 @@ export async function loginWithUsername(
   return buildAuthResult(staff, restaurant);
 }
 
-export async function loginWithPin(
-  pin: string,
-  restaurantId: string
-): Promise<AuthResult> {
-  // The lockout identifier is scoped per restaurant, NOT per IP: staff on the
-  // same local network share a public IP (NAT), so per-IP lockout would let a
-  // few failed attempts block the whole venue. Per-IP throttling is already
-  // enforced by the HTTP rate limiter (see middlewares/rateLimit.ts).
-  const identifier = createIdentifier(`restaurant:${restaurantId}`);
-
-  // Check if account is locked before attempting validation
-  if (await isLocked(identifier)) {
-    const retryAfter = await getRemainingLockTime(identifier);
-    const error = new Error(ErrorCode.AUTH_RATE_LIMIT_EXCEEDED);
-    (error as Error & { retryAfter: number }).retryAfter = retryAfter;
-    throw error;
-  }
-
-  const restaurant = await Restaurant.findById(restaurantId);
-  const pinLookup = computePinLookup(pin);
-
-  // Fast path: indexed lookup, exactly one bcrypt.compare per attempt.
-  const candidate = await userRepo.findByPinLookup(restaurantId, pinLookup);
-  if (candidate) {
-    const isPinValid = await bcrypt.compare(pin, candidate.pin_code_hash);
-    if (isPinValid) {
-      await clearAttempts(identifier);
-      return buildAuthResult(candidate, restaurant);
-    }
-    // HMAC match with a failing bcrypt compare means a corrupted record or a
-    // rotated pepper; count it as a failed attempt below.
-  } else {
-    // Legacy path for staff documents created before pin_lookup existed
-    // (also the path after a pepper rotation). A successful login here
-    // re-registers the lookup key so the next attempt uses the fast path.
-    const legacyCandidates = await userRepo.findLegacyPinCandidates(restaurantId);
-    for (const staff of legacyCandidates) {
-      const isPinValid = await bcrypt.compare(pin, staff.pin_code_hash);
-      if (isPinValid) {
-        await userRepo.setPinLookup(staff._id.toString(), pinLookup);
-        await clearAttempts(identifier);
-        return buildAuthResult(staff, restaurant);
-      }
-    }
-    // Equalize timing when nothing can match, so an attacker cannot
-    // distinguish "no candidate" from "wrong PIN" by response time.
-    if (legacyCandidates.length === 0) {
-      await bcrypt.compare(pin, DUMMY_HASH);
-    }
-  }
-
-  // Record failed attempt
-  await recordFailedAttempt(identifier);
-
-  throw new Error(ErrorCode.INVALID_PIN);
-}
-
 /**
  * Re-hydrate a JWT payload from the DB (used during refresh token rotation).
  */
@@ -205,8 +127,4 @@ export async function buildPayloadById(staffId: string): Promise<JwtPayload | nu
 
 export async function hashPassword(password: string): Promise<string> {
   return bcrypt.hash(password, getEnv().BCRYPT_ROUNDS);
-}
-
-export async function hashPin(pin: string): Promise<string> {
-  return bcrypt.hash(pin, getEnv().BCRYPT_ROUNDS);
 }

@@ -104,7 +104,6 @@ describe('StaffService', () => {
         staff_name: 'Nuevo Empleado',
         username: 'nuevo.empleado',
         password: 'password123',
-        pin_code: '9999',
         role_id: 'role1'
       };
       const mockResponse = createMockStaff({
@@ -129,7 +128,6 @@ describe('StaffService', () => {
         staff_name: '',
         username: 'invalid',
         password: '123',
-        pin_code: '99',
         role_id: 'role1'
       };
 
@@ -148,7 +146,6 @@ describe('StaffService', () => {
         staff_name: 'Usuario Duplicado',
         username: 'existing.user',
         password: 'password123',
-        pin_code: '1234',
         role_id: 'role1'
       };
 
@@ -199,11 +196,10 @@ describe('StaffService', () => {
       req.flush(createMockStaff({ _id: staffId, role_id: 'newRoleId' }));
     });
 
-    it('should update password and pin', () => {
+    it('should update password', () => {
       const staffId = '1';
       const updateData: UpdateStaffRequest = {
-        password: 'newPassword123',
-        pin_code: '9876'
+        password: 'newPassword123'
       };
 
       service.updateStaff(staffId, updateData).subscribe(staff => {

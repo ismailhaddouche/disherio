@@ -10,7 +10,7 @@ Without a single source of truth for request shapes and entity types, the backen
 
 Keep public domain schemas and types in the `shared/` package. Backend routes
 consume those schemas directly or through the existing dish and order
-re-exports. Authentication keeps route-specific login and PIN schemas under
+re-exports. Authentication keeps route-specific login schemas under
 `backend/src/schemas/`. Frontend clients import shared contracts for HTTP typing.
 
 ### Zod schemas (backend)
@@ -25,12 +25,6 @@ export const LoginSchema = z.object({
   username: z.string().min(2).max(50),
   password: z.string().min(6),
   restaurant_id: z.string().optional(),
-});
-
-export const PinSchema = z.object({
-  pin_code: z.string().length(4).regex(/^\d{4}$/),
-  restaurant_id: z.string().min(1),
-  username: z.string().min(2).max(50).optional(),
 });
 ```
 

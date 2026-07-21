@@ -1,20 +1,6 @@
-import { applyTax, extractTax, splitAmount } from '../utils/tax';
+import { extractTax, splitAmount } from '../utils/tax';
 
 describe('Tax Utils', () => {
-  describe('applyTax', () => {
-    it('should apply 10% tax correctly', () => {
-      expect(applyTax(100, 10)).toBe(110);
-    });
-
-    it('should apply 21% tax correctly', () => {
-      expect(applyTax(10, 21)).toBe(12.1);
-    });
-
-    it('should return same amount with 0% tax', () => {
-      expect(applyTax(50, 0)).toBe(50);
-    });
-  });
-
   describe('extractTax', () => {
     it('should extract 10% tax from gross amount', () => {
       expect(extractTax(110, 10)).toBe(10);

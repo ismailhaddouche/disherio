@@ -440,7 +440,7 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
       const joinedAt = new Date().toISOString();
       customerInfo.set(socketId, {
         customerId,
-        customerName: customerName || i18next.t('common:CUSTOMER', { defaultValue: 'Customer' }),
+        customerName: customerName || i18next.t('common.CUSTOMER', { defaultValue: 'Customer' }),
         socketId,
         joinedAt,
         sessionToken: session.session_token,
@@ -467,14 +467,14 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
       emitToCustomers(sessionId, 'totem:customer_joined_table', {
         sessionId,
         customerId,
-        customerName: customerName || i18next.t('common:CUSTOMER', { defaultValue: 'Customer' }),
+        customerName: customerName || i18next.t('common.CUSTOMER', { defaultValue: 'Customer' }),
         joinedAt,
       });
 
       // Notify TAS that a customer joined
       io.to(`tas:session:${sessionId}`).emit('tas:customer_joined', {
         sessionId,
-        customerName: customerName || i18next.t('common:CUSTOMER', { defaultValue: 'Customer' }),
+        customerName: customerName || i18next.t('common.CUSTOMER', { defaultValue: 'Customer' }),
         customerId,
         totalCustomersAtTable: sessionCustomers.get(sessionId)?.size || 1,
         timestamp: joinedAt,
@@ -883,13 +883,6 @@ export function notifyCustomerFromWaiter(sessionId: string, message: string, fro
     type,
     timestamp: new Date().toISOString(),
   });
-}
-
-/**
- * Get active customer count for a session
- */
-export function getActiveCustomerCount(sessionId: string): number {
-  return sessionCustomers.get(sessionId)?.size || 0;
 }
 
 export { customerSessions, sessionCustomers };

@@ -72,21 +72,6 @@ export const envSchema = z.object({
       message: 'BCRYPT_ROUNDS must be between 10 and 15',
     }),
 
-  // Server-side pepper for the deterministic PIN lookup key (HMAC-SHA256).
-  // The lookup key lets PIN login run an indexed O(1) query instead of one
-  // bcrypt.compare per staff member. Rotating it invalidates stored lookup
-  // keys; affected staff fall back to the legacy scan once and re-register
-  // on their next successful PIN login.
-  PIN_LOOKUP_PEPPER: z
-    .string()
-    .min(1, 'PIN_LOOKUP_PEPPER cannot be empty')
-    .refine((val) => val !== DEFAULT_JWT_SECRET, {
-      message: `PIN_LOOKUP_PEPPER cannot be the default value '${DEFAULT_JWT_SECRET}'`,
-    })
-    .refine((val) => val.length >= 32, {
-      message: 'PIN_LOOKUP_PEPPER must be at least 32 characters long',
-    }),
-
   // Internal token for health/metrics endpoints
   INTERNAL_API_TOKEN: z.string().optional(),
 
@@ -151,9 +136,4 @@ export function getEnv(): EnvConfig {
     _validatedEnv = validateEnv();
   }
   return _validatedEnv;
-}
-
-// Re-validate function for testing purposes
-export function __resetEnv(): void {
-  _validatedEnv = null;
 }

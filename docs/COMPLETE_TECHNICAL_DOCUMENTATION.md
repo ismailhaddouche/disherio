@@ -239,8 +239,6 @@ The visual contract is:
 - Access tokens carry a staff authorization version that is checked against
   MongoDB on each authenticated HTTP request and Socket.IO handshake. Security-
   relevant staff changes invalidate existing access tokens immediately.
-- Four-digit staff PIN lookup keys are unique per restaurant. Staff create and
-  update operations also check legacy records before accepting a PIN.
 - Refresh-token lifecycle events are emitted as structured Pino logs and
   consumed from the log stream.
 - Concurrent frontend refresh attempts are coalesced into one request.
@@ -346,7 +344,7 @@ The production security baseline includes:
 - Non-root backend containers.
 - Internal-only database and Redis networks.
 
-Secrets, tokens, passwords, PINs, cookies, connection strings, and private keys
+Secrets, tokens, passwords, cookies, connection strings, and private keys
 must never appear in logs, source control, metrics labels, or error responses.
 Request logs and HTTP metrics use bounded Express route templates rather than
 raw URLs or query values.

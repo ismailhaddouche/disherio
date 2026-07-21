@@ -25,9 +25,3 @@ export const RestaurantSchema = z.object({
   max_orders_per_session: z.number().int().min(0).default(0),
 });
 
-export const PrinterSchema = z.object({
-  restaurant_id: z.string(),
-  printer_name: z.string().min(1),
-  printer_ip: z.string(),
-  printer_connection: z.enum(['TCP', 'BLUETOOTH', 'USB']),
-});

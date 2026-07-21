@@ -136,19 +136,6 @@ export async function initSocketRedisAdapter(): Promise<{
 }
 
 /**
- * Get Socket.IO Redis adapter clients
- */
-export function getSocketRedisClients(): {
-  pubClient: DisherRedisClient;
-  subClient: DisherRedisClient;
-} {
-  if (!pubClient || !subClient) {
-    throw new Error('Socket Redis clients not initialized. Call initSocketRedisAdapter() first.');
-  }
-  return { pubClient, subClient };
-}
-
-/**
  * Close all Redis connections
  */
 export async function closeRedisConnections(): Promise<void> {

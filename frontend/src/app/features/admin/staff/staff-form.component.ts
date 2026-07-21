@@ -90,15 +90,6 @@ import { NotificationService } from '../../../core/services/notification.service
             <mat-error>{{ 'staff.password_min' | translate }}</mat-error>
           }
         </mat-form-field>
-
-        <mat-form-field appearance="outline" class="disher-form-field">
-          <mat-label>{{ 'auth.login.pin' | translate }} {{ isEditMode ? ('staff.password_keep' | translate) : '' }}</mat-label>
-          <input matInput type="password" formControlName="pin_code" [placeholder]="i18n.translate('staff.pin_placeholder')" maxlength="4" [required]="!isEditMode" />
-          @if (staffForm.get('pin_code')?.invalid && staffForm.get('pin_code')?.touched) {
-            <mat-error>{{ 'staff.pin_invalid' | translate }}</mat-error>
-          }
-          <mat-hint>{{ 'staff.pin_hint' | translate }}</mat-hint>
-        </mat-form-field>
       </form>
     </div>
   `,
@@ -152,22 +143,18 @@ export class StaffFormComponent implements OnInit, OnDestroy {
   }
 
   initForm(): void {
-    // Rules mirror shared/schemas/staff.schema.ts. In edit mode password/PIN
-    // are optional (empty = keep current) but must still be valid when set;
+    // Rules mirror shared/schemas/staff.schema.ts. In edit mode password
+    // is optional (empty = keep current) but must still be valid when set;
     // Angular validators skip empty values, so only `required` is dropped.
     const passwordValidators = this.isEditMode
       ? [Validators.minLength(8), Validators.maxLength(128)]
       : [Validators.required, Validators.minLength(8), Validators.maxLength(128)];
-    const pinValidators = this.isEditMode
-      ? [Validators.pattern('^\\d{4}$')]
-      : [Validators.required, Validators.pattern('^\\d{4}$')];
 
     this.staffForm = this.fb.group({
       staff_name: ['', [Validators.required, Validators.minLength(2)]],
       username: ['', [Validators.required, Validators.minLength(3), Validators.pattern('^[a-z0-9.]+$')]],
       role_id: ['', Validators.required],
-      password: ['', passwordValidators],
-      pin_code: ['', pinValidators]
+      password: ['', passwordValidators]
     });
   }
 
@@ -226,7 +213,6 @@ export class StaffFormComponent implements OnInit, OnDestroy {
 
     if (this.isEditMode) {
       if (!formData.password) delete formData.password;
-      if (!formData.pin_code) delete formData.pin_code;
     }
 
     if (this.isEditMode && this.staffId) {

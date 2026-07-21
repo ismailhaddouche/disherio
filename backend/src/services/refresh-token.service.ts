@@ -69,19 +69,6 @@ export function generateRefreshTokenValue(): string {
 }
 
 /**
- * Verify a JWT access token. Returns decoded payload or null.
- */
-export function verifyAccessToken(token: string): JwtPayload | null {
-  try {
-    const { JWT_SECRET } = env();
-    return jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] }) as JwtPayload;
-  } catch (err) {
-    logger.debug({ err }, 'Access token verification failed');
-    return null;
-  }
-}
-
-/**
  * Decode a JWT access token without verifying (used for blocklist TTL calc).
  */
 function decodeAccessTokenExp(token: string): number | null {
@@ -265,35 +252,6 @@ export async function ensureRefreshTokenLookupIndex(): Promise<number> {
   } while (cursor !== '0');
 
   return indexed;
-}
-
-/**
- * Revoke a specific refresh token.
- */
-export async function revokeRefreshToken(userId: string, token: string): Promise<void> {
-  const redisClient = await getRedis();
-  const tokenHash = hashToken(token);
-  const key = `${REFRESH_TOKEN_PREFIX}${userId}:${tokenHash}`;
-
-  // Read metadata BEFORE deleting so we can clean up the family set.
-  const raw = await redisClient.get(key);
-  let family: string | undefined;
-  if (raw) {
-    try {
-      const metadata = JSON.parse(raw) as RefreshTokenMetadata;
-      family = metadata.family;
-    } catch {
-      // ignore parse errors
-    }
-  }
-
-  await redisClient.del([key, `${REFRESH_LOOKUP_PREFIX}${tokenHash}`]);
-
-  // Remove from family set to keep audit tidy
-  if (family) {
-    const familyKey = `${FAMILY_PREFIX}${family}`;
-    await redisClient.sRem(familyKey, tokenHash);
-  }
 }
 
 /**
@@ -504,11 +462,4 @@ function logRefreshAuditEvent(
   event: RefreshAuditEvent
 ): void {
   logger.info({ userId, family, event }, 'Refresh token audit event');
-}
-
-/**
- * Expose a deterministic Redis client for tests/migration scripts.
- */
-export async function getAuthRedisClient(): Promise<DisherRedisClient> {
-  return getRedis();
 }

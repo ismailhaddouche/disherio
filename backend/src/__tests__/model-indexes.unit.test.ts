@@ -1,6 +1,5 @@
 import { Payment } from '../models/order.model';
 import { Totem } from '../models/totem.model';
-import { Staff } from '../models/staff.model';
 
 type SchemaIndex = [Record<string, unknown>, Record<string, unknown>];
 
@@ -35,16 +34,6 @@ describe('model indexes', () => {
     expect(Payment.schema.indexes()).toContainEqual([
       { restaurant_id: 1, payment_date: -1 },
       expect.any(Object),
-    ]);
-  });
-
-  it('defines a unique partial PIN lookup index per restaurant', () => {
-    expect(Staff.schema.indexes()).toContainEqual([
-      { restaurant_id: 1, pin_lookup: 1 },
-      expect.objectContaining({
-        unique: true,
-        partialFilterExpression: { pin_lookup: { $type: 'string' } },
-      }),
     ]);
   });
 });

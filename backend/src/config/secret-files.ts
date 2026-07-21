@@ -4,10 +4,8 @@ const SECRET_NAMES = [
   'MONGODB_URI',
   'JWT_SECRET',
   'JWT_REFRESH_SECRET',
-  'PIN_LOOKUP_PEPPER',
   'REDIS_PASSWORD',
   'ADMIN_PASSWORD',
-  'ADMIN_PIN',
 ] as const;
 
 export function loadSecretFiles(): void {

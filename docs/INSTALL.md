@@ -45,7 +45,7 @@ sudo ./scripts/install.sh
 | 0 | Pre-flight | Installs `curl`, `openssl`, etc. if missing; creates log directory; detects distro via `/etc/os-release`; detects local + public IP |
 | 1 | Configuration | Deployment type, domain/IP, language, restaurant name, currency, and optional example data |
 | 2 | Docker setup | Verifies/installs Docker Engine + Compose v2 (distro-specific repo) |
-| 3 | Secret generation | JWT (64 chars), MongoDB root + app passwords, Redis password, admin password (20 chars), admin PIN (4 digits), and the MongoDB keyfile; an existing installation keeps its infrastructure credentials when its data volumes are retained |
+| 3 | Secret generation | JWT (64 chars), MongoDB root + app passwords, Redis password, admin password (20 chars), and the MongoDB keyfile; an existing installation keeps its infrastructure credentials when its data volumes are retained |
 | 4 | Configuration files | Writes `.env` (chmod 600) with quoted values and generates the Caddy routes for uploads, API, Socket.IO, and the frontend |
 | 5 | Port verification | Checks that ports 80/443 are available before building |
 | 6 | Image build | `docker compose pull` + `docker compose build` (backend + frontend) |
@@ -61,7 +61,7 @@ not published by Caddy or scraped by the default installation.
 The `seed` service (`dist/seeders/index.js`) creates:
 - **1 restaurant** with the user-specified name, currency, tax rate, language, and theme
 - **4 roles**: Admin (`ADMIN`), KTS (`KTS`), POS (`POS`), TAS (`TAS`)
-- **1 admin user**: username `admin`, with auto-generated password and PIN (bcrypt-hashed with cost 12)
+- **1 admin user**: username `admin`, with auto-generated password (bcrypt-hashed with cost 12)
 
 The seed is **idempotent**: re-running it updates the existing restaurant and admin credentials rather than duplicating.
 
@@ -69,7 +69,7 @@ The seed is **idempotent**: re-running it updates the existing restaurant and ad
 
 At the end of the installation, the script displays:
 - Access URL (`https://domain` or a trusted-LAN `http://IP`)
-- Admin credentials (username, password, PIN)
+- Admin credentials (username, password)
 - Quick-access links (`/admin`, `/pos`, `/kds`, `/tas`)
 - Credentials file location (`.credentials`, chmod 600)
 - Log file location (`/var/log/disherio.log`)
@@ -116,7 +116,7 @@ For local development without Docker:
    - `JWT_REFRESH_SECRET` — at least 32 characters
    - `REDIS_URL` — `redis://localhost:6379`
    - `FRONTEND_URL` — `http://localhost:4200`
-   - `ADMIN_PASSWORD`, `ADMIN_PIN` — required for seed
+   - `ADMIN_PASSWORD` — required for seed
 
 5. **Run services**:
    ```bash

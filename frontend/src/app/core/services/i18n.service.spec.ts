@@ -236,7 +236,6 @@ describe('I18nService', () => {
       expect(service.translate('auth.login')).toBe('Iniciar sesión');
       expect(service.translate('auth.login.username')).toBe('Usuario');
       expect(service.translate('auth.login.password')).toBe('Contraseña');
-      expect(service.translate('auth.login.pin')).toBe('PIN');
     });
 
     it('should have dashboard translations', () => {

@@ -109,18 +109,6 @@ gen_secret() {
     echo "${s:0:$len}"
 }
 
-# Genera un PIN de 4 dígitos con un CSPRNG (openssl o /dev/urandom)
-gen_pin() {
-    local pin=""
-    if command -v openssl &> /dev/null; then
-        pin=$(openssl rand -base64 8 2>/dev/null | tr -dc '0-9' | head -c 4 || true)
-    fi
-    while [ ${#pin} -lt 4 ]; do
-        pin="${pin}$(tr -dc '0-9' < /dev/urandom 2>/dev/null | head -c "$((4 - ${#pin}))")"
-    done
-    echo "${pin:0:4}"
-}
-
 # Genera todos los secretos necesarios una vez (idempotente si ya están en .env)
 ensure_secrets() {
     MONGO_ROOT_PASS="${MONGO_ROOT_PASS:-$(gen_secret 32)}"
@@ -128,9 +116,7 @@ ensure_secrets() {
     REDIS_PASSWORD="${REDIS_PASSWORD:-$(gen_secret 24)}"
     JWT_SECRET="${JWT_SECRET:-$(gen_secret 64)}"
     JWT_REFRESH_SECRET="${JWT_REFRESH_SECRET:-$(gen_secret 64)}"
-    PIN_LOOKUP_PEPPER="${PIN_LOOKUP_PEPPER:-$(gen_secret 64)}"
     ADMIN_PASSWORD="${ADMIN_PASSWORD:-$(gen_secret 20)}"
-    ADMIN_PIN="${ADMIN_PIN:-$(gen_pin)}"
 }
 
 write_docker_secret_files() {
@@ -143,9 +129,7 @@ write_docker_secret_files() {
     printf '%s' "$REDIS_PASSWORD" > "$secret_dir/redis_password"
     printf '%s' "$JWT_SECRET" > "$secret_dir/jwt_secret"
     printf '%s' "$JWT_REFRESH_SECRET" > "$secret_dir/jwt_refresh_secret"
-    printf '%s' "$PIN_LOOKUP_PEPPER" > "$secret_dir/pin_lookup_pepper"
     printf '%s' "$ADMIN_PASSWORD" > "$secret_dir/admin_password"
-    printf '%s' "$ADMIN_PIN" > "$secret_dir/admin_pin"
     chmod 600 "$secret_dir"/*
 }
 
@@ -255,10 +239,8 @@ JWT_SECRET=${JWT_SECRET}
 JWT_EXPIRES=15m
 JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
 JWT_REFRESH_EXPIRES=7d
-PIN_LOOKUP_PEPPER=${PIN_LOOKUP_PEPPER}
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=${ADMIN_PASSWORD}
-ADMIN_PIN=${ADMIN_PIN}
 
 # Base de datos (local con autenticación)
 MONGO_ROOT_USER=admin
@@ -325,10 +307,8 @@ JWT_SECRET=${JWT_SECRET}
 JWT_EXPIRES=15m
 JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
 JWT_REFRESH_EXPIRES=7d
-PIN_LOOKUP_PEPPER=${PIN_LOOKUP_PEPPER}
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=${ADMIN_PASSWORD}
-ADMIN_PIN=${ADMIN_PIN}
 
 # Base de datos (con autenticación)
 MONGO_ROOT_USER=admin
@@ -467,10 +447,8 @@ JWT_SECRET=${JWT_SECRET}
 JWT_EXPIRES=15m
 JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
 JWT_REFRESH_EXPIRES=7d
-PIN_LOOKUP_PEPPER=${PIN_LOOKUP_PEPPER}
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=${ADMIN_PASSWORD}
-ADMIN_PIN=${ADMIN_PIN}
 
 # Base de datos (con autenticación)
 MONGO_ROOT_USER=admin
@@ -551,10 +529,8 @@ JWT_SECRET=${JWT_SECRET}
 JWT_EXPIRES=15m
 JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
 JWT_REFRESH_EXPIRES=7d
-PIN_LOOKUP_PEPPER=${PIN_LOOKUP_PEPPER}
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=${ADMIN_PASSWORD}
-ADMIN_PIN=${ADMIN_PIN}
 
 # Base de datos (con autenticación)
 MONGO_ROOT_USER=admin
@@ -645,10 +621,8 @@ JWT_SECRET=${JWT_SECRET}
 JWT_EXPIRES=15m
 JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
 JWT_REFRESH_EXPIRES=7d
-PIN_LOOKUP_PEPPER=${PIN_LOOKUP_PEPPER}
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=${ADMIN_PASSWORD}
-ADMIN_PIN=${ADMIN_PIN}
 
 # Base de datos (con autenticación)
 MONGO_ROOT_USER=admin
@@ -856,9 +830,7 @@ main() {
         REDIS_PASSWORD=$(grep -E "^REDIS_PASSWORD=" "$ENV_FILE" 2>/dev/null | cut -d'=' -f2- | tr -d '"' || true)
         JWT_SECRET=$(grep -E "^JWT_SECRET=" "$ENV_FILE" 2>/dev/null | cut -d'=' -f2- | tr -d '"' || true)
         JWT_REFRESH_SECRET=$(grep -E "^JWT_REFRESH_SECRET=" "$ENV_FILE" 2>/dev/null | cut -d'=' -f2- | tr -d '"' || true)
-        PIN_LOOKUP_PEPPER=$(grep -E "^PIN_LOOKUP_PEPPER=" "$ENV_FILE" 2>/dev/null | cut -d'=' -f2- | tr -d '"' || true)
         ADMIN_PASSWORD=$(grep -E "^ADMIN_PASSWORD=" "$ENV_FILE" 2>/dev/null | cut -d'=' -f2- | tr -d '"' || true)
-        ADMIN_PIN=$(grep -E "^ADMIN_PIN=" "$ENV_FILE" 2>/dev/null | cut -d'=' -f2- | tr -d '"' || true)
     fi
     ensure_secrets
 

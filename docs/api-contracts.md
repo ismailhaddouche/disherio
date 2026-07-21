@@ -20,7 +20,7 @@ requests per minute, and QR probing allows 10 attempts per 15 minutes.
 
 | Area | Methods and paths |
 |------|-------------------|
-| Authentication | `POST /auth/login`, `POST /auth/pin`, `POST /auth/refresh`, `POST /auth/logout` |
+| Authentication | `POST /auth/login`, `POST /auth/refresh`, `POST /auth/logout` |
 | Dishes | `GET /dishes`, `GET /dishes/:id`, `POST /dishes`, `PATCH /dishes/:id`, `DELETE /dishes/:id`, `PATCH /dishes/:id/toggle` |
 | Categories | `GET /dishes/categories`, `GET /dishes/categories/:id`, `POST /dishes/categories`, `PATCH /dishes/categories/:id`, `DELETE /dishes/categories/:id` |
 | Orders | `GET /orders/kitchen`, `GET /orders/service-items`, `GET /orders/session/:sessionId`, `POST /orders`, `POST /orders/items`, `POST /orders/items/batch`, `PATCH /orders/items/:id/state`, `PATCH /orders/items/:id/assign`, `DELETE /orders/items/:id` |
@@ -85,27 +85,6 @@ object without either raw token.
 | 400 | Validation error (missing fields) |
 | 401 | Invalid credentials |
 | 429 | Too many attempts |
-
----
-
-### POST /auth/pin
-
-Login with a 4-digit PIN code.
-
-**Request**
-
-```json
-{
-  "pin_code": "1234",
-  "restaurant_id": "64b..."
-}
-```
-
-**Response 200** — same as `/auth/login`.
-
-The PIN must identify exactly one staff member in the restaurant. Staff create
-and update operations reject a duplicate restaurant/PIN combination with
-`DUPLICATE_RESOURCE` and `details.field = "pin_code"`.
 
 ---
 
@@ -728,14 +707,13 @@ Create a staff member.
   "staff_name": "Maria",
   "username": "maria",
   "password": "secure-password",
-  "pin_code": "5678",
   "role_id": "64a..."
 }
 ```
 
 **Response 201** — staff object (password fields omitted)
 
-`username` and `pin_code` are unique within the restaurant.
+`username` is unique within the restaurant.
 
 ---
 

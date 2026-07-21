@@ -147,10 +147,6 @@ export async function getTotemByQR(qrToken: string, restaurantId?: string): Prom
   return totemRepo.findByQRScoped(qrToken, restaurantId);
 }
 
-export async function getTotemById(totemId: string): Promise<ITotem | null> {
-  return totemRepo.findById(totemId);
-}
-
 /**
  * Get a totem by id and assert it belongs to the given restaurant.
  * Throws NOT_FOUND if missing, FORBIDDEN if not in the restaurant.

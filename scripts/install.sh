@@ -60,7 +60,6 @@ HTTPS_PORT=443
 BACKEND_PORT=3000
 ADMIN_USER="admin"
 ADMIN_PASS=""
-ADMIN_PIN=""
 MONGO_ROOT_USER="admin"
 MONGO_ROOT_PASS=""
 MONGO_APP_USER="disherio_app"
@@ -173,23 +172,10 @@ _rand_alnum() {
 }
 gen_secret() { _rand_alnum "$1"; }
 gen_pass()   { _rand_alnum "$1"; }
-gen_pin() {
-  local pin=""
-  if command -v openssl &>/dev/null; then
-    pin=$(openssl rand -base64 8 2>/dev/null | tr -dc '0-9' | head -c 4 || true)
-  fi
-  while [[ ${#pin} -lt 4 ]]; do
-    pin="${pin}$(tr -dc '0-9' < /dev/urandom 2>/dev/null | head -c "$((4 - ${#pin}))")"
-  done
-  echo "${pin:0:4}"
-}
-
 generate_all_secrets() {
   JWT_SECRET="${JWT_SECRET:-$(gen_secret 64)}"
   JWT_REFRESH_SECRET="${JWT_REFRESH_SECRET:-$(gen_secret 64)}"
-  PIN_LOOKUP_PEPPER="${PIN_LOOKUP_PEPPER:-$(gen_secret 64)}"
   ADMIN_PASS="${ADMIN_PASS:-$(gen_pass 20)}"
-  ADMIN_PIN="${ADMIN_PIN:-$(gen_pin)}"
   MONGO_ROOT_PASS="${MONGO_ROOT_PASS:-$(gen_secret 32)}"
   MONGO_APP_PASS="${MONGO_APP_PASS:-$(gen_secret 32)}"
   REDIS_PASSWORD="${REDIS_PASSWORD:-$(gen_secret 24)}"
@@ -203,10 +189,8 @@ load_existing_secrets() {
   REDIS_PASSWORD=$(env_get "REDIS_PASSWORD" "")
   JWT_SECRET=$(env_get "JWT_SECRET" "")
   JWT_REFRESH_SECRET=$(env_get "JWT_REFRESH_SECRET" "")
-  PIN_LOOKUP_PEPPER=$(env_get "PIN_LOOKUP_PEPPER" "")
   ADMIN_USER=$(env_get "ADMIN_USERNAME" "$ADMIN_USER")
   ADMIN_PASS=$(env_get "ADMIN_PASSWORD" "")
-  ADMIN_PIN=$(env_get "ADMIN_PIN" "")
 }
 
 generate_caddy_config() {
@@ -263,9 +247,7 @@ write_docker_secret_files() {
   printf '%s' "$(env_get REDIS_PASSWORD '')" > "$secret_dir/redis_password"
   printf '%s' "$(env_get JWT_SECRET '')" > "$secret_dir/jwt_secret"
   printf '%s' "$(env_get JWT_REFRESH_SECRET '')" > "$secret_dir/jwt_refresh_secret"
-  printf '%s' "$(env_get PIN_LOOKUP_PEPPER '')" > "$secret_dir/pin_lookup_pepper"
   printf '%s' "$(env_get ADMIN_PASSWORD '')" > "$secret_dir/admin_password"
-  printf '%s' "$(env_get ADMIN_PIN '')" > "$secret_dir/admin_pin"
   chmod 600 "$secret_dir"/*
 }
 
@@ -479,7 +461,7 @@ cmd_install() {
     echo ""
     echo "  ¿Instalar datos de ejemplo?"
     echo "  Incluye 2 categorías (Entrantes, Bebidas), 8 platos y usuarios demo"
-    echo "  (cocinero/cocinero, camarero/camarero, cajero/cajero, PIN: 1111)"
+    echo "  (cocinero/cocinero, camarero/camarero, cajero/cajero)"
     local seed_choice
     read_or_default "  ¿Instalar? (s/N): " "n" seed_choice
     if [[ "${seed_choice}" =~ ^[sSyY] ]]; then
@@ -553,7 +535,6 @@ JWT_SECRET="${JWT_SECRET}"
 JWT_EXPIRES=15m
 JWT_REFRESH_SECRET="${JWT_REFRESH_SECRET}"
 JWT_REFRESH_EXPIRES=7d
-PIN_LOOKUP_PEPPER="${PIN_LOOKUP_PEPPER}"
 FRONTEND_URL="${ACCESS_URL}"
 LOG_LEVEL=info
 DEFAULT_LANGUAGE=${DEFAULT_LANGUAGE}
@@ -563,7 +544,6 @@ DEFAULT_CURRENCY=${DEFAULT_CURRENCY}
 RESTAURANT_NAME="${RESTAURANT_NAME}"
 ADMIN_USERNAME=${ADMIN_USER}
 ADMIN_PASSWORD="${ADMIN_PASS}"
-ADMIN_PIN="${ADMIN_PIN}"
 TRUST_PROXY=true
 REDIS_URL=redis://redis:6379
 REDIS_PASSWORD="${REDIS_PASSWORD}"
@@ -718,7 +698,6 @@ print_summary() {
 URL de acceso:    ${ACCESS_URL}
 Usuario admin:    ${ADMIN_USER}
 Contraseña admin: ${ADMIN_PASS}
-PIN admin:        ${ADMIN_PIN}
 Restaurante:      ${RESTAURANT_NAME}
 Idioma:           ${DEFAULT_LANGUAGE}
 Moneda:           ${DEFAULT_CURRENCY}
@@ -728,9 +707,9 @@ EOF
   if [[ "$SEED_EXAMPLES" =~ ^[yYsS] ]]; then
     cat >> "$CREDENTIALS_FILE" <<EOF
 Usuarios demo:
-  Cocinero:  cocinero / cocinero (PIN: 1111)
-  Camarero:  camarero / camarero (PIN: 1111)
-  Cajero:    cajero / cajero     (PIN: 1111)
+  Cocinero:  cocinero / cocinero
+  Camarero:  camarero / camarero
+  Cajero:    cajero / cajero
 
 EOF
   fi
@@ -758,15 +737,14 @@ EOF
   echo -e "${GREEN}║${NC}                                                          ${GREEN}║${NC}"
   echo -e "${GREEN}║${NC}   Usuario:  ${BOLD}${ADMIN_USER}${NC}"
   echo -e "${GREEN}║${NC}   Password: ${BOLD}${ADMIN_PASS}${NC}"
-  echo -e "${GREEN}║${NC}   PIN:      ${BOLD}${ADMIN_PIN}${NC}"
   echo -e "${GREEN}║${NC}                                                          ${GREEN}║${NC}"
   if [[ "$SEED_EXAMPLES" =~ ^[yYsS] ]]; then
     echo -e "${GREEN}╠══════════════════════════════════════════════════════════╣${NC}"
     echo -e "${GREEN}║${NC}         ${YELLOW}USUARIOS DEMO${NC}                                    ${GREEN}║${NC}"
     echo -e "${GREEN}║${NC}                                                          ${GREEN}║${NC}"
-    echo -e "${GREEN}║${NC}   Cocinero:  ${BOLD}cocinero${NC} / ${BOLD}cocinero${NC} (PIN: ${BOLD}1111${NC})   ${GREEN}║${NC}"
-    echo -e "${GREEN}║${NC}   Camarero:  ${BOLD}camarero${NC} / ${BOLD}camarero${NC} (PIN: ${BOLD}1111${NC})   ${GREEN}║${NC}"
-    echo -e "${GREEN}║${NC}   Cajero:    ${BOLD}cajero${NC} / ${BOLD}cajero${NC}   (PIN: ${BOLD}1111${NC})   ${GREEN}║${NC}"
+    echo -e "${GREEN}║${NC}   Cocinero:  ${BOLD}cocinero${NC} / ${BOLD}cocinero${NC}                 ${GREEN}║${NC}"
+    echo -e "${GREEN}║${NC}   Camarero:  ${BOLD}camarero${NC} / ${BOLD}camarero${NC}                 ${GREEN}║${NC}"
+    echo -e "${GREEN}║${NC}   Cajero:    ${BOLD}cajero${NC} / ${BOLD}cajero${NC}                     ${GREEN}║${NC}"
     echo -e "${GREEN}║${NC}                                                          ${GREEN}║${NC}"
   fi
   echo -e "${GREEN}╠══════════════════════════════════════════════════════════╣${NC}"
@@ -844,7 +822,7 @@ cmd_status() {
     echo ""
     echo -e "  ${BOLD}CREDENCIALES${NC}"
     echo -e "  ${BLUE}$(printf '─%.0s' {1..55})${NC}"
-    grep -E "^(Usuario|Contraseña|PIN)" "$CREDENTIALS_FILE" 2>/dev/null || echo "  (ver .credentials)"
+    grep -E "^(Usuario|Contraseña)" "$CREDENTIALS_FILE" 2>/dev/null || echo "  (ver .credentials)"
   fi
 
   echo ""

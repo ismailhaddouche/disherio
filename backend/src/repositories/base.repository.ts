@@ -28,11 +28,6 @@ export function validateObjectIdOptional(
   }
 }
 
-export function toObjectId(id: string): Types.ObjectId {
-  validateObjectId(id);
-  return new Types.ObjectId(id);
-}
-
 /**
  * Converts Mongoose errors to appropriate HTTP errors. The AppError message
  * must stay a bare ErrorCode: the global error handler only maps messages

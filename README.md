@@ -202,7 +202,7 @@ Docker and Docker Compose v2 are **auto-installed** by `install.sh` if missing.
 ### Credentials
 
 After installation, credentials are saved to `.credentials` (chmod 600):
-- Access URL, admin username, admin password, admin PIN
+- Access URL, admin username, admin password
 - Restaurant name, language, currency
 
 MongoDB, Redis, and JWT secrets are retained in `.env` for protected host-side

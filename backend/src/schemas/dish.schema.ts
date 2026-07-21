@@ -8,8 +8,4 @@ export {
   ExtraSchema,
   CategorySchema,
   PriceValidationSchema,
-  CreateDishInput,
-  UpdateDishInput,
-  VariantInput,
-  ExtraInput,
 } from '@disherio/shared';

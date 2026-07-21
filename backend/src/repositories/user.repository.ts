@@ -12,7 +12,7 @@ export class UserRepository extends BaseRepository<IStaff> {
   async findByUsername(username: string): Promise<IStaff | null> {
     return this.model
       .findOne({ username: username.toLowerCase() })
-      .select('+password_hash +pin_code_hash +auth_version')
+      .select('+password_hash +auth_version')
       .exec();
   }
 
@@ -27,7 +27,7 @@ export class UserRepository extends BaseRepository<IStaff> {
         username: username.toLowerCase(),
         restaurant_id: new Types.ObjectId(restaurantId)
       })
-      .select('+password_hash +pin_code_hash +auth_version')
+      .select('+password_hash +auth_version')
       .exec();
   }
 
@@ -35,64 +35,8 @@ export class UserRepository extends BaseRepository<IStaff> {
     validateObjectId(restaurantId, 'restaurant_id');
     return this.model
       .find({ restaurant_id: new Types.ObjectId(restaurantId) })
-      .select('+password_hash +pin_code_hash +auth_version')
+      .select('+password_hash +auth_version')
       .exec();
-  }
-
-  /** O(1) PIN login lookup for the restaurant's unique PIN identity. */
-  async findByPinLookup(restaurantId: string, pinLookup: string): Promise<IStaff | null> {
-    validateObjectId(restaurantId, 'restaurant_id');
-    return this.model
-      .findOne({ restaurant_id: new Types.ObjectId(restaurantId), pin_lookup: pinLookup })
-      .populate('role_id')
-      .select('+pin_code_hash +auth_version')
-      .lean()
-      .exec();
-  }
-
-  /**
-   * Staff documents not yet migrated to pin_lookup. After full migration
-   * this query returns empty using the {restaurant_id, pin_lookup} index.
-   */
-  async findLegacyPinCandidates(restaurantId: string): Promise<IStaff[]> {
-    validateObjectId(restaurantId, 'restaurant_id');
-    return this.model
-      .find({ restaurant_id: new Types.ObjectId(restaurantId), pin_lookup: { $exists: false } })
-      .populate('role_id')
-      .select('+pin_code_hash +auth_version')
-      .lean()
-      .exec();
-  }
-
-  /**
-   * Persist the deterministic PIN lookup key for a migrated staff member.
-   */
-  async setPinLookup(staffId: string, pinLookup: string): Promise<void> {
-    validateObjectId(staffId, 'staff_id');
-    await this.model
-      .updateOne({ _id: new Types.ObjectId(staffId) }, { $set: { pin_lookup: pinLookup } })
-      .exec();
-  }
-
-  async existsByPinLookup(
-    restaurantId: string,
-    pinLookup: string,
-    excludeStaffId?: string
-  ): Promise<boolean> {
-    validateObjectId(restaurantId, 'restaurant_id');
-    const query: {
-      restaurant_id: Types.ObjectId;
-      pin_lookup: string;
-      _id?: { $ne: Types.ObjectId };
-    } = {
-      restaurant_id: new Types.ObjectId(restaurantId),
-      pin_lookup: pinLookup,
-    };
-    if (excludeStaffId) {
-      validateObjectId(excludeStaffId, 'staff_id');
-      query._id = { $ne: new Types.ObjectId(excludeStaffId) };
-    }
-    return (await this.model.exists(query)) !== null;
   }
 
   async findByIdWithRole(id: string): Promise<IStaff | null> {
@@ -106,8 +50,6 @@ export class UserRepository extends BaseRepository<IStaff> {
       role_id: string;
       username: string;
       password_hash: string;
-      pin_code_hash: string;
-      pin_lookup?: string;
     }
   ): Promise<IStaff> {
     validateObjectId(data.restaurant_id, 'restaurant_id');
@@ -161,7 +103,7 @@ export class UserRepository extends BaseRepository<IStaff> {
     return this.model
       .find({ restaurant_id: new Types.ObjectId(restaurantId) })
       .populate('role_id', 'role_name permissions')
-      .select('-password_hash -pin_code_hash')
+      .select('-password_hash')
       .skip(skip)
       .limit(limit)
       .lean()
@@ -180,7 +122,7 @@ export class UserRepository extends BaseRepository<IStaff> {
         restaurant_id: new Types.ObjectId(restaurantId),
       })
       .populate('role_id', 'role_name permissions')
-      .select('-password_hash -pin_code_hash')
+      .select('-password_hash')
       .lean()
       .exec();
   }
@@ -237,7 +179,7 @@ export class UserRepository extends BaseRepository<IStaff> {
     return this.model
       .findById(id)
       .populate('role_id', 'role_name permissions')
-      .select('-password_hash -pin_code_hash')
+      .select('-password_hash')
       .lean()
       .exec();
   }

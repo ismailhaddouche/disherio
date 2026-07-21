@@ -4,7 +4,6 @@ const staffDocument = {
   staff_name: 'Old Name',
   role_id: '507f1f77bcf86cd799439014',
   password_hash: 'old-password',
-  pin_code_hash: 'old-pin',
   auth_version: 0,
   save: jest.fn(),
 };
@@ -24,8 +23,6 @@ jest.mock('../repositories/user.repository', () => ({
 }));
 jest.mock('../services/auth.service', () => ({
   hashPassword: jest.fn(async () => 'new-password'),
-  hashPin: jest.fn(async () => 'new-pin'),
-  computePinLookup: jest.fn(() => 'new-pin-lookup'),
 }));
 jest.mock('../services/refresh-token.service', () => ({ revokeAllUserRefreshTokens }));
 jest.mock('../services/socket-session.service', () => ({ disconnectStaffSockets }));

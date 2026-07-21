@@ -2,7 +2,6 @@
   "errors": {
     "INVALID_CREDENTIALS": "Credenciales incorrectas",
     "AMBIGUOUS_USERNAME": "El usuario existe en múltiples restaurantes. Especifique el restaurante.",
-    "INVALID_PIN": "PIN incorrecto",
     "UNAUTHORIZED": "No autorizado",
     "AUTHENTICATION_REQUIRED": "Autenticación requerida",
     "FORBIDDEN": "Acceso denegado",
@@ -15,111 +14,63 @@
     "INVALID_ID_FORMAT": "Formato de identificador inválido",
     "VALIDATION_ERROR": "Error de validación",
     "INVALID_PRICE": "Precio no válido",
-    "JWT_SECRET_MISSING": "Variable de entorno JWT_SECRET requerida",
     "INVALID_TOKEN": "Token inválido o expirado",
-
     "DISH_NOT_FOUND": "Plato no encontrado",
     "DISH_NOT_AVAILABLE": "Plato no disponible",
     "CATEGORY_HAS_DISHES": "La categoría tiene platos asociados",
     "SESSION_HAS_ITEMS": "La sesión tiene pedidos. Ciérrala o cancela los pedidos antes de cancelar la sesión",
     "CATEGORY_NOT_FOUND": "Categoría no encontrada",
-
     "SESSION_NOT_ACTIVE": "La sesión no está activa",
     "ACTIVE_SESSION_EXISTS": "Ya hay una sesión activa. Ciérrala antes de abrir otra",
     "SESSION_NOT_FOUND": "Sesión no encontrada",
-    "SESSION_EXPIRED": "La sesión ha expirado",
-
     "ORDER_NOT_FOUND": "Pedido no encontrado",
     "ORDER_ALREADY_PAID": "El pedido ya está pagado",
     "SESSION_ALREADY_PAID": "La sesión ya está pagada y no se puede reabrir",
-    "ORDER_CANCELLED": "El pedido ha sido cancelado",
     "ORDER_LIMIT_REACHED": "Se ha alcanzado el número máximo de pedidos para esta sesión",
     "ORDER_INTERVAL_ACTIVE": "Aún no ha pasado el tiempo mínimo entre pedidos",
-
     "ITEM_NOT_FOUND": "Item no encontrado",
     "ITEM_NOT_FOUND_OR_ALREADY_PROCESSED": "Item no encontrado o ya procesado",
     "CANNOT_DELETE_ITEM_NOT_ORDERED": "No se puede eliminar un item que no está ordenado",
     "INVALID_STATE_TRANSITION": "Transición de estado no válida",
     "REQUIRES_POS_AUTHORIZATION": "Requiere autorización del cajero",
     "REQUIRES_AUTHORIZATION": "Requiere autorización",
-
     "PAYMENT_NOT_FOUND": "Pago no encontrado",
     "TICKET_NOT_FOUND": "Ticket no encontrado",
     "NO_ITEMS_TO_PAY": "No hay items para pagar",
-    "PAYMENT_FAILED": "El pago ha fallado",
-
     "TOTEM_NOT_FOUND": "Totem no encontrado",
-    "TOTEM_NOT_ACTIVE": "El totem no está activo",
-    "TOTEM_QR_INVALID": "QR de totem inválido",
-
     "RESTAURANT_NOT_FOUND": "Restaurante no encontrado",
-    "RESTAURANT_NOT_ACTIVE": "El restaurante no está activo",
-
     "STAFF_NOT_FOUND": "Empleado no encontrado",
     "ROLE_NOT_FOUND": "Rol no encontrado",
     "USER_NOT_FOUND": "Usuario no encontrado",
     "CUSTOMER_NOT_FOUND": "Cliente no encontrado",
-    "TABLE_NOT_FOUND": "Mesa no encontrada",
     "USER_ALREADY_EXISTS": "El usuario ya existe en este restaurante",
     "CUSTOMER_NAME_TAKEN": "Ese nombre ya está en uso en esta mesa. Elige otro",
     "CUSTOMER_NAME_REQUIRED": "Se requiere un nombre de al menos 2 caracteres",
-
     "FILE_TOO_LARGE": "Archivo demasiado grande",
     "INVALID_FILE_TYPE": "Tipo de archivo no válido",
-    "UPLOAD_FAILED": "Error al subir el archivo",
     "NO_FILE_UPLOADED": "No se ha subido ningún archivo",
     "INVALID_FILE": "Archivo no válido",
     "INVALID_IMAGE_DIMENSIONS": "Dimensiones de imagen no válidas",
     "UNEXPECTED_FIELD": "Campo de archivo inesperado",
     "TOO_MANY_FILES": "Demasiados archivos",
     "UPLOAD_ERROR": "Error al subir",
-
-    "RATE_LIMIT_EXCEEDED": "Demasiadas peticiones. Inténtalo más tarde",
     "AUTH_RATE_LIMIT_EXCEEDED": "Demasiados intentos de inicio de sesión. Inténtalo más tarde",
     "API_RATE_LIMIT_EXCEEDED": "Demasiadas peticiones. Reduce la frecuencia",
     "STRICT_RATE_LIMIT_EXCEEDED": "Demasiadas operaciones. Espera antes de reintentar",
     "UPLOAD_RATE_LIMIT_EXCEEDED": "Límite de subidas alcanzado. Inténtalo más tarde",
     "QR_RATE_LIMIT_EXCEEDED": "Demasiados escaneos de QR. Inténtalo más tarde",
     "QR_BRUTE_FORCE_DETECTED": "Demasiados intentos. El código QR puede ser inválido",
-
-    "SOCKET_NOT_INITIALIZED": "Socket.io no inicializado",
     "UPDATE_FAILED": "Error al actualizar",
     "DUPLICATE_RESOURCE": "El recurso ya existe",
-    "IDEMPOTENCY_CONFLICT": "Esta clave de solicitud ya se utilizó con datos de pedido diferentes",
-
-    "DASHBOARD_ERROR": "Error al obtener estadísticas del dashboard",
-    "LOGS_ERROR": "Error al obtener logs",
-    "LOGS_USERS_ERROR": "Error al obtener usuarios"
-  },
-  "success": {
-    "LOGIN_SUCCESS": "Inicio de sesión exitoso",
-    "LOGOUT_SUCCESS": "Cierre de sesión exitoso",
-    "CREATED": "Creado exitosamente",
-    "UPDATED": "Actualizado exitosamente",
-    "DELETED": "Eliminado exitosamente",
-    "ORDER_CREATED": "Pedido creado exitosamente",
-    "PAYMENT_PROCESSED": "Pago procesado exitosamente",
-    "PREFERENCES_UPDATED": "Preferencias actualizadas",
-    "SETTINGS_UPDATED": "Configuración actualizada exitosamente"
-  },
-  "mail": {
-    "welcome_subject": "Bienvenido a DisherIo",
-    "welcome_body": "Hola {{name}}, tu cuenta ha sido creada correctamente."
+    "IDEMPOTENCY_CONFLICT": "Esta clave de solicitud ya se utilizó con datos de pedido diferentes"
   },
   "common": {
     "UNKNOWN": "Desconocido",
-    "UNCATEGORIZED": "Sin categoría",
-    "UNKNOWN_ACTION": "Acción desconocida",
-    "ORDERED": "Plato pedido",
-    "ON_PREPARE": "Preparación iniciada",
-    "SERVED": "Plato servido",
-    "CANCELED": "Plato cancelado",
     "CUSTOMER": "Cliente"
   },
   "sockets": {
     "BILL_REQUESTED": "Cuenta solicitada",
     "SESSION_CLOSED_NO_MORE_ORDERS": "La cuenta ha sido solicitada. No se pueden realizar más pedidos.",
-    "MUST_JOIN_SESSION": "Debe unirse a la sesión primero",
     "NEEDS_HELP": "Necesita ayuda",
     "WAITER_COMING": "Un camarero vendrá enseguida",
     "BILL_ALREADY_REQUESTED": "La cuenta ya ha sido solicitada anteriormente.",
@@ -129,6 +80,7 @@
     "WAITER_COMING_ASSIST": "Un camarero vendrá a ayudarle",
     "SESSION_ENDED_THANK_YOU": "La sesión ha finalizado. Gracias por su visita.",
     "SESSION_CLOSED_BY_STAFF": "Sesión cerrada por el personal",
-    "SESSION_CANCELLED": "Sesión cancelada"
+    "SESSION_CANCELLED": "Sesión cancelada",
+    "SESSION_CLOSING_IN_PROGRESS": "La sesión se está cerrando. No se pueden realizar más pedidos."
   }
 }

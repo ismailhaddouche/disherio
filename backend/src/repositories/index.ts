@@ -5,7 +5,6 @@ export {
   ValidationError,
   validateObjectId,
   validateObjectIdOptional,
-  toObjectId,
 } from './base.repository';
 
 export {
@@ -34,7 +33,6 @@ export {
 
 export {
   RestaurantRepository,
-  PrinterRepository,
 } from './restaurant.repository';
 
 export {
@@ -54,8 +52,6 @@ export {
 // Re-export query profiler utilities
 export {
   QueryProfiler,
-  ProfileQuery,
-  analyzeIndexUsage,
   type QueryProfile,
   type ExplainResult,
 } from '../utils/query-profiler';

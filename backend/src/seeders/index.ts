@@ -4,13 +4,12 @@ import { z } from 'zod';
 import { Restaurant } from '../models/restaurant.model';
 import { Role, Staff } from '../models/staff.model';
 import { logger } from '../config/logger';
-import { hashPassword, hashPin, computePinLookup } from '../services/auth.service';
+import { hashPassword } from '../services/auth.service';
 import { getEnv } from '../config/env';
 
 const adminCredentialsSchema = z.object({
   username: z.string().min(3).max(50).regex(/^[a-zA-Z0-9_-]+$/),
   password: z.string().min(12).regex(/[A-Z]/).regex(/[a-z]/).regex(/[0-9]/),
-  pin: z.string().min(6).max(8).regex(/^\d+$/),
 });
 
 const trivialPasswords = new Set([
@@ -18,8 +17,8 @@ const trivialPasswords = new Set([
   'qwerty', 'letmein', 'welcome', 'disherio', 'restaurant',
 ]);
 
-function validateAdminCredentials(username: string, password: string, pin: string): void {
-  const parsed = adminCredentialsSchema.safeParse({ username, password, pin });
+function validateAdminCredentials(username: string, password: string): void {
+  const parsed = adminCredentialsSchema.safeParse({ username, password });
   if (!parsed.success) {
     logger.error({ issues: parsed.error.issues }, 'Admin credentials do not meet security requirements');
     process.exit(1);
@@ -41,7 +40,6 @@ async function seed() {
 
     const adminUsername = process.env.ADMIN_USERNAME || 'admin';
     const adminPassword = process.env.ADMIN_PASSWORD;
-    const adminPin      = process.env.ADMIN_PIN;
     const appLang       = (process.env.DEFAULT_LANGUAGE || process.env.APP_LANG || 'es') as 'es' | 'en' | 'fr';
     const restaurantName = process.env.RESTAURANT_NAME || 'DisherIo';
     const currency      = process.env.DEFAULT_CURRENCY || 'EUR';
@@ -52,12 +50,8 @@ async function seed() {
       logger.error('ADMIN_PASSWORD env var is required');
       process.exit(1);
     }
-    if (!adminPin) {
-      logger.error('ADMIN_PIN env var is required');
-      process.exit(1);
-    }
 
-    validateAdminCredentials(adminUsername, adminPassword, adminPin);
+    validateAdminCredentials(adminUsername, adminPassword);
 
     // Create or update default restaurant (matched by name to stay idempotent)
     let restaurant = await Restaurant.findOne({ restaurant_name: restaurantName });
@@ -113,8 +107,6 @@ async function seed() {
       }
 
       const password_hash  = await hashPassword(adminPassword);
-      const pin_code_hash  = await hashPin(adminPin);
-      const pin_lookup     = computePinLookup(adminPin);
 
       await Staff.create({
         restaurant_id: restaurant._id,
@@ -122,8 +114,6 @@ async function seed() {
         staff_name: 'Administrador',
         username: adminUsername,
         password_hash,
-        pin_code_hash,
-        pin_lookup,
       });
       logger.info(`Admin user created: ${adminUsername}`);
     } else {

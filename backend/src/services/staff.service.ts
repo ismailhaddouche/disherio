@@ -1,14 +1,13 @@
 import { Types } from 'mongoose';
 import { ErrorCode } from '@disherio/shared';
 import { UserRepository, RoleRepository } from '../repositories/user.repository';
-import { hashPassword, hashPin, computePinLookup } from './auth.service';
+import { hashPassword } from './auth.service';
 import { createError } from '../utils/async-handler';
 import { getPaginationParams, createPaginatedResponse, PaginatedResponse } from '../utils/pagination';
 import { IRole } from '../models/staff.model';
 import { Request } from 'express';
 import { revokeAllUserRefreshTokens } from './refresh-token.service';
 import { disconnectStaffSockets } from './socket-session.service';
-import bcrypt from 'bcryptjs';
 
 const userRepo = new UserRepository();
 const roleRepo = new RoleRepository();
@@ -66,21 +65,6 @@ async function assertUsernameUnique(username: string, restaurantId: string, excl
   }
 }
 
-async function assertPinUnique(pin: string, restaurantId: string, excludeStaffId?: string): Promise<string> {
-  const pinLookup = computePinLookup(pin);
-  if (await userRepo.existsByPinLookup(restaurantId, pinLookup, excludeStaffId)) {
-    throw createError.conflict(ErrorCode.DUPLICATE_RESOURCE, { field: 'pin_code' });
-  }
-  const legacyStaff = await userRepo.findLegacyPinCandidates(restaurantId);
-  for (const staff of legacyStaff) {
-    if (staff._id.toString() === excludeStaffId) continue;
-    if (await bcrypt.compare(pin, staff.pin_code_hash)) {
-      throw createError.conflict(ErrorCode.DUPLICATE_RESOURCE, { field: 'pin_code' });
-    }
-  }
-  return pinLookup;
-}
-
 function rethrowDuplicateCredential(error: unknown): never {
   if (typeof error === 'object' && error !== null && 'code' in error && error.code === 11000) {
     throw createError.conflict(ErrorCode.DUPLICATE_RESOURCE);
@@ -116,7 +100,6 @@ export interface CreateStaffInput {
   staff_name: string;
   username: string;
   password: string;
-  pin_code: string;
   role_id: string;
 }
 
@@ -132,10 +115,8 @@ export async function createStaff(
 
   await assertRoleInRestaurant(input.role_id, restaurantId, callerPermissions);
   await assertUsernameUnique(normalizedUsername, restaurantId);
-  const pin_lookup = await assertPinUnique(input.pin_code, restaurantId);
 
   const password_hash = await hashPassword(input.password);
-  const pin_code_hash = await hashPin(input.pin_code);
 
   let staff;
   try {
@@ -145,8 +126,6 @@ export async function createStaff(
       staff_name: input.staff_name,
       username: normalizedUsername,
       password_hash,
-      pin_code_hash,
-      pin_lookup,
     });
   } catch (error) {
     rethrowDuplicateCredential(error);
@@ -160,7 +139,6 @@ export interface UpdateStaffInput {
   username?: string;
   role_id?: string;
   password?: string;
-  pin_code?: string;
 }
 
 /**
@@ -194,15 +172,10 @@ export async function updateStaff(
   if (input.password) {
     staff.password_hash = await hashPassword(input.password);
   }
-  if (input.pin_code) {
-    staff.pin_lookup = await assertPinUnique(input.pin_code, restaurantId, id);
-    staff.pin_code_hash = await hashPin(input.pin_code);
-  }
 
   const authorizationChanged = input.role_id !== undefined
     || input.username !== undefined
-    || input.password !== undefined
-    || input.pin_code !== undefined;
+    || input.password !== undefined;
   if (authorizationChanged) {
     staff.auth_version = (staff.auth_version ?? 0) + 1;
   }

@@ -6,7 +6,6 @@
 import {
   ItemOrder,
   ItemState,
-  ItemDishType,
   LocalizedField,
   PaymentType,
 } from './models.type';
@@ -25,33 +24,6 @@ export interface SocketError {
   message: string;
   details?: string;
   code?: string;
-}
-
-// ============================================
-// Order Item Types (for customer/totem orders)
-// ============================================
-
-/**
- * Extra item in an order (from customer/totem perspective)
- */
-export interface OrderItemExtra {
-  extraId: string;
-  extraName: LocalizedField;
-  price: number;
-}
-
-/**
- * Item in a customer/totem order
- */
-export interface OrderItem {
-  dishId: string;
-  dishName: LocalizedField;
-  quantity: number;
-  price: number;
-  dishType: ItemDishType;
-  variantId?: string;
-  variantName?: LocalizedField;
-  extras?: OrderItemExtra[];
 }
 
 // ============================================
@@ -315,37 +287,6 @@ export interface TASAddItemData {
 }
 
 // ============================================
-// POS Event Types
-// ============================================
-
-/**
- * Event when an item is added by POS
- */
-export interface PosItemAddedEvent {
-  item: ItemOrder;
-  addedBy?: string;
-  waiterName?: string;
-}
-
-/**
- * Event when an item is canceled by POS
- */
-export interface PosItemCanceledEvent {
-  itemId: string;
-  itemName?: LocalizedField;
-  canceledByName?: string;
-  reason?: string;
-}
-
-/**
- * Event when a bill is requested by POS
- */
-export interface PosBillRequestedEvent {
-  sessionId: string;
-  requestedBy?: string;
-}
-
-// ============================================
 // Inbound Socket Payload Types (client -> server)
 // ============================================
 
@@ -436,34 +377,3 @@ export interface TotemSessionIdPayload {
   sessionId: string;
 }
 
-// ============================================
-// API Response Types
-// ============================================
-
-/**
- * Generic API list response
- */
-export interface ApiListResponse<T> {
-  data: T[];
-  total?: number;
-  page?: number;
-  limit?: number;
-}
-
-/**
- * Generic API single item response
- */
-export interface ApiItemResponse<T> {
-  data: T;
-  message?: string;
-}
-
-/**
- * Generic API error response
- */
-export interface ApiErrorResponse {
-  error: string;
-  message: string;
-  details?: string;
-  code?: string;
-}

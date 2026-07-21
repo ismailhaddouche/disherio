@@ -63,7 +63,7 @@ The platform utilizes a monorepo architecture organized into three primary modul
 | Authorization | CASL 6.8 | Attribute-Based Access Control (abilities per role) |
 | Validation | Zod 4.3 | Schema validation (shared with frontend) |
 | Security | helmet 8.1, cors 2.8, express-rate-limit 8.3 | HTTP security headers, CORS, rate limiting |
-| Passwords | bcryptjs 2.4 (cost 12) | Password and PIN hashing |
+| Passwords | bcryptjs 2.4 (cost 12) | Password hashing |
 | Images | sharp 0.34 | Image processing (resize, WebP, EXIF orientation) |
 | Logging | pino 10.3 + pino-http 11.0 | Structured logging with secret redaction |
 | Metrics library | prom-client 15.1 | In-process counters and Prometheus-format exposition; no bundled collector |
@@ -133,7 +133,6 @@ Middleware: `requirePermission(action, subject)` on every route. Controllers als
 - **Blocklist and authorization version**: access tokens are blocklisted in Redis on logout (TTL = remaining token lifetime). Every authenticated HTTP request and Socket.IO handshake also checks the token's `authVersion` against the current staff record. Credential or role assignment changes increment that version, so existing access tokens stop working immediately. Revocation checks fail closed if Redis or MongoDB is unavailable.
 - **Audit**: refresh-token lifecycle events (issue, rotate, reuse, revoke, logout) are emitted as structured Pino logs and consumed from the log stream; they are not retained in process memory.
 - **Cookies**: `httpOnly: true`, `secure: true` (HTTPS), `sameSite: strict`
-- **PIN login**: staff authenticate with a 4-digit PIN verified by bcrypt. A deterministic `pin_lookup` key (HMAC-SHA256 of the PIN with `PIN_LOOKUP_PEPPER`, uniquely indexed per restaurant) narrows the candidate so login costs one indexed query plus a single `bcrypt.compare` regardless of staff count; without a candidate, a dummy compare equalizes timing. Documents created before the key existed are migrated opportunistically on their next successful PIN login. Duplicate PINs inside one restaurant are rejected.
 - **Client renewal**: concurrent 401 responses share one refresh request; successful rotation retries the original requests
 - **Socket revocation**: authenticated sockets join a staff-specific room. Logout, staff deletion, and security-relevant staff or role changes revoke refresh credentials and disconnect every active socket for that staff identity.
 
@@ -193,7 +192,7 @@ Backend uses `i18next` with file-system backend loading translations from `/app/
 
 Pino logger redacts the following fields from all log output:
 - `req.headers.authorization`, `req.headers.cookie`
-- `password`, `password_hash`, `pin`, `pin_code`, `pin_code_hash`, `pin_lookup`
+- `password`, `password_hash`
 - `token`, `access_token`, `refresh_token`
 - `JWT_SECRET`, `JWT_REFRESH_SECRET`, `MONGO_ROOT_PASS`, `MONGO_APP_PASS`, `REDIS_PASSWORD`
 - `MONGODB_URI`

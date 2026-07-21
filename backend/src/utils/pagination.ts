@@ -57,14 +57,3 @@ export function createPaginatedResponse<T>(
   };
 }
 
-export function applyPagination(
-  query: any,
-  req: Request
-): { query: any; pagination: PaginationParams } {
-  const pagination = getPaginationParams(req);
-
-  return {
-    query: query.skip(pagination.skip).limit(pagination.limit),
-    pagination,
-  };
-}

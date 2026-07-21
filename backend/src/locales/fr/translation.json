@@ -2,7 +2,6 @@
   "errors": {
     "INVALID_CREDENTIALS": "Identifiants incorrects",
     "AMBIGUOUS_USERNAME": "Le nom d'utilisateur existe dans plusieurs restaurants. Veuillez spécifier le restaurant.",
-    "INVALID_PIN": "PIN incorrect",
     "UNAUTHORIZED": "Non autorisé",
     "AUTHENTICATION_REQUIRED": "Authentification requise",
     "FORBIDDEN": "Accès refusé",
@@ -15,111 +14,63 @@
     "INVALID_ID_FORMAT": "Format d’identifiant invalide",
     "VALIDATION_ERROR": "Erreur de validation",
     "INVALID_PRICE": "Prix invalide",
-    "JWT_SECRET_MISSING": "Variable d'environnement JWT_SECRET requise",
     "INVALID_TOKEN": "Token invalide ou expiré",
-
     "DISH_NOT_FOUND": "Plat introuvable",
     "DISH_NOT_AVAILABLE": "Plat indisponible",
     "CATEGORY_HAS_DISHES": "La catégorie contient des plats associés",
     "SESSION_HAS_ITEMS": "La session a des commandes. Fermez-la ou annulez les commandes avant d'annuler la session",
     "CATEGORY_NOT_FOUND": "Catégorie introuvable",
-
     "SESSION_NOT_ACTIVE": "La session n'est pas active",
     "ACTIVE_SESSION_EXISTS": "Une session est déjà active. Fermez-la avant d'en ouvrir une autre",
     "SESSION_NOT_FOUND": "Session introuvable",
-    "SESSION_EXPIRED": "La session a expiré",
-
     "ORDER_NOT_FOUND": "Commande introuvable",
     "ORDER_ALREADY_PAID": "La commande est déjà payée",
     "SESSION_ALREADY_PAID": "La session est déjà payée et ne peut pas être rouverte",
-    "ORDER_CANCELLED": "La commande a été annulée",
     "ORDER_LIMIT_REACHED": "Le nombre maximal de commandes pour cette session est atteint",
     "ORDER_INTERVAL_ACTIVE": "Le délai minimal entre les commandes n'est pas encore écoulé",
-
     "ITEM_NOT_FOUND": "Article introuvable",
     "ITEM_NOT_FOUND_OR_ALREADY_PROCESSED": "Article introuvable ou déjà traité",
     "CANNOT_DELETE_ITEM_NOT_ORDERED": "Impossible de supprimer un article non commandé",
     "INVALID_STATE_TRANSITION": "Transition d'état invalide",
     "REQUIRES_POS_AUTHORIZATION": "Autorisation de la caisse requise",
     "REQUIRES_AUTHORIZATION": "Autorisation requise",
-
     "PAYMENT_NOT_FOUND": "Paiement introuvable",
     "TICKET_NOT_FOUND": "Ticket introuvable",
     "NO_ITEMS_TO_PAY": "Aucun article à payer",
-    "PAYMENT_FAILED": "Le paiement a échoué",
-
     "TOTEM_NOT_FOUND": "Totem introuvable",
-    "TOTEM_NOT_ACTIVE": "Le totem n'est pas actif",
-    "TOTEM_QR_INVALID": "QR totem invalide",
-
     "RESTAURANT_NOT_FOUND": "Restaurant introuvable",
-    "RESTAURANT_NOT_ACTIVE": "Le restaurant n'est pas actif",
-
     "STAFF_NOT_FOUND": "Employé introuvable",
     "ROLE_NOT_FOUND": "Rôle introuvable",
     "USER_NOT_FOUND": "Utilisateur introuvable",
     "CUSTOMER_NOT_FOUND": "Client introuvable",
-    "TABLE_NOT_FOUND": "Table introuvable",
     "USER_ALREADY_EXISTS": "L'utilisateur existe déjà dans ce restaurant",
     "CUSTOMER_NAME_TAKEN": "Ce nom est déjà utilisé à cette table. Choisissez-en un autre",
     "CUSTOMER_NAME_REQUIRED": "Un nom d'au moins 2 caractères est requis",
-
     "FILE_TOO_LARGE": "Fichier trop volumineux",
     "INVALID_FILE_TYPE": "Type de fichier invalide",
-    "UPLOAD_FAILED": "Échec du téléchargement",
     "NO_FILE_UPLOADED": "Aucun fichier téléchargé",
     "INVALID_FILE": "Fichier invalide",
     "INVALID_IMAGE_DIMENSIONS": "Dimensions d'image invalides",
     "UNEXPECTED_FIELD": "Champ de fichier inattendu",
     "TOO_MANY_FILES": "Trop de fichiers",
     "UPLOAD_ERROR": "Erreur de téléchargement",
-
-    "RATE_LIMIT_EXCEEDED": "Trop de requêtes. Veuillez réessayer plus tard",
     "AUTH_RATE_LIMIT_EXCEEDED": "Trop de tentatives de connexion. Veuillez réessayer plus tard",
     "API_RATE_LIMIT_EXCEEDED": "Trop de requêtes. Veuillez ralentir",
     "STRICT_RATE_LIMIT_EXCEEDED": "Trop d'opérations. Veuillez patienter avant de réessayer",
     "UPLOAD_RATE_LIMIT_EXCEEDED": "Limite de téléchargement atteinte. Veuillez réessayer plus tard",
     "QR_RATE_LIMIT_EXCEEDED": "Trop de scans QR. Veuillez réessayer plus tard",
     "QR_BRUTE_FORCE_DETECTED": "Trop de tentatives. Le code QR peut être invalide",
-
-    "SOCKET_NOT_INITIALIZED": "Socket.io non initialisé",
     "UPDATE_FAILED": "Échec de la mise à jour",
     "DUPLICATE_RESOURCE": "La ressource existe déjà",
-    "IDEMPOTENCY_CONFLICT": "Cette clé de requête a déjà été utilisée avec des détails de commande différents",
-
-    "DASHBOARD_ERROR": "Erreur lors de l'obtention des statistiques",
-    "LOGS_ERROR": "Erreur lors de l'obtention des logs",
-    "LOGS_USERS_ERROR": "Erreur lors de l'obtention des utilisateurs"
-  },
-  "success": {
-    "LOGIN_SUCCESS": "Connexion réussie",
-    "LOGOUT_SUCCESS": "Déconnexion réussie",
-    "CREATED": "Créé avec succès",
-    "UPDATED": "Mis à jour avec succès",
-    "DELETED": "Supprimé avec succès",
-    "ORDER_CREATED": "Commande créée avec succès",
-    "PAYMENT_PROCESSED": "Paiement traité avec succès",
-    "PREFERENCES_UPDATED": "Préférences mises à jour",
-    "SETTINGS_UPDATED": "Paramètres mis à jour avec succès"
-  },
-  "mail": {
-    "welcome_subject": "Bienvenue sur DisherIo",
-    "welcome_body": "Bonjour {{name}}, votre compte a été créé avec succès."
+    "IDEMPOTENCY_CONFLICT": "Cette clé de requête a déjà été utilisée avec des détails de commande différents"
   },
   "common": {
     "UNKNOWN": "Inconnu",
-    "UNCATEGORIZED": "Non catégorisé",
-    "UNKNOWN_ACTION": "Action inconnue",
-    "ORDERED": "Plat commandé",
-    "ON_PREPARE": "Préparation commencée",
-    "SERVED": "Plat servi",
-    "CANCELED": "Plat annulé",
     "CUSTOMER": "Client"
   },
   "sockets": {
     "BILL_REQUESTED": "Addition demandée",
     "SESSION_CLOSED_NO_MORE_ORDERS": "L'addition a été demandée. Plus aucune commande ne peut être passée.",
-    "MUST_JOIN_SESSION": "Vous devez rejoindre la session d'abord",
     "NEEDS_HELP": "A besoin d'aide",
     "WAITER_COMING": "Un serveur arrive tout de suite",
     "BILL_ALREADY_REQUESTED": "L'addition a déjà été demandée.",
@@ -129,6 +80,7 @@
     "WAITER_COMING_ASSIST": "Un serveur vient vous aider",
     "SESSION_ENDED_THANK_YOU": "La session est terminée. Merci de votre visite.",
     "SESSION_CLOSED_BY_STAFF": "Session fermée par le personnel",
-    "SESSION_CANCELLED": "Session annulée"
+    "SESSION_CANCELLED": "Session annulée",
+    "SESSION_CLOSING_IN_PROGRESS": "La session est en cours de fermeture. Plus aucune commande ne peut être passée."
   }
 }

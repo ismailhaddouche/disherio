@@ -10,7 +10,6 @@ export interface CreateStaffRequest {
   staff_name: string;
   username: string;
   password: string;
-  pin_code: string;
   role_id: string;
 }
 
@@ -19,7 +18,6 @@ export interface UpdateStaffRequest {
   username?: string;
   role_id?: string;
   password?: string;
-  pin_code?: string;
 }
 
 @Injectable({

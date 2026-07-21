@@ -167,7 +167,6 @@ The `.env` file (chmod 600) defines all operational parameters. Generated automa
 | `JWT_EXPIRES` | Access token lifetime (default `15m`) |
 | `JWT_REFRESH_SECRET` | Refresh token secret (auto-generated, 64 chars) |
 | `JWT_REFRESH_EXPIRES` | Refresh token lifetime (default `7d`) |
-| `PIN_LOOKUP_PEPPER` | Server-side pepper for the deterministic PIN lookup key (auto-generated, 64 chars; min 32). Rotating it invalidates stored lookup keys; each staff member re-registers on their next successful PIN login |
 
 ### Application
 
@@ -180,7 +179,6 @@ The `.env` file (chmod 600) defines all operational parameters. Generated automa
 | `DEFAULT_CURRENCY` | Currency: `EUR`/`USD`/`GBP` |
 | `ADMIN_USERNAME` | Admin username (default `admin`) |
 | `ADMIN_PASSWORD` | Admin password (auto-generated, 20 chars) |
-| `ADMIN_PIN` | Admin PIN (auto-generated, 4 digits) |
 
 ## Backups
 

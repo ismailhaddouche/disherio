@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import { runMigrations, Migration } from '../migrations/migration.runner';
 import { migration0001 } from '../migrations/0001-staff-pin-lookup-index';
 import { migration0002 } from '../migrations/0002-session-token-backfill';
+import { migration0003 } from '../migrations/0003-drop-staff-pin';
 import { Staff } from '../models/staff.model';
 import { TotemSession } from '../models/totem.model';
 
@@ -107,5 +108,36 @@ describeWithIntegrationDb('Migration runner', () => {
     expect((started?.session_token as string).length).toBeGreaterThan(0);
     const paid = await TotemSession.collection.findOne({ totem_state: 'PAID' });
     expect(paid?.session_token).toBeUndefined();
+  });
+
+  it('0003 drops the pin_lookup index and unsets pin fields, tolerating a missing index', async () => {
+    const restaurantId = new mongoose.Types.ObjectId();
+    const roleId = new mongoose.Types.ObjectId();
+    await Staff.collection.insertOne({
+      restaurant_id: restaurantId,
+      role_id: roleId,
+      staff_name: 'Legacy',
+      username: 'legacy',
+      password_hash: 'x',
+      pin_code_hash: 'y',
+      pin_lookup: 'z',
+    });
+
+    // Without the 0001 index the drop must be a no-op, not an error.
+    await runMigrations([migration0003]);
+
+    // Recreate the index via 0001 and ensure 0003 removes it too.
+    await registry().deleteMany({ _id: '0003-drop-staff-pin' });
+    await runMigrations([migration0001, migration0003]);
+
+    const indexes = await Staff.collection.indexes();
+    expect(
+      indexes.find((i) => JSON.stringify(i.key) === JSON.stringify({ restaurant_id: 1, pin_lookup: 1 }))
+    ).toBeUndefined();
+
+    const staff = await Staff.collection.findOne({ username: 'legacy' });
+    expect(staff).not.toBeNull();
+    expect(staff).not.toHaveProperty('pin_code_hash');
+    expect(staff).not.toHaveProperty('pin_lookup');
   });
 });

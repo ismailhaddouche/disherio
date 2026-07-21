@@ -29,13 +29,6 @@ export const CategorySchema = z.object({
   unlimited_orders: z.boolean().default(false),
 });
 
-export const AllergenSchema = z.object({
-  alergen_name: LocalizedFieldSchema,
-});
-
-export const CreateCategorySchema = CategorySchema.strict();
-export const UpdateCategorySchema = CategorySchema.partial().strict();
-
 export const DishSchema = z.object({
   restaurant_id: z.string(),
   category_id: z.string(),
@@ -58,8 +51,3 @@ export const UpdateDishSchema = CreateDishSchema.partial().strict();
 // Re-export price validation schemas.
 export const PriceValidationSchema = priceValidation;
 
-// Type exports
-export type CreateDishInput = z.infer<typeof CreateDishSchema>;
-export type UpdateDishInput = z.infer<typeof UpdateDishSchema>;
-export type VariantInput = z.infer<typeof VariantSchema>;
-export type ExtraInput = z.infer<typeof ExtraSchema>;

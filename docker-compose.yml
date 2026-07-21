@@ -169,7 +169,6 @@ services:
       JWT_SECRET_FILE: /run/secrets/jwt_secret
       JWT_EXPIRES: ${JWT_EXPIRES:-15m}
       JWT_REFRESH_SECRET_FILE: /run/secrets/jwt_refresh_secret
-      PIN_LOOKUP_PEPPER_FILE: /run/secrets/pin_lookup_pepper
       JWT_REFRESH_EXPIRES: ${JWT_REFRESH_EXPIRES:-7d}
       FRONTEND_URL: ${FRONTEND_URL}
       # Redis connection
@@ -191,7 +190,6 @@ services:
       - mongodb_uri
       - jwt_secret
       - jwt_refresh_secret
-      - pin_lookup_pepper
       - redis_password
     # Resource limits
     deploy:
@@ -267,7 +265,6 @@ services:
       MONGODB_URI_FILE: /run/secrets/mongodb_uri
       ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
       ADMIN_PASSWORD_FILE: /run/secrets/admin_password
-      ADMIN_PIN_FILE: /run/secrets/admin_pin
       DEFAULT_LANGUAGE: ${DEFAULT_LANGUAGE:-es}
       RESTAURANT_NAME: ${RESTAURANT_NAME:-DisherIo}
       DEFAULT_CURRENCY: ${DEFAULT_CURRENCY:-EUR}
@@ -275,14 +272,11 @@ services:
       DEFAULT_THEME: ${DEFAULT_THEME:-light}
       JWT_SECRET_FILE: /run/secrets/jwt_secret
       JWT_REFRESH_SECRET_FILE: /run/secrets/jwt_refresh_secret
-      PIN_LOOKUP_PEPPER_FILE: /run/secrets/pin_lookup_pepper
     secrets:
       - mongodb_uri
       - admin_password
-      - admin_pin
       - jwt_secret
       - jwt_refresh_secret
-      - pin_lookup_pepper
     command: ["node", "dist/seeders/index.js"]
     restart: "no"
 
@@ -307,12 +301,10 @@ services:
       DEFAULT_LANGUAGE: ${DEFAULT_LANGUAGE:-es}
       JWT_SECRET_FILE: /run/secrets/jwt_secret
       JWT_REFRESH_SECRET_FILE: /run/secrets/jwt_refresh_secret
-      PIN_LOOKUP_PEPPER_FILE: /run/secrets/pin_lookup_pepper
     secrets:
       - mongodb_uri
       - jwt_secret
       - jwt_refresh_secret
-      - pin_lookup_pepper
     command: ["node", "dist/seeders/seed-examples.js"]
     restart: "no"
 
@@ -402,9 +394,5 @@ secrets:
     file: ./config/secrets/jwt_secret
   jwt_refresh_secret:
     file: ./config/secrets/jwt_refresh_secret
-  pin_lookup_pepper:
-    file: ./config/secrets/pin_lookup_pepper
   admin_password:
     file: ./config/secrets/admin_password
-  admin_pin:
-    file: ./config/secrets/admin_pin

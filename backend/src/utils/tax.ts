@@ -1,7 +1,3 @@
-export function applyTax(amount: number, taxRate: number): number {
-  return parseFloat((amount * (1 + taxRate / 100)).toFixed(2));
-}
-
 export function extractTax(totalWithTax: number, taxRate: number): number {
   return parseFloat((totalWithTax - totalWithTax / (1 + taxRate / 100)).toFixed(2));
 }

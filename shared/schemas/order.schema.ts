@@ -60,30 +60,5 @@ export const PaymentSchema = z.object({
 });
 
 // API validation schemas shared with the backend.
-export const CreateOrderSchema = OrderSchema.omit({ order_date: true });
-export const UpdateOrderSchema = CreateOrderSchema.partial();
-
-export const CreateItemOrderSchema = ItemOrderSchema.omit({ item_state: true });
-
 export const CreatePaymentSchema = PaymentSchema.omit({ payment_date: true });
 
-// Schema for adding an item to an order through the backend API.
-export const AddItemToOrderSchema = z.object({
-  order_id: z.string().min(1),
-  session_id: z.string().min(1),
-  dish_id: z.string().min(1),
-  customer_id: z.string().optional(),
-  variant_id: z.string().optional(),
-  extras: z.array(z.string()).default([]),
-});
-
-export const IdempotentOrderRequestSchema = z.object({
-  request_id: RequestIdSchema,
-});
-
-// Type exports
-export type OrderItemInput = z.infer<typeof ItemOrderSchema>;
-export type CreateOrderInput = z.infer<typeof CreateOrderSchema>;
-export type AddItemToOrderInput = z.infer<typeof AddItemToOrderSchema>;
-export type IdempotentOrderRequest = z.infer<typeof IdempotentOrderRequestSchema>;
-export type CreatePaymentInput = z.infer<typeof CreatePaymentSchema>;

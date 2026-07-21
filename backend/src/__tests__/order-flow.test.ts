@@ -1,5 +1,4 @@
 import mongoose from 'mongoose';
-import bcrypt from 'bcryptjs';
 import {
   addBatchItems,
   addItemToOrder,
@@ -48,7 +47,6 @@ describeWithIntegrationDb('Order Flow Integration', () => {
       staff_name: 'Camarero',
       username: 'pos@test.com',
       password_hash: 'x',
-      pin_code_hash: await bcrypt.hash('0001', 12),
     });
     staffId = staff._id.toString();
 

@@ -32,14 +32,13 @@ export class UserRepository {
     return Staff.findOne({
       username: username.toLowerCase(),
       restaurant_id: new Types.ObjectId(restaurantId),
-    }).select('+password_hash +pin_code_hash').exec();
+    }).select('+password_hash').exec();
   }
 
   async findByRestaurantId(restaurantId: string): Promise<IStaff[]> {
     validateObjectId(restaurantId, 'restaurant_id');
     return Staff.find({ restaurant_id: new Types.ObjectId(restaurantId) })
       .populate('role_id')
-      .select('+pin_code_hash')
       .lean()
       .exec();
   }

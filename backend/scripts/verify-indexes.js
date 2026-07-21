@@ -68,11 +68,6 @@ const expectedIndexes = {
   staff: [
     { key: { restaurant_id: 1 }, options: {}, description: 'Restaurant staff' },
     { key: { restaurant_id: 1, username: 1 }, options: { unique: true }, description: 'Unique username per restaurant' },
-    {
-      key: { restaurant_id: 1, pin_lookup: 1 },
-      options: { unique: true, partialFilterExpression: { pin_lookup: { $type: 'string' } } },
-      description: 'Unique PIN identity per restaurant',
-    },
   ],
   roles: [
     { key: { restaurant_id: 1 }, options: {}, description: 'Restaurant roles' },

@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { loginUsername, loginPin, logout, refresh } from '../../controllers/auth.controller';
+import { loginUsername, logout, refresh } from '../../controllers/auth.controller';
 import * as authService from '../../services/auth.service';
 
 // Mock auth service
@@ -195,91 +195,6 @@ describe('AuthController', () => {
           sameSite: 'lax'
         })
       );
-    });
-  });
-
-  describe('POST /login/pin', () => {
-    it('should return user data and token lifetime on valid PIN', async () => {
-      // Arrange
-      const mockUser = {
-        staffId: 'staff123',
-        restaurantId: 'rest123',
-        role: 'WAITER',
-        permissions: ['POS'],
-        name: 'Waiter User',
-        preferences: { language: 'es', theme: 'dark' }
-      };
-
-      req = {
-        body: { pin_code: '1234', restaurant_id: 'rest123' },
-        secure: false,
-        headers: {}
-      };
-
-      (authService.loginWithPin as jest.Mock).mockResolvedValue({
-        accessToken: 'pin_jwt_token',
-        refreshToken: 'pin_refresh_token',
-        user: mockUser
-      });
-
-      // Act
-      await loginPin(req as Request, res as Response, next);
-
-      // Assert
-      expect(authService.loginWithPin).toHaveBeenCalledWith('1234', 'rest123');
-      expect(cookieMock).toHaveBeenNthCalledWith(
-        1,
-        'auth_token',
-        'pin_jwt_token',
-        expect.any(Object)
-      );
-      expect(cookieMock).toHaveBeenNthCalledWith(
-        2,
-        'refresh_token',
-        'pin_refresh_token',
-        expect.any(Object)
-      );
-      expect(jsonMock).toHaveBeenCalledWith({
-        user: mockUser,
-        expires_in_ms: expect.any(Number)
-      });
-    });
-
-    it('should pass error to next on invalid PIN', async () => {
-      // Arrange
-      req = {
-        body: { pin_code: '9999', restaurant_id: 'rest123' },
-        secure: false,
-        headers: {}
-      };
-
-      const error = new Error('INVALID_PIN');
-      (authService.loginWithPin as jest.Mock).mockRejectedValue(error);
-
-      // Act
-      await loginPin(req as Request, res as Response, next);
-
-      // Assert
-      expect(next).toHaveBeenCalled();
-    });
-
-    it('should pass rate limit error to next', async () => {
-      // Arrange
-      req = {
-        body: { pin_code: '1234', restaurant_id: 'rest123' },
-        secure: false,
-        headers: {}
-      };
-
-      const error = new Error('AUTH_RATE_LIMIT_EXCEEDED') as Error & { retryAfter: number };
-      error.retryAfter = 300;
-      (authService.loginWithPin as jest.Mock).mockRejectedValue(error);
-
-      // Act
-      await loginPin(req as Request, res as Response, next);
-
-      // Assert
-      expect(next).toHaveBeenCalled();
     });
   });
 

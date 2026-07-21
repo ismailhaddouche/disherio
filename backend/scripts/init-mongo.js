@@ -140,11 +140,6 @@ createIndexIfNotExists(db.payments, { "payment_date": -1 });
 // Staff lookups (adapted to actual model)
 createIndexIfNotExists(db.staff, { "restaurant_id": 1 });
 createIndexIfNotExists(db.staff, { "restaurant_id": 1, "username": 1 }, { unique: true });
-createIndexIfNotExists(
-  db.staff,
-  { "restaurant_id": 1, "pin_lookup": 1 },
-  { unique: true, partialFilterExpression: { "pin_lookup": { $type: "string" } } }
-);
 
 // Role lookups
 createIndexIfNotExists(db.roles, { "restaurant_id": 1 });

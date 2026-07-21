@@ -24,18 +24,4 @@ export async function withTransaction<T>(
   }
 }
 
-export async function withSession<T>(
-  _session: ClientSession,
-  operations: () => Promise<T>
-): Promise<T> {
-  return operations();
-}
-
-export async function runInParallel<T>(
-  session: ClientSession,
-  operations: Array<(session: ClientSession) => Promise<T>>
-): Promise<T[]> {
-  return Promise.all(operations.map(op => op(session)));
-}
-
 export type WithSession<T> = T & { session?: ClientSession };

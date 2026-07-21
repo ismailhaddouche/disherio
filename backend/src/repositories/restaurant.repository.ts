@@ -1,9 +1,6 @@
-import { Types } from 'mongoose';
 import {
   Restaurant,
   IRestaurant,
-  Printer,
-  IPrinter,
 } from '../models/restaurant.model';
 import { BaseRepository, validateObjectId } from './base.repository';
 
@@ -83,62 +80,6 @@ export class RestaurantRepository extends BaseRepository<IRestaurant> {
         { social_links: links },
         { returnDocument: 'after' }
       )
-      .exec();
-  }
-}
-
-export class PrinterRepository extends BaseRepository<IPrinter> {
-  constructor() {
-    super(Printer);
-  }
-
-  async findByRestaurantId(restaurantId: string): Promise<IPrinter[]> {
-    validateObjectId(restaurantId, 'restaurant_id');
-    return this.model
-      .find({ restaurant_id: new Types.ObjectId(restaurantId) })
-      .lean()
-      .exec();
-  }
-
-  async createPrinter(
-    data: Partial<IPrinter> & {
-      restaurant_id: string;
-      printer_name: string;
-      printer_ip: string;
-      printer_connection: 'TCP' | 'BLUETOOTH' | 'USB';
-    }
-  ): Promise<IPrinter> {
-    validateObjectId(data.restaurant_id, 'restaurant_id');
-    return this.create({
-      ...data,
-      restaurant_id: new Types.ObjectId(data.restaurant_id),
-    });
-  }
-
-  async updatePrinter(
-    id: string,
-    data: Partial<IPrinter>
-  ): Promise<IPrinter | null> {
-    validateObjectId(id, 'printer_id');
-    return this.model.findByIdAndUpdate(id, data, { returnDocument: 'after' }).exec();
-  }
-
-  async deletePrinter(id: string): Promise<IPrinter | null> {
-    validateObjectId(id, 'printer_id');
-    return this.model.findByIdAndDelete(id).exec();
-  }
-
-  async findByConnectionType(
-    restaurantId: string,
-    connectionType: 'TCP' | 'BLUETOOTH' | 'USB'
-  ): Promise<IPrinter[]> {
-    validateObjectId(restaurantId, 'restaurant_id');
-    return this.model
-      .find({
-        restaurant_id: new Types.ObjectId(restaurantId),
-        printer_connection: connectionType,
-      })
-      .lean()
       .exec();
   }
 }
