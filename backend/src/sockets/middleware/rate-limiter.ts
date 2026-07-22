@@ -288,16 +288,12 @@ export async function recordRequest(identity: string, eventType: string): Promis
  *
  * Usage: socket.on('event', rateLimitMiddleware(socket, 'event', handler))
  */
-// The `any` in the handler constraint is intentional: the wrapper must accept
-// any handler signature, and `unknown[]` would break Parameters<T> inference
-// under strictFunctionTypes (same pattern used by socket.io's own typings).
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- preserves arbitrary Socket.IO listener parameter tuples.
-export function rateLimitMiddleware<T extends (...args: any[]) => any>(
+export function rateLimitMiddleware<TArgs extends unknown[], TResult>(
   socket: AuthenticatedSocket,
   eventType: string,
-  handler: T
-): (...args: Parameters<T>) => void {
-  return async (...args: Parameters<T>) => {
+  handler: (...args: TArgs) => TResult
+): (...args: TArgs) => void {
+  return async (...args: TArgs) => {
     try {
       const identity = getSocketRateLimitIdentity(socket);
       const { allowed, remaining } = await checkRateLimit(identity, eventType);
@@ -328,7 +324,7 @@ export function rateLimitMiddleware<T extends (...args: any[]) => any>(
       // synchronously (e.g. destructuring a null payload) or rejects is
       // caught here instead of surfacing as an unhandledRejection that
       // crashes the process (socket.io ignores the listener return value).
-      return await handler(...args);
+      await handler(...args);
     } catch (err) {
       logger.error({ err, socketId: socket.id, eventType }, 'Socket event handler failed unexpectedly');
       // Namespace the error to the event's prefix (kds/tas/pos/totem) so

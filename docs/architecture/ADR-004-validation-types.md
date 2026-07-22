@@ -23,10 +23,15 @@ extension, size, and dimension validation instead of the JSON body middleware.
 // backend/src/schemas/auth.schema.ts
 export const LoginSchema = z.object({
   username: z.string().min(2).max(50),
-  password: z.string().min(6),
-  restaurant_id: z.string().optional(),
-});
+  password: z.string().min(1).max(128),
+  restaurant_id: ObjectIdSchema.optional(),
+}).strict();
 ```
+
+Login keeps compatibility with existing hashes while bounding bcrypt input.
+Creation and reset use the shared `StaffPasswordSchema` (12-72 characters).
+Shared mutation schemas are strict and use `ObjectIdSchema` for tenant/entity
+identifiers; route-specific schemas apply the same rules before controllers.
 
 ```typescript
 // middlewares/validate.ts
@@ -61,7 +66,12 @@ export interface AuthUser {
 
 ### Permissions as string constants
 
-Permissions are defined as plain string constants (`'ADMIN'`, `'POS'`, `'TAS'`, `'KTS'`) embedded in the JWT and checked by both the backend `requirePermission` middleware and the frontend `authStore.hasPermission()` helper. Using the same strings in both places eliminates the category of bug where the frontend sends a permission name the backend does not recognise.
+Permissions are defined as plain string constants (`'ADMIN'`, `'POS'`, `'TAS'`,
+`'KTS'`) embedded in the JWT and checked by both the backend
+`requirePermission` middleware and frontend helpers. The client copy is for UI
+consistency only. Every protected request verifies the signed JWT, Redis
+revocation state, the current MongoDB `authVersion`, backend permission, and
+tenant scope; the frontend never sends a permission claim that the API trusts.
 
 ## Consequences
 

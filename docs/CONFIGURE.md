@@ -16,7 +16,7 @@ sudo ./scripts/install.sh install        # Same as above
 sudo ./scripts/install.sh start          # Start all services
 sudo ./scripts/install.sh stop           # Stop all services
 sudo ./scripts/install.sh restart        # Restart all services
-sudo ./scripts/install.sh status         # Service status + access URLs + credentials
+sudo ./scripts/install.sh status         # Service status + access URLs; never prints secrets
 sudo ./scripts/install.sh logs [service] # Live logs (backend/frontend/mongo/redis/caddy)
 sudo ./scripts/install.sh backup         # MongoDB, uploads, and deployment configuration
 sudo ./scripts/install.sh restore FILE   # Verified destructive restore
@@ -36,7 +36,7 @@ sudo ./scripts/configure.sh
 Menu options:
 1. **Change network mode / domain / IP** — rewrites Caddyfile and `FRONTEND_URL` in `.env`, restarts services
 2. **Change access port** — updates Caddyfile and `FRONTEND_URL` (validates 1-65535 range)
-3. **Reset admin password** — connects to running backend, updates bcrypt hash in MongoDB (credentials passed via env vars, no JS injection)
+3. **Reset admin password** — sends the value over stdin, requires a unique username, revokes refresh tokens, increments `auth_version`, updates only protected credential/secret files, and restarts the backend to close active sockets
 4. **Change default language** — updates `DEFAULT_LANGUAGE` and `APP_LANG` in `.env`
 5. **View current configuration** — shows `.env` values (secrets redacted)
 6. **Exit**
@@ -66,7 +66,9 @@ Portable: uses `bc` if available, falls back to `awk` for arithmetic. No externa
 The bundled deployment uses three direct diagnostic sources:
 
 - Pino JSON logs through `docker compose logs` or `install.sh logs`.
-- `/health`, `/health/ready`, `/health/live`, and `/health/simple` through Caddy.
+- `/health`, `/health/ready`, `/health/live`, and `/health/simple` through
+  Caddy for private/loopback clients or a request carrying the configured
+  internal token.
 - The backend-only `/metrics` endpoint in Prometheus exposition format.
 
 Grafana, Prometheus server, Alertmanager, and exporter containers are not part
@@ -125,7 +127,11 @@ Combined: configure + verify + start.
 
 ## Environment Variables
 
-The `.env` file (chmod 600) defines all operational parameters. Generated automatically by `install.sh`.
+The generated `.env` file defines non-secret operational parameters. Sensitive
+values are separate mode-`0600` files under `config/secrets/` and containers
+receive only `*_FILE` paths or a provider configuration mounted as a Compose
+secret. `.env.example` lists accepted inputs but deliberately leaves sensitive
+examples empty.
 
 ### Core
 
@@ -144,10 +150,7 @@ The `.env` file (chmod 600) defines all operational parameters. Generated automa
 | Parameter | Description |
 |-----------|-------------|
 | `MONGO_ROOT_USER` | Root username (default `admin`) |
-| `MONGO_ROOT_PASS` | Root password (auto-generated, 32 chars) |
 | `MONGO_APP_USER` | App username (default `disherio_app`) |
-| `MONGO_APP_PASS` | App password (auto-generated, 32 chars) |
-| `MONGODB_URI` | Connection string with `authSource=disherio&replicaSet=rs0` |
 | `MONGODB_MAX_POOL_SIZE` | Connection pool size (default 50) |
 | `MONGODB_SERVER_SELECTION_TIMEOUT` | Server selection timeout ms (default 30000) |
 | `MONGODB_SOCKET_TIMEOUT` | Socket timeout ms (default 45000) |
@@ -157,16 +160,18 @@ The `.env` file (chmod 600) defines all operational parameters. Generated automa
 | Parameter | Description |
 |-----------|-------------|
 | `REDIS_URL` | Redis URL (default `redis://redis:6379`) |
-| `REDIS_PASSWORD` | Redis password (auto-generated, 24 chars); Redis uses AOF with `appendfsync everysec` so token revocations and refresh-token state survive restarts |
+
+Redis uses AOF with `appendfsync everysec`, so refresh-token and revocation
+state survives normal restarts. Its password is supplied by the
+`redis_password` secret file, not `.env`.
 
 ### Authentication
 
 | Parameter | Description |
 |-----------|-------------|
-| `JWT_SECRET` | Access token secret (auto-generated, 64 chars; min 32, not default) |
 | `JWT_EXPIRES` | Access token lifetime (default `15m`) |
-| `JWT_REFRESH_SECRET` | Refresh token secret (auto-generated, 64 chars) |
 | `JWT_REFRESH_EXPIRES` | Refresh token lifetime (default `7d`) |
+| `BCRYPT_ROUNDS` | Password hash cost, 10-15 (default `12`) |
 
 ### Application
 
@@ -178,7 +183,26 @@ The `.env` file (chmod 600) defines all operational parameters. Generated automa
 | `DEFAULT_TAX_RATE` | Tax rate (default 10) |
 | `DEFAULT_CURRENCY` | Currency: `EUR`/`USD`/`GBP` |
 | `ADMIN_USERNAME` | Admin username (default `admin`) |
-| `ADMIN_PASSWORD` | Admin password (auto-generated, 20 chars) |
+| `SEED_EXAMPLES_CONFIRM` | Explicit production opt-in for non-credential example data; fixed demo staff remain disabled in production |
+
+### Secret files
+
+| File under `config/secrets/` | Consumer |
+|-------------------------------|----------|
+| `mongo_root_password` | MongoDB initialization, health, backup, restore |
+| `mongo_app_password` | MongoDB application-user creation |
+| `mongodb_uri` | Backend and seed services (`authSource=disherio&replicaSet=rs0`) |
+| `redis_password` | Redis and backend |
+| `jwt_secret` | Access-token signing/verification |
+| `jwt_refresh_secret` | Refresh-token successor derivation |
+| `admin_password` | Initial seed and protected credential recovery |
+| `cloudflare_tunnel_token` | Cloudflare tunnel profile only |
+| `ngrok_config` | ngrok profile only (version-3 configuration) |
+
+Legacy or interactive input names such as `MONGO_ROOT_PASS`, `MONGODB_URI`,
+`JWT_SECRET`, `ADMIN_PASSWORD`, `CF_TUNNEL_TOKEN`, and `NGROK_AUTHTOKEN` are
+read only to generate/migrate these files and are scrubbed from the resulting
+`.env`. Do not restore them there manually.
 
 ## Backups
 
@@ -192,8 +216,8 @@ Procedure:
 1. Runs `mongodump` inside the `mongo` container with root credentials
 2. Copies the database dump, persistent uploads, `.env`, Caddy configuration, MongoDB keyfile, and active Compose override into a private staging directory
 3. Writes an archive manifest and SHA-256 checksums
-4. Encrypts the archive with `openssl enc -aes-256-cbc -pbkdf2` (password from
-   `DISHERIO_BACKUP_PASSWORD` or an interactive prompt) and creates
+4. Encrypts with AES-256-CBC/PBKDF2 (600,000 iterations), adds an outer
+   HMAC-SHA256 that is verified before decryption, and creates
    `/var/backups/disherio/disherio_backup_YYYYMMDD_HHMMSS.tar.gz.enc` with mode `0600`
 5. Deletes backups older than 7 days (rotation)
 
@@ -203,7 +227,8 @@ Procedure:
 sudo ./scripts/install.sh restore /var/backups/disherio/disherio_backup_YYYYMMDD_HHMMSS.tar.gz.enc
 ```
 
-Encrypted backups (`*.tar.gz.enc`) are decrypted first (password from
+Authenticated encrypted backups (`*.tar.gz.enc`) are verified and decrypted
+(password from
 `DISHERIO_BACKUP_PASSWORD` or an interactive prompt); legacy unencrypted
 `.tar.gz` backups still restore as before. Restore validates archive paths,
 rejects symbolic links, verifies the manifest and checksums, and requires
@@ -213,16 +238,10 @@ restores ownership, and waits for application health. Because this is
 destructive, test each backup against an isolated installation before relying
 on it for recovery.
 
-### Manual backup
-
-```bash
-docker compose exec -T mongo mongodump \
-  --db disherio \
-  --username admin \
-  --password "$(grep MONGO_ROOT_PASS .env | cut -d= -f2 | tr -d '"')" \
-  --authenticationDatabase admin \
-  --out /tmp/dump
-```
+There is intentionally no supported password-in-command-line `mongodump`
+example. The installer reads the MongoDB secret inside the container, includes
+uploads and recovery configuration, authenticates the final envelope, and
+cleans its private staging directory. Use that path for operational backups.
 
 ---
 

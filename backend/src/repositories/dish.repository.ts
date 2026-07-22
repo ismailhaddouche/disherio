@@ -1,4 +1,4 @@
-import { Types, PipelineStage } from 'mongoose';
+import { Types, PipelineStage, Document } from 'mongoose';
 import { Dish, IDish, Category, ICategory } from '../models/dish.model';
 import { BaseRepository, validateObjectId } from './base.repository';
 import { CreateDishData, UpdateDishData, CreateCategoryData, UpdateCategoryData } from '@disherio/shared';
@@ -25,6 +25,17 @@ export interface CategoryStats {
   dishCount: number;
   totalRevenue: number;
   averagePrice: number;
+}
+
+interface DishAggregationRow {
+  _id: Types.ObjectId;
+  dish?: {
+    disher_name?: Array<{ value?: string }>;
+    category_id?: Types.ObjectId;
+  };
+  nameSnapshot?: Array<{ value?: string }>;
+  totalOrdered: number;
+  totalRevenue: number;
 }
 
 export class DishRepository extends BaseRepository<IDish> {
@@ -365,8 +376,8 @@ export class DishRepository extends BaseRepository<IDish> {
       { $unwind: { path: '$dish', preserveNullAndEmptyArrays: true } },
     ];
 
-    const stats = await QueryProfiler.profileAggregation(
-      this.model.db.model('ItemOrder'),
+    const stats = await QueryProfiler.profileAggregation<Document, DishAggregationRow>(
+      this.model.db.model<Document>('ItemOrder'),
       pipeline,
       'DishRepository.getDishStats',
       { explain: false }
@@ -500,8 +511,8 @@ export class DishRepository extends BaseRepository<IDish> {
       { $unwind: { path: '$dish', preserveNullAndEmptyArrays: true } },
     ];
 
-    const stats = await QueryProfiler.profileAggregation(
-      this.model.db.model('ItemOrder'),
+    const stats = await QueryProfiler.profileAggregation<Document, DishAggregationRow>(
+      this.model.db.model<Document>('ItemOrder'),
       pipeline,
       'DishRepository.getPopularDishes',
       { explain: false }

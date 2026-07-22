@@ -1,15 +1,13 @@
 import { Model, Document, PipelineStage } from 'mongoose';
 import { logger } from '../config/logger';
 
-/* eslint-disable @typescript-eslint/no-explicit-any -- explain() shapes and caller query results are driver-defined generic payloads. */
-
 export interface QueryProfile {
   operation: string;
   collection: string;
   executionTimeMs: number;
   documentCount?: number;
   stages?: PipelineStage[];
-  explainResult?: any;
+  explainResult?: unknown;
   timestamp: Date;
 }
 
@@ -27,23 +25,23 @@ export class QueryProfiler {
   private static profiles: QueryProfile[] = [];
   private static maxProfiles = 100;
 
-  static async profileAggregation<T extends Document>(
+  static async profileAggregation<T extends Document, TResult = unknown>(
     model: Model<T>,
     pipeline: PipelineStage[],
     operationName: string,
     options?: { explain?: boolean; logLevel?: 'debug' | 'info' | 'warn' | 'error' }
-  ): Promise<any[]> {
+  ): Promise<TResult[]> {
     const startTime = performance.now();
     const collectionName = model.collection.name;
 
     try {
       // Execute the aggregation
-      const result = await model.aggregate(pipeline).exec();
+      const result = await model.aggregate<TResult>(pipeline).exec();
 
       const executionTime = performance.now() - startTime;
 
       // Get explain plan if requested
-      let explainResult: any;
+      let explainResult: unknown;
       if (options?.explain) {
         try {
           explainResult = await model.aggregate(pipeline).explain('executionStats');
@@ -81,12 +79,12 @@ export class QueryProfiler {
     }
   }
 
-  static async profileQuery<T extends Document>(
+  static async profileQuery<T extends Document, TResult>(
     model: Model<T>,
-    queryFn: () => Promise<any>,
+    queryFn: () => Promise<TResult>,
     operationName: string,
     options?: { logLevel?: 'debug' | 'info' | 'warn' | 'error' }
-  ): Promise<any> {
+  ): Promise<TResult> {
     const startTime = performance.now();
     const collectionName = model.collection.name;
 
@@ -124,7 +122,7 @@ export class QueryProfiler {
     model: Model<T>,
     pipeline: PipelineStage[],
     verbosity: 'queryPlanner' | 'executionStats' | 'allPlansExecution' = 'executionStats'
-  ): Promise<any> {
+  ): Promise<unknown> {
     try {
       return await model.aggregate(pipeline).explain(verbosity);
     } catch (error) {

@@ -40,6 +40,10 @@ export const authStore = {
 The persisted value contains non-secret UI and authorization context only.
 Access and refresh tokens remain exclusively in HttpOnly cookies. Language is a
 display preference and may be retained separately in browser storage.
+The persisted permission names are not an authorization boundary: they can be
+edited by the browser owner and are used only for routing/rendering. Backend
+authentication, CASL middleware, `authVersion`, and tenant-scoped queries decide
+whether an operation is allowed.
 
 ```typescript
 // store/kds.store.ts
@@ -81,7 +85,7 @@ export class CaslCanDirective {
       this.vcr.clear();
       if (!user) return;
       const ability = defineAbilityFor(user);
-      if (ability.can(action as any, subject as any)) {
+      if (ability.can(action, subject)) {
         this.vcr.createEmbeddedView(this.tpl);
       }
     });
@@ -97,3 +101,5 @@ export class CaslCanDirective {
 - Debugging is straightforward: signals are synchronous values
 - No Redux DevTools integration; state is inspected through component inputs,
   signal reads, and browser development tools
+- A manipulated or stale browser store may display the wrong navigation until
+  the next request, but it cannot grant API or Socket.IO permissions

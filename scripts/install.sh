@@ -9,7 +9,7 @@
 #   sudo ./scripts/install.sh start        # Start services
 #   sudo ./scripts/install.sh stop         # Stop services
 #   sudo ./scripts/install.sh restart      # Restart services
-#   sudo ./scripts/install.sh status       # Status and access information
+#   sudo ./scripts/install.sh status       # Status and access information (no secrets)
 #   sudo ./scripts/install.sh logs         # View live logs
 #   sudo ./scripts/install.sh backup       # Back up data and configuration
 #   sudo ./scripts/install.sh uninstall    # Uninstall everything
@@ -816,7 +816,8 @@ cmd_status() {
     echo ""
     echo -e "  ${BOLD}CREDENCIALES${NC}"
     echo -e "  ${BLUE}$(printf '─%.0s' {1..55})${NC}"
-    grep -E "^(Usuario|Contraseña)" "$CREDENTIALS_FILE" 2>/dev/null || echo "  (ver .credentials)"
+    echo "  Archivo protegido: $CREDENTIALS_FILE (0600)"
+    echo "  El comando status no imprime contraseñas ni tokens."
   fi
 
   echo ""
@@ -1059,20 +1060,17 @@ cmd_uninstall() {
   if [[ "$confirm" != "SI" ]]; then echo "Cancelado."; exit 0; fi
 
   log "Deteniendo y eliminando contenedores..."
-  docker compose down --remove-orphans --volumes >> "$LOG_FILE" 2>&1 || true
+  docker compose down --remove-orphans --volumes --rmi local >> "$LOG_FILE" 2>&1 || true
 
   log "Eliminando volúmenes..."
   docker volume rm disherio_mongo_data disherio_redis_data disherio_uploads \
     disherio_caddy_data disherio_caddy_config \
     2>/dev/null || true
 
-  log "Eliminando imágenes..."
-  docker rmi disherio_backend disherio_frontend disherio_seed 2>/dev/null || true
-
   log "Eliminando keyFile..."
   rm -f "$ROOT_DIR/config/mongo-keyfile" 2>/dev/null || true
 
-  rm -f "$ENV_FILE" "$CREDENTIALS_FILE" "$CADDYFILE"
+  rm -f "$ENV_FILE" "$CREDENTIALS_FILE" "$CADDYFILE" "$ROOT_DIR/docker-compose.override.yml"
   rm -rf -- "$ROOT_DIR/config/secrets"
   ok "DisherIO desinstalado completamente"
 }
@@ -1105,7 +1103,7 @@ COMANDOS:
   start         Iniciar servicios
   stop          Detener servicios
   restart       Reiniciar servicios
-  status        Ver estado + URL + credenciales
+  status        Ver estado + URLs (no imprime secretos)
   logs [servicio]  Ver logs en vivo (backend/frontend/mongo/redis/caddy)
   backup        Crear backup de MongoDB, uploads y configuración
   restore FILE  Restaurar base de datos, uploads y configuración

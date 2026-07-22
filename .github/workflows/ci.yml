@@ -59,6 +59,10 @@ jobs:
         working-directory: .
         run: bash infrastructure/tests/validate-operations.sh
 
+      - name: Validate documentation consistency
+        working-directory: .
+        run: npm run docs:check
+
   lint-frontend:
     name: Lint Frontend
     runs-on: ubuntu-latest

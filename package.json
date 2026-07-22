@@ -16,6 +16,7 @@
     "lint": "npm run lint:backend && npm run lint:frontend",
     "lint:backend": "eslint backend/src shared --max-warnings=0",
     "lint:frontend": "eslint frontend/src --max-warnings=0",
+    "docs:check": "node infrastructure/tests/validate-documentation.mjs",
     "system:install": "bash scripts/install.sh install",
     "start": "bash scripts/install.sh start",
     "stop": "bash scripts/install.sh stop",

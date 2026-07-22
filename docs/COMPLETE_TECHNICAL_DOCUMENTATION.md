@@ -39,12 +39,12 @@ The product provides five primary interfaces:
 
 | Layer | Implementation |
 |-------|----------------|
-| Frontend | Angular 21.2, standalone components, Angular Material 3/CDK, Signals, RxJS 7.8, Tailwind CSS 3.4, Socket.IO Client 4.8, CASL Angular 9, Zod 4.3 |
+| Frontend | Angular 21.2, standalone components, Angular Material 3/CDK, Signals, RxJS 7.8, Tailwind CSS 3.4, Socket.IO Client 4.8, CASL Ability 6.8, Zod 4.3 |
 | Backend | Node.js 24, Express 5.2, strict TypeScript, Mongoose 9.3, Socket.IO 4.8, CASL 6.8, Zod 4.3 |
 | Database | MongoDB 7 with replica set `rs0` |
 | Shared state | Redis 7 for caching, Socket.IO pub/sub, refresh tokens, and access-token revocation |
 | Security | HttpOnly cookies, JWT access tokens, rotating opaque refresh tokens, bcryptjs, Helmet, CORS, rate limiting, and Zod validation |
-| Media | Multer 2 and Sharp 0.34 with content inspection, resizing, WebP conversion, and path protection |
+| Media | Multer 2 and Sharp 0.35 with content inspection, resizing, WebP conversion, and path protection |
 | Observability | Pino logs, health endpoints, and an internal Prometheus-format exposition endpoint |
 | Delivery | npm workspaces, multi-stage Docker images, Docker Compose, GitHub Actions, GHCR, and Caddy |
 | Localization | English, Spanish, and French application catalogs; English technical documentation |
@@ -110,8 +110,9 @@ Browser or restaurant device
 ```
 
 Caddy is the only public entry point in production. MongoDB and Redis remain on
-the internal Docker network. The backend exposes health and metrics endpoints
-for orchestration and monitoring.
+the internal Docker network. Backend health/metrics endpoints are restricted
+to private/loopback sources or an internal token, and Caddy explicitly blocks
+`/metrics`.
 
 ## 5. Domain Model
 
@@ -228,7 +229,8 @@ The visual contract is:
 - Refresh tokens are 32-byte opaque random values with a default lifetime of
   seven days.
 - Access and refresh tokens are stored in HttpOnly cookies.
-- HTTPS cookies use `Secure` and `SameSite=Strict`.
+- Cookies use `HttpOnly` and `SameSite=Lax`; `Secure` is enabled when the
+  actual request is HTTPS directly or through the trusted proxy.
 - Refresh-token identifiers are hashed before storage in Redis, keyed by
   `refresh:<staffId>:<sha256(token)>`.
 - Refresh tokens rotate on use; reuse detection revokes the entire family.
@@ -335,13 +337,17 @@ The production security baseline includes:
 - Explicit CORS origins with credential support.
 - Strict environment validation and no production secret fallbacks.
 - Authentication, API, mutation, upload, QR, and QR-probing rate limits.
+- Redis-backed, fail-closed production HTTP and Socket.IO rate-limit state.
 - Zod validation for untrusted input.
 - CASL authorization and tenant ownership checks.
 - Password hashing with configurable bcrypt rounds.
 - HttpOnly authentication cookies and refresh-token rotation.
 - Upload MIME, signature, size, path, and image-content validation.
 - Pino redaction for credentials and authentication data.
-- Non-root backend containers.
+- Explicit non-root identities for MongoDB, its replica initializer, backend,
+  frontend, Caddy, and seed jobs; core services also use dropped capabilities,
+  `no-new-privileges`, and read-only root filesystems with explicit writable
+  volumes/tmpfs.
 - Internal-only database and Redis networks.
 
 Secrets, tokens, passwords, cookies, connection strings, and private keys
@@ -408,7 +414,10 @@ The backend provides:
 - `/health/simple` for lightweight checks.
 - `/metrics` for optional internal scraping by operator-provided tooling.
 
-Health endpoints must avoid exposing credentials or sensitive topology details.
+Health and metrics routes are guarded by `internalOnly`, which accepts private
+or loopback sources or a configured internal token. Caddy routes health for
+trusted probes and explicitly blocks `/metrics`. Health responses must avoid
+credentials or sensitive topology details.
 
 ## 16. Deployment
 
@@ -436,9 +445,10 @@ records required by the latest image group.
 
 ## 17. Backup and Recovery
 
-Database backups use authenticated `mongodump`. A backup is not considered
-valid until its archive can be inspected and restored into an isolated test
-environment.
+Database backups use authenticated `mongodump`. The generated v2 envelope adds
+manifest/checksums, AES-256-CBC with PBKDF2 (600,000 iterations), and an outer
+HMAC-SHA256 verified before decryption. A backup is not considered valid until
+it has been restored into an isolated test environment.
 
 Recovery procedures must verify:
 
@@ -451,9 +461,10 @@ Recovery procedures must verify:
 ## 18. Testing and Quality Gates
 
 Backend tests use Jest and Supertest. Frontend tests use Jasmine/Karma with
-headless Chrome. CI performs strict TypeScript checks and tests in separate
-backend and frontend jobs. ESLint runs only when a workspace provides an ESLint
-configuration. Non-pull-request runs build and publish the container images.
+headless Chrome. CI performs strict TypeScript checks, ESLint, operational
+Compose/script validation, and tests in separate backend and frontend jobs.
+`no-explicit-any` is an error in production TypeScript and is relaxed only for
+test/spec mocks. Non-pull-request runs build and publish the container images.
 The staging and production jobs currently report deployment intent but do not
 perform a deployment or a real readiness request.
 
@@ -462,6 +473,8 @@ Standard verification from the repository root:
 ```bash
 npm ci
 npm run build
+npm run lint
+npm run docs:check
 npm run test --workspace=backend
 npm run test --workspace=frontend
 ```
@@ -479,14 +492,16 @@ security, and deployment changes also require documentation updates.
 
 ## 19. Environment Contract
 
-`.env.example` is the environment-variable catalog. Production requires, at
-minimum:
+`.env.example` is an input catalog, not a production template that can be
+copied unchanged. Generated Compose deployments keep sensitive values in
+mode-`0600` files under `config/secrets/`; `.env` retains non-secret settings
+and usernames. Production runtime requires, at minimum:
 
 - `NODE_ENV=production`
-- `MONGODB_URI` with `replicaSet=rs0`
-- MongoDB root and application credentials
-- `REDIS_URL` and `REDIS_PASSWORD`
-- `JWT_SECRET` and `JWT_REFRESH_SECRET`
+- `mongodb_uri` secret with `authSource=disherio&replicaSet=rs0`
+- MongoDB root/application password secret files and the replica-set keyfile
+- `REDIS_URL` and the `redis_password` secret
+- distinct `jwt_secret` and `jwt_refresh_secret` files
 - `JWT_EXPIRES` and `JWT_REFRESH_EXPIRES`
 - `FRONTEND_URL`
 - `TRUST_PROXY=true` behind Caddy or another trusted proxy
@@ -499,6 +514,7 @@ Production Compose configuration must fail when required secrets are absent.
 | Document | Purpose |
 |----------|---------|
 | `ARCHITECTURE.md` | Detailed runtime topology, stack, security, and design patterns |
+| `SECURITY.md` | Canonical trust model, enforced controls, exceptions, and audit guide |
 | `api-contracts.md` | HTTP routes and Socket.IO event contracts |
 | `DEVELOPMENT.md` | Local development and verification workflow |
 | `DEPLOYMENT.md` | Deployment modes, infrastructure topology, and operations |

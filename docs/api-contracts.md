@@ -15,13 +15,15 @@ Rate limiting applies globally (1000 requests per 15 minutes). Authentication
 allows 5 failed attempts per 15 minutes, strict mutations allow 20 requests per
 15 minutes, uploads allow 10 requests per hour, public QR traffic allows 30
 requests per minute, and QR probing allows 10 attempts per 15 minutes.
+Production counters are shared through Redis and fail closed on store errors;
+the in-process store is development-only.
 
 ## Current HTTP route inventory
 
 | Area | Methods and paths |
 |------|-------------------|
 | Authentication | `POST /auth/login`, `POST /auth/refresh`, `POST /auth/logout` |
-| Dishes | `GET /dishes`, `GET /dishes/:id`, `POST /dishes`, `PATCH /dishes/:id`, `DELETE /dishes/:id`, `PATCH /dishes/:id/toggle` |
+| Dishes | `GET /dishes`, `GET /dishes/manage/all`, `GET /dishes/:id`, `POST /dishes`, `PATCH /dishes/:id`, `DELETE /dishes/:id`, `PATCH /dishes/:id/toggle` |
 | Categories | `GET /dishes/categories`, `GET /dishes/categories/:id`, `POST /dishes/categories`, `PATCH /dishes/categories/:id`, `DELETE /dishes/categories/:id` |
 | Orders | `GET /orders/kitchen`, `GET /orders/service-items`, `GET /orders/session/:sessionId`, `POST /orders`, `POST /orders/items`, `POST /orders/items/batch`, `PATCH /orders/items/:id/state`, `PATCH /orders/items/:id/assign`, `DELETE /orders/items/:id` |
 | Payments | `GET /orders/payments/history`, `POST /orders/payments`, `PATCH /orders/payments/:id/ticket` |
@@ -41,7 +43,9 @@ Operational endpoints are outside `/api`: `GET /health`, `/health/ready`,
 `/health/live`, `/health/simple`, and the internal metrics endpoint
 `GET /metrics`. The metrics response uses Prometheus exposition format, but the
 repository does not bundle a collector, dashboard, Alertmanager, or exporters,
-and Caddy does not route this endpoint publicly.
+and Caddy returns `403` for this endpoint. The backend restricts every
+operational endpoint to private/loopback sources or a matching
+`x-internal-token`.
 
 ---
 
@@ -50,6 +54,9 @@ and Caddy does not route this endpoint publicly.
 ### POST /auth/login
 
 Login with username and password.
+An optional `restaurant_id` must be a 24-hex ObjectId and scopes usernames that
+may exist in more than one tenant. Without it, missing, incorrect, and ambiguous
+usernames all return the same `INVALID_CREDENTIALS` response.
 
 **Request**
 
@@ -64,6 +71,9 @@ Login with username and password.
 
 Sets the `auth_token` and `refresh_token` HttpOnly cookies. Returns the user
 object without either raw token.
+Cookies use `SameSite=Lax` and become `Secure` when the request is HTTPS. The
+frontend projection is not proof of authentication; protected requests also
+check token revocation and the staff record's current `authVersion`.
 
 ```json
 {
@@ -105,7 +115,8 @@ the frontend, then the original requests are retried.
 
 ### POST /auth/logout
 
-Clear the session cookie.
+Blocklist the current access token, revoke the current refresh-token family,
+disconnect this staff identity's active sockets, and clear both cookies.
 
 **Response 200**
 
@@ -713,7 +724,14 @@ Create a staff member.
 
 **Response 201** — staff object (password fields omitted)
 
-`username` is unique within the restaurant.
+`username` is unique within the restaurant. New/reset passwords must contain
+12-72 characters. `restaurant_id` is derived from the authenticated staff
+identity and is rejected as an unknown client field.
+
+`PATCH /staff/:id` may change `role_id` only for a caller with backend
+`update Staff` permission. The target role must belong to the same restaurant;
+the update increments `authVersion`, revokes refresh credentials, and
+disconnects active sockets so old authorization does not survive the change.
 
 ---
 
@@ -754,9 +772,17 @@ stored under `/uploads/`.
 ### GET /health
 
 Returns the overall status plus MongoDB, Redis, disk, and memory checks. It
-returns `503` when the service is unhealthy and does not require authentication.
+returns `503` when the service is unhealthy. It does not require a staff JWT,
+but `internalOnly` requires a private/loopback source or a valid
+`x-internal-token` before the health router runs.
 Use `/health/ready` for traffic readiness, `/health/live` for process liveness,
 and `/health/simple` only for lightweight compatibility checks.
+
+| Method and path | Contract |
+|-----------------|----------|
+| `GET /health/ready` | `200` when MongoDB and Redis are ready; otherwise `503` |
+| `GET /health/live` | Process-liveness response without dependency readiness |
+| `GET /health/simple` | Minimal `{ "status": "ok" }` compatibility response |
 
 ---
 

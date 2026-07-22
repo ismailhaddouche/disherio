@@ -178,40 +178,78 @@ reset_admin_password() {
   echo ""
   if [[ -z "$new_pass" ]]; then
     new_pass=$(openssl rand -base64 16 2>/dev/null | tr -dc 'a-zA-Z0-9' | head -c 16 || tr -dc 'a-zA-Z0-9' < /dev/urandom | head -c 16)
-    log "Contraseña generada: $new_pass"
+    log "Contraseña administrativa generada y reservada para almacenamiento protegido"
   fi
   if (( ${#new_pass} < 12 || ${#new_pass} > 72 )); then
     err "La contraseña debe tener entre 12 y 72 caracteres."
   fi
 
-  # Reject single quotes in the password because they would break the JavaScript snippet.
-  if [[ "$new_pass" == *"'"* ]]; then
-    err "La contraseña no puede contener comillas simples."
-  fi
-  if [[ "$admin_user" == *"'"* ]]; then
-    err "El usuario no puede contener comillas simples."
-  fi
-
   cd "$ROOT_DIR"
-  # Pass credentials through the environment without interpolating them into JavaScript.
-  docker compose exec -T -e NEW_ADMIN_PASS="$new_pass" -e NEW_ADMIN_USER="$admin_user" backend node -e '
+  # Send credentials over stdin. They never appear in argv, container
+  # environment metadata, logs, or terminal output.
+  printf '%s\0%s\0' "$admin_user" "$new_pass" | docker compose exec -T backend node -e '
+    const fs = require("fs");
     const mongoose = require("mongoose");
     const bcrypt = require("bcryptjs");
+    const { loadSecretFiles } = require("/app/dist/config/secret-files");
+    const { revokeAllUserRefreshTokens } = require("/app/dist/services/refresh-token.service");
+    const { closeRedisConnections } = require("/app/dist/config/redis");
     async function run() {
-      await mongoose.connect(process.env.MONGODB_URI);
-      const Staff = mongoose.model("Staff", new mongoose.Schema({ username: String, password_hash: String }, { strict: false }));
-      const hash = await bcrypt.hash(process.env.NEW_ADMIN_PASS, 12);
-      const result = await Staff.updateOne({ username: process.env.NEW_ADMIN_USER }, { $set: { password_hash: hash } });
-      if (result.matchedCount === 0) { console.error("Usuario no encontrado: " + process.env.NEW_ADMIN_USER); process.exit(1); }
+      const [username, password] = fs.readFileSync(0).toString("utf8").split("\0");
+      if (!username || !password) throw new Error("Entrada de credenciales no válida");
+      loadSecretFiles();
+      const uri = fs.readFileSync("/run/secrets/mongodb_uri", "utf8").trim();
+      await mongoose.connect(uri);
+      const Staff = mongoose.model("Staff", new mongoose.Schema({
+        username: String,
+        password_hash: String,
+        auth_version: { type: Number, default: 0 },
+      }, { strict: false }));
+      const matches = await Staff.find({ username: username.toLowerCase() }).select("_id").limit(2).lean();
+      if (matches.length !== 1) throw new Error(matches.length === 0 ? "Usuario no encontrado" : "Usuario ambiguo; especifique una cuenta única");
+      await revokeAllUserRefreshTokens(matches[0]._id.toString());
+      const hash = await bcrypt.hash(password, Number(process.env.BCRYPT_ROUNDS || 12));
+      const result = await Staff.updateOne(
+        { _id: matches[0]._id },
+        { $set: { password_hash: hash }, $inc: { auth_version: 1 } },
+      );
+      if (result.modifiedCount !== 1) throw new Error("No se actualizó la cuenta");
       console.log("Contraseña actualizada");
+      await closeRedisConnections();
       await mongoose.disconnect();
     }
     run().catch(e => { console.error(e.message); process.exit(1); });
   ' || err "No se pudo actualizar la contraseña. Verifica que el contenedor backend esté corriendo."
 
+  install -d -m 0700 "$ROOT_DIR/config/secrets"
+  printf '%s' "$new_pass" > "$ROOT_DIR/config/secrets/admin_password"
+  chmod 600 "$ROOT_DIR/config/secrets/admin_password"
+
+  if [[ -f "$ROOT_DIR/.credentials" ]]; then
+    local credentials_tmp
+    credentials_tmp=$(mktemp "$ROOT_DIR/.credentials.XXXXXX")
+    while IFS= read -r credential_line || [[ -n "$credential_line" ]]; do
+      case "$credential_line" in
+        "Contraseña admin:"*) printf 'Contraseña admin: %s\n' "$new_pass" ;;
+        *) printf '%s\n' "$credential_line" ;;
+      esac
+    done < "$ROOT_DIR/.credentials" > "$credentials_tmp"
+    chmod 600 "$credentials_tmp"
+    mv -f "$credentials_tmp" "$ROOT_DIR/.credentials"
+  else
+    printf '# DisherIO — Credenciales\nUsuario admin: %s\nContraseña admin: %s\n' \
+      "$admin_user" "$new_pass" > "$ROOT_DIR/.credentials"
+    chmod 600 "$ROOT_DIR/.credentials"
+  fi
+
+  docker compose restart backend >/dev/null \
+    || err "La contraseña cambió, pero no se pudo reiniciar el backend para cerrar sockets activos."
+  docker compose up -d --wait backend >/dev/null \
+    || err "La contraseña cambió, pero el backend no recuperó el estado saludable."
+
   echo ""
   echo -e "  ${GREEN}Contraseña actualizada para${RESET} ${BOLD}${admin_user}${RESET}"
-  echo -e "  ${YELLOW}Nueva contraseña: ${BOLD}${new_pass}${RESET}  (guárdala ahora)"
+  echo -e "  ${YELLOW}Guardada en ${BOLD}$ROOT_DIR/.credentials${RESET} y en el secreto administrativo (0600)."
 }
 
 # ── Change language ───────────────────────────────────────────────────────────

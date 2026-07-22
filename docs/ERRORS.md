@@ -46,15 +46,16 @@ or:
 [ERROR] JWT_SECRET must be at least 32 characters long
 ```
 
-**Cause**: The `.env` file has a missing or placeholder `JWT_SECRET`.
+**Cause**: The backend could not load a valid access or refresh secret. In the
+Compose deployment these values come from `config/secrets/jwt_secret` and
+`config/secrets/jwt_refresh_secret`, not from `.env`.
 
-**Resolution**: Regenerate with the installer (recommended):
+**Resolution**: Regenerate/repair the secret files with the configurator and
+validate the resolved deployment without printing their contents:
 ```bash
-sudo ./scripts/install.sh
-```
-Or manually generate a 64-char secret:
-```bash
-echo "JWT_SECRET=\"$(openssl rand -base64 48 | tr -dc 'A-Za-z0-9' | head -c 64)\"" >> .env
+./infrastructure/scripts/configure.sh
+./infrastructure/scripts/verify.sh
+docker compose config --quiet
 ```
 
 ### 2. Backend fails to start: MongoDB connection
@@ -63,12 +64,12 @@ echo "JWT_SECRET=\"$(openssl rand -base64 48 | tr -dc 'A-Za-z0-9' | head -c 64)\
 
 **Causes & resolutions**:
 - **Replica set not initialized**: Run `sudo ./scripts/install.sh` (the installer runs `mongo-init-replica` explicitly)
-- **App user not created** (volume pre-exists): The installer verifies and force-creates the app user. Manually:
-  ```bash
-  docker compose exec -T mongo mongosh -u admin -p "$(grep MONGO_ROOT_PASS .env | cut -d= -f2 | tr -d '"')" --authenticationDatabase admin \
-    --eval "db.getSiblingDB('disherio').createUser({user:'disherio_app',pwd:'<app-pass>',roles:[{role:'readWrite',db:'disherio'},{role:'clusterMonitor',db:'admin'}]})"
-  ```
-- **Wrong `MONGODB_URI`**: Verify `authSource=disherio&replicaSet=rs0` in the URI
+- **App user not created** (volume pre-exists): rerun the installer. Its
+  verification path reads the root credential inside `mongosh` and reruns
+  `init-mongo.js` without placing a password in argv.
+- **Wrong application URI secret**: regenerate
+  `config/secrets/mongodb_uri`; it must select `disherio` and include
+  `authSource=disherio&replicaSet=rs0`. Do not print it during diagnosis.
 
 ### 3. Backend fails to start: i18n locale files
 
@@ -100,10 +101,11 @@ And `docker-compose.yml` has `- disherio_uploads:/srv/uploads:ro` on the caddy s
 **Causes & resolutions**:
 - **Caddy misconfiguration**: Verify `/socket.io/*` handler with `flush_interval -1` and `transport http { versions 1.1 }`
 - **CORS rejected**: Check `FRONTEND_URL` in `.env` matches the browser origin (including port). The backend logs `CORS rejected origin` warnings
-- **Redis unavailable**: Socket.IO can fall back to its in-memory adapter, but
-  authenticated traffic and `/health/ready` fail closed because token rotation
-  and access-token revocation require Redis. Restore Redis before returning the
-  backend to service (`docker compose logs redis`).
+- **Redis unavailable**: optional cache operations may degrade, but production
+  HTTP/socket rate limits, refresh tokens, and access-token revocation do not
+  fall back to per-process security state. Authenticated traffic and readiness
+  fail closed. Restore Redis before returning the backend to service
+  (`docker compose logs redis`).
 - **Auth failure**: Verify cookies are being sent (`withCredentials: true` on frontend). Check `TRUST_PROXY=true` in backend env
 
 ### 6. Let's Encrypt certificate not issued
@@ -113,15 +115,19 @@ And `docker-compose.yml` has `- disherio_uploads:/srv/uploads:ro` on the caddy s
 **Causes & resolutions**:
 - DNS not pointing to server: `dig +short your-domain.com` should return your public IP
 - Ports 80/443 blocked by firewall: `sudo ufw allow 80/tcp && sudo ufw allow 443/tcp`
-- Too many failed authorizations: wait 1 hour before retrying
-- Rate limit: Let's Encrypt has a limit of 5 failed attempts per account per hostname per week
+- Repeated failed authorizations: stop retrying, fix the reported DNS/network
+  cause, and consult the current ACME provider rate-limit documentation before
+  trying again.
 
 ### 7. Cloudflare Tunnel not connecting
 
 **Symptom**: `cloudflared` container keeps restarting or shows no `Connection registered` message.
 
 **Resolutions**:
-- Verify token: `grep CF_TUNNEL_TOKEN .env`
+- Verify that `config/secrets/cloudflare_tunnel_token` exists and is non-empty
+  without printing it: `test -s config/secrets/cloudflare_tunnel_token`
+- Run `./infrastructure/scripts/verify.sh`; it validates the active tunnel
+  secret file rather than looking in `.env`.
 - Check container logs: `docker compose logs -f cloudflared`
 - Ensure Caddy is healthy: `docker compose ps caddy`
 - Verify the tunnel network is NOT `internal: true` (must allow outbound Internet access)
@@ -144,7 +150,11 @@ the backend metrics route on a trusted internal network.
 
 **Symptom**: API returns `429` with `API_RATE_LIMIT_EXCEEDED` during normal POS operations.
 
-**Resolution**: The API rate limit is 1000 requests / 15 min. If this is insufficient for high-volume restaurants, adjust `RATE_LIMITS.API.max` in `backend/src/middlewares/rateLimit.config.ts`.
+**Resolution**: The API rate limit is 1000 requests / 15 min. Production
+counters are shared in Redis. If this is insufficient for high-volume
+restaurants, adjust `RATE_LIMITS.API.max` in
+`backend/src/middlewares/rateLimit.config.ts`, test all instances against the
+same Redis, and document the operational change.
 
 ### 10. Permission denied writing to `/app/uploads`
 
@@ -153,9 +163,13 @@ the backend metrics route on a trusted internal network.
 **Cause**: The `disherio_uploads` volume has root ownership from a previous installation.
 
 **Resolution**:
+Back up first, then repair only the upload-volume ownership and restart the
+backend; do not uninstall the database to solve a file-permission issue:
+
 ```bash
-sudo ./scripts/install.sh uninstall  # type SI to confirm
-sudo ./scripts/install.sh            # fresh install creates volume with correct 1001:1001 ownership
+sudo ./scripts/install.sh backup
+docker compose run --rm --user 0 backend chown -R 1001:1001 /app/uploads
+docker compose restart backend caddy
 ```
 
 ---
@@ -198,4 +212,7 @@ docker compose logs --tail=100 backend
 
 Docker healthchecks use `/health/ready` because MongoDB and Redis are required
 for normal application traffic. `/health/simple` remains available for clients
-that only need to verify that the HTTP process responds.
+that only need to verify that the HTTP process responds. All health variants
+still pass through `internalOnly`: callers must originate from a private or
+loopback address, or present the configured `x-internal-token`. Caddy blocks
+`/metrics` before it reaches the backend.

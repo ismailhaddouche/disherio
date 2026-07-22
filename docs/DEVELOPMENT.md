@@ -28,35 +28,32 @@ npm run build --workspace=shared
 
 ## Local Services
 
-The frontend uses `/api` and `/socket.io` through `frontend/proxy.conf.json`.
-For a complete local runtime, start backend dependencies first:
+The hardened base Compose file does not publish MongoDB, Redis, or the backend
+to host ports. It also requires generated secret files and the MongoDB keyfile.
+For a complete runnable local stack, generate those assets first:
 
 ```bash
-docker compose up -d mongo redis
+./infrastructure/scripts/configure.sh
+# Select: local
+./infrastructure/scripts/verify.sh
+docker compose up -d --build --wait
 ```
 
-Start the backend:
+This serves the built application through Caddy at the configured `CADDY_PORT`
+(4200 by default). It is the supported way to exercise the complete topology.
+Running `docker compose up mongo redis` alone does not make those services
+reachable by a backend process running directly on the host.
 
-```bash
-cd backend
-npm run dev
-```
+For live source development, the Angular server uses `/api` and `/socket.io`
+through `frontend/proxy.conf.json` and normally listens at
+`http://localhost:4200`. A host-run backend (`npm run dev --workspace=backend`)
+requires a separately provisioned loopback-only MongoDB replica set and Redis
+that match the non-production environment variables. Do not publish an
+unauthenticated development database on a non-loopback interface.
 
-Start the frontend:
-
-```bash
-cd frontend
-npm start
-```
-
-The frontend development server runs on:
-
-```text
-http://localhost:4200
-```
-
-If the backend is not running, frontend login/API calls will show proxy `ECONNREFUSED`.
-That is expected for UI-only checks, but not for end-to-end login verification.
+If the backend is not reachable, frontend login/API calls show proxy
+`ECONNREFUSED`. That is acceptable for isolated UI work, but not for an
+end-to-end login check.
 
 ---
 
@@ -66,6 +63,8 @@ Run these commands from the repository root unless noted otherwise:
 
 ```bash
 npm run build
+npm run lint
+npm run docs:check
 npm run test --workspace=backend
 npm run test --workspace=frontend
 ```
@@ -75,6 +74,10 @@ Expected results:
 - `npm run build` completes for `shared`, `backend`, and `frontend`.
 - Backend Jest tests pass. Integration suites may be skipped unless `MONGODB_URI_TEST` is configured.
 - Frontend Karma tests report the current full suite count with no failures.
+- ESLint rejects explicit `any` in production TypeScript; only test/spec mocks
+  have the documented exception.
+- Documentation checks validate local links, every Express method/path in the
+  API reference, empty sensitive examples, and known stale security claims.
 
 The frontend test script returns a non-zero status for assertion failures,
 browser disconnects, and launcher errors; CI must not suppress that status.
@@ -137,6 +140,8 @@ Before committing:
 ```bash
 git status --short
 npm run build
+npm run lint
+npm run docs:check
 npm run test --workspace=backend
 npm run test --workspace=frontend
 ```

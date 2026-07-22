@@ -9,6 +9,7 @@ DisherIo es una plataforma integrada de gestión de restaurantes que proporciona
 - [Guía de instalación en inglés](docs/INSTALL.md): Requisitos del sistema y procedimientos de despliegue.
 - [Configuración y mantenimiento en inglés](docs/CONFIGURE.md): Gestión operativa y uso de scripts.
 - [Arquitectura y stack tecnológico en inglés](docs/ARCHITECTURE.md): Resumen técnico y patrones de diseño.
+- [Modelo de seguridad y guía de auditoría en inglés](docs/SECURITY.md): Límites de confianza, controles efectivos y limitaciones aceptadas.
 - [Resolución de problemas en inglés](docs/ERRORS.md): Resolución de errores y procedimientos de diagnóstico.
 
 ## Módulos Principales
@@ -37,6 +38,11 @@ de exposición de Prometheus para integraciones externas opcionales, pero Caddy
 no lo publica y la topología Compose predeterminada no lo recopila.
 
 Para especificaciones técnicas, consulte la [documentación de arquitectura en inglés](docs/ARCHITECTURE.md).
+
+Los secretos generados no se conservan en `.env`: el despliegue los escribe en
+`config/secrets/` con permisos `0600` y los monta como secretos de Compose. La
+contraseña administrativa inicial queda en `.credentials` (`0600`), pero ni el
+resumen de instalación ni el comando `status` la imprimen en la terminal.
 
 ## Despliegue
 

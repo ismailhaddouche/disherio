@@ -30,7 +30,7 @@ own categories. HTTP statuses come from `ERROR_HTTP_STATUS_MAP`.
 | `REQUIRES_AUTHORIZATION` | 403 | Item state transition requires authorization (`item-transition-policy.ts`) |
 | `AUTHENTICATION_REQUIRED` | 401 | Socket connection attempted without valid authentication (`socketAuth.ts`) |
 | `SERVER_CONFIGURATION_ERROR` | 500 | Server is misconfigured, e.g. missing JWT secret (`auth.ts`, `socketAuth.ts`) |
-| `AMBIGUOUS_USERNAME` | 400 | Login username matches more than one staff account (`auth.service.ts`) |
+| `AMBIGUOUS_USERNAME` | 400 | Reserved compatibility enum. Current login deliberately emits `INVALID_CREDENTIALS` for ambiguous usernames to avoid tenant/user enumeration |
 
 ### Resource Not Found
 
@@ -170,9 +170,15 @@ members `AUTH_RATE_LIMIT_EXCEEDED`, `API_RATE_LIMIT_EXCEEDED`,
 
 | Code | Limiter | Limit |
 |------|---------|-------|
+| `AUTH_RATE_LIMIT_EXCEEDED` | Failed login/refresh traffic | 5 requests per 15 minutes |
 | `API_RATE_LIMIT_EXCEEDED` | General API | 1000 requests per 15 minutes |
 | `STRICT_RATE_LIMIT_EXCEEDED` | Strict mutations | 20 requests per 15 minutes |
 | `UPLOAD_RATE_LIMIT_EXCEEDED` | Uploads | 10 uploads per hour |
+| `QR_RATE_LIMIT_EXCEEDED` | Public QR operations | 30 requests per minute |
+| `QR_BRUTE_FORCE_DETECTED` | QR token probing | 10 requests per 15 minutes |
+
+In production these HTTP counters use the shared Redis store and a store error
+rejects the request. Per-process counters are limited to development.
 
 ## Adding New Error Codes
 

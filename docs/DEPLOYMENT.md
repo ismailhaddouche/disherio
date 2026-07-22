@@ -21,7 +21,7 @@ installation procedure.
 
 The multi-environment configurator generates these repository-root files:
 
-- `.env`, containing the selected deployment mode and runtime settings.
+- `.env`, containing non-secret deployment mode and runtime settings.
 - `Caddyfile`, rendered from the matching template.
 - `docker-compose.override.yml`, selected from the matching infrastructure
   override.
@@ -29,7 +29,10 @@ The multi-environment configurator generates these repository-root files:
   secrets. Containers receive only `*_FILE` paths; passwords and signing
   secrets are not copied into container environment metadata.
 
-Generated files may contain secrets and must not be committed.
+Generated `.env`, `Caddyfile`, override, keyfile, `.credentials`, and secret
+files are installation state and must not be committed. The credential values
+themselves are confined to `.credentials`, `config/secrets/`, and the MongoDB
+keyfile rather than duplicated in `.env`.
 
 ## Infrastructure Layout
 
@@ -71,9 +74,10 @@ Caddy :80/:443
        persistence and rs0              cache, pub/sub, token state
 ```
 
-Caddy is the public entry point. Backend, frontend, MongoDB, and Redis
-communicate over the private `disherio_net` Docker network. MongoDB and Redis
-must not be exposed directly to untrusted networks.
+Caddy is the public entry point. `frontend_net` connects Caddy, frontend, and
+backend. The separate `backend_net` connects backend, MongoDB, Redis, and
+one-shot data services and is declared `internal: true`. MongoDB and Redis are
+not published on host ports.
 
 ### Core services
 
@@ -87,8 +91,10 @@ must not be exposed directly to untrusted networks.
 
 The deployment does not expose or install Grafana, a Prometheus server,
 Alertmanager, or exporter containers. Operators can use structured logs and
-health endpoints directly; `/metrics` remains available only on the backend's
-internal network for optional, separately secured external tooling.
+health endpoints from trusted private/loopback sources or with the configured
+internal token. `/metrics` remains available only on the backend's internal
+network for optional, separately secured tooling; every Caddy template returns
+`403` for that path.
 
 ## Deployment Modes
 
@@ -133,8 +139,9 @@ behavior for the backend and frontend.
 docker compose up -d --build
 ```
 
-Use this mode only for development. It enables debug logging and source mounts
-that are not appropriate for production.
+Use this mode only for development. It enables development runtime behavior and
+debug logging, but still builds the repository Docker images; the current
+override does not add live source mounts.
 
 ### Local network mode
 
@@ -186,6 +193,10 @@ docker compose logs -f ngrok
 
 Only enable one tunnel profile at a time. Tunnel credentials are secrets. Do
 not include them in logs, documentation, commits, or support requests.
+The configurator writes the Cloudflare value to
+`config/secrets/cloudflare_tunnel_token` and the ngrok value to the
+mode-`0600` `config/secrets/ngrok_config`. The values are removed from `.env`;
+cloudflared reads `--token-file` and ngrok reads its mounted configuration.
 This mode makes static QR bootstrap endpoints Internet-reachable and therefore
 does not prevent remote reuse of a photographed QR.
 
@@ -212,7 +223,8 @@ the restaurant.
 
 ## Configuration Resolution
 
-Runtime values are resolved in this order, from highest to lowest priority:
+Non-secret runtime values are resolved in this order, from highest to lowest
+priority:
 
 1. Environment variables supplied to the process.
 2. Values in the repository-root `.env` file.
@@ -230,14 +242,16 @@ include:
 | `HTTPS_PORT` | HTTPS listener for domain mode |
 | `CADDY_INTERNAL_PORT` | Caddy port reached by tunnel containers |
 | `TUNNEL_TYPE` | `cloudflare` or `ngrok` |
-| `CF_TUNNEL_TOKEN` | Cloudflare Tunnel credential |
-| `NGROK_AUTHTOKEN` | ngrok credential |
 | `DOMAIN` | Public hostname used by Caddy and the backend |
 | `FRONTEND_URL` | Allowed browser origin for CORS and Socket.IO |
 | `TRUST_PROXY` | Enables trusted reverse-proxy address handling |
 
 The complete environment contract is documented in `CONFIGURE.md` and
 `.env.example`.
+
+`CF_TUNNEL_TOKEN` and `NGROK_AUTHTOKEN` are interactive/input compatibility
+names only. Generated deployments scrub them from `.env` and use the tunnel
+secret files described above.
 
 ## Template and Override Model
 
@@ -294,7 +308,8 @@ preserve `/api`, `/socket.io`, `/health`, and `/uploads` routing.
 - CASL permissions and tenant ownership protect application resources.
 - MongoDB authentication and the `rs0` replica set are required.
 - Redis requires authentication in production.
-- Access and refresh tokens must never be exposed in configuration output.
+- Access, refresh, administrator, database, cache, signing, and tunnel secrets
+  must never be exposed in configuration or status output.
 - Persistent volumes and backup files require restricted host permissions.
 
 ## Service Lifecycle
@@ -341,7 +356,9 @@ curl --fail "${FRONTEND_URL}/health/live"
 
 `FRONTEND_URL` must be the configured browser-facing origin, including HTTPS
 for domain and tunnel deployments. Checking through Caddy verifies the real
-external route rather than only the backend container.
+route, but the backend rejects an untrusted public source. Run the curl from
+the trusted host/LAN or add `-H "x-internal-token: ..."` only when an internal
+token has been provisioned securely. Never paste that token into shell history.
 The backend exposes these health endpoints:
 
 | Endpoint | Purpose |
@@ -350,7 +367,7 @@ The backend exposes these health endpoints:
 | `/health/ready` | Readiness for application traffic |
 | `/health/live` | Process liveness |
 | `/health/simple` | Minimal compatibility check |
-| `/metrics` | Prometheus-format exposition on the backend network; not routed publicly by Caddy |
+| `/metrics` | Prometheus-format exposition on the backend network; explicitly blocked by Caddy |
 
 ## Backup and Restore
 
@@ -361,12 +378,14 @@ sudo ./scripts/install.sh backup
 ```
 
 The archive contains MongoDB, uploads, and the configuration required to recover
-the same installation. It includes a manifest and SHA-256 checksums and is
-created with mode `0600`; it still contains personal data and secrets, so store
-it encrypted and restrict access. Restore only a verified archive:
+the same installation. The v2 file includes a manifest and SHA-256 checksums,
+is encrypted with AES-256-CBC/PBKDF2, is authenticated by an outer HMAC-SHA256,
+and is created with mode `0600`. It still contains personal data and secrets;
+restrict access and preserve the backup password separately. Restore only a
+verified archive:
 
 ```bash
-sudo ./scripts/install.sh restore /var/backups/disherio/disherio_backup_TIMESTAMP.tar.gz
+sudo ./scripts/install.sh restore /var/backups/disherio/disherio_backup_TIMESTAMP.tar.gz.enc
 ```
 
 Restore is destructive and requires explicit confirmation. Test restoration
@@ -376,8 +395,8 @@ and contents are documented in `CONFIGURE.md`.
 ## Scaling
 
 The backend is designed to support multiple instances. Redis distributes
-Socket.IO events and shared ephemeral state, while MongoDB remains the durable
-source of truth.
+Socket.IO events, refresh/revocation state, and production HTTP/socket rate
+limits, while MongoDB remains the durable source of truth.
 
 ```bash
 docker compose up -d --scale backend=3
@@ -445,10 +464,11 @@ Additional operational failures and diagnostic procedures are documented in
 
 ## Release Pipeline
 
-`.github/workflows/ci.yml` checks TypeScript and runs backend and frontend tests
-for `main`, `develop`, and their pull requests. Backend integration tests start
-MongoDB as replica set `rs0`. Non-pull-request runs publish amd64 and arm64
-backend and frontend images to GHCR.
+`.github/workflows/ci.yml` checks TypeScript, ESLint, operational shell/Compose
+configuration, and backend/frontend tests for `main`, `develop`, and their pull
+requests. Backend integration tests start MongoDB as replica set `rs0`.
+Non-pull-request runs publish amd64 and arm64 backend and frontend images to
+GHCR.
 
 The workflow does not deploy to staging or production. Publishing starts only
 after backend and frontend checks succeed, builds both multi-platform images,
@@ -517,5 +537,6 @@ health checks, WebSocket routing, and rollback path.
 - `INSTALL.md`: prerequisites and installation procedures.
 - `CONFIGURE.md`: environment variables, maintenance, resource checks, and backups.
 - `ARCHITECTURE.md`: application topology and design patterns.
+- `SECURITY.md`: canonical controls, trust boundaries, exceptions, and audit classification.
 - `ERRORS.md`: diagnostics and incident resolution.
 - `UNINSTALL.md`: safe decommissioning and data removal.

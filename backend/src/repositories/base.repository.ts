@@ -3,10 +3,12 @@ import { ErrorCode } from '@disherio/shared';
 import { AppError } from '../utils/async-handler';
 import { logger } from '../config/logger';
 
-/* eslint-disable @typescript-eslint/no-explicit-any -- Mongoose's overloaded Model APIs expose any at this generic repository boundary. */
-
 // Simple filter type for mongoose queries
 type SimpleFilter = Record<string, unknown>;
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
 
 export class ValidationError extends Error {
   constructor(message: string) {
@@ -36,26 +38,37 @@ export function validateObjectIdOptional(
  * that pass isErrorCode, and anything else is masked as SERVER_ERROR.
  * Field-level context travels in AppError.details instead of the message.
  */
-function handleMongoError(err: any, operation: string): never {
+function handleMongoError(err: unknown, operation: string): never {
+  const error = isRecord(err) ? err : {};
+  const name = typeof error.name === 'string' ? error.name : '';
+
   // Mongoose validation errors
-  if (err.name === 'ValidationError') {
-    const messages = Object.values(err.errors || {}).map((e: any) => e.message).join(', ');
+  if (name === 'ValidationError') {
+    const validationErrors = isRecord(error.errors) ? Object.values(error.errors) : [];
+    const messages = validationErrors
+      .map((entry) => isRecord(entry) && typeof entry.message === 'string' ? entry.message : '')
+      .filter(Boolean)
+      .join(', ');
     throw new AppError(ErrorCode.VALIDATION_ERROR, 400, messages);
   }
 
   // Invalid ID error (CastError)
-  if (err.name === 'CastError') {
-    throw new AppError(ErrorCode.INVALID_ID_FORMAT, 400, err.path);
+  if (name === 'CastError') {
+    throw new AppError(
+      ErrorCode.INVALID_ID_FORMAT,
+      400,
+      typeof error.path === 'string' ? error.path : undefined
+    );
   }
 
   // Duplicate error
-  if (err.name === 'MongoServerError' && err.code === 11000) {
-    const field = Object.keys(err.keyValue || {}).join(', ');
+  if (name === 'MongoServerError' && error.code === 11000) {
+    const field = isRecord(error.keyValue) ? Object.keys(error.keyValue).join(', ') : '';
     throw new AppError(ErrorCode.DUPLICATE_RESOURCE, 409, field);
   }
 
   // Document not found error
-  if (err.name === 'DocumentNotFoundError') {
+  if (name === 'DocumentNotFoundError') {
     throw new AppError(ErrorCode.NOT_FOUND, 404);
   }
 
@@ -86,7 +99,7 @@ export abstract class BaseRepository<T extends Document> {
     try {
       this.validateId(id);
       return await this.model.findById(id, null, { session }).exec();
-    } catch (err: any) {
+    } catch (err: unknown) {
       handleMongoError(err, 'findById');
     }
   }
@@ -95,7 +108,7 @@ export abstract class BaseRepository<T extends Document> {
     try {
       this.validateId(id);
       return await this.model.findById(id).lean().exec();
-    } catch (err: any) {
+    } catch (err: unknown) {
       handleMongoError(err, 'findByIdLean');
     }
   }
@@ -103,7 +116,7 @@ export abstract class BaseRepository<T extends Document> {
   async findOne(filter: SimpleFilter): Promise<T | null> {
     try {
       return await this.model.findOne(filter).exec();
-    } catch (err: any) {
+    } catch (err: unknown) {
       handleMongoError(err, 'findOne');
     }
   }
@@ -111,7 +124,7 @@ export abstract class BaseRepository<T extends Document> {
   async find(filter: SimpleFilter = {}): Promise<T[]> {
     try {
       return await this.model.find(filter).exec();
-    } catch (err: any) {
+    } catch (err: unknown) {
       handleMongoError(err, 'find');
     }
   }
@@ -119,19 +132,16 @@ export abstract class BaseRepository<T extends Document> {
   async findLean(filter: SimpleFilter = {}): Promise<T[]> {
     try {
       return await this.model.find(filter).lean().exec();
-    } catch (err: any) {
+    } catch (err: unknown) {
       handleMongoError(err, 'findLean');
     }
   }
 
   async create(data: Partial<T>, session?: ClientSession): Promise<T> {
     try {
-      if (session) {
-        const docs = await this.model.create([data as any], { session });
-        return docs[0];
-      }
-      return await this.model.create(data);
-    } catch (err: any) {
+      const document = new this.model(data);
+      return await document.save({ session });
+    } catch (err: unknown) {
       if (session) throw err;
       handleMongoError(err, 'create');
     }
@@ -141,7 +151,7 @@ export abstract class BaseRepository<T extends Document> {
     try {
       this.validateId(id);
       return await this.model.findByIdAndUpdate(id, data, { returnDocument: 'after', session }).exec();
-    } catch (err: any) {
+    } catch (err: unknown) {
       handleMongoError(err, 'update');
     }
   }
@@ -150,7 +160,7 @@ export abstract class BaseRepository<T extends Document> {
     try {
       this.validateId(id);
       return await this.model.findByIdAndDelete(id, { session }).exec();
-    } catch (err: any) {
+    } catch (err: unknown) {
       handleMongoError(err, 'delete');
     }
   }
@@ -159,7 +169,7 @@ export abstract class BaseRepository<T extends Document> {
     try {
       const count = await this.model.countDocuments(filter).exec();
       return count > 0;
-    } catch (err: any) {
+    } catch (err: unknown) {
       handleMongoError(err, 'exists');
     }
   }
@@ -167,7 +177,7 @@ export abstract class BaseRepository<T extends Document> {
   async count(filter: SimpleFilter = {}): Promise<number> {
     try {
       return await this.model.countDocuments(filter).exec();
-    } catch (err: any) {
+    } catch (err: unknown) {
       handleMongoError(err, 'count');
     }
   }

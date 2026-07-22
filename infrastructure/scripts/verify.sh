@@ -153,12 +153,10 @@ check_environment() {
     print_header "Verificando Variables de Entorno"
 
     # Leer .env de forma segura (sin source)
-    local DEPLOYMENT_MODE LOCAL_IP TUNNEL_TYPE CF_TUNNEL_TOKEN NGROK_AUTHTOKEN DOMAIN EMAIL
+    local DEPLOYMENT_MODE LOCAL_IP TUNNEL_TYPE DOMAIN EMAIL
     DEPLOYMENT_MODE=$(env_get "DEPLOYMENT_MODE" "")
     LOCAL_IP=$(env_get "LOCAL_IP" "")
     TUNNEL_TYPE=$(env_get "TUNNEL_TYPE" "")
-    CF_TUNNEL_TOKEN=$(env_get "CF_TUNNEL_TOKEN" "")
-    NGROK_AUTHTOKEN=$(env_get "NGROK_AUTHTOKEN" "")
     DOMAIN=$(env_get "DOMAIN" "")
     EMAIL=$(env_get "EMAIL" "")
 
@@ -196,17 +194,23 @@ check_environment() {
         public-ip)
             case "$TUNNEL_TYPE" in
                 cloudflare)
-                    if [ -n "$CF_TUNNEL_TOKEN" ]; then
-                        print_success "Cloudflare Tunnel TOKEN configurado"
+                    secret_file="$PROJECT_ROOT/config/secrets/cloudflare_tunnel_token"
+                    secret_value=""
+                    [[ -f "$secret_file" ]] && secret_value=$(tr -d '\r\n' < "$secret_file")
+                    if [ -n "$secret_value" ] && ! printf '%s' "$secret_value" | grep -Eqi 'changeme|change[-_ ]?this|cambiar|placeholder|example|ejemplo|\.\.\.'; then
+                        print_success "Secreto de Cloudflare Tunnel configurado"
                     else
-                        print_error "CF_TUNNEL_TOKEN no configurado"
+                        print_error "config/secrets/cloudflare_tunnel_token no existe, está vacío o conserva un placeholder"
                     fi
                     ;;
                 ngrok)
-                    if [ -n "$NGROK_AUTHTOKEN" ]; then
-                        print_success "ngrok authtoken configurado"
+                    secret_file="$PROJECT_ROOT/config/secrets/ngrok_config"
+                    secret_value=""
+                    [[ -f "$secret_file" ]] && secret_value=$(awk '/^[[:space:]]*authtoken:/ { sub(/^[[:space:]]*authtoken:[[:space:]]*/, ""); print; exit }' "$secret_file")
+                    if [ -n "$secret_value" ] && ! printf '%s' "$secret_value" | grep -Eqi 'changeme|change[-_ ]?this|cambiar|placeholder|example|ejemplo|\.\.\.'; then
+                        print_success "Secreto de ngrok configurado"
                     else
-                        print_error "NGROK_AUTHTOKEN no configurado"
+                        print_error "config/secrets/ngrok_config no existe, no contiene authtoken o conserva un placeholder"
                     fi
                     ;;
                 *)

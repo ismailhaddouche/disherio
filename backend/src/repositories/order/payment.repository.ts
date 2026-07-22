@@ -28,6 +28,14 @@ export interface PaymentHistoryEntry {
   };
 }
 
+interface PaymentStats {
+  totalRevenue: number;
+  totalTransactions: number;
+  averageTicket: number;
+  paidTickets: number;
+  pendingTickets: number;
+}
+
 export class PaymentRepository extends BaseRepository<IPayment> {
   constructor() {
     super(Payment);
@@ -277,7 +285,7 @@ export class PaymentRepository extends BaseRepository<IPayment> {
       },
     ];
 
-    const result = await QueryProfiler.profileAggregation(
+    const result = await QueryProfiler.profileAggregation<IPayment, PaymentStats>(
       this.model,
       pipeline,
       'PaymentRepository.getPaymentStats',

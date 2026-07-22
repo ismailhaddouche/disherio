@@ -25,6 +25,7 @@ DisherIo is an integrated restaurant management platform providing solutions for
 | [Installation Guide](docs/INSTALL.md) | System requirements, guided installer, deployment procedures |
 | [Configuration and Maintenance](docs/CONFIGURE.md) | Script usage, hot-reconfiguration, backups, and local resource checks |
 | [Architecture and Technology Stack](docs/ARCHITECTURE.md) | Service topology, design patterns, security model |
+| [Security Model and Audit Guide](docs/SECURITY.md) | Enforced controls, trust boundaries, accepted limitations, audit classification |
 | [Development Guide](docs/DEVELOPMENT.md) | Local setup, verification commands, frontend build/test standards |
 | [Troubleshooting](docs/ERRORS.md) | Error codes, diagnostic procedures, log inspection |
 | [Error Codes Reference](docs/ERROR_CODES.md) | Complete ErrorCode enum with HTTP status mapping |
@@ -56,17 +57,17 @@ Centralized analytics, staff administration, menu configuration, and business in
 
 | Layer | Technologies |
 |-------|--------------|
-| Frontend | Angular 21.2, TailwindCSS 3.4, Socket.IO Client 4.8, CASL Angular 9 |
+| Frontend | Angular 21.2, TailwindCSS 3.4, Socket.IO Client 4.8, CASL Ability 6.8 |
 | Backend | Node.js 24, Express 5.2, Socket.IO 4.8, Mongoose 9.3 |
 | Database | MongoDB 7 (replica set `rs0` for transactions) |
 | Cache | Redis 7-alpine (cache + Socket.IO adapter + token blocklist) |
 | Reverse Proxy | Caddy 2-alpine (automatic HTTPS via Let's Encrypt) |
 | Observability | Pino logs, health checks, and an internal Prometheus-format endpoint |
-| Image Processing | Sharp 0.34 (WebP conversion, resize, EXIF orientation) |
+| Image Processing | Sharp 0.35 (WebP conversion, resize, EXIF orientation) |
 | Validation | Zod 4.3 (shared schemas between frontend and backend) |
 | Authorization | CASL 6.8 (Attribute-Based Access Control) |
 | Logging | Pino 10.3 with redaction of secrets |
-| Language | TypeScript 5.9 (frontend), 5.4 (backend and shared) |
+| Language | TypeScript 5.9 (frontend, backend, and shared) |
 
 DisherIo does not bundle Grafana, a Prometheus server, Alertmanager, or any
 exporter containers. The backend still exposes `/metrics` in Prometheus
@@ -99,9 +100,13 @@ The installer will ask:
 3. **Language**: es / en / fr
 4. **Restaurant name**: default `DisherIO Restaurant`
 5. **Currency**: EUR / USD / GBP
-6. **Example data**: optional categories, dishes, and demo staff
+6. **Example data**: optional categories, dishes, and an example table;
+   fixed-credential demo staff are created only outside production
 
-All other values (JWT secrets, MongoDB passwords, Redis password, and admin credentials) are **auto-generated** with cryptographic randomness and saved to `.credentials`.
+All sensitive values are generated with cryptographic randomness. Runtime
+secrets are written as mode-`0600` files under `config/secrets/`; only the
+initial administrator access details are written to `.credentials` (also
+mode `0600`). Neither installation summaries nor `status` print the password.
 
 ### Development / Multi-environment Configuration
 
@@ -180,7 +185,7 @@ Docker and Docker Compose v2 are **auto-installed** by `install.sh` if missing.
 | `sudo ./scripts/install.sh start` | Start all services |
 | `sudo ./scripts/install.sh stop` | Stop all services |
 | `sudo ./scripts/install.sh restart` | Restart all services |
-| `sudo ./scripts/install.sh status` | Show service status + access URLs + credentials |
+| `sudo ./scripts/install.sh status` | Show service status and access URLs without printing secrets |
 | `sudo ./scripts/install.sh logs [service]` | Live logs (backend/frontend/mongo/redis/caddy) |
 | `sudo ./scripts/install.sh backup` | Protected backup of MongoDB, uploads, and deployment configuration |
 | `sudo ./scripts/install.sh restore FILE` | Verify and restore a supported backup archive |
@@ -201,14 +206,16 @@ Docker and Docker Compose v2 are **auto-installed** by `install.sh` if missing.
 
 ### Credentials
 
-After installation, credentials are saved to `.credentials` (chmod 600):
+After installation, administrator access details are saved to `.credentials`
+(mode `0600`):
 - Access URL, admin username, admin password
 - Restaurant name, language, currency
 
-MongoDB, Redis, and JWT secrets are retained in `.env` for protected host-side
-backup and recovery. Runtime containers read mode-`0600` copies from
-`config/secrets/` through Compose secrets, so secret values are not exposed by
-`docker inspect`.
+MongoDB, Redis, JWT, administrator, and tunnel secrets live only in
+`config/secrets/` for the generated deployment. `.env` contains non-secret
+runtime settings and usernames. Containers receive `*_FILE` paths or a
+secret-backed provider configuration, so secret values are not exposed by
+`docker inspect` environment metadata.
 
 ---
 

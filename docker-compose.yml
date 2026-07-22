@@ -200,6 +200,7 @@ services:
       JWT_EXPIRES: ${JWT_EXPIRES:-15m}
       JWT_REFRESH_SECRET_FILE: /run/secrets/jwt_refresh_secret
       JWT_REFRESH_EXPIRES: ${JWT_REFRESH_EXPIRES:-7d}
+      BCRYPT_ROUNDS: ${BCRYPT_ROUNDS:-12}
       FRONTEND_URL: ${FRONTEND_URL}
       # Redis connection
       REDIS_URL: ${REDIS_URL:-redis://redis:6379}
@@ -309,6 +310,7 @@ services:
       DEFAULT_CURRENCY: ${DEFAULT_CURRENCY:-EUR}
       DEFAULT_TAX_RATE: ${DEFAULT_TAX_RATE:-10}
       DEFAULT_THEME: ${DEFAULT_THEME:-light}
+      BCRYPT_ROUNDS: ${BCRYPT_ROUNDS:-12}
       JWT_SECRET_FILE: /run/secrets/jwt_secret
       JWT_REFRESH_SECRET_FILE: /run/secrets/jwt_refresh_secret
     secrets:
@@ -319,7 +321,8 @@ services:
     command: ["node", "dist/seeders/index.js"]
     restart: "no"
 
-  # One-shot example seed: creates categories, dishes and demo staff users
+  # One-shot example seed: creates menu/table examples. Fixed-credential staff
+  # users are created only when this seeder runs outside production.
   seed-examples:
     profiles: ["seed"]
     build:
@@ -338,6 +341,7 @@ services:
       MONGODB_URI_FILE: /run/secrets/mongodb_uri
       RESTAURANT_NAME: ${RESTAURANT_NAME:-DisherIo}
       DEFAULT_LANGUAGE: ${DEFAULT_LANGUAGE:-es}
+      BCRYPT_ROUNDS: ${BCRYPT_ROUNDS:-12}
       JWT_SECRET_FILE: /run/secrets/jwt_secret
       JWT_REFRESH_SECRET_FILE: /run/secrets/jwt_refresh_secret
     secrets:

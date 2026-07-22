@@ -46,7 +46,7 @@ sudo ./scripts/install.sh
 | 1 | Configuration | Deployment type, domain/IP, language, restaurant name, currency, and optional example data |
 | 2 | Docker setup | Verifies/installs Docker Engine + Compose v2 (distro-specific repo) |
 | 3 | Secret generation | JWT (64 chars), MongoDB root + app passwords, Redis password, admin password (20 chars), and the MongoDB keyfile; an existing installation keeps its infrastructure credentials when its data volumes are retained |
-| 4 | Configuration files | Writes `.env` (chmod 600) with quoted values and generates the Caddy routes for uploads, API, Socket.IO, and the frontend |
+| 4 | Configuration files | Writes non-secret runtime settings to `.env`, mode-`0600` secrets to `config/secrets/`, and generates the Caddy routes for uploads, API, Socket.IO, and the frontend |
 | 5 | Port verification | Checks that ports 80/443 are available before building |
 | 6 | Image build | `docker compose pull` + `docker compose build` (backend + frontend) |
 | 7 | Service startup (ordered) | MongoDB → replica set init → app user verification → Redis → backend → frontend → seed and optional example seed → Caddy |
@@ -69,7 +69,7 @@ The seed is **idempotent**: re-running it updates the existing restaurant and ad
 
 At the end of the installation, the script displays:
 - Access URL (`https://domain` or a trusted-LAN `http://IP`)
-- Admin credentials (username, password)
+- Admin username and the protected credentials-file location; the password is not printed
 - Quick-access links (`/admin`, `/pos`, `/kds`, `/tas`)
 - Credentials file location (`.credentials`, chmod 600)
 - Log file location (`/var/log/disherio.log`)
@@ -88,47 +88,32 @@ infrastructure configurator.
 
 ---
 
-## Manual Development Setup
+## Local Development Setup
 
-For local development without Docker:
+Install Node.js 24/npm 11 dependencies for compilation and tests:
 
-1. **Install dependencies** (requires Node.js 24 and npm 11):
-   ```bash
-   npm install
-   npm run build --workspace=shared
-   ```
+```bash
+npm ci
+npm run build --workspace=shared
+```
 
-2. **Start MongoDB** (replica set required for transactions):
-   ```bash
-   docker run -d -p 27017:27017 --name disherio-mongo mongo:7 --replSet rs0
-   # Initiate replica set:
-   docker exec disherio-mongo mongosh --eval "rs.initiate({ _id: 'rs0', members: [{ _id: 0, host: 'localhost:27017' }] })"
-   ```
+For a complete local runtime, use the supported configurator. It creates the
+MongoDB keyfile, authenticated service secrets, local Caddyfile, and Compose
+override required by the hardened base topology:
 
-3. **Start Redis**:
-   ```bash
-   docker run -d -p 6379:6379 --name disherio-redis redis:7-alpine
-   ```
+```bash
+./infrastructure/scripts/configure.sh
+# Select: local
+./infrastructure/scripts/verify.sh
+docker compose up -d --build --wait
+```
 
-4. **Environment configuration**: Create `.env` in `backend/` from `.env.example` and define:
-   - `MONGODB_URI` — MongoDB connection string with `replicaSet=rs0`
-   - `JWT_SECRET` — at least 32 characters, not the default value
-   - `JWT_REFRESH_SECRET` — at least 32 characters
-   - `REDIS_URL` — `redis://localhost:6379`
-   - `FRONTEND_URL` — `http://localhost:4200`
-   - `ADMIN_PASSWORD` — required for seed
-
-5. **Run services**:
-   ```bash
-   # Terminal 1: Backend
-   cd backend && npm run dev
-
-   # Terminal 2: Frontend
-   cd frontend && npm start
-
-   # Terminal 3: Seed (first time only)
-   cd backend && npm run seed
-   ```
+Do not copy `.env.example` unchanged and do not start the production MongoDB or
+Redis images with unauthenticated host-wide port mappings. `.env.example` is a
+catalog with intentionally empty secret fields; the configurator is the
+supported way to turn it into a runnable environment. Developers who run the
+backend directly on the host must provide their own loopback-only MongoDB
+replica set and Redis instance and point a non-production environment at them.
 
 ### Local verification checklist
 
@@ -155,7 +140,10 @@ See [Development Guide](DEVELOPMENT.md) for frontend-specific build warnings, Ka
 sudo ./scripts/install.sh uninstall
 ```
 
-This stops and removes all containers, volumes, images, and config files (`.env`, `.credentials`, `Caddyfile`). Requires typing `SI` to confirm.
+This stops and removes all containers, volumes, images, and generated secrets
+and configuration (`.env`, `.credentials`, `Caddyfile`,
+`config/mongo-keyfile`, and `config/secrets/`). It requires typing `SI` to
+confirm.
 
 ### Soft stop (keep everything)
 
@@ -168,11 +156,11 @@ docker compose down
 ### Complete data purge (manual)
 
 ```bash
-docker compose down --volumes --remove-orphans
+docker compose down --volumes --remove-orphans --rmi local
 docker volume rm disherio_mongo_data disherio_redis_data disherio_uploads \
   disherio_caddy_data disherio_caddy_config
-docker rmi disherio_backend disherio_frontend disherio_seed 2>/dev/null || true
-rm -f .env .credentials Caddyfile
+rm -f .env .credentials Caddyfile docker-compose.override.yml config/mongo-keyfile
+rm -rf config/secrets
 ```
 
 > **Warning**: Complete purge results in permanent loss of all database records and uploaded media. Run `sudo ./scripts/install.sh backup` before purging and verify the archive with a restore in an isolated installation.
