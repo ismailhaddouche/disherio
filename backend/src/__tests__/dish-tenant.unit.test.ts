@@ -1,6 +1,6 @@
 const dishRepo = {
   createDish: jest.fn(),
-  delete: jest.fn(),
+  deleteByRestaurant: jest.fn(),
   findById: jest.fn(),
   findByIdAndRestaurant: jest.fn(),
   updateDish: jest.fn(),
@@ -75,14 +75,14 @@ describe('dish category tenant enforcement', () => {
   });
 
   it('preserves the image when deleting the database record fails', async () => {
-    dishRepo.findById.mockResolvedValue({
+    dishRepo.findByIdAndRestaurant.mockResolvedValue({
       _id: DISH_ID,
       restaurant_id: { toString: () => RESTAURANT_ID },
       disher_url_image: '/uploads/dishes/soup.webp',
     });
-    dishRepo.delete.mockRejectedValue(new Error('database unavailable'));
+    dishRepo.deleteByRestaurant.mockRejectedValue(new Error('database unavailable'));
 
-    await expect(deleteDish(DISH_ID)).rejects.toThrow('database unavailable');
+    await expect(deleteDish(DISH_ID, RESTAURANT_ID)).rejects.toThrow('database unavailable');
     expect(mockDeleteImage).not.toHaveBeenCalled();
   });
 });

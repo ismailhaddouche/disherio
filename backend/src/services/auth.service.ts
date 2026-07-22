@@ -98,7 +98,9 @@ export async function loginWithUsername(
   } else {
     const matchCount = await userRepo.countByUsername(username.toLowerCase());
     if (matchCount > 1) {
-      throw new Error(ErrorCode.AMBIGUOUS_USERNAME);
+      // Keep login failures indistinguishable to avoid exposing whether a
+      // username exists in one or multiple tenants.
+      throw new Error(ErrorCode.INVALID_CREDENTIALS);
     }
     staff = await userRepo.findByUsername(username.toLowerCase());
   }

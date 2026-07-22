@@ -65,10 +65,11 @@ export class UserRepository extends BaseRepository<IStaff> {
 
   async updateUser(id: string, data: Partial<IStaff>): Promise<IStaff | null> {
     validateObjectId(id, 'staff_id');
-    if (data.username) {
-      data.username = data.username.toLowerCase();
+    const { restaurant_id: _restaurantId, ...safeData } = data;
+    if (safeData.username) {
+      safeData.username = safeData.username.toLowerCase();
     }
-    return this.model.findByIdAndUpdate(id, data, { returnDocument: 'after' }).exec();
+    return this.model.findByIdAndUpdate(id, safeData, { returnDocument: 'after' }).exec();
   }
 
   async deleteUser(id: string): Promise<IStaff | null> {
@@ -219,7 +220,8 @@ export class RoleRepository extends BaseRepository<IRole> {
 
   async updateRole(id: string, data: Partial<IRole>): Promise<IRole | null> {
     validateObjectId(id, 'role_id');
-    return this.model.findByIdAndUpdate(id, data, { returnDocument: 'after' }).exec();
+    const { restaurant_id: _restaurantId, ...safeData } = data;
+    return this.model.findByIdAndUpdate(id, safeData, { returnDocument: 'after' }).exec();
   }
 
   async deleteRole(id: string): Promise<IRole | null> {

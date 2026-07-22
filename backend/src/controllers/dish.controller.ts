@@ -59,7 +59,7 @@ export const deleteDish = asyncHandler(async (req: Request, res: Response): Prom
   if (dish.restaurant_id.toString() !== req.user!.restaurantId) {
     throw createError.forbidden('FORBIDDEN');
   }
-  await DishService.deleteDish(String(req.params.id));
+  await DishService.deleteDish(String(req.params.id), req.user!.restaurantId);
   res.status(204).end();
 });
 
@@ -71,7 +71,7 @@ export const toggleDishStatus = asyncHandler(async (req: Request, res: Response)
   if (dish.restaurant_id.toString() !== req.user!.restaurantId) {
     throw createError.forbidden('FORBIDDEN');
   }
-  const updated = await DishService.toggleDishStatus(String(req.params.id));
+  const updated = await DishService.toggleDishStatus(String(req.params.id), req.user!.restaurantId);
   res.json(updated);
 });
 

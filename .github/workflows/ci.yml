@@ -55,6 +55,10 @@ jobs:
         working-directory: .
         run: npm run lint:backend
 
+      - name: Validate operational configuration
+        working-directory: .
+        run: bash infrastructure/tests/validate-operations.sh
+
   lint-frontend:
     name: Lint Frontend
     runs-on: ubuntu-latest

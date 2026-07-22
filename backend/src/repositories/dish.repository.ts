@@ -151,13 +151,26 @@ export class DishRepository extends BaseRepository<IDish> {
     ).exec();
   }
 
-  async toggleStatus(id: string): Promise<IDish | null> {
+  async toggleStatus(id: string, restaurantId: string): Promise<IDish | null> {
     validateObjectId(id, 'dish_id');
-    const dish = await this.model.findById(id).exec();
+    validateObjectId(restaurantId, 'restaurant_id');
+    const dish = await this.model.findOne({
+      _id: new Types.ObjectId(id),
+      restaurant_id: new Types.ObjectId(restaurantId),
+    }).exec();
     if (!dish) return null;
 
     dish.disher_status = dish.disher_status === 'ACTIVATED' ? 'DESACTIVATED' : 'ACTIVATED';
     return dish.save();
+  }
+
+  async deleteByRestaurant(id: string, restaurantId: string): Promise<IDish | null> {
+    validateObjectId(id, 'dish_id');
+    validateObjectId(restaurantId, 'restaurant_id');
+    return this.model.findOneAndDelete({
+      _id: new Types.ObjectId(id),
+      restaurant_id: new Types.ObjectId(restaurantId),
+    }).exec();
   }
 
   async findByType(
@@ -541,13 +554,10 @@ export class CategoryRepository extends BaseRepository<ICategory> {
   async updateCategory(id: string, restaurantId: string, data: UpdateCategoryData): Promise<ICategory | null> {
     validateObjectId(id, 'category_id');
     validateObjectId(restaurantId, 'restaurant_id');
-    const { restaurant_id, ...rest } = data;
+    const { restaurant_id: _restaurantId, ...rest } = data;
     return this.model.findOneAndUpdate(
       { _id: new Types.ObjectId(id), restaurant_id: new Types.ObjectId(restaurantId) },
-      {
-        ...rest,
-        ...(restaurant_id !== undefined && { restaurant_id: new Types.ObjectId(restaurant_id) }),
-      },
+      rest,
       { returnDocument: 'after' }
     ).exec();
   }

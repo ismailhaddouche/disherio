@@ -6,6 +6,7 @@ import {
   getSecurePath,
   DimensionValidationResult,
   SECURITY_LIMITS,
+  isPathInside,
 } from '../utils/file-security';
 import logger from '../config/logger';
 
@@ -151,7 +152,7 @@ export async function deleteImage(imagePath: string, restaurantId: string): Prom
     const resolvedPath = path.resolve(fullPath);
     const resolvedUploadsDir = path.resolve(UPLOADS_DIR);
 
-    if (!resolvedPath.startsWith(resolvedUploadsDir)) {
+    if (!isPathInside(resolvedUploadsDir, resolvedPath)) {
       throw new Error('Path traversal detected');
     }
 

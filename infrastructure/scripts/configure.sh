@@ -130,6 +130,8 @@ write_docker_secret_files() {
     printf '%s' "$JWT_SECRET" > "$secret_dir/jwt_secret"
     printf '%s' "$JWT_REFRESH_SECRET" > "$secret_dir/jwt_refresh_secret"
     printf '%s' "$ADMIN_PASSWORD" > "$secret_dir/admin_password"
+    printf '%s' "${CF_TUNNEL_TOKEN:-}" > "$secret_dir/cloudflare_tunnel_token"
+    printf 'version: 3\nagent:\n  authtoken: %s\n' "${NGROK_AUTHTOKEN:-}" > "$secret_dir/ngrok_config"
     chmod 600 "$secret_dir"/*
 }
 
@@ -144,7 +146,7 @@ read_existing_secret() {
 }
 
 scrub_secret_env() {
-    sed -i -E '/^(MONGO_ROOT_PASS|MONGO_APP_PASS|MONGODB_URI|JWT_SECRET|JWT_REFRESH_SECRET|REDIS_PASSWORD|ADMIN_PASSWORD)=/d' "$ENV_FILE"
+    sed -i -E '/^(MONGO_ROOT_PASS|MONGO_APP_PASS|MONGODB_URI|JWT_SECRET|JWT_REFRESH_SECRET|REDIS_PASSWORD|ADMIN_PASSWORD|CF_TUNNEL_TOKEN|NGROK_AUTHTOKEN)=/d' "$ENV_FILE"
 }
 
 valid_port() {
@@ -429,6 +431,8 @@ configure_cloudflare_tunnel() {
         print_error "El dominio HTTPS del túnel es obligatorio"
         read -rp "Dominio asignado por Cloudflare: " CF_TUNNEL_DOMAIN
     done
+    [[ "$CF_TUNNEL_TOKEN" =~ ^[A-Za-z0-9._-]{20,4096}$ ]] \
+        || { print_error "Formato de token de Cloudflare inválido"; exit 1; }
     valid_domain "$CF_TUNNEL_DOMAIN" || { print_error "Dominio de Cloudflare inválido"; exit 1; }
 
     # Generar .env
@@ -441,8 +445,7 @@ configure_cloudflare_tunnel() {
 DEPLOYMENT_MODE=public-ip
 TUNNEL_TYPE=cloudflare
 
-# Cloudflare Tunnel
-CF_TUNNEL_TOKEN=$CF_TUNNEL_TOKEN
+# Cloudflare Tunnel (token en config/secrets/cloudflare_tunnel_token)
 CF_TUNNEL_DOMAIN=${CF_TUNNEL_DOMAIN:-}
 
 # URLs (se usarán las del túnel)
@@ -503,6 +506,8 @@ configure_ngrok() {
         print_error "El authtoken y el dominio HTTPS de ngrok son obligatorios"
         exit 1
     fi
+    [[ "$NGROK_AUTHTOKEN" =~ ^[A-Za-z0-9_-]{20,512}$ ]] \
+        || { print_error "Formato de authtoken de ngrok inválido"; exit 1; }
     valid_domain "$NGROK_DOMAIN" || { print_error "Dominio de ngrok inválido"; exit 1; }
 
     # Generar .env
@@ -515,8 +520,7 @@ configure_ngrok() {
 DEPLOYMENT_MODE=public-ip
 TUNNEL_TYPE=ngrok
 
-# ngrok
-NGROK_AUTHTOKEN=$NGROK_AUTHTOKEN
+# ngrok (authtoken en config/secrets/ngrok_config)
 NGROK_DOMAIN=$NGROK_DOMAIN
 
 # URLs (ngrok generará una URL temporal)
@@ -818,6 +822,12 @@ main() {
         JWT_SECRET=$(read_existing_secret "jwt_secret" "JWT_SECRET")
         JWT_REFRESH_SECRET=$(read_existing_secret "jwt_refresh_secret" "JWT_REFRESH_SECRET")
         ADMIN_PASSWORD=$(read_existing_secret "admin_password" "ADMIN_PASSWORD")
+        CF_TUNNEL_TOKEN=$(read_existing_secret "cloudflare_tunnel_token" "CF_TUNNEL_TOKEN")
+        if [[ -s "$PROJECT_ROOT/config/secrets/ngrok_config" ]]; then
+            NGROK_AUTHTOKEN=$(awk '/^[[:space:]]*authtoken:/ { sub(/^[[:space:]]*authtoken:[[:space:]]*/, ""); print; exit }' "$PROJECT_ROOT/config/secrets/ngrok_config")
+        else
+            NGROK_AUTHTOKEN=$(read_existing_secret "ngrok_authtoken" "NGROK_AUTHTOKEN")
+        fi
     fi
     ensure_secrets
 

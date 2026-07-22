@@ -481,8 +481,8 @@ cmd_install() {
   else
     echo ""
     echo "  ¿Instalar datos de ejemplo?"
-    echo "  Incluye 2 categorías (Entrantes, Bebidas), 8 platos y usuarios demo"
-    echo "  (cocinero/cocinero, camarero/camarero, cajero/cajero)"
+    echo "  Incluye 2 categorías (Entrantes, Bebidas), 8 platos y una mesa demo"
+    echo "  (categorías, platos y una mesa de ejemplo; sin usuarios de contraseña fija)"
     local seed_choice
     read_or_default "  ¿Instalar? (s/N): " "n" seed_choice
     if [[ "${seed_choice}" =~ ^[sSyY] ]]; then
@@ -642,8 +642,7 @@ EOF
   log "Verificando usuario de aplicación MongoDB..."
   # getUser() returns null when the user does not exist.
   app_user_exists=$(docker compose exec -T mongo sh -c \
-        'mongosh --quiet -u "$MONGO_INITDB_ROOT_USERNAME" -p "$(cat /run/secrets/mongo_root_password)" --authenticationDatabase admin \
-        --eval "var u = db.getSiblingDB(\"disherio\").getUser(process.env.MONGO_APP_USER); (u !== null && typeof u === \"object\") ? \"yes\" : \"no\""' \
+        'mongosh --quiet --eval "const fs=require(\"fs\"); const pw=fs.readFileSync(\"/run/secrets/mongo_root_password\",\"utf8\").trim(); db.getSiblingDB(\"admin\").auth(process.env.MONGO_INITDB_ROOT_USERNAME,pw); const u=db.getSiblingDB(\"disherio\").getUser(process.env.MONGO_APP_USER); print((u !== null && typeof u === \"object\") ? \"yes\" : \"no\")"' \
         2>/dev/null || echo "err")
   if [[ "$app_user_exists" == "yes" ]]; then
     ok "Usuario app presente"
@@ -651,8 +650,7 @@ EOF
     log "Usuario app no encontrado. Creándolo a la fuerza..."
     # createUser throws when the user already exists; tolerate that case with try/catch.
     docker compose exec -T mongo sh -c \
-      'mongosh --quiet -u "$MONGO_INITDB_ROOT_USERNAME" -p "$(cat /run/secrets/mongo_root_password)" --authenticationDatabase admin \
-      /docker-entrypoint-initdb.d/init-mongo.js' \
+      'mongosh --quiet --eval "const fs=require(\"fs\"); const pw=fs.readFileSync(\"/run/secrets/mongo_root_password\",\"utf8\").trim(); db.getSiblingDB(\"admin\").auth(process.env.MONGO_INITDB_ROOT_USERNAME,pw); load(\"/docker-entrypoint-initdb.d/init-mongo.js\")"' \
       >> "$LOG_FILE" 2>&1 || err "No se pudo crear el usuario app"
     ok "Usuario app creado"
   fi
@@ -689,7 +687,7 @@ EOF
     # production guard in seed-examples (SEED_EXAMPLES_CONFIRM=true).
     SEED_EXAMPLES_CONFIRM=true docker compose --profile seed up --force-recreate --exit-code-from seed-examples seed-examples >> "$LOG_FILE" 2>&1 \
       || err "Seed de ejemplos falló. Ver $LOG_FILE"
-    ok "Datos de ejemplo creados (2 categorías, 8 platos, 3 usuarios demo)"
+    ok "Datos de ejemplo creados (categorías, platos y mesa; sin credenciales fijas)"
   fi
 
   # 7.8 — Caddy (depende de backend + frontend sanos)
@@ -719,16 +717,6 @@ Moneda:           ${DEFAULT_CURRENCY}
 
 EOF
 
-  if [[ "$SEED_EXAMPLES" =~ ^[yYsS] ]]; then
-    cat >> "$CREDENTIALS_FILE" <<EOF
-Usuarios demo:
-  Cocinero:  cocinero / cocinero
-  Camarero:  camarero / camarero
-  Cajero:    cajero / cajero
-
-EOF
-  fi
-
   cat >> "$CREDENTIALS_FILE" <<EOF
 Comandos útiles:
   Estado:    sudo ./scripts/install.sh status
@@ -751,17 +739,8 @@ EOF
   echo -e "${GREEN}║${NC}         ${YELLOW}CREDENCIALES DE ADMINISTRADOR${NC}               ${GREEN}║${NC}"
   echo -e "${GREEN}║${NC}                                                          ${GREEN}║${NC}"
   echo -e "${GREEN}║${NC}   Usuario:  ${BOLD}${ADMIN_USER}${NC}"
-  echo -e "${GREEN}║${NC}   Password: ${BOLD}${ADMIN_PASS}${NC}"
+  echo -e "${GREEN}║${NC}   Password: guardada en ${BOLD}${CREDENTIALS_FILE}${NC} (0600)"
   echo -e "${GREEN}║${NC}                                                          ${GREEN}║${NC}"
-  if [[ "$SEED_EXAMPLES" =~ ^[yYsS] ]]; then
-    echo -e "${GREEN}╠══════════════════════════════════════════════════════════╣${NC}"
-    echo -e "${GREEN}║${NC}         ${YELLOW}USUARIOS DEMO${NC}                                    ${GREEN}║${NC}"
-    echo -e "${GREEN}║${NC}                                                          ${GREEN}║${NC}"
-    echo -e "${GREEN}║${NC}   Cocinero:  ${BOLD}cocinero${NC} / ${BOLD}cocinero${NC}                 ${GREEN}║${NC}"
-    echo -e "${GREEN}║${NC}   Camarero:  ${BOLD}camarero${NC} / ${BOLD}camarero${NC}                 ${GREEN}║${NC}"
-    echo -e "${GREEN}║${NC}   Cajero:    ${BOLD}cajero${NC} / ${BOLD}cajero${NC}                     ${GREEN}║${NC}"
-    echo -e "${GREEN}║${NC}                                                          ${GREEN}║${NC}"
-  fi
   echo -e "${GREEN}╠══════════════════════════════════════════════════════════╣${NC}"
   echo -e "${GREEN}║${NC}   Accesos:                                             ${GREEN}║${NC}"
   echo -e "${GREEN}║${NC}     Admin:  ${ACCESS_URL}/admin                          ${GREEN}║${NC}"

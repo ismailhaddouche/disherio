@@ -237,7 +237,7 @@ show_current_config() {
   step "Configuración actual"
   echo ""
   grep -v "^#" "$ENV_FILE" | grep -v "^$" \
-    | grep -Ev "^(JWT_SECRET|JWT_REFRESH_SECRET|MONGO_ROOT_PASS|MONGO_APP_PASS|MONGODB_URI|REDIS_PASSWORD|ADMIN_PASSWORD)=" \
+    | grep -Ev "^(JWT_SECRET|JWT_REFRESH_SECRET|MONGO_ROOT_PASS|MONGO_APP_PASS|MONGODB_URI|REDIS_PASSWORD|ADMIN_PASSWORD|CF_TUNNEL_TOKEN|NGROK_AUTHTOKEN)=" \
     | while IFS='=' read -r key val; do
     echo -e "  ${CYAN}${key}${RESET} = ${BOLD}${val}${RESET}"
   done

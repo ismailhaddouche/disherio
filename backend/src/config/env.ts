@@ -3,6 +3,7 @@ import { logger } from './logger';
 import { loadSecretFiles } from './secret-files';
 
 const DEFAULT_JWT_SECRET = 'changeme_in_production';
+const PLACEHOLDER_PATTERN = /(change|cambiar|placeholder|example|ejemplo|password[_-]?seguro)/i;
 
 const DURATION_MULTIPLIERS = {
   s: 1,
@@ -142,6 +143,32 @@ export const envSchema = z.object({
       path: ['JWT_REFRESH_EXPIRES'],
       message: 'JWT_REFRESH_EXPIRES must be longer than JWT_EXPIRES',
     });
+  }
+
+  if (config.JWT_SECRET === config.JWT_REFRESH_SECRET) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['JWT_REFRESH_SECRET'],
+      message: 'JWT secrets must be different',
+    });
+  }
+
+  if (config.NODE_ENV === 'production') {
+    const productionSecrets: Array<[keyof typeof config, string | undefined]> = [
+      ['JWT_SECRET', config.JWT_SECRET],
+      ['JWT_REFRESH_SECRET', config.JWT_REFRESH_SECRET],
+      ['MONGODB_URI', config.MONGODB_URI],
+      ['REDIS_PASSWORD', config.REDIS_PASSWORD],
+    ];
+    for (const [name, value] of productionSecrets) {
+      if (value && PLACEHOLDER_PATTERN.test(value)) {
+        ctx.addIssue({
+          code: 'custom',
+          path: [name],
+          message: `${name} must not contain an example or placeholder value in production`,
+        });
+      }
+    }
   }
 });
 

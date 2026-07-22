@@ -117,11 +117,11 @@ export async function updateDish(
   return update();
 }
 
-export async function deleteDish(dishId: string): Promise<IDish | null> {
-  const existing = await dishRepo.findById(dishId);
+export async function deleteDish(dishId: string, restaurantId: string): Promise<IDish | null> {
+  const existing = await dishRepo.findByIdAndRestaurant(dishId, restaurantId);
   if (!existing) return null;
 
-  const deleted = await dishRepo.delete(dishId);
+  const deleted = await dishRepo.deleteByRestaurant(dishId, restaurantId);
   if (!deleted) return null;
 
   // Delete the file only after MongoDB has confirmed the entity deletion. A
@@ -135,11 +135,11 @@ export async function deleteDish(dishId: string): Promise<IDish | null> {
   return deleted;
 }
 
-export async function toggleDishStatus(dishId: string): Promise<IDish | null> {
-  const existing = await dishRepo.findById(dishId);
+export async function toggleDishStatus(dishId: string, restaurantId: string): Promise<IDish | null> {
+  const existing = await dishRepo.findByIdAndRestaurant(dishId, restaurantId);
   if (!existing) return null;
 
-  const updated = await dishRepo.toggleStatus(dishId);
+  const updated = await dishRepo.toggleStatus(dishId, restaurantId);
   await invalidateDishCaches(dishId, existing.restaurant_id.toString());
 
   return updated;

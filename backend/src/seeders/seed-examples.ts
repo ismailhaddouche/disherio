@@ -180,11 +180,15 @@ async function seedExamples() {
     }
 
     // ── Example staff users (cook, waiter, cashier) ─────────────────────────
-    const exampleUsers = [
+    const exampleUsers = process.env.NODE_ENV === 'production' ? [] : [
       { role_name: 'KTS', username: 'cocinero', staff_name: 'Cocinero Demo', password: 'cocinero' },
       { role_name: 'TAS', username: 'camarero', staff_name: 'Camarero Demo', password: 'camarero' },
       { role_name: 'POS', username: 'cajero', staff_name: 'Cajero Demo', password: 'cajero' },
     ];
+
+    if (process.env.NODE_ENV === 'production') {
+      logger.warn('Fixed-credential demo users are disabled in production');
+    }
 
     for (const user of exampleUsers) {
       const role = await Role.findOne({ restaurant_id: restaurantId, role_name: user.role_name });
@@ -228,7 +232,9 @@ async function seedExamples() {
     }
 
     logger.info('=== DisherIO example seed completed successfully ===');
-    logger.info('Example users: cocinero/cocinero, camarero/camarero, cajero/cajero');
+    if (process.env.NODE_ENV !== 'production') {
+      logger.info('Development-only example users: cocinero/cocinero, camarero/camarero, cajero/cajero');
+    }
     logger.info('Example totem: Mesa 1');
 
   } catch (err) {

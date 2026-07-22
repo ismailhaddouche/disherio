@@ -3,6 +3,11 @@ import { logger } from '../config/logger';
 import { getRateLimitConfig, generateRateLimitKey } from './rateLimit.config';
 import { AppError } from '../utils/async-handler';
 import { getHttpRouteLabel } from '../utils/http-route-label';
+import { RedisRateLimitStore } from './redis-rate-limit-store';
+
+const productionStore = (prefix: string) => process.env.NODE_ENV === 'production'
+  ? { store: new RedisRateLimitStore(prefix), passOnStoreError: false }
+  : {};
 
 // ============================================
 // AUTH RATE LIMITERS
@@ -16,6 +21,7 @@ export const authLimiter = rateLimit({
   ...getRateLimitConfig('AUTH', 'AUTH_RATE_LIMIT_EXCEEDED'),
   keyGenerator: generateRateLimitKey,
   skipSuccessfulRequests: true,
+  ...productionStore('auth'),
 });
 
 // ============================================
@@ -29,6 +35,7 @@ export const authLimiter = rateLimit({
 export const apiLimiter = rateLimit({
   ...getRateLimitConfig('API', 'API_RATE_LIMIT_EXCEEDED'),
   keyGenerator: generateRateLimitKey,
+  ...productionStore('api'),
 });
 
 // ============================================
@@ -42,6 +49,7 @@ export const apiLimiter = rateLimit({
 export const strictLimiter = rateLimit({
   ...getRateLimitConfig('STRICT', 'STRICT_RATE_LIMIT_EXCEEDED'),
   keyGenerator: generateRateLimitKey,
+  ...productionStore('strict'),
 });
 
 // ============================================
@@ -55,6 +63,7 @@ export const strictLimiter = rateLimit({
 export const uploadLimiter = rateLimit({
   ...getRateLimitConfig('UPLOAD', 'UPLOAD_RATE_LIMIT_EXCEEDED'),
   keyGenerator: generateRateLimitKey,
+  ...productionStore('upload'),
 });
 
 // ============================================
@@ -68,6 +77,7 @@ export const uploadLimiter = rateLimit({
 export const qrLimiter = rateLimit({
   ...getRateLimitConfig('QR', 'QR_RATE_LIMIT_EXCEEDED'),
   keyGenerator: generateRateLimitKey,
+  ...productionStore('qr'),
 });
 
 /**
@@ -77,6 +87,7 @@ export const qrLimiter = rateLimit({
 export const qrBruteForceLimiter = rateLimit({
   ...getRateLimitConfig('QR_BRUTE_FORCE', 'QR_BRUTE_FORCE_DETECTED'),
   keyGenerator: generateRateLimitKey,
+  ...productionStore('qr-brute-force'),
   handler: (req, res, next) => {
     // Log suspicious attempts
     logger.warn({

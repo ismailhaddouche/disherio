@@ -15,6 +15,11 @@ export const SECURITY_LIMITS = {
   MAX_FILES_PER_REQUEST: 1,
 } as const;
 
+export function isPathInside(parent: string, candidate: string): boolean {
+  const relative = path.relative(path.resolve(parent), path.resolve(candidate));
+  return relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative);
+}
+
 // Dangerous characters to be removed
 // eslint-disable-next-line no-control-regex
 const DANGEROUS_CHARS = /[<>:"|?*\x00-\x1f]/g;
@@ -336,7 +341,7 @@ export function getSecurePath(uploadsDir: string, subfolder: string, filename: s
   const resolvedUploadsDir = path.resolve(uploadsDir);
 
   // Verify final path is within uploads directory (path traversal protection)
-  if (!fullPath.startsWith(resolvedUploadsDir)) {
+  if (!isPathInside(resolvedUploadsDir, fullPath)) {
     throw new Error('Path traversal detected');
   }
 

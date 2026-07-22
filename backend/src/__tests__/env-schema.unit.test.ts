@@ -84,4 +84,25 @@ describe('env schema validation', () => {
       }
     });
   });
+
+  it('rejects long example placeholders in production', () => {
+    const result = envSchema.safeParse({
+      ...validEnv,
+      NODE_ENV: 'production',
+      JWT_SECRET: 'cambiar_esto_por_un_secreto_largo_de_64_caracteres',
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it('requires different access and refresh signing secrets', () => {
+    const repeated = 'one-secret-that-is-at-least-32-characters-long';
+    const result = envSchema.safeParse({
+      ...validEnv,
+      JWT_SECRET: repeated,
+      JWT_REFRESH_SECRET: repeated,
+    });
+
+    expect(result.success).toBe(false);
+  });
 });

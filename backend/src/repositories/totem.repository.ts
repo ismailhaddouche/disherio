@@ -43,13 +43,12 @@ export class TotemRepository extends BaseRepository<ITotem> {
 
   async updateTotem(id: string, data: UpdateTotemData & { totem_qr?: string }): Promise<ITotem | null> {
     validateObjectId(id, 'totem_id');
-    const { restaurant_id, totem_start_date, ...rest } = data;
+    const { restaurant_id: _restaurantId, totem_start_date, ...rest } = data;
     return this.model
       .findByIdAndUpdate(
         id,
         {
           ...rest,
-          ...(restaurant_id !== undefined && { restaurant_id: new Types.ObjectId(restaurant_id) }),
           ...(totem_start_date !== undefined && { totem_start_date: new Date(totem_start_date) }),
         },
         { returnDocument: 'after' }

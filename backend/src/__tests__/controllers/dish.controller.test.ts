@@ -233,7 +233,7 @@ describe('DishController', () => {
       await deleteDish(req as Request, res as Response, next);
 
       // Assert
-      expect(dishService.deleteDish).toHaveBeenCalledWith('dish123');
+      expect(dishService.deleteDish).toHaveBeenCalledWith('dish123', 'rest123');
       expect(statusMock).toHaveBeenCalledWith(204);
       expect(endMock).toHaveBeenCalled();
     });
@@ -272,7 +272,7 @@ describe('DishController', () => {
       await toggleDishStatus(req as Request, res as Response, next);
 
       // Assert
-      expect(dishService.toggleDishStatus).toHaveBeenCalledWith('dish123');
+      expect(dishService.toggleDishStatus).toHaveBeenCalledWith('dish123', 'rest123');
       expect(jsonMock).toHaveBeenCalledWith(mockDish);
     });
 

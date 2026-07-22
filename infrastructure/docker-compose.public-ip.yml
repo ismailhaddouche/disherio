@@ -29,9 +29,11 @@ services:
   cloudflared:
     image: cloudflare/cloudflared@sha256:4f6655284ab3d252b7f28fedb19fe6c8fc82ee5b1295c20ac74d475e5398a52d
     restart: unless-stopped
-    command: tunnel --no-autoupdate run
+    command: tunnel --no-autoupdate run --token-file /run/secrets/cloudflare_tunnel_token
     environment:
-      - TUNNEL_TOKEN=${CF_TUNNEL_TOKEN}
+      - TUNNEL_TOKEN_FILE=/run/secrets/cloudflare_tunnel_token
+    secrets:
+      - cloudflare_tunnel_token
     networks:
       - tunnel_net
     depends_on:
@@ -44,9 +46,9 @@ services:
   ngrok:
     image: ngrok/ngrok@sha256:14d80d083e5b53145f416bbbd36238336c9de4016c43fd950eb2eb845670583b
     restart: unless-stopped
-    command: http --url=${NGROK_DOMAIN:-} caddy:${CADDY_INTERNAL_PORT:-8080}
-    environment:
-      - NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN}
+    command: http --config /run/secrets/ngrok_config --url=${NGROK_DOMAIN:-} caddy:${CADDY_INTERNAL_PORT:-8080}
+    secrets:
+      - ngrok_config
     networks:
       - tunnel_net
     depends_on:
@@ -61,3 +63,9 @@ networks:
     driver: bridge
     # NOTA: no usar internal:true — cloudflared/ngrok necesitan acceso a Internet
     # para establecer el túnel saliente hacia Cloudflare/ngrok servers.
+
+secrets:
+  cloudflare_tunnel_token:
+    file: ./config/secrets/cloudflare_tunnel_token
+  ngrok_config:
+    file: ./config/secrets/ngrok_config
