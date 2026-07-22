@@ -97,6 +97,22 @@ main_menu() {
   esac
 }
 
+is_rfc1918() {
+  [[ "$1" =~ ^10\. ]] && return 0
+  [[ "$1" =~ ^192\.168\. ]] && return 0
+  [[ "$1" =~ ^172\.(1[6-9]|2[0-9]|3[01])\. ]] && return 0
+  [[ "$1" == "127.0.0.1" ]] && return 0
+  return 1
+}
+
+# In local (HTTP) mode, a cloud VM's internal IP is unreachable from the
+# operator; prefer the public one when the internal is RFC1918. An explicit
+# DISHERIO_ACCESS_IP override always wins.
+resolve_local_access_ip() {
+  if [[ -n "${DISHERIO_ACCESS_IP:-}" ]]; then echo "$DISHERIO_ACCESS_IP"; return; fi
+  if is_rfc1918 "$LOCAL_IP" && [[ -n "$PUBLIC_IP" ]]; then echo "$PUBLIC_IP"; else echo "$LOCAL_IP"; fi
+}
+
 # ── Change network ────────────────────────────────────────────────────────────
 change_network() {
   step "Cambiar modo de red"
@@ -150,10 +166,13 @@ change_network() {
     *)
       read -rp "  Puerto [80]: " port; port="${port:-80}"
       valid_port "$port" || err "Puerto inválido: $port"
-      domain="$LOCAL_IP"
-      access_url="http://$LOCAL_IP:$port"
+      domain="$(resolve_local_access_ip)"
+      access_url="http://${domain}:$port"
       write_http_caddyfile ":$port"
       sed_env "HTTP_PORT" "$port"
+      if is_rfc1918 "$LOCAL_IP" && [[ -n "$PUBLIC_IP" && "$domain" == "$PUBLIC_IP" ]]; then
+        warn "IP interna ${LOCAL_IP} inalcanzable desde fuera; usando IP pública ${PUBLIC_IP} por HTTP sin cifrar."
+      fi
       ;;
   esac
 

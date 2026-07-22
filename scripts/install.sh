@@ -33,6 +33,9 @@
 # Optional non-interactive variables:
 #   DISHERIO_DEPLOY_MODE   = domain | local
 #   DISHERIO_DOMAIN        = domain (only when DEPLOY_MODE=domain)
+#   DISHERIO_ACCESS_IP     = IP/host to advertise in local mode (overrides the
+#                            auto-detected one; useful when the internal IP is
+#                            RFC1918/unreachable, e.g. a cloud VM)
 #   DISHERIO_LANGUAGE      = es | en | fr
 #   DISHERIO_RESTAURANT_NAME = restaurant name
 #   DISHERIO_CURRENCY       = EUR | USD | GBP
@@ -152,6 +155,33 @@ detect_ip() {
     if [[ -z "$PUBLIC_IP" ]]; then
       PUBLIC_IP=$(curl -s --max-time 5 https://ifconfig.me 2>/dev/null || true)
     fi
+  fi
+}
+
+# Whether an IPv4 is RFC1918 private (10/8, 172.16/12, 192.168/16) or loopback.
+is_rfc1918() {
+  local ip="$1"
+  [[ "$ip" =~ ^10\. ]] && return 0
+  [[ "$ip" =~ ^192\.168\. ]] && return 0
+  [[ "$ip" =~ ^172\.(1[6-9]|2[0-9]|3[01])\. ]] && return 0
+  [[ "$ip" == "127.0.0.1" ]] && return 0
+  return 1
+}
+
+# Resolve the IP to advertise for HTTP (mode "local") access.
+# A cloud VM has an RFC1918 internal address that is unreachable from the
+# operator's machine; in that case the public IP is the only usable access
+# address, so prefer it (with a clear warning that HTTP is unencrypted).
+# An explicit DISHERIO_ACCESS_IP override always wins.
+resolve_local_access_ip() {
+  if [[ -n "${DISHERIO_ACCESS_IP:-}" ]]; then
+    echo "$DISHERIO_ACCESS_IP"
+    return
+  fi
+  if is_rfc1918 "$LOCAL_IP" && [[ -n "$PUBLIC_IP" ]]; then
+    echo "$PUBLIC_IP"
+  else
+    echo "$LOCAL_IP"
   fi
 }
 
@@ -379,14 +409,16 @@ cmd_install() {
     # Non-interactive via env var
     case "$DISHERIO_DEPLOY_MODE" in
       domain) INSTALL_MODE="domain";;
-      local)  INSTALL_MODE="local";  CADDY_DOMAIN="$LOCAL_IP";;
+      local)  INSTALL_MODE="local";  CADDY_DOMAIN="$(resolve_local_access_ip)";;
       public) err "El modo public por HTTP está deshabilitado. Usa domain o el configurador de túnel HTTPS.";;
       *) err "DISHERIO_DEPLOY_MODE inválido: '$DISHERIO_DEPLOY_MODE' (usar: domain|local|public)";;
     esac
     log "Deploy mode (env): $DISHERIO_DEPLOY_MODE"
   elif [[ "$NONINTERACTIVE" == "1" ]]; then
-    # Automatic mode never exposes authentication over HTTP on a public IP.
-    INSTALL_MODE="local"; CADDY_DOMAIN="$LOCAL_IP"
+    # Automatic mode: use the public IP when the internal one is unreachable
+    # from outside (typical cloud VM), never an unencrypted auth on a public
+    # IP would be worse — but the operator explicitly chose local/non-interactive.
+    INSTALL_MODE="local"; CADDY_DOMAIN="$(resolve_local_access_ip)"
     log "Deploy mode (auto): $INSTALL_MODE → $CADDY_DOMAIN"
   else
     # Interactive
@@ -400,14 +432,20 @@ cmd_install() {
     read_or_default "  Elige opción [2]: " "2" choice
     case "$choice" in
       1) INSTALL_MODE="domain";;
-      2) INSTALL_MODE="local"; CADDY_DOMAIN="$LOCAL_IP";;
+      2) INSTALL_MODE="local"; CADDY_DOMAIN="$(resolve_local_access_ip)";;
       3) err "La IP pública directa por HTTP no está permitida. Configura un dominio HTTPS o un túnel.";;
       *) err "Opción inválida";;
     esac
   fi
 
   if [[ "$INSTALL_MODE" == "local" ]]; then
-    warn "El modo IP local usa HTTP sin cifrar. Úsalo únicamente en una LAN privada de confianza."
+    if is_rfc1918 "$LOCAL_IP" && [[ -n "$PUBLIC_IP" && "$CADDY_DOMAIN" == "$PUBLIC_IP" ]]; then
+      warn "Se detectó IP interna RFC1918 (${LOCAL_IP}) con IP pública ${PUBLIC_IP}."
+      warn "Usando la IP pública por HTTP SIN CIFRAR: las credenciales viajan en claro."
+      warn "Para cifrar el acceso, redespliega en modo 'domain' con un dominio."
+    else
+      warn "El modo IP local usa HTTP sin cifrar. Úsalo únicamente en una LAN privada de confianza."
+    fi
   fi
 
   # Parameter 2: domain (domain mode only).
