@@ -20,12 +20,14 @@ import {
 
 describe('Dish Schema Price Validation', () => {
   const validLocalizedName = [{ lang: 'es', value: 'Test' }];
+  const restaurantId = '507f1f77bcf86cd799439011';
+  const categoryId = '507f1f77bcf86cd799439012';
 
   describe('CreateDishSchema', () => {
     it('should accept valid positive price', () => {
       const validDish = {
-        restaurant_id: 'rest123',
-        category_id: 'cat123',
+        restaurant_id: restaurantId,
+        category_id: categoryId,
         disher_name: validLocalizedName,
         disher_price: 10.99,
         disher_type: 'KITCHEN',
@@ -37,8 +39,8 @@ describe('Dish Schema Price Validation', () => {
 
     it('should reject negative price', () => {
       const invalidDish = {
-        restaurant_id: 'rest123',
-        category_id: 'cat123',
+        restaurant_id: restaurantId,
+        category_id: categoryId,
         disher_name: validLocalizedName,
         disher_price: -10,
         disher_type: 'KITCHEN',
@@ -53,8 +55,8 @@ describe('Dish Schema Price Validation', () => {
 
     it('should accept a complimentary dish with zero price', () => {
       const complimentaryDish = {
-        restaurant_id: 'rest123',
-        category_id: 'cat123',
+        restaurant_id: restaurantId,
+        category_id: categoryId,
         disher_name: validLocalizedName,
         disher_price: 0,
         disher_type: 'KITCHEN',
@@ -66,8 +68,8 @@ describe('Dish Schema Price Validation', () => {
 
     it('should reject price exceeding maximum', () => {
       const invalidDish = {
-        restaurant_id: 'rest123',
-        category_id: 'cat123',
+        restaurant_id: restaurantId,
+        category_id: categoryId,
         disher_name: validLocalizedName,
         disher_price: 1000000, // Exceeds 999999
         disher_type: 'KITCHEN',
@@ -186,9 +188,9 @@ describe('Order Schema Price Validation', () => {
 
   describe('ItemOrderSchema', () => {
     const validOrderItem = {
-      order_id: 'order123',
-      session_id: 'session123',
-      item_dish_id: 'dish123',
+      order_id: '507f1f77bcf86cd799439021',
+      session_id: '507f1f77bcf86cd799439022',
+      item_dish_id: '507f1f77bcf86cd799439023',
       item_disher_type: 'KITCHEN',
       item_name_snapshot: validLocalizedName,
       item_base_price: 10.99,
@@ -226,7 +228,7 @@ describe('Order Schema Price Validation', () => {
       const invalidItem = {
         ...validOrderItem,
         item_disher_variant: {
-          variant_id: 'var123',
+          variant_id: '507f1f77bcf86cd799439024',
           name: validLocalizedName,
           price: -5,
         },
@@ -244,7 +246,7 @@ describe('Order Schema Price Validation', () => {
         ...validOrderItem,
         item_disher_extras: [
           {
-            extra_id: 'extra123',
+            extra_id: '507f1f77bcf86cd799439025',
             name: validLocalizedName,
             price: -2,
           },
@@ -261,7 +263,7 @@ describe('Order Schema Price Validation', () => {
 
   describe('CreatePaymentSchema', () => {
     const validPayment = {
-      session_id: 'session123',
+      session_id: '507f1f77bcf86cd799439026',
       payment_type: 'ALL',
       payment_total: 50.00,
       tickets: [

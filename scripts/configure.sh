@@ -180,6 +180,9 @@ reset_admin_password() {
     new_pass=$(openssl rand -base64 16 2>/dev/null | tr -dc 'a-zA-Z0-9' | head -c 16 || tr -dc 'a-zA-Z0-9' < /dev/urandom | head -c 16)
     log "Contraseña generada: $new_pass"
   fi
+  if (( ${#new_pass} < 12 || ${#new_pass} > 72 )); then
+    err "La contraseña debe tener entre 12 y 72 caracteres."
+  fi
 
   # Reject single quotes in the password because they would break the JavaScript snippet.
   if [[ "$new_pass" == *"'"* ]]; then
@@ -234,7 +237,7 @@ show_current_config() {
   step "Configuración actual"
   echo ""
   grep -v "^#" "$ENV_FILE" | grep -v "^$" \
-    | grep -Ev "^(JWT_SECRET|JWT_REFRESH_SECRET|MONGO_ROOT_PASS|MONGO_APP_PASS|REDIS_PASSWORD|ADMIN_PASSWORD)=" \
+    | grep -Ev "^(JWT_SECRET|JWT_REFRESH_SECRET|MONGO_ROOT_PASS|MONGO_APP_PASS|MONGODB_URI|REDIS_PASSWORD|ADMIN_PASSWORD)=" \
     | while IFS='=' read -r key val; do
     echo -e "  ${CYAN}${key}${RESET} = ${BOLD}${val}${RESET}"
   done

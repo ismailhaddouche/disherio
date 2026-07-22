@@ -5,7 +5,7 @@ import { z } from 'zod';
 export const LocalizedEntrySchema = z.object({
   lang: z.string().refine((lang) => ['es', 'en', 'fr'].includes(lang), 'Invalid language'),
   value: z.string().max(1000).default(''),
-});
+}).strict();
 
 export const LocalizedFieldSchema = z.array(LocalizedEntrySchema)
   .max(3)

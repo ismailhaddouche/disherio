@@ -1,5 +1,4 @@
-import { Pipe, PipeTransform, inject } from '@angular/core';
-import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
+import { Pipe, PipeTransform } from '@angular/core';
 
 const ALLOWED_PROTOCOLS = ['http:', 'https:'];
 
@@ -8,9 +7,7 @@ const ALLOWED_PROTOCOLS = ['http:', 'https:'];
   standalone: true,
 })
 export class SafeUrlPipe implements PipeTransform {
-  private sanitizer = inject(DomSanitizer);
-
-  transform(value: string | null | undefined): SafeUrl | null {
+  transform(value: string | null | undefined): string | null {
     if (!value) return null;
 
     try {
@@ -18,7 +15,8 @@ export class SafeUrlPipe implements PipeTransform {
       if (!ALLOWED_PROTOCOLS.includes(url.protocol)) {
         return null;
       }
-      return this.sanitizer.bypassSecurityTrustUrl(url.href);
+      // Keep Angular's context-aware URL sanitizer in the enforcement path.
+      return url.href;
     } catch {
       return null;
     }

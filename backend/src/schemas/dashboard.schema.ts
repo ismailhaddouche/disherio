@@ -14,7 +14,7 @@ function validDateRange(value: { from?: Date; to?: Date }): boolean {
   return !value.from || !value.to || value.from <= value.to;
 }
 
-export const DashboardDateRangeQuerySchema = z.object(dateRange)
+export const DashboardDateRangeQuerySchema = z.object(dateRange).strict()
   .refine(validDateRange);
 
 export const PopularDishesQuerySchema = z.object({
@@ -26,10 +26,10 @@ export const PopularDishesQuerySchema = z.object({
     .optional()
     .default(10),
   type: z.enum(['KITCHEN', 'SERVICE']).optional(),
-}).refine(validDateRange);
+}).strict().refine(validDateRange);
 
 export const ActivityLogQuerySchema = z.object({
   ...dateRange,
   userId: objectId.optional(),
   type: z.enum(['ALL', 'KDS', 'POS', 'TAS', 'CUSTOMER']).optional(),
-}).refine(validDateRange);
+}).strict().refine(validDateRange);

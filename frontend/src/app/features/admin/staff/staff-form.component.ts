@@ -147,8 +147,8 @@ export class StaffFormComponent implements OnInit, OnDestroy {
     // is optional (empty = keep current) but must still be valid when set;
     // Angular validators skip empty values, so only `required` is dropped.
     const passwordValidators = this.isEditMode
-      ? [Validators.minLength(8), Validators.maxLength(128)]
-      : [Validators.required, Validators.minLength(8), Validators.maxLength(128)];
+      ? [Validators.minLength(12), Validators.maxLength(72)]
+      : [Validators.required, Validators.minLength(12), Validators.maxLength(72)];
 
     this.staffForm = this.fb.group({
       staff_name: ['', [Validators.required, Validators.minLength(2)]],

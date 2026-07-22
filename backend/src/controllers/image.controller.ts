@@ -15,7 +15,7 @@ import {
 } from '../utils/file-security';
 
 // Filter for only allow specific image types with enhanced security
-const fileFilter = (_req: any, file: Express.Multer.File, cb: any) => {
+const fileFilter: NonNullable<multer.Options['fileFilter']> = (_req, file, cb) => {
   const errors: string[] = [];
 
   // Validate it's not a dangerous file
@@ -44,9 +44,9 @@ const fileFilter = (_req: any, file: Express.Multer.File, cb: any) => {
   }
 
   if (errors.length > 0) {
-    const error = new Error(errors.join(', ')) as any;
+    const error = new Error(errors.join(', ')) as Error & { code: string };
     error.code = 'INVALID_FILE_TYPE';
-    return cb(error, false);
+    return cb(error);
   }
 
   cb(null, true);
@@ -74,7 +74,7 @@ const validateImageFile = asyncHandler(async (req: Request, _res: Response, next
 
   if (!validation.valid) {
     const error = createError.badRequest(ErrorCode.INVALID_FILE);
-    (error as any).details = validation.errors;
+    error.details = validation.errors;
     throw error;
   }
 
@@ -149,11 +149,11 @@ export const uploadRestaurantLogo = [
 /**
  * Middleware to handle multer errors
  */
-export const handleMulterError = (err: any, _req: Request, _res: Response, next: NextFunction) => {
+export const handleMulterError = (err: unknown, _req: Request, _res: Response, next: NextFunction) => {
   if (err instanceof multer.MulterError) {
     if (err.code === 'LIMIT_FILE_SIZE') {
       const error = createError.badRequest('FILE_TOO_LARGE');
-      (error as any).maxSize = SECURITY_LIMITS.MAX_FILE_SIZE;
+      error.details = { maxSize: SECURITY_LIMITS.MAX_FILE_SIZE };
       return next(error);
     }
     if (err.code === 'LIMIT_UNEXPECTED_FILE') {
@@ -165,12 +165,15 @@ export const handleMulterError = (err: any, _req: Request, _res: Response, next:
     return next(createError.badRequest(ErrorCode.UPLOAD_ERROR));
   }
 
-  if (err) {
-    if (err.code === 'INVALID_FILE_TYPE' || err.message?.includes('INVALID')) {
+  if (err instanceof Error) {
+    const errorCode = 'code' in err ? err.code : undefined;
+    if (errorCode === 'INVALID_FILE_TYPE' || err.message.includes('INVALID')) {
       return next(createError.badRequest('INVALID_FILE_TYPE'));
     }
     return next(err);
   }
+
+  if (err) return next(createError.badRequest(ErrorCode.UPLOAD_ERROR));
 
   next();
 };

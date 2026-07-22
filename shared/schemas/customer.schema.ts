@@ -4,4 +4,4 @@ import { z } from 'zod';
 export const CreateCustomerBodySchema = z.object({
   session_id: z.string().regex(/^[a-f\d]{24}$/i),
   customer_name: z.string().trim().min(2).max(100),
-});
+}).strict();

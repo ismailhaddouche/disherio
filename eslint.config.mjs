@@ -19,7 +19,7 @@ export default tseslint.config(
       globals: { ...globals.node, ...globals.jest },
     },
     rules: {
-      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/no-namespace': 'off',
       '@typescript-eslint/no-unused-vars': ['error', {
         argsIgnorePattern: '^_',
@@ -40,7 +40,7 @@ export default tseslint.config(
       globals: globals.browser,
     },
     rules: {
-      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/no-unused-vars': ['error', {
         args: 'none',
         varsIgnorePattern: '^_',
@@ -56,6 +56,7 @@ export default tseslint.config(
     files: ['backend/src/__tests__/**/*.ts', 'frontend/src/**/*.spec.ts'],
     rules: {
       'no-empty': 'off',
+      '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-unused-vars': 'off',
     },
   }

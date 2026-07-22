@@ -113,11 +113,11 @@ banner() {
 read_or_default() {
   local prompt="$1" default="$2" varname="$3"
   if [[ ! -t 0 ]] || [[ "${DISHERIO_NONINTERACTIVE:-}" == "1" ]]; then
-    eval "$varname=\"\$default\""
+    printf -v "$varname" '%s' "$default"
     echo -e "${DIM}  (auto) ${prompt} → ${default}${NC}"
   else
     read -rp "$prompt" "$varname"
-    if [[ -z "${!varname}" ]]; then eval "$varname=\"\$default\""; fi
+    if [[ -z "${!varname}" ]]; then printf -v "$varname" '%s' "$default"; fi
   fi
 }
 
@@ -183,14 +183,14 @@ generate_all_secrets() {
 
 load_existing_secrets() {
   MONGO_ROOT_USER=$(env_get "MONGO_ROOT_USER" "$MONGO_ROOT_USER")
-  MONGO_ROOT_PASS=$(env_get "MONGO_ROOT_PASS" "")
+  MONGO_ROOT_PASS=$(secret_get "mongo_root_password" "MONGO_ROOT_PASS" "")
   MONGO_APP_USER=$(env_get "MONGO_APP_USER" "$MONGO_APP_USER")
-  MONGO_APP_PASS=$(env_get "MONGO_APP_PASS" "")
-  REDIS_PASSWORD=$(env_get "REDIS_PASSWORD" "")
-  JWT_SECRET=$(env_get "JWT_SECRET" "")
-  JWT_REFRESH_SECRET=$(env_get "JWT_REFRESH_SECRET" "")
+  MONGO_APP_PASS=$(secret_get "mongo_app_password" "MONGO_APP_PASS" "")
+  REDIS_PASSWORD=$(secret_get "redis_password" "REDIS_PASSWORD" "")
+  JWT_SECRET=$(secret_get "jwt_secret" "JWT_SECRET" "")
+  JWT_REFRESH_SECRET=$(secret_get "jwt_refresh_secret" "JWT_REFRESH_SECRET" "")
   ADMIN_USER=$(env_get "ADMIN_USERNAME" "$ADMIN_USER")
-  ADMIN_PASS=$(env_get "ADMIN_PASSWORD" "")
+  ADMIN_PASS=$(secret_get "admin_password" "ADMIN_PASSWORD" "")
 }
 
 generate_caddy_config() {
@@ -237,17 +237,32 @@ env_get() {
   fi
 }
 
+secret_get() {
+  local filename="$1" env_key="$2" default="${3:-}"
+  local secret_path="$ROOT_DIR/config/secrets/$filename"
+  if [[ -s "$secret_path" ]]; then
+    tr -d '\r\n' < "$secret_path"
+  else
+    env_get "$env_key" "$default"
+  fi
+}
+
+scrub_secret_env() {
+  sed -i -E '/^(MONGO_ROOT_PASS|MONGO_APP_PASS|MONGODB_URI|JWT_SECRET|JWT_REFRESH_SECRET|REDIS_PASSWORD|ADMIN_PASSWORD)=/d' "$ENV_FILE"
+}
+
 write_docker_secret_files() {
   local secret_dir="$ROOT_DIR/config/secrets"
   install -d -m 0700 "$secret_dir"
 
-  printf '%s' "$(env_get MONGO_ROOT_PASS '')" > "$secret_dir/mongo_root_password"
-  printf '%s' "$(env_get MONGO_APP_PASS '')" > "$secret_dir/mongo_app_password"
-  printf '%s' "$(env_get MONGODB_URI '')" > "$secret_dir/mongodb_uri"
-  printf '%s' "$(env_get REDIS_PASSWORD '')" > "$secret_dir/redis_password"
-  printf '%s' "$(env_get JWT_SECRET '')" > "$secret_dir/jwt_secret"
-  printf '%s' "$(env_get JWT_REFRESH_SECRET '')" > "$secret_dir/jwt_refresh_secret"
-  printf '%s' "$(env_get ADMIN_PASSWORD '')" > "$secret_dir/admin_password"
+  printf '%s' "$MONGO_ROOT_PASS" > "$secret_dir/mongo_root_password"
+  printf '%s' "$MONGO_APP_PASS" > "$secret_dir/mongo_app_password"
+  printf 'mongodb://%s:%s@mongo:27017/disherio?authSource=disherio&replicaSet=rs0' \
+    "$MONGO_APP_USER" "$MONGO_APP_PASS" > "$secret_dir/mongodb_uri"
+  printf '%s' "$REDIS_PASSWORD" > "$secret_dir/redis_password"
+  printf '%s' "$JWT_SECRET" > "$secret_dir/jwt_secret"
+  printf '%s' "$JWT_REFRESH_SECRET" > "$secret_dir/jwt_refresh_secret"
+  printf '%s' "$ADMIN_PASS" > "$secret_dir/admin_password"
   chmod 600 "$secret_dir"/*
 }
 
@@ -399,6 +414,8 @@ cmd_install() {
       read -rp "  Introduce tu dominio (ej: app.restaurante.com): " CADDY_DOMAIN
       if [[ -z "$CADDY_DOMAIN" ]]; then err "Dominio requerido"; fi
     fi
+    [[ "$CADDY_DOMAIN" =~ ^([A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,63}$ ]] \
+      || err "Dominio inválido: $CADDY_DOMAIN"
   fi
 
   ok "Acceso: ${CADDY_DOMAIN}"
@@ -531,13 +548,8 @@ PORT=${BACKEND_PORT}
 HTTP_PORT=${HTTP_PORT}
 HTTPS_PORT=${HTTPS_PORT}
 MONGO_ROOT_USER="${MONGO_ROOT_USER}"
-MONGO_ROOT_PASS="${MONGO_ROOT_PASS}"
 MONGO_APP_USER="${MONGO_APP_USER}"
-MONGO_APP_PASS="${MONGO_APP_PASS}"
-MONGODB_URI="mongodb://${MONGO_APP_USER}:${MONGO_APP_PASS}@mongo:27017/disherio?authSource=disherio&replicaSet=rs0"
-JWT_SECRET="${JWT_SECRET}"
 JWT_EXPIRES=15m
-JWT_REFRESH_SECRET="${JWT_REFRESH_SECRET}"
 JWT_REFRESH_EXPIRES=7d
 FRONTEND_URL="${ACCESS_URL}"
 LOG_LEVEL=info
@@ -547,10 +559,8 @@ DEFAULT_TAX_RATE=${DEFAULT_TAX_RATE}
 DEFAULT_CURRENCY=${DEFAULT_CURRENCY}
 RESTAURANT_NAME="${RESTAURANT_NAME}"
 ADMIN_USERNAME=${ADMIN_USER}
-ADMIN_PASSWORD="${ADMIN_PASS}"
 TRUST_PROXY=true
 REDIS_URL=redis://redis:6379
-REDIS_PASSWORD="${REDIS_PASSWORD}"
 MONGODB_MAX_POOL_SIZE=50
 MONGODB_SERVER_SELECTION_TIMEOUT=30000
 MONGODB_SOCKET_TIMEOUT=45000
@@ -559,6 +569,7 @@ MONGO_KEYFILE=/data/db/mongo-keyfile
 EOF
   chmod 600 "$ENV_FILE"
   write_docker_secret_files
+  scrub_secret_env
   ok ".env creado"
 
   generate_caddy_config
@@ -858,7 +869,7 @@ cmd_backup() {
   install -d -m 0700 "$backup_dir"
   staging=$(mktemp -d "${backup_dir}/.backup_${ts}.XXXXXX")
   trap 'rm -rf "$staging"' RETURN
-  install -d -m 0700 "$staging/database" "$staging/uploads" "$staging/config"
+  install -d -m 0700 "$staging/database" "$staging/uploads" "$staging/config" "$staging/config/secrets"
 
   log "Creando backup autenticado..."
   docker compose exec -T mongo sh -c \
@@ -877,6 +888,10 @@ cmd_backup() {
   install -m 0600 "$ENV_FILE" "$staging/config/.env"
   install -m 0600 "$CADDYFILE" "$staging/config/Caddyfile"
   install -m 0600 "$ROOT_DIR/config/mongo-keyfile" "$staging/config/mongo-keyfile"
+  for secret_file in "$ROOT_DIR"/config/secrets/*; do
+    [[ -f "$secret_file" ]] || continue
+    install -m 0600 "$secret_file" "$staging/config/secrets/$(basename "$secret_file")"
+  done
   if [[ -f "$ROOT_DIR/docker-compose.override.yml" ]]; then
     install -m 0600 "$ROOT_DIR/docker-compose.override.yml" "$staging/config/docker-compose.override.yml"
   fi
@@ -885,7 +900,8 @@ cmd_backup() {
 
   tar -czf "$archive" -C "$staging" manifest SHA256SUMS database uploads config
 
-  # The archive contains .env and the MongoDB keyfile: encrypt it at rest.
+  # The archive contains Docker secrets and the MongoDB keyfile: encrypt and
+  # authenticate it at rest. The v2 envelope is: magic, HMAC, ciphertext.
   # Password from DISHERIO_BACKUP_PASSWORD or interactive prompt.
   local backup_pass="${DISHERIO_BACKUP_PASSWORD:-}"
   if [[ -z "$backup_pass" ]]; then
@@ -901,9 +917,19 @@ cmd_backup() {
     fi
   fi
   local enc_archive="${archive}.enc"
-  DISHERIO_BACKUP_PASS="$backup_pass" openssl enc -aes-256-cbc -pbkdf2 -salt \
-    -pass env:DISHERIO_BACKUP_PASS -in "$archive" -out "$enc_archive" \
+  local cipher_archive="${staging}/backup.cipher"
+  DISHERIO_BACKUP_PASS="$backup_pass" openssl enc -aes-256-cbc -pbkdf2 -iter 600000 -salt \
+    -pass env:DISHERIO_BACKUP_PASS -in "$archive" -out "$cipher_archive" \
     || err "No se pudo cifrar el backup"
+  local backup_mac
+  backup_mac=$(DISHERIO_BACKUP_PASS="$backup_pass" openssl dgst -sha256 -mac HMAC \
+    -macopt keyenv:DISHERIO_BACKUP_PASS "$cipher_archive" | awk '{print $NF}') \
+    || err "No se pudo autenticar el backup"
+  [[ "$backup_mac" =~ ^[a-fA-F0-9]{64}$ ]] || err "OpenSSL devolvió un HMAC no válido"
+  {
+    printf 'DISHERIO-BACKUP-V2\n%s\n' "$backup_mac"
+    dd if="$cipher_archive" bs=1M status=none
+  } > "$enc_archive"
   unset backup_pass
   rm -f "$archive"
   archive="$enc_archive"
@@ -929,8 +955,8 @@ cmd_restore() {
   chmod 700 "$staging"
   trap 'rm -rf "$staging"' RETURN
 
-  # Encrypted backups (*.tar.gz.enc, openssl "Salted__" format) are decrypted
-  # first; legacy plain .tar.gz backups restore as before.
+  # V2 encrypted backups are authenticated before decryption. Legacy OpenSSL
+  # and plain .tar.gz backups remain readable for migration.
   local work_archive="$archive"
   if [[ "$archive" == *.enc ]]; then
     local restore_pass="${DISHERIO_BACKUP_PASSWORD:-}"
@@ -942,8 +968,25 @@ cmd_restore() {
       fi
     fi
     work_archive="$staging/backup.tar.gz"
-    DISHERIO_BACKUP_PASS="$restore_pass" openssl enc -d -aes-256-cbc -pbkdf2 \
-      -pass env:DISHERIO_BACKUP_PASS -in "$archive" -out "$work_archive" \
+    local encrypted_input="$archive"
+    local decrypt_iterations=()
+    if [[ "$(head -n 1 "$archive" 2>/dev/null || true)" == "DISHERIO-BACKUP-V2" ]]; then
+      local expected_mac actual_mac
+      expected_mac=$(sed -n '2p' "$archive" | tr -d '\r')
+      [[ "$expected_mac" =~ ^[a-fA-F0-9]{64}$ ]] || err "Cabecera de autenticación del backup no válida"
+      encrypted_input="$staging/backup.cipher"
+      tail -n +3 "$archive" > "$encrypted_input"
+      actual_mac=$(DISHERIO_BACKUP_PASS="$restore_pass" openssl dgst -sha256 -mac HMAC \
+        -macopt keyenv:DISHERIO_BACKUP_PASS "$encrypted_input" | awk '{print $NF}') \
+        || err "No se pudo verificar la autenticidad del backup"
+      [[ "$actual_mac" == "$expected_mac" ]] \
+        || err "La autenticación del backup falló (archivo alterado o contraseña incorrecta)"
+      decrypt_iterations=(-iter 600000)
+    else
+      warn "Backup cifrado heredado sin autenticación externa; conviértelo creando una copia nueva"
+    fi
+    DISHERIO_BACKUP_PASS="$restore_pass" openssl enc -d -aes-256-cbc -pbkdf2 "${decrypt_iterations[@]}" \
+      -pass env:DISHERIO_BACKUP_PASS -in "$encrypted_input" -out "$work_archive" \
       || err "No se pudo descifrar el backup (¿contraseña incorrecta?)"
     unset restore_pass
   fi
@@ -979,7 +1022,18 @@ cmd_restore() {
   docker volume rm disherio_mongo_data disherio_redis_data disherio_uploads >> "$LOG_FILE" 2>&1 || true
 
   install -m 0600 "$staging/config/.env" "$ENV_FILE"
-  write_docker_secret_files
+  rm -rf "$ROOT_DIR/config/secrets"
+  if [[ -d "$staging/config/secrets" ]]; then
+    install -d -m 0700 "$ROOT_DIR/config/secrets"
+    for secret_file in "$staging"/config/secrets/*; do
+      [[ -f "$secret_file" ]] || continue
+      install -m 0600 "$secret_file" "$ROOT_DIR/config/secrets/$(basename "$secret_file")"
+    done
+  else
+    load_existing_secrets
+    write_docker_secret_files
+  fi
+  scrub_secret_env
   install -m 0644 "$staging/config/Caddyfile" "$CADDYFILE"
   install -d -m 0700 "$ROOT_DIR/config"
   install -m 0600 "$staging/config/mongo-keyfile" "$ROOT_DIR/config/mongo-keyfile"

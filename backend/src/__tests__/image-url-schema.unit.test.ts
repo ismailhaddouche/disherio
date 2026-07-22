@@ -14,15 +14,15 @@ import {
 const validLocalizedName = [{ lang: 'es', value: 'Test' }];
 
 const validDish = {
-  restaurant_id: 'rest123',
-  category_id: 'cat123',
+  restaurant_id: '507f1f77bcf86cd799439011',
+  category_id: '507f1f77bcf86cd799439012',
   disher_name: validLocalizedName,
   disher_price: 10.99,
   disher_type: 'KITCHEN',
 };
 
 const validCategory = {
-  restaurant_id: 'rest123',
+  restaurant_id: '507f1f77bcf86cd799439011',
   category_name: validLocalizedName,
 };
 

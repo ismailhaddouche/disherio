@@ -39,6 +39,10 @@
         header Content-Security-Policy "default-src 'none'; img-src 'self'"
     }
 
+    handle /metrics {
+        respond 403
+    }
+
     @health path /health /health/*
     handle @health {
         reverse_proxy backend:3000 {

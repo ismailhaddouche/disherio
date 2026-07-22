@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { RequestIdSchema } from '@disherio/shared';
 
 const objectId = z.string().regex(/^[a-f\d]{24}$/i);
-export const CreateOrderRequestSchema = z.object({ session_id: objectId });
+export const CreateOrderRequestSchema = z.object({ session_id: objectId }).strict();
 export const AddItemRequestSchema = z.object({
   request_id: RequestIdSchema,
   order_id: objectId,
@@ -13,7 +13,7 @@ export const AddItemRequestSchema = z.object({
   customer_id: objectId.optional(),
   variant_id: objectId.optional(),
   extras: z.array(objectId).max(50).optional(),
-});
+}).strict();
 export const BatchItemsRequestSchema = z.object({
   request_id: RequestIdSchema,
   session_id: objectId,
@@ -24,13 +24,13 @@ export const BatchItemsRequestSchema = z.object({
     customerId: objectId.optional(),
     variantId: objectId.optional(),
     extras: z.array(objectId).max(50).optional(),
-  })).min(1).max(100),
-}).refine(
+  }).strict()).min(1).max(100),
+}).strict().refine(
   ({ items }) => items.reduce((total, item) => total + item.quantity, 0) <= 100,
   { path: ['items'], message: 'Total item quantity cannot exceed 100' }
 );
-export const ItemStateRequestSchema = z.object({ state: z.enum(['ORDERED', 'ON_PREPARE', 'SERVED', 'CANCELED']) });
-export const AssignItemRequestSchema = z.object({ customer_id: objectId.nullable() });
+export const ItemStateRequestSchema = z.object({ state: z.enum(['ORDERED', 'ON_PREPARE', 'SERVED', 'CANCELED']) }).strict();
+export const AssignItemRequestSchema = z.object({ customer_id: objectId.nullable() }).strict();
 // `parts` only has meaning for SHARED payments: ALL always settles in a
 // single ticket and BY_USER splits by customer, ignoring `parts`. The
 // frontend sends `parts: 1` for ALL/BY_USER, so a literal 1 stays valid.
@@ -39,22 +39,22 @@ const paymentBaseFields = {
   tips: z.number().min(0).max(999999).optional(),
 };
 export const PaymentRequestSchema = z.discriminatedUnion('payment_type', [
-  z.object({ ...paymentBaseFields, payment_type: z.literal('ALL'), parts: z.literal(1).optional() }),
-  z.object({ ...paymentBaseFields, payment_type: z.literal('BY_USER'), parts: z.literal(1).optional() }),
+  z.object({ ...paymentBaseFields, payment_type: z.literal('ALL'), parts: z.literal(1).optional() }).strict(),
+  z.object({ ...paymentBaseFields, payment_type: z.literal('BY_USER'), parts: z.literal(1).optional() }).strict(),
   z.object({
     ...paymentBaseFields,
     payment_type: z.literal('SHARED'),
     parts: z.number().int().min(2).max(100),
-  }),
+  }).strict(),
 ]);
-export const TicketRequestSchema = z.object({ ticket_part: z.number().int().min(1) });
+export const TicketRequestSchema = z.object({ ticket_part: z.number().int().min(1).max(100) }).strict();
 
 export const PaymentHistoryQuerySchema = z.object({
   from: z.string().datetime().optional(),
   to: z.string().datetime().optional(),
   search: z.string().max(100).optional(),
   limit: z.coerce.number().int().min(1).max(300).optional(),
-});
+}).strict();
 
 export {
   OrderSchema,

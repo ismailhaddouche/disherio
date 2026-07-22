@@ -201,9 +201,9 @@ export async function checkRateLimit(
     ? { maxRequests, windowMs }
     : getRateLimitConfig(eventType);
 
-  // If Redis is not available, use in-memory fallback
+  // Development/test retain an in-memory fallback; production fails closed.
   if (!redis) {
-    return checkInMemoryRateLimit(key, config.maxRequests, config.windowMs);
+    return unavailableRateLimitResult(key, config.maxRequests, config.windowMs);
   }
 
   try {
@@ -222,8 +222,7 @@ export async function checkRateLimit(
     return { allowed, remaining };
   } catch (err) {
     logger.error({ err, identity, eventType }, 'Redis rate limit check failed');
-    // Fallback to in-memory rate limiting when Redis errors
-    return checkInMemoryRateLimit(key, config.maxRequests, config.windowMs);
+    return unavailableRateLimitResult(key, config.maxRequests, config.windowMs);
   }
 }
 
@@ -244,6 +243,17 @@ function checkInMemoryRateLimit(
   const allowed = existing.count <= maxRequests;
   const remaining = Math.max(0, maxRequests - existing.count);
   return { allowed, remaining };
+}
+
+function unavailableRateLimitResult(
+  key: string,
+  maxRequests: number,
+  windowMs: number
+): { allowed: boolean; remaining: number } {
+  // Production is deliberately fail-closed: a Redis outage must not turn a
+  // distributed limit into independent per-node buckets that can be bypassed.
+  if (process.env.NODE_ENV === 'production') return { allowed: false, remaining: 0 };
+  return checkInMemoryRateLimit(key, maxRequests, windowMs);
 }
 
 /**
@@ -281,6 +291,7 @@ export async function recordRequest(identity: string, eventType: string): Promis
 // The `any` in the handler constraint is intentional: the wrapper must accept
 // any handler signature, and `unknown[]` would break Parameters<T> inference
 // under strictFunctionTypes (same pattern used by socket.io's own typings).
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- preserves arbitrary Socket.IO listener parameter tuples.
 export function rateLimitMiddleware<T extends (...args: any[]) => any>(
   socket: AuthenticatedSocket,
   eventType: string,

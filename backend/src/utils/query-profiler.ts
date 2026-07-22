@@ -1,6 +1,8 @@
 import { Model, Document, PipelineStage } from 'mongoose';
 import { logger } from '../config/logger';
 
+/* eslint-disable @typescript-eslint/no-explicit-any -- explain() shapes and caller query results are driver-defined generic payloads. */
+
 export interface QueryProfile {
   operation: string;
   collection: string;

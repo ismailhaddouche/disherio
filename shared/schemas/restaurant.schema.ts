@@ -4,7 +4,7 @@ import { HttpUrlSchema, ImageUrlSchema } from './image.schema';
 export const SocialLinksSchema = z.object({
   facebook_url: HttpUrlSchema.optional(),
   instagram_url: HttpUrlSchema.optional(),
-});
+}).strict();
 
 export const RestaurantSchema = z.object({
   restaurant_name: z.string().trim().min(2).max(120),
@@ -26,5 +26,5 @@ export const RestaurantSchema = z.object({
   currency: z.string().trim().regex(/^[A-Z]{3}$/).default('EUR'),
   order_interval_minutes: z.number().int().min(0).default(0),
   max_orders_per_session: z.number().int().min(0).default(0),
-});
+}).strict();
 

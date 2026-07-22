@@ -133,6 +133,35 @@ write_docker_secret_files() {
     chmod 600 "$secret_dir"/*
 }
 
+read_existing_secret() {
+    local filename="$1" env_key="$2"
+    local secret_path="$PROJECT_ROOT/config/secrets/$filename"
+    if [[ -s "$secret_path" ]]; then
+        tr -d '\r\n' < "$secret_path"
+    elif [[ -f "$ENV_FILE" ]]; then
+        grep -E "^${env_key}=" "$ENV_FILE" 2>/dev/null | tail -1 | cut -d'=' -f2- | tr -d '"' || true
+    fi
+}
+
+scrub_secret_env() {
+    sed -i -E '/^(MONGO_ROOT_PASS|MONGO_APP_PASS|MONGODB_URI|JWT_SECRET|JWT_REFRESH_SECRET|REDIS_PASSWORD|ADMIN_PASSWORD)=/d' "$ENV_FILE"
+}
+
+valid_port() {
+    [[ "$1" =~ ^[0-9]+$ ]] && (( 10#$1 >= 1 && 10#$1 <= 65535 ))
+}
+
+valid_domain() {
+    [[ "$1" =~ ^([A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,63}$ ]]
+}
+
+valid_ipv4() {
+    local ip="$1" octet
+    [[ "$ip" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] || return 1
+    IFS='.' read -r -a octets <<< "$ip"
+    for octet in "${octets[@]}"; do (( 10#$octet <= 255 )) || return 1; done
+}
+
 # =============================================================================
 # MENÚ PRINCIPAL
 # =============================================================================
@@ -212,10 +241,12 @@ configure_local() {
     # Puerto para Caddy
     read -rp "Puerto para el servidor web [4200]: " CADDY_PORT
     CADDY_PORT=${CADDY_PORT:-4200}
+    valid_port "$CADDY_PORT" || { print_error "Puerto web inválido"; exit 1; }
 
     # Puerto para backend
     read -rp "Puerto para el backend API [3000]: " BACKEND_PORT
     BACKEND_PORT=${BACKEND_PORT:-3000}
+    valid_port "$BACKEND_PORT" || { print_error "Puerto backend inválido"; exit 1; }
 
     # Generar .env
     cat > "$ENV_FILE" << EOF
@@ -233,24 +264,17 @@ FRONTEND_URL=http://localhost:$CADDY_PORT
 PORT=$BACKEND_PORT
 CADDY_PORT=$CADDY_PORT
 
-# Seguridad
-JWT_SECRET=${JWT_SECRET}
+# Seguridad (credenciales en config/secrets/)
 JWT_EXPIRES=15m
-JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
 JWT_REFRESH_EXPIRES=7d
 ADMIN_USERNAME=admin
-ADMIN_PASSWORD=${ADMIN_PASSWORD}
 
 # Base de datos (local con autenticación)
 MONGO_ROOT_USER=admin
-MONGO_ROOT_PASS=${MONGO_ROOT_PASS}
 MONGO_APP_USER=disherio_app
-MONGO_APP_PASS=${MONGO_APP_PASS}
-MONGODB_URI=mongodb://disherio_app:${MONGO_APP_PASS}@mongo:27017/disherio?authSource=disherio&replicaSet=rs0
 
 # Redis
 REDIS_URL=redis://redis:6379
-REDIS_PASSWORD=${REDIS_PASSWORD}
 
 # Logging
 LOG_LEVEL=debug
@@ -271,6 +295,7 @@ configure_local_ip() {
 
     read -rp "IP de tu red local [$local_ip]: " SELECTED_IP
     SELECTED_IP=${SELECTED_IP:-$local_ip}
+    valid_ipv4 "$SELECTED_IP" || { print_error "Dirección IPv4 inválida"; exit 1; }
 
     echo ""
     echo "La aplicación será accesible en:"
@@ -279,6 +304,7 @@ configure_local_ip() {
 
     read -rp "Puerto HTTP [80]: " HTTP_PORT
     HTTP_PORT=${HTTP_PORT:-80}
+    valid_port "$HTTP_PORT" || { print_error "Puerto HTTP inválido"; exit 1; }
 
     # Generar .env
     cat > "$ENV_FILE" << EOF
@@ -297,24 +323,17 @@ LOCAL_IP=$SELECTED_IP
 PORT=3000
 HTTP_PORT=$HTTP_PORT
 
-# Seguridad
-JWT_SECRET=${JWT_SECRET}
+# Seguridad (credenciales en config/secrets/)
 JWT_EXPIRES=15m
-JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
 JWT_REFRESH_EXPIRES=7d
 ADMIN_USERNAME=admin
-ADMIN_PASSWORD=${ADMIN_PASSWORD}
 
 # Base de datos (con autenticación)
 MONGO_ROOT_USER=admin
-MONGO_ROOT_PASS=${MONGO_ROOT_PASS}
 MONGO_APP_USER=disherio_app
-MONGO_APP_PASS=${MONGO_APP_PASS}
-MONGODB_URI=mongodb://disherio_app:${MONGO_APP_PASS}@mongo:27017/disherio?authSource=disherio&replicaSet=rs0
 
 # Redis
 REDIS_URL=redis://redis:6379
-REDIS_PASSWORD=${REDIS_PASSWORD}
 
 # Logging
 LOG_LEVEL=info
@@ -410,6 +429,7 @@ configure_cloudflare_tunnel() {
         print_error "El dominio HTTPS del túnel es obligatorio"
         read -rp "Dominio asignado por Cloudflare: " CF_TUNNEL_DOMAIN
     done
+    valid_domain "$CF_TUNNEL_DOMAIN" || { print_error "Dominio de Cloudflare inválido"; exit 1; }
 
     # Generar .env
     cat > "$ENV_FILE" << EOF
@@ -435,24 +455,17 @@ PORT=3000
 # Puerto interno de Caddy (el túnel se conecta aquí)
 CADDY_INTERNAL_PORT=8080
 
-# Seguridad
-JWT_SECRET=${JWT_SECRET}
+# Seguridad (credenciales en config/secrets/)
 JWT_EXPIRES=15m
-JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
 JWT_REFRESH_EXPIRES=7d
 ADMIN_USERNAME=admin
-ADMIN_PASSWORD=${ADMIN_PASSWORD}
 
 # Base de datos (con autenticación)
 MONGO_ROOT_USER=admin
-MONGO_ROOT_PASS=${MONGO_ROOT_PASS}
 MONGO_APP_USER=disherio_app
-MONGO_APP_PASS=${MONGO_APP_PASS}
-MONGODB_URI=mongodb://disherio_app:${MONGO_APP_PASS}@mongo:27017/disherio?authSource=disherio&replicaSet=rs0
 
 # Redis
 REDIS_URL=redis://redis:6379
-REDIS_PASSWORD=${REDIS_PASSWORD}
 
 # Logging
 LOG_LEVEL=info
@@ -490,6 +503,7 @@ configure_ngrok() {
         print_error "El authtoken y el dominio HTTPS de ngrok son obligatorios"
         exit 1
     fi
+    valid_domain "$NGROK_DOMAIN" || { print_error "Dominio de ngrok inválido"; exit 1; }
 
     # Generar .env
     cat > "$ENV_FILE" << EOF
@@ -515,24 +529,17 @@ PORT=3000
 # Puerto interno de Caddy
 CADDY_INTERNAL_PORT=8080
 
-# Seguridad
-JWT_SECRET=${JWT_SECRET}
+# Seguridad (credenciales en config/secrets/)
 JWT_EXPIRES=15m
-JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
 JWT_REFRESH_EXPIRES=7d
 ADMIN_USERNAME=admin
-ADMIN_PASSWORD=${ADMIN_PASSWORD}
 
 # Base de datos (con autenticación)
 MONGO_ROOT_USER=admin
-MONGO_ROOT_PASS=${MONGO_ROOT_PASS}
 MONGO_APP_USER=disherio_app
-MONGO_APP_PASS=${MONGO_APP_PASS}
-MONGODB_URI=mongodb://disherio_app:${MONGO_APP_PASS}@mongo:27017/disherio?authSource=disherio&replicaSet=rs0
 
 # Redis
 REDIS_URL=redis://redis:6379
-REDIS_PASSWORD=${REDIS_PASSWORD}
 
 # Logging
 LOG_LEVEL=info
@@ -558,6 +565,7 @@ configure_domain() {
         print_error "El dominio es obligatorio"
         read -rp "Tu dominio: " DOMAIN
     done
+    valid_domain "$DOMAIN" || { print_error "Dominio inválido"; exit 1; }
 
     echo ""
     echo -e "${BOLD}Verificación de requisitos:${NC}"
@@ -602,24 +610,17 @@ PORT=3000
 HTTPS_PORT=443
 HTTP_PORT=80
 
-# Seguridad
-JWT_SECRET=${JWT_SECRET}
+# Seguridad (credenciales en config/secrets/)
 JWT_EXPIRES=15m
-JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
 JWT_REFRESH_EXPIRES=7d
 ADMIN_USERNAME=admin
-ADMIN_PASSWORD=${ADMIN_PASSWORD}
 
 # Base de datos (con autenticación)
 MONGO_ROOT_USER=admin
-MONGO_ROOT_PASS=${MONGO_ROOT_PASS}
 MONGO_APP_USER=disherio_app
-MONGO_APP_PASS=${MONGO_APP_PASS}
-MONGODB_URI=mongodb://disherio_app:${MONGO_APP_PASS}@mongo:27017/disherio?authSource=disherio&replicaSet=rs0
 
 # Redis
 REDIS_URL=redis://redis:6379
-REDIS_PASSWORD=${REDIS_PASSWORD}
 
 # Logging
 LOG_LEVEL=info
@@ -810,13 +811,13 @@ main() {
     fi
 
     # Generar secretos aleatorios seguros (reutiliza los del .env si ya existen)
-    if [ -f "$ENV_FILE" ]; then
-        MONGO_ROOT_PASS=$(grep -E "^MONGO_ROOT_PASS=" "$ENV_FILE" 2>/dev/null | cut -d'=' -f2- | tr -d '"' || true)
-        MONGO_APP_PASS=$(grep -E "^MONGO_APP_PASS=" "$ENV_FILE" 2>/dev/null | cut -d'=' -f2- | tr -d '"' || true)
-        REDIS_PASSWORD=$(grep -E "^REDIS_PASSWORD=" "$ENV_FILE" 2>/dev/null | cut -d'=' -f2- | tr -d '"' || true)
-        JWT_SECRET=$(grep -E "^JWT_SECRET=" "$ENV_FILE" 2>/dev/null | cut -d'=' -f2- | tr -d '"' || true)
-        JWT_REFRESH_SECRET=$(grep -E "^JWT_REFRESH_SECRET=" "$ENV_FILE" 2>/dev/null | cut -d'=' -f2- | tr -d '"' || true)
-        ADMIN_PASSWORD=$(grep -E "^ADMIN_PASSWORD=" "$ENV_FILE" 2>/dev/null | cut -d'=' -f2- | tr -d '"' || true)
+    if [[ -f "$ENV_FILE" || -d "$PROJECT_ROOT/config/secrets" ]]; then
+        MONGO_ROOT_PASS=$(read_existing_secret "mongo_root_password" "MONGO_ROOT_PASS")
+        MONGO_APP_PASS=$(read_existing_secret "mongo_app_password" "MONGO_APP_PASS")
+        REDIS_PASSWORD=$(read_existing_secret "redis_password" "REDIS_PASSWORD")
+        JWT_SECRET=$(read_existing_secret "jwt_secret" "JWT_SECRET")
+        JWT_REFRESH_SECRET=$(read_existing_secret "jwt_refresh_secret" "JWT_REFRESH_SECRET")
+        ADMIN_PASSWORD=$(read_existing_secret "admin_password" "ADMIN_PASSWORD")
     fi
     ensure_secrets
 
@@ -843,6 +844,7 @@ main() {
     generate_caddyfile
     generate_docker_compose_override
     write_docker_secret_files
+    scrub_secret_env
     chmod 600 "$ENV_FILE" "$COMPOSE_OVERRIDE"
     chmod 644 "$CADDYFILE"
     ensure_mongo_keyfile

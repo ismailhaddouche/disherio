@@ -153,8 +153,7 @@ check_environment() {
     print_header "Verificando Variables de Entorno"
 
     # Leer .env de forma segura (sin source)
-    local JWT_SECRET_VAR DEPLOYMENT_MODE LOCAL_IP TUNNEL_TYPE CF_TUNNEL_TOKEN NGROK_AUTHTOKEN DOMAIN EMAIL
-    JWT_SECRET_VAR=$(env_get "JWT_SECRET" "")
+    local DEPLOYMENT_MODE LOCAL_IP TUNNEL_TYPE CF_TUNNEL_TOKEN NGROK_AUTHTOKEN DOMAIN EMAIL
     DEPLOYMENT_MODE=$(env_get "DEPLOYMENT_MODE" "")
     LOCAL_IP=$(env_get "LOCAL_IP" "")
     TUNNEL_TYPE=$(env_get "TUNNEL_TYPE" "")
@@ -163,13 +162,15 @@ check_environment() {
     DOMAIN=$(env_get "DOMAIN" "")
     EMAIL=$(env_get "EMAIL" "")
 
-    local secret_key secret_value
-    for secret_key in JWT_SECRET JWT_REFRESH_SECRET MONGO_ROOT_PASS MONGO_APP_PASS REDIS_PASSWORD ADMIN_PASSWORD; do
-        secret_value=$(env_get "$secret_key" "")
+    local secret_key secret_file secret_value
+    for secret_key in jwt_secret jwt_refresh_secret mongo_root_password mongo_app_password redis_password admin_password; do
+        secret_file="$PROJECT_ROOT/config/secrets/$secret_key"
+        secret_value=""
+        [[ -f "$secret_file" ]] && secret_value=$(cat "$secret_file")
         if [ -z "$secret_value" ] || printf '%s' "$secret_value" | grep -Eqi 'changeme|change[-_ ]?this|cambiar|placeholder|example|ejemplo|\.\.\.'; then
-            print_error "$secret_key no está configurado o conserva un placeholder"
+            print_error "config/secrets/$secret_key no existe, está vacío o conserva un placeholder"
         else
-            print_success "$secret_key configurado"
+            print_success "config/secrets/$secret_key configurado"
         fi
     done
 

@@ -1,18 +1,19 @@
 import { z } from 'zod';
 import { RequestIdSchema } from './order.schema';
+import { ObjectIdSchema } from './common.schema';
 
 export const TotemSchema = z.object({
-  restaurant_id: z.string(),
+  restaurant_id: ObjectIdSchema,
   totem_name: z.string().min(1),
   totem_qr: z.string().optional(),
   totem_type: z.enum(['STANDARD', 'TEMPORARY']),
   totem_start_date: z.string().datetime().optional(),
-});
+}).strict();
 
 // Socket payload schemas for totem events. Used by the backend to validate
 // inbound socket data with Zod (parity with HTTP validation) and by the
 // frontend to type emit payloads.
-const objectIdString = z.string().min(1);
+const objectIdString = ObjectIdSchema;
 
 export const TotemJoinSessionPayloadSchema = z.object({
   sessionId: objectIdString,
@@ -20,7 +21,7 @@ export const TotemJoinSessionPayloadSchema = z.object({
   customerName: z.string().trim().min(2).max(100).optional(),
   customerId: objectIdString.optional(),
   sessionToken: z.string().min(1).optional(),
-});
+}).strict();
 
 export const TotemRequestBillPayloadSchema = z.object({
   sessionId: objectIdString,
@@ -29,13 +30,13 @@ export const TotemRequestBillPayloadSchema = z.object({
 
 export const TotemCallWaiterPayloadSchema = z.object({
   sessionId: objectIdString,
-  tableId: z.string().optional(),
+  tableId: objectIdString.optional(),
   message: z.string().max(500).optional(),
 }).strict();
 
 export const TotemSessionIdPayloadSchema = z.object({
   sessionId: objectIdString,
-});
+}).strict();
 
 // ---------------------------------------------------------------------------
 // HTTP request bodies for /api/totems routes (validated by the backend's
@@ -43,7 +44,7 @@ export const TotemSessionIdPayloadSchema = z.object({
 // flows produce these payloads.
 // ---------------------------------------------------------------------------
 
-const objectIdHex = z.string().regex(/^[a-f\d]{24}$/i);
+const objectIdHex = ObjectIdSchema;
 
 export const TASAddItemPayloadSchema = z.object({
   requestId: RequestIdSchema,
@@ -83,13 +84,13 @@ export const SessionTokenFieldSchema = z.string().trim().max(200).optional();
 export const CreateSessionCustomerBodySchema = z.object({
   customer_name: z.string().trim().min(2).max(100),
   session_token: SessionTokenFieldSchema,
-});
+}).strict();
 
 export const CreateTotemBodySchema = z.object({
   totem_name: z.string().trim().min(1).max(100),
   totem_type: z.enum(['STANDARD', 'TEMPORARY']),
   totem_start_date: z.coerce.date().optional(),
-});
+}).strict();
 
 // A totem's type is immutable after creation: allowing it in an update body
 // would let TAS promote a TEMPORARY totem to STANDARD, because
@@ -107,8 +108,8 @@ export const PublicOrderBodySchema = z.object({
     quantity: z.number().int().min(1).max(50),
     variantId: objectIdHex.optional(),
     extras: z.array(objectIdHex).max(50).optional(),
-  })).min(1).max(100),
-}).refine(
+  }).strict()).min(1).max(100),
+}).strict().refine(
   ({ items }) => items.reduce((total, item) => total + item.quantity, 0) <= 100,
   { path: ['items'], message: 'Total item quantity cannot exceed 100' }
 );

@@ -10,25 +10,23 @@ const validPayload = {
 };
 
 describe('Price Security', () => {
-  it('strips client-supplied price fields from the real add-item schema', () => {
-    const result = AddItemRequestSchema.parse({
+  it('rejects client-supplied price fields in the real add-item schema', () => {
+    const result = AddItemRequestSchema.safeParse({
       ...validPayload,
       price: 0.01,
       item_base_price: 0.01,
     });
 
-    expect(result).toEqual(validPayload);
-    expect(result).not.toHaveProperty('price');
-    expect(result).not.toHaveProperty('item_base_price');
+    expect(result.success).toBe(false);
   });
 
-  it('replaces req.body with the sanitized Zod result', () => {
+  it('passes a validation error to Express for unknown price fields', () => {
     const req = { body: { ...validPayload, price: 0.01 } } as Request;
     const next = jest.fn() as NextFunction;
 
     validate(AddItemRequestSchema)(req, {}, next);
 
-    expect(next).toHaveBeenCalledWith();
-    expect(req.body).toEqual(validPayload);
+    expect(next).toHaveBeenCalledWith(expect.objectContaining({ message: 'VALIDATION_ERROR' }));
+    expect(req.body).toHaveProperty('price', 0.01);
   });
 });

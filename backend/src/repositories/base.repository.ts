@@ -3,6 +3,8 @@ import { ErrorCode } from '@disherio/shared';
 import { AppError } from '../utils/async-handler';
 import { logger } from '../config/logger';
 
+/* eslint-disable @typescript-eslint/no-explicit-any -- Mongoose's overloaded Model APIs expose any at this generic repository boundary. */
+
 // Simple filter type for mongoose queries
 type SimpleFilter = Record<string, unknown>;
 

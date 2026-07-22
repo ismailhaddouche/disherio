@@ -1,4 +1,5 @@
 export * from './localized-string.schema';
+export * from './common.schema';
 export * from './image.schema';
 export * from './dish.schema';
 export * from './order.schema';
