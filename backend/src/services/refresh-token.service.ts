@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from 'crypto';
+import { createHash, createHmac, randomBytes } from 'crypto';
 import jwt from 'jsonwebtoken';
 import { ErrorCode } from '@disherio/shared';
 import { logger } from '../config/logger';
@@ -13,7 +13,6 @@ const BLOCKLIST_PREFIX = 'blocklist:access:';
 const FAMILY_PREFIX = 'refresh_family:';
 const FAMILY_REVOKED_PREFIX = 'refresh_family_revoked:';
 const CONSUMED_REFRESH_PREFIX = 'refresh_consumed:';
-const RETRY_INDEX_PREFIX = 'refresh_retry:';
 const ROTATION_RETRY_GRACE_MS = 10_000;
 
 // Minimum refresh token length we will accept
@@ -69,16 +68,10 @@ export function generateRefreshTokenValue(): string {
   return randomBytes(MIN_REFRESH_TOKEN_BYTES).toString('hex');
 }
 
-/**
- * Decode a JWT access token without verifying (used for blocklist TTL calc).
- */
-function decodeAccessTokenExp(token: string): number | null {
-  try {
-    const decoded = jwt.decode(token) as { exp?: number } | null;
-    return decoded?.exp ?? null;
-  } catch {
-    return null;
-  }
+function deriveRefreshSuccessor(tokenHash: string, family: string): string {
+  return createHmac('sha256', env().JWT_REFRESH_SECRET)
+    .update(`${family}:${tokenHash}`)
+    .digest('hex');
 }
 
 interface RefreshTokenMetadata {
@@ -125,9 +118,8 @@ async function resolveConsumedRefreshToken(
     && ageMs <= ROTATION_RETRY_GRACE_MS;
 
   if (isRetryCandidate) {
-    const retryIndexKey = `${RETRY_INDEX_PREFIX}${tokenHash}`;
-    const successorToken = await redisClient.get(retryIndexKey);
-    if (successorToken && hashToken(successorToken) === metadata.successorTokenHash) {
+    const successorToken = deriveRefreshSuccessor(tokenHash, metadata.family);
+    if (hashToken(successorToken) === metadata.successorTokenHash) {
       const successorKey = `${REFRESH_TOKEN_PREFIX}${metadata.staffId}:${metadata.successorTokenHash}`;
       if (await redisClient.get(successorKey)) {
         logRefreshAuditEvent(metadata.staffId, metadata.family, {
@@ -298,7 +290,7 @@ export async function rotateRefreshToken(
   const family = verification.family ?? randomBytes(16).toString('hex');
   const familyKey = `${FAMILY_PREFIX}${family}`;
   const currentKey = `${REFRESH_TOKEN_PREFIX}${userId}:${tokenHash}`;
-  const newRefreshToken = generateRefreshTokenValue();
+  const newRefreshToken = deriveRefreshSuccessor(tokenHash, family);
   const newTokenHash = hashToken(newRefreshToken);
   const newKey = `${REFRESH_TOKEN_PREFIX}${userId}:${newTokenHash}`;
   const currentLookupKey = `${REFRESH_LOOKUP_PREFIX}${tokenHash}`;
@@ -317,16 +309,15 @@ export async function rotateRefreshToken(
     successorTokenHash: newTokenHash,
   };
 
-  // Consume the old token, persist its tombstone, create its replacement and
-  // store a short-lived retry index in one Redis operation. A concurrent replay
-  // observes the tombstone only after the replacement is already a family
-  // member, so revoking the family cannot miss the newly rotated token.
+  // Consume the old token, persist its tombstone and create its deterministic
+  // replacement in one Redis operation. A concurrent replay can derive the
+  // same replacement without persisting the bearer token itself.
   // The revoked-family flag is checked first: revokeRefreshFamily sets it
   // before reading the family members, so a rotation that races a revocation
   // either committed before the flag (and its successor is deleted by the
   // revocation cleanup) or observes the flag here and creates nothing.
   const rotationScript = `
-    if redis.call('GET', KEYS[8]) then return {0, ''} end
+    if redis.call('GET', KEYS[7]) then return {0, ''} end
     local tombstone = redis.call('GET', KEYS[3])
     if tombstone then return {0, tombstone} end
     local current = redis.call('GET', KEYS[1])
@@ -337,13 +328,12 @@ export async function rotateRefreshToken(
     redis.call('SETEX', KEYS[3], ARGV[4], ARGV[6])
     redis.call('SETEX', KEYS[4], ARGV[4], ARGV[3])
     redis.call('SETEX', KEYS[6], ARGV[4], ARGV[5])
-    redis.call('SETEX', KEYS[7], ARGV[7], ARGV[8])
     redis.call('SADD', KEYS[2], ARGV[2])
     redis.call('EXPIRE', KEYS[2], ARGV[4])
     return {1, current}
   `;
   const rotationResult = await redisClient.eval(rotationScript, {
-    keys: [currentKey, familyKey, consumedKey, newKey, currentLookupKey, newLookupKey, `${RETRY_INDEX_PREFIX}${tokenHash}`, `${FAMILY_REVOKED_PREFIX}${family}`],
+    keys: [currentKey, familyKey, consumedKey, newKey, currentLookupKey, newLookupKey, `${FAMILY_REVOKED_PREFIX}${family}`],
     arguments: [
       tokenHash,
       newTokenHash,
@@ -351,8 +341,6 @@ export async function rotateRefreshToken(
       String(ttlSeconds),
       userId,
       JSON.stringify(consumedTokenMetadata),
-      String(Math.ceil(ROTATION_RETRY_GRACE_MS / 1000)),
-      newRefreshToken,
     ],
   }) as unknown as [number, string];
 
@@ -444,14 +432,25 @@ export async function revokeAllUserRefreshTokens(userId: string): Promise<void> 
  * Add an access token to the Redis blocklist. Used at logout.
  * TTL is the remaining lifetime of the token so we don't store stale entries forever.
  */
-export async function blocklistAccessToken(token: string): Promise<void> {
+export async function blocklistAccessToken(token: string): Promise<JwtPayload | null> {
+  let payload: JwtPayload & jwt.JwtPayload;
+  try {
+    payload = jwt.verify(token, env().JWT_SECRET, { algorithms: ['HS256'] }) as JwtPayload & jwt.JwtPayload;
+  } catch {
+    return null;
+  }
+
+  if (!payload.exp) return null;
+
   const redisClient = await getRedis();
-  const exp = decodeAccessTokenExp(token);
   const nowSeconds = Math.floor(Date.now() / 1000);
-  const ttl = exp && exp > nowSeconds ? exp - nowSeconds : 60;
+  const maxTtl = parseDurationSeconds(env().JWT_EXPIRES);
+  const ttl = Math.min(payload.exp - nowSeconds, maxTtl);
+  if (ttl <= 0) return null;
 
   const key = `${BLOCKLIST_PREFIX}${hashToken(token)}`;
   await redisClient.setEx(key, ttl, 'revoked');
+  return payload;
 }
 
 /**

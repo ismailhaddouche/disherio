@@ -14,8 +14,7 @@ import { logger } from './config/logger';
 import requestLogger from './middlewares/request-logger';
 import { errorHandler, notFoundHandler } from './middlewares/error-handler';
 import { internalOnly } from './middlewares/internal-only';
-import { createError } from './utils/async-handler';
-import { ErrorCode } from '@disherio/shared';
+import { requireSupportedContentType } from './middlewares/content-type';
 import { validateJWTSecretOrExit } from './utils/jwt-validation';
 import { validateEnv } from './config/env';
 import { cache } from './services/cache.service';
@@ -81,17 +80,7 @@ async function bootstrap() {
   app.use(pinoHttp({ logger, autoLogging: false }));
   app.use(express.json({ limit: '500kb' }));
 
-  // Reject JSON mutations without a proper Content-Type header.
-  app.use((req, _res, next) => {
-    if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method) && req.path.startsWith('/api/')) {
-      const contentType = req.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        next(createError.badRequest(ErrorCode.VALIDATION_ERROR));
-        return;
-      }
-    }
-    next();
-  });
+  app.use(requireSupportedContentType);
 
   app.use(languageMiddleware);
 

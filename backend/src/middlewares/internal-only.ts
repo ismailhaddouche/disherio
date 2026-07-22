@@ -13,7 +13,8 @@ const INTERNAL_IP_RANGES = [
 ];
 
 function isInternalIp(ip: string): boolean {
-  return INTERNAL_IP_RANGES.some((range) => range.test(ip));
+  const normalizedIp = ip.startsWith('::ffff:') ? ip.slice('::ffff:'.length) : ip;
+  return INTERNAL_IP_RANGES.some((range) => range.test(normalizedIp));
 }
 
 /**

@@ -29,6 +29,10 @@ export class DishService {
     return this.http.get<DishListResponse>(this.apiUrl);
   }
 
+  listForManagement(): Observable<DishListResponse> {
+    return this.http.get<DishListResponse>(`${this.apiUrl}/manage/all`);
+  }
+
   get(id: string): Observable<Partial<Dish>> {
     return this.http.get<Partial<Dish>>(`${this.apiUrl}/${id}`);
   }

@@ -106,6 +106,8 @@ export interface OrderLimitStatus {
 export interface TotemSession {
   _id?: string;
   totem_id: string;
+  restaurant_id?: string;
+  totem_snapshot?: Pick<Totem, '_id' | 'totem_name' | 'totem_type'>;
   session_date_start: string;
   totem_state: TotemState;
   /** Number of non-cancelled items included in staff-facing session lists. */

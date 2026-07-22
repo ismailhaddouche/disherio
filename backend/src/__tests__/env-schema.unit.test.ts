@@ -44,13 +44,13 @@ describe('env schema validation', () => {
   });
 
   describe('JWT durations', () => {
-    it.each(['60s', '15m', '8h', '1d', '7d'])('accepts JWT_EXPIRES=%s', (value) => {
+    it.each(['60s', '15m', '8h', '1d'])('accepts JWT_EXPIRES=%s', (value) => {
       const config = envSchema.parse({ ...validEnv, JWT_EXPIRES: value });
 
       expect(config.JWT_EXPIRES).toBe(value);
     });
 
-    it.each(['abc', '15', '15minutes', 'm15', '-15m', '1.5h'])(
+    it.each(['abc', '15', '15minutes', 'm15', '-15m', '1.5h', '0s', '59s', '25h'])(
       'rejects JWT_EXPIRES=%s',
       (value) => {
         const result = envSchema.safeParse({ ...validEnv, JWT_EXPIRES: value });
@@ -68,6 +68,20 @@ describe('env schema validation', () => {
       const result = envSchema.safeParse({ ...validEnv, JWT_REFRESH_EXPIRES: 'one week' });
 
       expect(result.success).toBe(false);
+    });
+
+    it('requires refresh tokens to outlive access tokens', () => {
+      const result = envSchema.safeParse({
+        ...validEnv,
+        JWT_EXPIRES: '2h',
+        JWT_REFRESH_EXPIRES: '1h',
+      });
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues.some((issue) => issue.path.includes('JWT_REFRESH_EXPIRES')))
+          .toBe(true);
+      }
     });
   });
 });

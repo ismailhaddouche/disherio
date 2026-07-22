@@ -1,37 +1,29 @@
 import { z } from 'zod';
-import { LocalizedFieldSchema } from './localized-string.schema';
+import { LocalizedFieldSchema, LocalizedNameSchema } from './localized-string.schema';
+import { ImageUrlSchema } from './image.schema';
 
 // Menu prices may be zero for complimentary dishes, variants, and extras.
 const priceValidation = z.number().min(0).max(999999);
 
-// Images uploaded through the backend are stored as relative paths under
-// /uploads/* (served by Caddy), so accept either an absolute URL or a safe
-// upload-relative path: /uploads/<folder>/<filename>, no traversal.
-export const UploadsImagePathSchema = z.string().regex(
-  /^\/uploads\/(dishes|categories|restaurants)\/[A-Za-z0-9._-]+$/,
-  'Invalid image path'
-);
-const ImageUrlSchema = z.union([z.string().url(), UploadsImagePathSchema]);
-
 export const VariantSchema = z.object({
   variant_id: z.string().optional(),
-  variant_name: LocalizedFieldSchema,
+  variant_name: LocalizedNameSchema,
   variant_description: LocalizedFieldSchema.optional(),
-  variant_url_image: z.string().url().optional(),
+  variant_url_image: ImageUrlSchema.optional(),
   variant_price: priceValidation,
 });
 
 export const ExtraSchema = z.object({
   extra_id: z.string().optional(),
-  extra_name: LocalizedFieldSchema,
+  extra_name: LocalizedNameSchema,
   extra_description: LocalizedFieldSchema.optional(),
   extra_price: priceValidation,
-  extra_url_image: z.string().url().optional(),
+  extra_url_image: ImageUrlSchema.optional(),
 });
 
 export const CategorySchema = z.object({
   restaurant_id: z.string(),
-  category_name: LocalizedFieldSchema,
+  category_name: LocalizedNameSchema,
   category_order: z.number().int().min(0).default(0),
   category_description: LocalizedFieldSchema.optional(),
   category_image_url: ImageUrlSchema.optional(),
@@ -41,7 +33,7 @@ export const CategorySchema = z.object({
 export const DishSchema = z.object({
   restaurant_id: z.string(),
   category_id: z.string(),
-  disher_name: LocalizedFieldSchema,
+  disher_name: LocalizedNameSchema,
   disher_description: LocalizedFieldSchema.optional(),
   disher_url_image: ImageUrlSchema.optional(),
   disher_status: z.enum(['ACTIVATED', 'DESACTIVATED']).default('ACTIVATED'),

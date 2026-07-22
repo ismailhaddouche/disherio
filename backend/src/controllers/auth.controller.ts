@@ -12,7 +12,6 @@ import {
   blocklistAccessToken,
   revokeRefreshFamily,
   verifyRefreshToken,
-  isAccessTokenRevoked,
   generateAccessToken,
 } from '../services/refresh-token.service';
 import { disconnectStaffSockets } from '../services/socket-session.service';
@@ -133,8 +132,9 @@ export const logout = asyncHandler(async (req: Request, res: Response) => {
 
   try {
     const accessToken = extractAccessToken(req);
-    if (accessToken && !(await isAccessTokenRevoked(accessToken))) {
-      await blocklistAccessToken(accessToken);
+    if (accessToken) {
+      const verifiedPayload = await blocklistAccessToken(accessToken);
+      staffId = verifiedPayload?.staffId ?? staffId;
     }
 
     // Revoke only the current refresh token family instead of every session,

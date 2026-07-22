@@ -16,7 +16,7 @@ jest.mock('../repositories/totem.repository', () => ({
     findByRestaurantIdSelectId: jest.fn().mockResolvedValue([{ _id: { toString: () => 'totem-1' } }]),
   })),
   TotemSessionRepository: jest.fn().mockImplementation(() => ({
-    findByTotemIds: jest.fn().mockResolvedValue([
+    findByRestaurantId: jest.fn().mockResolvedValue([
       { _id: { toString: () => 'paid-session' }, totem_state: 'PAID' },
     ]),
   })),

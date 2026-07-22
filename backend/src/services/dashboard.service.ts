@@ -24,9 +24,7 @@ const totemRepo = new TotemRepository();
 const totemSessionRepo = new TotemSessionRepository();
 
 export async function getDashboardStats(restaurantId: string, dateRange: DashboardDateRange) {
-  const totems = await totemRepo.findByRestaurantIdSelectId(restaurantId);
-  const totemIds = totems.map((totem) => totem._id.toString());
-  const allSessions = await totemSessionRepo.findByTotemIds(totemIds, dateRange);
+  const allSessions = await totemSessionRepo.findByRestaurantId(restaurantId, dateRange);
   const allSessionIds = allSessions.map((session) => session._id.toString());
 
   const [dishes, categories] = await Promise.all([
@@ -41,8 +39,8 @@ export async function getDashboardStats(restaurantId: string, dateRange: Dashboa
   const salesByDish = await itemOrderRepo.getSalesByDish(allSessionIds, dateRange);
   const salesByDishWithNames = salesByDish.map((sale) => ({
     ...sale,
-    dishName: dishById.get(sale.dishId.toString())?.disher_name?.[0]?.value
-      ?? sale.dishName
+    dishName: sale.dishName
+      ?? dishById.get(sale.dishId.toString())?.disher_name?.[0]?.value
       ?? 'Unknown',
   }));
 

@@ -209,7 +209,7 @@ export class DishListComponent implements OnInit, OnDestroy {
   loadDishes() {
     this.loading.set(true);
     this.error.set(null);
-    this.dishService.list()
+    this.dishService.listForManagement()
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (res) => {

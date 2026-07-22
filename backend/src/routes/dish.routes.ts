@@ -19,6 +19,7 @@ router.delete('/categories/:id', strictLimiter, requirePermission('delete', 'Cat
 
 // Dishes
 router.get('/', DishController.listDishes);
+router.get('/manage/all', requirePermission('updateAvailability', 'Dish'), DishController.listManageDishes);
 router.get('/:id', DishController.getDish);
 router.post('/', strictLimiter, requirePermission('create', 'Dish'), validate(CreateDishSchema.omit({ restaurant_id: true }).strict()), DishController.createDish);
 router.patch('/:id', strictLimiter, requirePermission('update', 'Dish'), validate(UpdateDishSchema.omit({ restaurant_id: true }).strict()), DishController.updateDish);

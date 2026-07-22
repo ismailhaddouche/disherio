@@ -124,7 +124,7 @@ export function buildByUserTickets(items: CustomerItem[], paymentTotal: number):
       remainder: exactCents - Math.floor(exactCents),
     };
   });
-  let remainingCents = paymentCents - allocations.reduce((sum, allocation) => sum + allocation.cents, 0);
+  const remainingCents = paymentCents - allocations.reduce((sum, allocation) => sum + allocation.cents, 0);
   const remainderOrder = [...allocations].sort((left, right) =>
     right.remainder - left.remainder || left.index - right.index
   );

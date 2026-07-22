@@ -39,41 +39,39 @@ export async function updateRestaurant(
   id: string,
   data: UpdateRestaurantData
 ): Promise<IRestaurant | null> {
-  // Validate enabled_languages: each must be a known language, at least one
-  // must remain enabled, and default_language must be in the set.
-  if (data.enabled_languages !== undefined) {
-    const langs = data.enabled_languages;
-    if (!Array.isArray(langs) || langs.length === 0) {
+  const current = await restaurantRepo.findByIdLean(id);
+  if (!current) return null;
+
+  const enabledLanguages = data.enabled_languages ?? current.enabled_languages ?? [...ALL_LANGUAGES];
+  const invalidLanguages = enabledLanguages.filter((language) => !ALL_LANGUAGES.includes(language));
+  if (enabledLanguages.length === 0 || invalidLanguages.length > 0) {
+    throw createError.badRequest(ErrorCode.VALIDATION_ERROR);
+  }
+
+  const requestedDefault = data.default_language ?? current.default_language;
+  if (!enabledLanguages.includes(requestedDefault)) {
+    if (data.default_language !== undefined) {
       throw createError.badRequest(ErrorCode.VALIDATION_ERROR);
     }
-    const invalid = langs.filter((l) => !ALL_LANGUAGES.includes(l as 'es' | 'en' | 'fr'));
-    if (invalid.length > 0) {
-      throw createError.badRequest(ErrorCode.VALIDATION_ERROR);
-    }
+    data = { ...data, default_language: enabledLanguages[0] };
+  }
+
+  const tipsState = data.tips_state ?? current.tips_state;
+  const tipsType = data.tips_type ?? current.tips_type;
+  const tipsRate = data.tips_rate ?? current.tips_rate;
+  if (tipsState && tipsType === 'MANDATORY' && (tipsRate === undefined || tipsRate <= 0)) {
+    throw createError.badRequest(ErrorCode.VALIDATION_ERROR);
   }
 
   // Capture the current URL before updating so its cache key can also be
   // invalidated when the URL itself changes (getRestaurantByUrl caches under
   // `restaurant:url:<url>`).
-  const previousUrl = data.restaurant_url !== undefined
-    ? (await restaurantRepo.findByIdLean(id))?.restaurant_url
-    : undefined;
+  const previousUrl = data.restaurant_url !== undefined ? current.restaurant_url : undefined;
 
   const updated = await restaurantRepo.updateRestaurant(id, data);
 
-  // If default_language is not in enabled_languages, auto-adjust it.
-  let result = updated;
-  if (updated && data.enabled_languages !== undefined) {
-    const enabled = updated.enabled_languages ?? ['es', 'en', 'fr'];
-    if (!enabled.includes(updated.default_language)) {
-      const adjusted = await restaurantRepo.updateRestaurant(id, {
-        default_language: enabled[0] as 'es' | 'en' | 'fr',
-      });
-      if (adjusted) result = adjusted;
-    }
-  }
+  const result = updated;
 
-  // Invalidate all restaurant-related caches (covers the auto-adjust path too)
   const urlsToInvalidate = [...new Set(
     [previousUrl, result?.restaurant_url].filter((url): url is string => Boolean(url))
   )];

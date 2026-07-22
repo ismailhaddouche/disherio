@@ -5,7 +5,7 @@
     "UNAUTHORIZED": "No autorizado",
     "AUTHENTICATION_REQUIRED": "Autenticación requerida",
     "FORBIDDEN": "Acceso denegado",
-    "LAST_ADMIN": "No se puede eliminar al último administrador del restaurante",
+    "LAST_ADMIN": "El restaurante debe conservar al menos un administrador",
     "NOT_FOUND": "Recurso no encontrado",
     "SERVICE_UNAVAILABLE": "Servicio temporalmente no disponible. Inténtelo de nuevo.",
     "SERVER_ERROR": "Error interno del servidor",

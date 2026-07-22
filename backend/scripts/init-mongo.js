@@ -150,6 +150,7 @@ createIndexIfNotExists(db.totems, { "totem_qr": 1 }, { unique: true, sparse: tru
 
 // TotemSession lookups
 createIndexIfNotExists(db.totemsessions, { "totem_id": 1, "totem_state": 1 });
+createIndexIfNotExists(db.totemsessions, { "restaurant_id": 1, "session_date_start": -1 });
 createIndexIfNotExists(db.totemsessions, { "totem_state": 1 });
 try {
   db.totemsessions.createIndex(

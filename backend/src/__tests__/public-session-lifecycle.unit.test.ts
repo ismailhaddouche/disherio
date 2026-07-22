@@ -1,13 +1,15 @@
 import { Types } from 'mongoose';
 
 let totemFindByQR: jest.Mock;
+let totemFindById: jest.Mock;
 let sessionCreate: jest.Mock;
 let sessionFindByTotemId: jest.Mock;
 
 jest.mock('../repositories/totem.repository', () => ({
   TotemRepository: jest.fn().mockImplementation(() => {
     totemFindByQR = jest.fn();
-    return { findByQR: totemFindByQR };
+    totemFindById = jest.fn();
+    return { findByQR: totemFindByQR, findById: totemFindById };
   }),
   TotemSessionRepository: jest.fn().mockImplementation(() => {
     sessionCreate = jest.fn();
@@ -47,7 +49,9 @@ describe('public QR session lifecycle', () => {
       totem_state: 'STARTED',
       session_token: 'new-session-token',
     };
-    totemFindByQR.mockResolvedValue({ _id: totemId });
+    const totem = { _id: totemId, totem_qr: 'permanent-table-qr' };
+    totemFindByQR.mockResolvedValue(totem);
+    totemFindById.mockResolvedValue(totem);
     sessionCreate.mockResolvedValue(createdSession);
     jest.spyOn(TotemSession, 'findOne').mockReturnValue({
       sort: () => ({ exec: async () => null }),
@@ -56,7 +60,7 @@ describe('public QR session lifecycle', () => {
     await expect(getOrCreateSessionByQR('permanent-table-qr')).resolves.toMatchObject({
       session: createdSession,
     });
-    expect(sessionCreate).toHaveBeenCalledWith(totemId.toString(), expect.any(String));
+    expect(sessionCreate).toHaveBeenCalledWith(totem, expect.any(String));
     expect(sessionFindByTotemId).not.toHaveBeenCalled();
   });
 });

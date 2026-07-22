@@ -55,7 +55,7 @@ export async function validateImageDimensions(
       width: metadata.width,
       height: metadata.height,
     };
-  } catch (error) {
+  } catch {
     return {
       valid: false,
       error: 'Invalid image file or corrupted data',
@@ -97,7 +97,7 @@ export async function processAndSaveImage(
       .resize(1200, null, { withoutEnlargement: true }) // Max 1200px width
       .webp({ quality: 80 }) // Efficient format
       .toFile(fullPath);
-  } catch (error) {
+  } catch {
     // If sharp fails, it's not a valid image
     throw new Error('Invalid image file or processing error');
   }

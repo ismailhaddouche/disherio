@@ -25,6 +25,11 @@ export const listDishes = asyncHandler(async (req: Request, res: Response): Prom
   res.json(createPaginatedResponse(dishes, total, page, limit));
 });
 
+export const listManageDishes = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  const dishes = await DishService.getAllDishesByRestaurant(req.user!.restaurantId);
+  res.json({ data: dishes });
+});
+
 export const createDish = asyncHandler(async (req: Request, res: Response): Promise<void> => {
   const dish = await DishService.createDish({ ...req.body, restaurant_id: req.user!.restaurantId });
   res.status(201).json(dish);

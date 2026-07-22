@@ -72,6 +72,16 @@ export class DishRepository extends BaseRepository<IDish> {
       .exec();
   }
 
+  async findAllByRestaurantId(restaurantId: string): Promise<IDish[]> {
+    validateObjectId(restaurantId, 'restaurant_id');
+    return this.model
+      .find({ restaurant_id: new Types.ObjectId(restaurantId) })
+      .populate('category_id')
+      .sort({ createdAt: -1, _id: 1 })
+      .lean()
+      .exec();
+  }
+
   async countActiveByRestaurantId(restaurantId: string): Promise<number> {
     validateObjectId(restaurantId, 'restaurant_id');
     return this.model
@@ -291,7 +301,7 @@ export class DishRepository extends BaseRepository<IDish> {
 
     // Aggregate from the item snapshots (itemorders), not from the live
     // dishes collection: historical items must survive dish deletion.
-    // Restaurant scoping goes through session -> totem; the live dish is
+    // Restaurant scoping uses the immutable session snapshot; the live dish is
     // joined afterwards with a left outer join for enrichment only.
     const pipeline: PipelineStage[] = [
       {
@@ -310,16 +320,7 @@ export class DishRepository extends BaseRepository<IDish> {
         },
       },
       { $unwind: '$session' },
-      {
-        $lookup: {
-          from: 'totems',
-          localField: 'session.totem_id',
-          foreignField: '_id',
-          as: 'totem',
-        },
-      },
-      { $unwind: '$totem' },
-      { $match: { 'totem.restaurant_id': new Types.ObjectId(restaurantId) } },
+      { $match: { 'session.restaurant_id': new Types.ObjectId(restaurantId) } },
       {
         $group: {
           _id: '$item_dish_id',
@@ -434,29 +435,9 @@ export class DishRepository extends BaseRepository<IDish> {
 
     const { limit = 5, dateRange, type } = options ?? {};
 
-    // Get dishes with optional type filter
-    const dishFilter: Record<string, unknown> = {
-      restaurant_id: new Types.ObjectId(restaurantId),
-      disher_status: 'ACTIVATED',
-    };
-    if (type) {
-      dishFilter.disher_type = type;
-    }
-
-    const dishes = await this.model
-      .find(dishFilter)
-      .select('_id disher_name category_id disher_type')
-      .lean()
-      .exec();
-
-    if (dishes.length === 0) return [];
-
-    const dishIds = dishes.map(d => d._id.toString());
-
-    // Build date filter
     const dateFilter: Record<string, unknown> = {
-      item_dish_id: { $in: dishIds.map(id => new Types.ObjectId(id)) },
       item_state: { $ne: 'CANCELED' },
+      ...(type && { item_disher_type: type }),
     };
 
     if (dateRange?.from || dateRange?.to) {
@@ -467,6 +448,16 @@ export class DishRepository extends BaseRepository<IDish> {
 
     const pipeline: PipelineStage[] = [
       { $match: dateFilter },
+      {
+        $lookup: {
+          from: 'totemsessions',
+          localField: 'session_id',
+          foreignField: '_id',
+          as: 'session',
+        },
+      },
+      { $unwind: '$session' },
+      { $match: { 'session.restaurant_id': new Types.ObjectId(restaurantId) } },
       {
         $group: {
           _id: '$item_dish_id',
@@ -480,10 +471,20 @@ export class DishRepository extends BaseRepository<IDish> {
               ],
             },
           },
+          nameSnapshot: { $first: '$item_name_snapshot' },
         },
       },
       { $sort: { totalOrdered: -1 } },
       { $limit: limit },
+      {
+        $lookup: {
+          from: this.model.collection.name,
+          localField: '_id',
+          foreignField: '_id',
+          as: 'dish',
+        },
+      },
+      { $unwind: { path: '$dish', preserveNullAndEmptyArrays: true } },
     ];
 
     const stats = await QueryProfiler.profileAggregation(
@@ -494,13 +495,12 @@ export class DishRepository extends BaseRepository<IDish> {
     );
 
     return stats.map(stat => {
-      const dish = dishes.find(d => d._id.equals(stat._id));
       return {
         dishId: stat._id,
-        dishName: dish?.disher_name?.[0]?.value ?? 'Unknown',
+        dishName: stat.nameSnapshot?.[0]?.value ?? stat.dish?.disher_name?.[0]?.value ?? 'Unknown',
         totalOrdered: stat.totalOrdered,
         totalRevenue: Math.round(stat.totalRevenue * 100) / 100,
-        categoryId: dish?.category_id,
+        categoryId: stat.dish?.category_id,
         trend: 'stable', // Could calculate based on historical data
       };
     });

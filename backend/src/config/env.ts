@@ -4,6 +4,22 @@ import { loadSecretFiles } from './secret-files';
 
 const DEFAULT_JWT_SECRET = 'changeme_in_production';
 
+const DURATION_MULTIPLIERS = {
+  s: 1,
+  m: 60,
+  h: 60 * 60,
+  d: 24 * 60 * 60,
+} as const;
+
+function durationInSeconds(value: string): number | null {
+  const match = /^(\d+)([smhd])$/.exec(value);
+  if (!match) return null;
+
+  const amount = Number(match[1]);
+  const seconds = amount * DURATION_MULTIPLIERS[match[2] as keyof typeof DURATION_MULTIPLIERS];
+  return Number.isSafeInteger(amount) && Number.isSafeInteger(seconds) ? seconds : null;
+}
+
 /**
  * Strict integer env var: rejects NaN and non-numeric input (e.g. PORT=abc,
  * PORT=3000x) and enforces an inclusive [min, max] range.
@@ -24,11 +40,22 @@ const intInRange = (name: string, min: number, max: number, defaultValue: number
  * JWT duration env var: matches the compact "zeit/ms" format accepted by
  * jsonwebtoken (e.g. 60s, 15m, 8h, 1d, 7d). Rejects arbitrary text.
  */
-const jwtDuration = (name: string, defaultValue: string) =>
+const jwtDuration = (
+  name: string,
+  defaultValue: string,
+  minSeconds: number,
+  maxSeconds: number
+) =>
   z
     .string()
     .regex(/^\d+[smhd]$/, {
       message: `${name} must be a duration like 60s, 15m, 8h, 1d or 7d (number followed by s, m, h or d)`,
+    })
+    .refine((value) => {
+      const seconds = durationInSeconds(value);
+      return seconds !== null && seconds >= minSeconds && seconds <= maxSeconds;
+    }, {
+      message: `${name} is outside the allowed duration range`,
     })
     .default(defaultValue);
 
@@ -68,7 +95,7 @@ export const envSchema = z.object({
   REDIS_PASSWORD: z.string().optional(),
 
   // Access token lifetime (short-lived)
-  JWT_EXPIRES: jwtDuration('JWT_EXPIRES', '15m'),
+  JWT_EXPIRES: jwtDuration('JWT_EXPIRES', '15m', 60, 24 * 60 * 60),
 
   // Refresh token configuration. The secret derives deterministic successor
   // tokens during the short idempotent rotation window; refresh tokens remain
@@ -83,7 +110,7 @@ export const envSchema = z.object({
       message: 'JWT_REFRESH_SECRET must be at least 32 characters long',
     }),
 
-  JWT_REFRESH_EXPIRES: jwtDuration('JWT_REFRESH_EXPIRES', '7d'),
+  JWT_REFRESH_EXPIRES: jwtDuration('JWT_REFRESH_EXPIRES', '7d', 60 * 60, 30 * 24 * 60 * 60),
 
   // Reverse proxy trust flag
   TRUST_PROXY: z.enum(['true', 'false']).default('false'),
@@ -106,6 +133,16 @@ export const envSchema = z.object({
 
   // Directory where processed images are stored
   UPLOADS_DIR: z.string().optional(),
+}).superRefine((config, ctx) => {
+  const accessSeconds = durationInSeconds(config.JWT_EXPIRES);
+  const refreshSeconds = durationInSeconds(config.JWT_REFRESH_EXPIRES);
+  if (accessSeconds !== null && refreshSeconds !== null && refreshSeconds <= accessSeconds) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['JWT_REFRESH_EXPIRES'],
+      message: 'JWT_REFRESH_EXPIRES must be longer than JWT_EXPIRES',
+    });
+  }
 });
 
 /**

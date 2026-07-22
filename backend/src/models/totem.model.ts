@@ -29,6 +29,12 @@ export const Totem = model<ITotem>('Totem', TotemSchema);
 
 export interface ITotemSession extends Document {
   totem_id: Types.ObjectId;
+  restaurant_id: Types.ObjectId;
+  totem_snapshot: {
+    totem_id: Types.ObjectId;
+    totem_name: string;
+    totem_type: 'STANDARD' | 'TEMPORARY';
+  };
   session_date_start: Date;
   totem_state: 'STARTED' | 'COMPLETE' | 'PAID' | 'CANCELLED';
   session_token: string;
@@ -38,6 +44,12 @@ export interface ITotemSession extends Document {
 const TotemSessionSchema = new Schema<ITotemSession>(
   {
     totem_id: { type: Schema.Types.ObjectId, ref: 'Totem', required: true },
+    restaurant_id: { type: Schema.Types.ObjectId, ref: 'Restaurant', required: true },
+    totem_snapshot: {
+      totem_id: { type: Schema.Types.ObjectId, required: true },
+      totem_name: { type: String, required: true },
+      totem_type: { type: String, enum: ['STANDARD', 'TEMPORARY'], required: true },
+    },
     session_date_start: { type: Date, default: Date.now },
     totem_state: { type: String, enum: ['STARTED', 'COMPLETE', 'PAID', 'CANCELLED'], default: 'STARTED' },
     // Ephemeral per-session credential. Required to join a session room and to
@@ -55,6 +67,7 @@ const TotemSessionSchema = new Schema<ITotemSession>(
 
 // Index for totem state queries
 TotemSessionSchema.index({ totem_id: 1, totem_state: 1 });
+TotemSessionSchema.index({ restaurant_id: 1, session_date_start: -1 });
 
 // A physical totem can have only one active session. The partial unique index
 // is the definitive concurrency guard for simultaneous staff/public opens.

@@ -12,8 +12,13 @@ const userRepo = {
   findProfileById: jest.fn(),
   findByIdAndRestaurantAndDelete: jest.fn(),
   exists: jest.fn(),
+  countByRoleIds: jest.fn(),
 };
-const roleRepo = { findByIdAndRestaurant: jest.fn(), findById: jest.fn() };
+const roleRepo = {
+  findByIdAndRestaurant: jest.fn(),
+  findById: jest.fn(),
+  findByRestaurantId: jest.fn(),
+};
 const revokeAllUserRefreshTokens = jest.fn();
 const disconnectStaffSockets = jest.fn();
 
@@ -36,11 +41,13 @@ import { deleteStaff, updateStaff } from '../services/staff.service';
 const STAFF_ID = '507f1f77bcf86cd799439011';
 const RESTAURANT_ID = '507f1f77bcf86cd799439012';
 const ROLE_ID = '507f1f77bcf86cd799439013';
+const CURRENT_ROLE_ID = '507f1f77bcf86cd799439014';
 
 describe('staff socket session invalidation', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     staffDocument.auth_version = 0;
+    staffDocument.role_id = CURRENT_ROLE_ID;
     userRepo.findByIdAndRestaurant.mockResolvedValue(staffDocument);
     userRepo.findProfileById.mockResolvedValue({ _id: STAFF_ID });
     roleRepo.findByIdAndRestaurant.mockResolvedValue({ permissions: ['POS'] });
@@ -62,6 +69,24 @@ describe('staff socket session invalidation', () => {
     expect(revokeAllUserRefreshTokens).not.toHaveBeenCalled();
     expect(disconnectStaffSockets).not.toHaveBeenCalled();
     expect(staffDocument.auth_version).toBe(0);
+  });
+
+  it('rejects downgrading the last administrator role', async () => {
+    roleRepo.findByIdAndRestaurant.mockImplementation(async (roleId: string) => ({
+      _id: roleId,
+      permissions: roleId === ROLE_ID ? ['POS'] : ['ADMIN'],
+    }));
+    roleRepo.findByRestaurantId.mockResolvedValue([
+      { _id: staffDocument.role_id, permissions: ['ADMIN'] },
+    ]);
+    userRepo.countByRoleIds.mockResolvedValue(0);
+
+    await expect(updateStaff(STAFF_ID, RESTAURANT_ID, { role_id: ROLE_ID }, ['ADMIN']))
+      .rejects.toMatchObject({ message: 'LAST_ADMIN', statusCode: 409 });
+
+    expect(staffDocument.save).not.toHaveBeenCalled();
+    expect(revokeAllUserRefreshTokens).not.toHaveBeenCalled();
+    expect(disconnectStaffSockets).not.toHaveBeenCalled();
   });
 
   it('revokes refresh sessions and disconnects sockets after deletion', async () => {

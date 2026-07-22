@@ -8,7 +8,7 @@ const userRepo = {
   findByIdAndRestaurantAndDelete: jest.fn(),
 };
 const roleRepo = {
-  findById: jest.fn(),
+  findByIdAndRestaurant: jest.fn(),
   findByRestaurantId: jest.fn(),
 };
 const revokeAllUserRefreshTokens = jest.fn();
@@ -40,7 +40,7 @@ const staffDocument = {
 };
 
 function mockAdminRole(): void {
-  roleRepo.findById.mockResolvedValue({ _id: new Types.ObjectId(ROLE_ID), permissions: ['ADMIN'] });
+  roleRepo.findByIdAndRestaurant.mockResolvedValue({ _id: new Types.ObjectId(ROLE_ID), permissions: ['ADMIN'] });
   roleRepo.findByRestaurantId.mockResolvedValue([
     { _id: new Types.ObjectId(ROLE_ID), permissions: ['ADMIN'] },
   ]);
@@ -106,7 +106,7 @@ describe('deleteStaff', () => {
   });
 
   it('deletes non-admin staff without counting admins', async () => {
-    roleRepo.findById.mockResolvedValue({ _id: new Types.ObjectId(ROLE_ID), permissions: ['POS'] });
+    roleRepo.findByIdAndRestaurant.mockResolvedValue({ _id: new Types.ObjectId(ROLE_ID), permissions: ['POS'] });
 
     await expect(deleteStaff(STAFF_ID, RESTAURANT_ID, CALLER_ID)).resolves.toBeUndefined();
 
@@ -121,7 +121,7 @@ describe('deleteStaff', () => {
 
     await deleteStaff(STAFF_ID, RESTAURANT_ID, CALLER_ID);
 
-    expect(withLockMock).toHaveBeenCalledWith(`staff-delete:${RESTAURANT_ID}`, expect.any(Function));
+    expect(withLockMock).toHaveBeenCalledWith(`staff-admin:${RESTAURANT_ID}`, expect.any(Function));
   });
 
   it('propagates an AppError thrown inside the lock without deleting', async () => {

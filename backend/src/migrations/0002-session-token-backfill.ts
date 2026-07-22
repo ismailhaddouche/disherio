@@ -17,8 +17,10 @@ export const migration0002 = {
     }).cursor();
     let backfilled = 0;
     for await (const session of legacySessions) {
-      session.session_token = crypto.randomUUID();
-      await session.save();
+      await TotemSession.updateOne(
+        { _id: session._id },
+        { $set: { session_token: crypto.randomUUID() } }
+      );
       backfilled++;
     }
     if (backfilled > 0) {

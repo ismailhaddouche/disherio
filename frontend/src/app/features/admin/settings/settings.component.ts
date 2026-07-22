@@ -251,6 +251,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
     enabled_languages: ['es', 'en', 'fr'],
     tips_state: false,
     tips_type: 'VOLUNTARY',
+    tips_rate: 0,
     order_interval_minutes: 0,
     max_orders_per_session: 0,
   });
@@ -306,6 +307,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
       enabled_languages: s.enabled_languages,
       tips_state: s.tips_state,
       tips_type: s.tips_type,
+      tips_rate: s.tips_rate,
       order_interval_minutes: s.order_interval_minutes,
       max_orders_per_session: s.max_orders_per_session,
     };

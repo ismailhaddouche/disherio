@@ -181,9 +181,9 @@ export class PaymentRepository extends BaseRepository<IPayment> {
             session_date_start: '$session.session_date_start',
           },
           totem: {
-            _id: { $ifNull: ['$totem._id', '$totem_snapshot.totem_id'] },
-            totem_name: { $ifNull: ['$totem.totem_name', '$totem_snapshot.totem_name'] },
-            totem_type: { $ifNull: ['$totem.totem_type', '$totem_snapshot.totem_type'] },
+            _id: { $ifNull: ['$totem_snapshot.totem_id', '$totem._id'] },
+            totem_name: { $ifNull: ['$totem_snapshot.totem_name', '$totem.totem_name'] },
+            totem_type: { $ifNull: ['$totem_snapshot.totem_type', '$totem.totem_type'] },
           },
         },
       }

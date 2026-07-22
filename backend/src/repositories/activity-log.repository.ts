@@ -2,7 +2,7 @@ import { PipelineStage, Types } from 'mongoose';
 import { Dish } from '../models/dish.model';
 import { ItemOrder, Order } from '../models/order.model';
 import { Staff } from '../models/staff.model';
-import { SessionCustomer, Totem, TotemSession } from '../models/totem.model';
+import { SessionCustomer, TotemSession } from '../models/totem.model';
 import { validateObjectId } from './base.repository';
 
 export type ActivityLogType = 'KDS' | 'POS' | 'TAS' | 'CUSTOMER';
@@ -66,8 +66,8 @@ export class ActivityLogRepository {
       // Left outer join: the dish may have been deleted. Historical items
       // carry their own snapshots, so they must survive the missing dish.
       { $unwind: { path: '$dish', preserveNullAndEmptyArrays: true } },
-      // Scope by restaurant through the session's totem instead of the live
-      // dish, so items whose dish was deleted stay in the report.
+      // Session snapshots preserve tenant ownership after a temporary totem
+      // or a catalog dish has been deleted.
       {
         $lookup: {
           from: TotemSession.collection.name,
@@ -77,16 +77,7 @@ export class ActivityLogRepository {
         },
       },
       { $unwind: '$session' },
-      {
-        $lookup: {
-          from: Totem.collection.name,
-          localField: 'session.totem_id',
-          foreignField: '_id',
-          as: 'totem',
-        },
-      },
-      { $unwind: '$totem' },
-      { $match: { 'totem.restaurant_id': restaurantId } },
+      { $match: { 'session.restaurant_id': restaurantId } },
       {
         $lookup: {
           from: Order.collection.name,
@@ -128,8 +119,17 @@ export class ActivityLogRepository {
       {
         $lookup: {
           from: Staff.collection.name,
-          localField: 'activityUserId',
-          foreignField: '_id',
+          let: { userId: '$activityUserId' },
+          pipeline: [{
+            $match: {
+              $expr: {
+                $and: [
+                  { $eq: ['$_id', '$$userId'] },
+                  { $eq: ['$restaurant_id', restaurantId] },
+                ],
+              },
+            },
+          }],
           as: 'staff',
         },
       },
@@ -137,8 +137,17 @@ export class ActivityLogRepository {
       {
         $lookup: {
           from: SessionCustomer.collection.name,
-          localField: 'activityUserId',
-          foreignField: '_id',
+          let: { userId: '$activityUserId', sessionId: '$session_id' },
+          pipeline: [{
+            $match: {
+              $expr: {
+                $and: [
+                  { $eq: ['$_id', '$$userId'] },
+                  { $eq: ['$session_id', '$$sessionId'] },
+                ],
+              },
+            },
+          }],
           as: 'sessionCustomer',
         },
       },
@@ -159,8 +168,8 @@ export class ActivityLogRepository {
           variantName: { $arrayElemAt: ['$item_disher_variant.name.value', 0] },
           dishName: {
             $ifNull: [
-              { $arrayElemAt: ['$dish.disher_name.value', 0] },
               { $arrayElemAt: ['$item_name_snapshot.value', 0] },
+              { $arrayElemAt: ['$dish.disher_name.value', 0] },
             ],
           },
         },
@@ -186,17 +195,8 @@ export class ActivityLogRepository {
         },
         { $unwind: '$session' },
         {
-          $lookup: {
-            from: Totem.collection.name,
-            localField: 'session.totem_id',
-            foreignField: '_id',
-            as: 'totem',
-          },
-        },
-        { $unwind: '$totem' },
-        {
           $match: {
-            'totem.restaurant_id': restaurantId,
+            'session.restaurant_id': restaurantId,
             customer_id: { $type: 'objectId' },
           },
         },

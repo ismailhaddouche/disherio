@@ -13,6 +13,31 @@ import { withLock } from '../utils/locks';
 const userRepo = new UserRepository();
 const roleRepo = new RoleRepository();
 
+function staffAdminLockKey(restaurantId: string): string {
+  return `staff-admin:${restaurantId}`;
+}
+
+async function assertAdminRemovalAllowed(
+  staffId: string,
+  restaurantId: string,
+  currentRoleId: string,
+  replacementRole?: IRole
+): Promise<void> {
+  const currentRole = await roleRepo.findByIdAndRestaurant(currentRoleId, restaurantId);
+  if (!currentRole?.permissions.includes('ADMIN') || replacementRole?.permissions.includes('ADMIN')) {
+    return;
+  }
+
+  const restaurantRoles = await roleRepo.findByRestaurantId(restaurantId);
+  const adminRoleIds = restaurantRoles
+    .filter((role) => role.permissions.includes('ADMIN'))
+    .map((role) => role._id as Types.ObjectId);
+  const otherAdmins = await userRepo.countByRoleIds(restaurantId, adminRoleIds, staffId);
+  if (otherAdmins === 0) {
+    throw createError.conflict(ErrorCode.LAST_ADMIN);
+  }
+}
+
 /**
  * Throws NOT_FOUND if the role does not belong to the restaurant, and
  * FORBIDDEN if the caller cannot grant the role's permissions.
@@ -152,40 +177,58 @@ export async function updateStaff(
   input: UpdateStaffInput,
   callerPermissions: string[]
 ): Promise<unknown> {
-  const staff = await userRepo.findByIdAndRestaurant(id, restaurantId);
-  if (!staff) {
-    throw createError.notFound('STAFF_NOT_FOUND');
-  }
-
-  if (input.username && input.username.toLowerCase().trim() !== staff.username) {
-    const normalizedUsername = input.username.toLowerCase().trim();
-    await assertUsernameUnique(normalizedUsername, restaurantId, id);
-    staff.username = normalizedUsername;
-  }
-
-  if (input.staff_name) staff.staff_name = input.staff_name;
-
-  if (input.role_id) {
-    await assertRoleInRestaurant(input.role_id, restaurantId, callerPermissions);
-    staff.role_id = new Types.ObjectId(input.role_id);
-  }
-
-  if (input.password) {
-    staff.password_hash = await hashPassword(input.password);
-  }
-
   const authorizationChanged = input.role_id !== undefined
     || input.username !== undefined
     || input.password !== undefined;
-  if (authorizationChanged) {
-    staff.auth_version = (staff.auth_version ?? 0) + 1;
-  }
+  const applyUpdate = async (): Promise<string> => {
+    const staff = await userRepo.findByIdAndRestaurant(id, restaurantId);
+    if (!staff) {
+      throw createError.notFound(ErrorCode.STAFF_NOT_FOUND);
+    }
 
-  try {
-    await staff.save();
-  } catch (error) {
-    rethrowDuplicateCredential(error);
-  }
+    if (input.username && input.username.toLowerCase().trim() !== staff.username) {
+      const normalizedUsername = input.username.toLowerCase().trim();
+      await assertUsernameUnique(normalizedUsername, restaurantId, id);
+      staff.username = normalizedUsername;
+    }
+
+    if (input.staff_name) staff.staff_name = input.staff_name;
+
+    if (input.role_id !== undefined) {
+      const replacementRole = await assertRoleInRestaurant(
+        input.role_id,
+        restaurantId,
+        callerPermissions
+      );
+      await assertAdminRemovalAllowed(
+        id,
+        restaurantId,
+        staff.role_id.toString(),
+        replacementRole
+      );
+      staff.role_id = new Types.ObjectId(input.role_id);
+    }
+
+    if (input.password) {
+      staff.password_hash = await hashPassword(input.password);
+    }
+
+    if (authorizationChanged) {
+      staff.auth_version = (staff.auth_version ?? 0) + 1;
+    }
+
+    try {
+      await staff.save();
+    } catch (error) {
+      rethrowDuplicateCredential(error);
+    }
+    return staff._id.toString();
+  };
+
+  const updatedStaffId = input.role_id !== undefined
+    ? await withLock(staffAdminLockKey(restaurantId), applyUpdate)
+    : await applyUpdate();
+
   if (authorizationChanged) {
     await Promise.all([
       revokeAllUserRefreshTokens(id),
@@ -193,7 +236,7 @@ export async function updateStaff(
     ]);
   }
 
-  return userRepo.findProfileById(staff._id.toString());
+  return userRepo.findProfileById(updatedStaffId);
 }
 
 /**
@@ -213,26 +256,12 @@ export async function deleteStaff(id: string, restaurantId: string, callerStaffI
     throw createError.forbidden(ErrorCode.FORBIDDEN);
   }
 
-  const staff = await userRepo.findByIdAndRestaurant(id, restaurantId);
-  if (!staff) {
-    throw createError.notFound('STAFF_NOT_FOUND');
-  }
-
-  await withLock(`staff-delete:${restaurantId}`, async () => {
-    // Protect the last ADMIN: deleting them would leave the restaurant
-    // without any administrator.
-    const role = await roleRepo.findById(staff.role_id.toString());
-    if (role?.permissions.includes('ADMIN')) {
-      const restaurantRoles = await roleRepo.findByRestaurantId(restaurantId);
-      const adminRoleIds = restaurantRoles
-        .filter((candidate) => candidate.permissions.includes('ADMIN'))
-        .map((candidate) => candidate._id as Types.ObjectId);
-      const otherAdmins = await userRepo.countByRoleIds(restaurantId, adminRoleIds, id);
-      if (otherAdmins === 0) {
-        throw createError.conflict(ErrorCode.LAST_ADMIN);
-      }
+  await withLock(staffAdminLockKey(restaurantId), async () => {
+    const staff = await userRepo.findByIdAndRestaurant(id, restaurantId);
+    if (!staff) {
+      throw createError.notFound(ErrorCode.STAFF_NOT_FOUND);
     }
-
+    await assertAdminRemovalAllowed(id, restaurantId, staff.role_id.toString());
     await userRepo.findByIdAndRestaurantAndDelete(id, restaurantId);
   });
 

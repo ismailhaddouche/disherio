@@ -53,30 +53,22 @@ async function getStartedSessionForTotem(totemId: Types.ObjectId): Promise<ITote
  * Staff-initiated session start: if the totem already has an active session,
  * return it (idempotent); otherwise create a new one.
  */
-async function startOrGetTotemSession(totem: ITotem): Promise<ITotemSession> {
-  return withLock(totemWriteLockKey(totem._id.toString()), async () => {
+async function startOrGetTotemSession(
+  totemId: string,
+  expectedQr?: string
+): Promise<{ session: ITotemSession; totem: ITotem }> {
+  return withLock(totemWriteLockKey(totemId), async () => {
+    const totem = await totemRepo.findById(totemId);
+    if (!totem || (expectedQr !== undefined && totem.totem_qr !== expectedQr)) {
+      throw createError.notFound(ErrorCode.TOTEM_NOT_FOUND);
+    }
     const activeSession = await getStartedSessionForTotem(totem._id);
     if (activeSession) {
-      return activeSession;
+      return { session: activeSession, totem };
     }
 
-    return totemSessionRepo.createSession(totem._id.toString(), crypto.randomUUID());
-  });
-}
-
-/**
- * Public QR scan: join the current active session, or create a fresh session
- * when the table has none. Closed sessions are historical records and must not
- * prevent a later customer from using the same permanent table QR.
- */
-async function getOrCreateSessionForQR(totem: ITotem): Promise<ITotemSession> {
-  return withLock(totemWriteLockKey(totem._id.toString()), async () => {
-    const activeSession = await getStartedSessionForTotem(totem._id);
-    if (activeSession) {
-      return activeSession;
-    }
-
-    return totemSessionRepo.createSession(totem._id.toString(), crypto.randomUUID());
+    const session = await totemSessionRepo.createSession(totem, crypto.randomUUID());
+    return { session, totem };
   });
 }
 
@@ -87,10 +79,7 @@ async function getOrCreateSessionForQR(totem: ITotem): Promise<ITotemSession> {
 // Circuit breaker for starting session - low threshold since critical
 const startSessionBreaker = new CircuitBreaker(
   async (totemId: string): Promise<ITotemSession> => {
-    const totem = await totemRepo.findById(totemId);
-    if (!totem) throw createError.notFound('TOTEM_NOT_FOUND');
-
-    return startOrGetTotemSession(totem);
+    return (await startOrGetTotemSession(totemId)).session;
   },
   { failureThreshold: 3, resetTimeout: 15000, halfOpenMaxCalls: 2 },
   'TotemService.startSession'
@@ -111,8 +100,7 @@ const getOrCreateSessionByQRBreaker = new CircuitBreaker(
     const totem = await totemRepo.findByQR(qrToken);
     if (!totem) throw new Error('TOTEM_NOT_FOUND');
 
-    const session = await getOrCreateSessionForQR(totem);
-    return { session, totem };
+    return startOrGetTotemSession(totem._id.toString(), qrToken);
   },
   { failureThreshold: 3, resetTimeout: 15000, halfOpenMaxCalls: 2 },
   'TotemService.getOrCreateSessionByQR'
@@ -285,11 +273,16 @@ export async function deleteTotem(totemId: string): Promise<ITotem | null> {
  */
 export async function deleteTemporaryTotemForSession(session: ITotemSession): Promise<void> {
   const totemId = session.totem_id.toString();
-  const totem = await totemRepo.findById(totemId);
-  if (totem && totem.totem_type === 'TEMPORARY') {
-    await totemRepo.deleteTotem(totemId);
+  await withLock(totemWriteLockKey(totemId), () => withTransaction(async (dbSession) => {
+    const totem = await totemRepo.findById(totemId);
+    if (!totem || totem.totem_type !== 'TEMPORARY') return;
+
+    const operationalSession = await totemSessionRepo.findOperationalByTotemId(totemId, dbSession);
+    if (operationalSession) return;
+
+    await totemRepo.deleteTotem(totemId, dbSession);
     logger.info({ totemId, sessionId: session._id.toString() }, 'Temporary totem deleted after session ended');
-  }
+  }));
 }
 
 export async function getActiveSessionsByRestaurant(restaurantId: string): Promise<unknown[]> {

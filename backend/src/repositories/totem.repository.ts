@@ -79,23 +79,20 @@ export class TotemSessionRepository extends BaseRepository<ITotemSession> {
 
   async findActiveByRestaurantId(restaurantId: string): Promise<Array<Record<string, unknown>>> {
     validateObjectId(restaurantId, 'restaurant_id');
-    // First get all totems for this restaurant
-    const totems = await Totem.find({ restaurant_id: new Types.ObjectId(restaurantId) }).lean().exec();
-    const totemIds = totems.map(t => t._id.toString());
-
-    if (totemIds.length === 0) return [];
-
-    // Operational views need both open and payment-pending sessions.
     const sessions = await this.model
       .find({
-        totem_id: { $in: totemIds.map(id => new Types.ObjectId(id)) },
+        restaurant_id: new Types.ObjectId(restaurantId),
         totem_state: { $in: ['STARTED', 'COMPLETE'] },
       })
       .sort({ session_date_start: -1 })
       .lean()
       .exec();
 
-    // Attach totem info to each session
+    const totems = await Totem.find({
+      _id: { $in: sessions.map((session) => session.totem_id) },
+      restaurant_id: new Types.ObjectId(restaurantId),
+    }).lean().exec();
+
     return sessions.map(session => {
       // Normalize session totem_id to string
       let sessionTotemId: string;
@@ -119,7 +116,15 @@ export class TotemSessionRepository extends BaseRepository<ITotemSession> {
         }
         return totemId === sessionTotemId;
       });
-      return { ...session, totem };
+      return {
+        ...session,
+        totem: totem ?? {
+          _id: session.totem_snapshot?.totem_id,
+          restaurant_id: session.restaurant_id,
+          totem_name: session.totem_snapshot?.totem_name,
+          totem_type: session.totem_snapshot?.totem_type,
+        },
+      };
     });
   }
 
@@ -147,7 +152,8 @@ export class TotemSessionRepository extends BaseRepository<ITotemSession> {
     }, null, { session }).exec();
   }
 
-  async createSession(totemId: string, sessionToken: string): Promise<ITotemSession> {
+  async createSession(totem: ITotem, sessionToken: string): Promise<ITotemSession> {
+    const totemId = totem._id.toString();
     validateObjectId(totemId, 'totem_id');
     const totemObjectId = new Types.ObjectId(totemId);
     try {
@@ -156,6 +162,12 @@ export class TotemSessionRepository extends BaseRepository<ITotemSession> {
         {
           $setOnInsert: {
             totem_id: totemObjectId,
+            restaurant_id: totem.restaurant_id,
+            totem_snapshot: {
+              totem_id: totem._id,
+              totem_name: totem.totem_name,
+              totem_type: totem.totem_type,
+            },
             session_date_start: new Date(),
             totem_state: 'STARTED',
             session_token: sessionToken,
@@ -283,6 +295,28 @@ export class TotemSessionRepository extends BaseRepository<ITotemSession> {
       match['session_date_start'] = { ...(match['session_date_start'] as object || {}), $lte: dateRange.to };
     }
 
+    return this.model
+      .find(match)
+      .select('_id totem_state')
+      .lean()
+      .exec() as Promise<Array<{ _id: Types.ObjectId; totem_state: string }>>;
+  }
+
+  async findByRestaurantId(
+    restaurantId: string,
+    dateRange?: { from?: Date; to?: Date }
+  ): Promise<Array<{ _id: Types.ObjectId; totem_state: string }>> {
+    validateObjectId(restaurantId, 'restaurant_id');
+    const match: Record<string, unknown> = {
+      restaurant_id: new Types.ObjectId(restaurantId),
+    };
+    if (dateRange?.from) match.session_date_start = { $gte: dateRange.from };
+    if (dateRange?.to) {
+      match.session_date_start = {
+        ...(match.session_date_start as object || {}),
+        $lte: dateRange.to,
+      };
+    }
     return this.model
       .find(match)
       .select('_id totem_state')

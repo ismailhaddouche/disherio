@@ -16,6 +16,7 @@ export const SECURITY_LIMITS = {
 } as const;
 
 // Dangerous characters to be removed
+// eslint-disable-next-line no-control-regex
 const DANGEROUS_CHARS = /[<>:"|?*\x00-\x1f]/g;
 
 // Path traversal patterns
@@ -30,7 +31,7 @@ const PATH_TRAVERSAL_PATTERNS = [
 ];
 
 // Path separator characters (for normalization)
-const PATH_SEPARATORS = /[\/\\]/g;
+const PATH_SEPARATORS = /[/\\]/g;
 
 // Hidden or dangerous file patterns
 const DANGEROUS_PATTERNS = [

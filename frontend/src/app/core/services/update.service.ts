@@ -75,8 +75,7 @@ export class UpdateService implements OnDestroy {
     }
 
     try {
-      const updateFound = await this.swUpdate.checkForUpdate();
-      return true;
+      return await this.swUpdate.checkForUpdate();
     } catch {
       return false;
     }

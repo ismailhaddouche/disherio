@@ -51,18 +51,9 @@ jobs:
       - name: TypeScript compilation check
         run: npx tsc --noEmit
 
-      # ESLint is intentionally optional: the project does not depend on
-      # eslint (checked 2026-07), so this step is a no-op until an eslint
-      # devDependency plus config (.eslintrc.* or eslint.config.*) is added.
-      # Keeping the step documents the intent and activates linting
-      # automatically once ESLint is introduced.
       - name: Run ESLint
-        run: |
-          if [ -f .eslintrc.js ] || [ -f .eslintrc.json ] || [ -f eslint.config.js ] || [ -f eslint.config.mjs ]; then
-            npx eslint src/**/*.ts
-          else
-            echo "ESLint not configured (no eslint dependency in package.json); skipping."
-          fi
+        working-directory: .
+        run: npm run lint:backend
 
   lint-frontend:
     name: Lint Frontend
@@ -91,18 +82,9 @@ jobs:
       - name: TypeScript compilation check
         run: npx tsc --noEmit
 
-      # ESLint is intentionally optional: the project does not depend on
-      # eslint (checked 2026-07), so this step is a no-op until an eslint
-      # devDependency plus config (.eslintrc.* or eslint.config.*) is added.
-      # Keeping the step documents the intent and activates linting
-      # automatically once ESLint is introduced.
       - name: Run ESLint
-        run: |
-          if [ -f .eslintrc.js ] || [ -f .eslintrc.json ] || [ -f eslint.config.js ] || [ -f eslint.config.mjs ]; then
-            npx eslint src/**/*.ts
-          else
-            echo "ESLint not configured (no eslint dependency in package.json); skipping."
-          fi
+        working-directory: .
+        run: npm run lint:frontend
 
   # ============================================
   # TESTS
@@ -197,8 +179,17 @@ jobs:
         working-directory: .
         run: npm run build:shared
 
-      - name: Run tests
-        run: npm test
+      - name: Run tests with coverage
+        run: npm test -- --code-coverage
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0 # v7
+        with:
+          name: frontend-coverage
+          path: ./frontend/coverage/
+          if-no-files-found: ignore
+          retention-days: 7
 
   verify-backend-image:
     name: Verify Backend Image

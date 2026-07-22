@@ -78,6 +78,7 @@ const expectedIndexes = {
   ],
   totemsessions: [
     { key: { totem_id: 1, totem_state: 1 }, options: {}, description: 'Totem sessions by state' },
+    { key: { restaurant_id: 1, session_date_start: -1 }, options: {}, description: 'Historical sessions by restaurant' },
     {
       key: { totem_id: 1 },
       options: { unique: true, partialFilterExpression: { totem_state: 'STARTED' } },

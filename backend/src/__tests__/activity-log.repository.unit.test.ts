@@ -76,7 +76,7 @@ describe('ActivityLogRepository', () => {
     expect(aggregate).not.toHaveBeenCalled();
   });
 
-  it('keeps items whose dish was deleted: left-joins dishes and scopes through the session totem', async () => {
+  it('keeps items whose dish was deleted: left-joins dishes and scopes through the session snapshot', async () => {
     const repository = new ActivityLogRepository();
     const restaurantId = new Types.ObjectId().toString();
 
@@ -109,12 +109,13 @@ describe('ActivityLogRepository', () => {
       expect(stage['$unwind']).toEqual({ path: '$dish', preserveNullAndEmptyArrays: true });
     }
 
-    // Restaurant scoping must go through the session's totem, never through
-    // the live dish document.
+    // Restaurant scoping must use the session's tenant snapshot, never a live
+    // totem or dish document that may have been deleted.
     const matchStages = pipeline
       .map((stage) => stage['$match'] as Record<string, unknown> | undefined)
       .filter((match): match is Record<string, unknown> => match !== undefined);
-    expect(matchStages.some((match) => match['totem.restaurant_id'] !== undefined)).toBe(true);
+    expect(matchStages.some((match) => match['session.restaurant_id'] !== undefined)).toBe(true);
+    expect(matchStages.some((match) => match['totem.restaurant_id'] !== undefined)).toBe(false);
     expect(matchStages.some((match) => match['dish.restaurant_id'] !== undefined)).toBe(false);
 
     // The projected dish name falls back to the item name snapshot.

@@ -9,7 +9,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
-import { StaffService, Staff, Role } from '../../../core/services/staff.service';
+import { StaffService, Role } from '../../../core/services/staff.service';
 import type { Role as RoleType } from '../../../core/services/staff.service';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../core/services/i18n.service';

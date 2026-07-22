@@ -1,6 +1,5 @@
 import { signal, computed, Signal } from '@angular/core';
 import {
-  Totem,
   TotemSession,
   ItemOrder,
   Customer,

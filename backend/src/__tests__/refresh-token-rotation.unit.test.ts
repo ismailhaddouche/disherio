@@ -13,6 +13,8 @@ jest.mock('../config/redis', () => ({
 }));
 
 import {
+  blocklistAccessToken,
+  generateAccessToken,
   hashToken,
   revokeRefreshFamily,
   rotateRefreshToken,
@@ -31,6 +33,42 @@ const METADATA = JSON.stringify({
   createdAt: new Date(0).toISOString(),
 });
 const REVOKED_FAMILY_KEY = `refresh_family_revoked:${FAMILY}`;
+
+describe('access-token blocklist verification', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    redis.setEx.mockResolvedValue('OK');
+  });
+
+  it('does not write unverified bearer tokens to Redis', async () => {
+    await expect(blocklistAccessToken('not-a-signed-jwt')).resolves.toBeNull();
+
+    expect(redis.setEx).not.toHaveBeenCalled();
+  });
+
+  it('blocklists a valid token only for its remaining bounded lifetime', async () => {
+    const token = generateAccessToken({
+      staffId: USER_ID,
+      restaurantId: '507f1f77bcf86cd799439012',
+      role: 'POS',
+      permissions: ['read:Order'],
+      name: 'Test User',
+    });
+
+    await expect(blocklistAccessToken(token)).resolves.toEqual(expect.objectContaining({
+      staffId: USER_ID,
+    }));
+
+    expect(redis.setEx).toHaveBeenCalledWith(
+      `blocklist:access:${hashToken(token)}`,
+      expect.any(Number),
+      'revoked'
+    );
+    const ttl = redis.setEx.mock.calls[0][1] as number;
+    expect(ttl).toBeGreaterThan(0);
+    expect(ttl).toBeLessThanOrEqual(15 * 60);
+  });
+});
 
 describe('refresh-token rotation reuse detection', () => {
   beforeEach(() => {
@@ -73,8 +111,8 @@ describe('refresh-token rotation reuse detection', () => {
 
     const script = redis.eval.mock.calls[0][0] as string;
     const keys = redis.eval.mock.calls[0][1].keys as string[];
-    expect(keys[7]).toBe(REVOKED_FAMILY_KEY);
-    expect(script).toContain("redis.call('GET', KEYS[8])");
+    expect(keys[6]).toBe(REVOKED_FAMILY_KEY);
+    expect(script).toContain("redis.call('GET', KEYS[7])");
   });
 
   it('verifies a token through its direct hash lookup without scanning Redis', async () => {
@@ -92,17 +130,17 @@ describe('refresh-token rotation reuse detection', () => {
 
   it('returns the same successor for a concurrent retry without revoking the family', async () => {
     let consumedMetadata: string | undefined;
-    let successorToken: string | undefined;
+    let successorHash: string | undefined;
     redis.get.mockImplementation(async (key: string) => {
       if (key === `refresh_consumed:${hashToken(TOKEN)}`) return consumedMetadata ?? null;
-      if (key === `refresh_retry:${hashToken(TOKEN)}`) return successorToken ?? null;
       if (key === `refresh_lookup:${hashToken(TOKEN)}`) return USER_ID;
-      if (key.startsWith(`refresh:${USER_ID}:`)) return METADATA;
+      if (key === `refresh:${USER_ID}:${successorHash}`) return METADATA;
+      if (key === `refresh:${USER_ID}:${hashToken(TOKEN)}`) return METADATA;
       return null;
     });
     redis.eval.mockImplementation(async (_script: string, options: { arguments: string[] }) => {
       consumedMetadata = options.arguments[5];
-      successorToken = options.arguments[7];
+      successorHash = options.arguments[1];
       return [1, METADATA];
     });
 
@@ -115,15 +153,15 @@ describe('refresh-token rotation reuse detection', () => {
   });
 
   it('treats an atomic rotation race as an idempotent retry', async () => {
-    let successorToken: string | undefined;
+    let successorHash: string | undefined;
     redis.get.mockImplementation(async (key: string) => {
-      if (key === `refresh_retry:${hashToken(TOKEN)}`) return successorToken ?? null;
       if (key === `refresh_lookup:${hashToken(TOKEN)}`) return USER_ID;
-      if (key.startsWith(`refresh:${USER_ID}:`)) return METADATA;
+      if (key === `refresh:${USER_ID}:${successorHash}`) return METADATA;
+      if (key === `refresh:${USER_ID}:${hashToken(TOKEN)}`) return METADATA;
       return null;
     });
     redis.eval.mockImplementation(async (_script: string, options: { arguments: string[] }) => {
-      successorToken = options.arguments[7];
+      successorHash = options.arguments[1];
       return [0, options.arguments[5]];
     });
 
@@ -189,7 +227,7 @@ describe('refresh-token family revocation', () => {
       return null;
     });
     redis.eval.mockImplementation(async (_script: string, options: { keys: string[] }) => {
-      const revoked = await redis.get(options.keys[7]);
+      const revoked = await redis.get(options.keys[6]);
       if (revoked) return [0, ''];
       return [1, METADATA];
     });
@@ -210,7 +248,6 @@ describe('refresh-token family revocation', () => {
     redis.get.mockImplementation(async (key: string) => {
       if (key === `refresh_consumed:${hashToken(TOKEN)}`) return tombstone;
       if (key === REVOKED_FAMILY_KEY) return 'revoked';
-      if (key === `refresh_retry:${hashToken(TOKEN)}`) return SUCCESSOR_TOKEN;
       if (key === `refresh:${USER_ID}:${hashToken(SUCCESSOR_TOKEN)}`) return METADATA;
       return null;
     });

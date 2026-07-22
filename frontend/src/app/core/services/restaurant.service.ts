@@ -44,6 +44,9 @@ export class RestaurantService {
 export interface RestaurantSettings {
   _id: string;
   restaurant_name: string;
+  restaurant_url?: string;
+  logo_image_url?: string;
+  social_links?: { facebook_url?: string; instagram_url?: string };
   tax_rate: number;
   currency: string;
   default_language: Language;
@@ -51,6 +54,7 @@ export interface RestaurantSettings {
   enabled_languages: Language[];
   tips_state: boolean;
   tips_type: 'MANDATORY' | 'VOLUNTARY';
+  tips_rate?: number;
   order_interval_minutes: number;
   max_orders_per_session: number;
 }

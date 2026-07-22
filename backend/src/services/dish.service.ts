@@ -60,6 +60,10 @@ export async function getDishesByRestaurantPaginated(
   return { dishes, total };
 }
 
+export async function getAllDishesByRestaurant(restaurantId: string): Promise<IDish[]> {
+  return dishRepo.findAllByRestaurantId(restaurantId);
+}
+
 export async function getDishById(dishId: string): Promise<IDish | null> {
   return fetchWithCache(
     CacheKeys.dish(dishId),
