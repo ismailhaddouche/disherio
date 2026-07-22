@@ -103,7 +103,10 @@ export class TasService {
   }
 
   addItem(data: AddItemData): Observable<ItemOrder> {
-    return this.http.post<ItemOrder>(`${this.apiUrl}/orders/items`, data);
+    return this.http.post<ItemOrder>(`${this.apiUrl}/orders/items`, {
+      ...data,
+      request_id: createRequestId(),
+    });
   }
 
   addBatchItems(sessionId: string, items: Array<{ dishId: string; quantity: number; customerId?: string; variantId?: string; extras?: string[] }>, asServed: boolean = false): Observable<{ orderId: string; items: ItemOrder[] }> {

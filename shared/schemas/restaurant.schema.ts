@@ -7,7 +7,7 @@ export const SocialLinksSchema = z.object({
 });
 
 export const RestaurantSchema = z.object({
-  restaurant_name: z.string().min(2),
+  restaurant_name: z.string().trim().min(2).max(120),
   restaurant_url: HttpUrlSchema.optional(),
   logo_image_url: ImageUrlSchema.optional(),
   social_links: SocialLinksSchema.optional(),
@@ -23,7 +23,7 @@ export const RestaurantSchema = z.object({
   enabled_languages: z.array(z.enum(['es', 'en', 'fr'])).min(1).max(3)
     .refine((languages) => new Set(languages).size === languages.length, 'Languages must be unique')
     .optional(),
-  currency: z.string().default('EUR'),
+  currency: z.string().trim().regex(/^[A-Z]{3}$/).default('EUR'),
   order_interval_minutes: z.number().int().min(0).default(0),
   max_orders_per_session: z.number().int().min(0).default(0),
 });

@@ -132,6 +132,7 @@ describe('OrderController', () => {
       };
 
       req.body = {
+        request_id: '123e4567-e89b-42d3-a456-426614174000',
         order_id: 'order123',
         session_id: SESSION_ID,
         dish_id: 'dish123',
@@ -152,7 +153,8 @@ describe('OrderController', () => {
         'variant123',
         ['extra1', 'extra2'],
         'POS',
-        'staff123'
+        'staff123',
+        '123e4567-e89b-42d3-a456-426614174000'
       );
       expect(statusMock).toHaveBeenCalledWith(201);
       expect(jsonMock).toHaveBeenCalledWith(mockItem);
@@ -162,6 +164,7 @@ describe('OrderController', () => {
       const mockItem = { _id: ITEM_ID, item_state: 'ORDERED' };
 
       req.body = {
+        request_id: '123e4567-e89b-42d3-a456-426614174001',
         order_id: 'order123',
         session_id: SESSION_ID,
         dish_id: 'dish123'
@@ -172,7 +175,8 @@ describe('OrderController', () => {
       await addItem(req as Request, res as Response, next);
 
       expect(orderService.addItemToOrder).toHaveBeenCalledWith(
-        'order123', SESSION_ID, 'dish123', undefined, undefined, undefined, 'POS', 'staff123'
+        'order123', SESSION_ID, 'dish123', undefined, undefined, undefined, 'POS', 'staff123',
+        '123e4567-e89b-42d3-a456-426614174001'
       );
     });
 

@@ -27,5 +27,19 @@ describe('Tax Utils', () => {
     it('should return full amount for 1 part', () => {
       expect(splitAmount(75.5, 1)).toEqual([75.5]);
     });
+
+    it('never creates negative tickets when cents are split into many parts', () => {
+      const parts = splitAmount(0.5, 100);
+
+      expect(parts).toHaveLength(100);
+      expect(parts.every((part) => part >= 0)).toBe(true);
+      expect(parts.reduce((sum, part) => sum + Math.round(part * 100), 0)).toBe(50);
+    });
+
+    it('rejects invalid split inputs', () => {
+      expect(() => splitAmount(-1, 2)).toThrow('INVALID_SPLIT_AMOUNT');
+      expect(() => splitAmount(1, 0)).toThrow('INVALID_SPLIT_AMOUNT');
+      expect(() => splitAmount(1, 1.5)).toThrow('INVALID_SPLIT_AMOUNT');
+    });
   });
 });

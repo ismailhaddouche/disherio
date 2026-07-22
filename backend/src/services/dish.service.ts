@@ -128,7 +128,7 @@ export async function deleteDish(dishId: string): Promise<IDish | null> {
   // failed file cleanup leaves a recoverable orphan; the reverse order would
   // leave a live dish pointing at content that no longer exists.
   if (existing.disher_url_image) {
-    await deleteImage(existing.disher_url_image);
+    await deleteImage(existing.disher_url_image, existing.restaurant_id.toString());
   }
   await invalidateDishCaches(dishId, existing.restaurant_id.toString());
 
@@ -193,7 +193,7 @@ export async function deleteCategory(id: string, restaurantId: string): Promise<
     if (!deleted) return null;
 
     if (existing.category_image_url) {
-      await deleteImage(existing.category_image_url);
+      await deleteImage(existing.category_image_url, restaurantId);
     }
     await invalidateCategoryCaches(id, restaurantId);
 

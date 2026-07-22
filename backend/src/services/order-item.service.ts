@@ -42,6 +42,7 @@ interface AddItemArguments {
   extras: string[];
   source: 'POS' | 'TAS';
   actorId?: string;
+  requestId?: string;
 }
 
 interface UpdateItemStateArguments {
@@ -66,11 +67,31 @@ const createOrderBreaker = new CircuitBreaker(
 
 const addItemBreaker = new CircuitBreaker(
   async (args: AddItemArguments) => {
-    const { orderId, sessionId, dishId, customerId, variantId, extras, source, actorId } = args;
-    const { item, restaurantId } = await withTransaction(async (session) => {
+    const { orderId, sessionId, dishId, customerId, variantId, extras, source, actorId, requestId } = args;
+    const requestHash = requestId ? orderRequestHash({
+      order_id: orderId,
+      session_id: sessionId,
+      dish_id: dishId,
+      customer_id: customerId ?? null,
+      variant_id: variantId ?? null,
+      extras: [...extras].sort(),
+    }) : undefined;
+    const { item, restaurantId, created } = await withTransaction(async (session) => {
       const lockedSession = await sessionRepository.lockIfStateIn(sessionId, ['STARTED'], session);
       if (!lockedSession || lockedSession.totem_state !== 'STARTED') {
         throw new Error(ErrorCode.SESSION_NOT_ACTIVE);
+      }
+
+      if (requestId) {
+        const existingItem = await itemRepository.findByRequestId(sessionId, requestId, session);
+        if (existingItem) {
+          assertIdempotentPayload(existingItem.request_hash, requestHash!);
+          return {
+            item: existingItem,
+            restaurantId: lockedSession.restaurant_id.toString(),
+            created: false,
+          };
+        }
       }
 
       const order = await orderRepository.findById(orderId);
@@ -124,20 +145,22 @@ const addItemBreaker = new CircuitBreaker(
           name: extra.extra_name,
           price: extra.extra_price,
         })),
+        request_id: requestId,
+        request_hash: requestHash,
       }, session);
 
-      return { item, restaurantId };
+      return { item, restaurantId, created: true };
     });
 
-    if (item.item_disher_type === 'KITCHEN') {
+    if (created && item.item_disher_type === 'KITCHEN') {
       orderRealtimeEffects.emitNewKitchenItem(sessionId, restaurantId, item);
     }
-    orderRealtimeEffects.notifyTASNewOrder(sessionId, {
+    if (created) orderRealtimeEffects.notifyTASNewOrder(sessionId, {
       item,
       addedBy: 'staff',
       dishType: item.item_disher_type,
     });
-    orderRealtimeEffects.notifyPOSNewOrder(sessionId, {
+    if (created) orderRealtimeEffects.notifyPOSNewOrder(sessionId, {
       items: [item],
       orderId,
       addedBy: 'staff',
@@ -285,7 +308,8 @@ export async function addItemToOrder(
   variantId?: string,
   extras: string[] = [],
   source: 'POS' | 'TAS' = 'POS',
-  actorId?: string
+  actorId?: string,
+  requestId?: string
 ) {
   return addItemBreaker.execute({
     orderId,
@@ -296,6 +320,7 @@ export async function addItemToOrder(
     extras,
     source,
     actorId,
+    requestId,
   });
 }
 

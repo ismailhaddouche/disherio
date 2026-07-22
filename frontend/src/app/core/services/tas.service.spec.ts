@@ -201,7 +201,10 @@ describe('TasService', () => {
 
       const req = httpMock.expectOne(`${environment.apiUrl}/orders/items`);
       expect(req.request.method).toBe('POST');
-      expect(req.request.body).toEqual(addData);
+      expect(req.request.body).toEqual({
+        ...addData,
+        request_id: jasmine.stringMatching(/^[0-9a-f-]{36}$/i),
+      });
       req.flush(mockItem);
     });
 

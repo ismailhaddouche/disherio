@@ -125,6 +125,11 @@ createIndexIfNotExists(db.itemorders, { "session_id": 1 });
 createIndexIfNotExists(db.itemorders, { "item_state": 1 });
 createIndexIfNotExists(db.itemorders, { "item_disher_type": 1 });
 createIndexIfNotExists(db.itemorders, { "order_id": 1 });
+createIndexIfNotExists(
+  db.itemorders,
+  { "session_id": 1, "request_id": 1 },
+  { unique: true, partialFilterExpression: { "request_id": { $type: "string" } } }
+);
 createIndexIfNotExists(db.itemorders, { "last_activity_source": 1, "updatedAt": -1 });
 createIndexIfNotExists(db.itemorders, { "last_activity_user_id": 1, "updatedAt": -1 });
 

@@ -10,6 +10,12 @@ import type {
   TASNotifyCustomersPayload,
   TASRequestBillPayload,
 } from '@disherio/shared';
+import {
+  TASAddItemPayloadSchema,
+  TASCallWaiterResponsePayloadSchema,
+  TASNotifyCustomersPayloadSchema,
+  TASRequestBillPayloadSchema,
+} from '@disherio/shared';
 import { ItemOrder, IItemOrder } from '../models/order.model';
 import { TotemSession } from '../models/totem.model';
 import { logger } from '../config/logger';
@@ -21,7 +27,7 @@ import { addItemToOrder, updateItemState } from '../services/order.service';
 import { trackSocketConnection, cleanupSocketConnection, trackSocketJoinRoom, trackSocketLeaveRoom, updateSocketActivity } from './middleware/connection-tracker';
 import { rateLimitMiddleware } from './middleware/rate-limiter';
 import { validateSessionAccess } from './middleware/session-validator';
-import { sanitizeSocketError } from './middleware/validate-payload';
+import { sanitizeSocketError, validateSocketPayload } from './middleware/validate-payload';
 
 /**
  * TAS (Table Assistance Service) Socket Handler
@@ -243,12 +249,8 @@ export function registerTasHandlers(io: Server, socket: AuthenticatedSocket): vo
    */
   socket.on('tas:add_item', rateLimitMiddleware(socket, 'tas:add_item', async (data: TASAddItemData) => {
     try {
-      const { sessionId, orderId, dishId, customerId, variantId, extras } = data;
-
-      if (!sessionId || !orderId || !dishId) {
-        socket.emit('tas:error', { message: 'INVALID_DATA', details: 'Missing required fields: sessionId, orderId, dishId' });
-        return;
-      }
+      if (!validateSocketPayload(socket, 'tas', 'tas:add_item', TASAddItemPayloadSchema, data)) return;
+      const { requestId, sessionId, orderId, dishId, customerId, variantId, extras } = data;
 
       // Validate session ownership and subscription before operating
       if (!(await assertTasSessionAccess(socket, sessionId))) {
@@ -267,7 +269,8 @@ export function registerTasHandlers(io: Server, socket: AuthenticatedSocket): vo
         variantId,
         extras ?? [],
         'TAS',
-        staffId
+        staffId,
+        requestId
       );
 
       // Broadcasts are handled inside addItemToOrder (KDS, TAS, POS via service)
@@ -483,12 +486,8 @@ export function registerTasHandlers(io: Server, socket: AuthenticatedSocket): vo
    */
   socket.on('tas:request_bill', rateLimitMiddleware(socket, 'tas:request_bill', async (data: TASRequestBillPayload) => {
     try {
+      if (!validateSocketPayload(socket, 'tas', 'tas:request_bill', TASRequestBillPayloadSchema, data)) return;
       const { sessionId, requestedBy, customerId, splitType } = data;
-
-      if (!sessionId) {
-        socket.emit('tas:error', { message: 'INVALID_SESSION_ID' });
-        return;
-      }
 
       // Validate session ownership and subscription before operating
       if (!(await assertTasSessionAccess(socket, sessionId))) {
@@ -560,12 +559,8 @@ export function registerTasHandlers(io: Server, socket: AuthenticatedSocket): vo
    */
   socket.on('tas:call_waiter_response', rateLimitMiddleware(socket, 'tas:call_waiter_response', async (data: TASCallWaiterResponsePayload) => {
     try {
+      if (!validateSocketPayload(socket, 'tas', 'tas:call_waiter_response', TASCallWaiterResponsePayloadSchema, data)) return;
       const { sessionId, acknowledged, message } = data;
-
-      if (!sessionId) {
-        socket.emit('tas:error', { message: 'INVALID_SESSION_ID' });
-        return;
-      }
 
       // Validate session ownership and subscription before operating
       if (!(await assertTasSessionAccess(socket, sessionId))) {
@@ -599,12 +594,8 @@ export function registerTasHandlers(io: Server, socket: AuthenticatedSocket): vo
    */
   socket.on('tas:notify_customers', rateLimitMiddleware(socket, 'tas:notify_customers', async (data: TASNotifyCustomersPayload) => {
     try {
+      if (!validateSocketPayload(socket, 'tas', 'tas:notify_customers', TASNotifyCustomersPayloadSchema, data)) return;
       const { sessionId, message, type } = data;
-
-      if (!sessionId || !message) {
-        socket.emit('tas:error', { message: 'INVALID_DATA' });
-        return;
-      }
 
       // Validate session ownership and subscription before operating
       if (!(await assertTasSessionAccess(socket, sessionId))) {

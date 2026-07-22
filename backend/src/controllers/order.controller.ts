@@ -23,7 +23,7 @@ export const createOrder = asyncHandler(async (req: Request, res: Response): Pro
 });
 
 export const addItem = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-  const { order_id, session_id, dish_id, customer_id, variant_id, extras } = req.body;
+  const { request_id, order_id, session_id, dish_id, customer_id, variant_id, extras } = req.body;
   await OrderOwnershipService.assertSessionInRestaurant(session_id, req.user!.restaurantId);
   const item = await OrderService.addItemToOrder(
     order_id,
@@ -33,7 +33,8 @@ export const addItem = asyncHandler(async (req: Request, res: Response): Promise
     variant_id,
     extras,
     staffActivitySource(req.user!.permissions),
-    req.user!.staffId
+    req.user!.staffId,
+    request_id
   );
   res.status(201).json(item);
 });

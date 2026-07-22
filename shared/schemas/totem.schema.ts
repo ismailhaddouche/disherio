@@ -45,6 +45,37 @@ export const TotemSessionIdPayloadSchema = z.object({
 
 const objectIdHex = z.string().regex(/^[a-f\d]{24}$/i);
 
+export const TASAddItemPayloadSchema = z.object({
+  requestId: RequestIdSchema,
+  sessionId: objectIdHex,
+  orderId: objectIdHex,
+  dishId: objectIdHex,
+  customerId: objectIdHex.optional(),
+  variantId: objectIdHex.optional(),
+  extras: z.array(objectIdHex).max(50).optional(),
+}).strict();
+
+export const TASRequestBillPayloadSchema = z.object({
+  sessionId: objectIdHex,
+  requestedBy: z.enum(['waiter', 'customer']),
+  customerId: objectIdHex.optional(),
+  splitType: z.enum(['ALL', 'BY_USER', 'SHARED']).optional(),
+}).strict();
+
+export const TASCallWaiterResponsePayloadSchema = z.object({
+  sessionId: objectIdHex,
+  customerId: objectIdHex.optional(),
+  tableId: objectIdHex.optional(),
+  acknowledged: z.boolean(),
+  message: z.string().trim().max(500).optional(),
+}).strict();
+
+export const TASNotifyCustomersPayloadSchema = z.object({
+  sessionId: objectIdHex,
+  message: z.string().trim().min(1).max(500),
+  type: z.enum(['info', 'warning', 'success']).optional(),
+}).strict();
+
 // Ephemeral per-session credential echoed back by the public totem client.
 // Required for any session whose session_token has been back-filled.
 export const SessionTokenFieldSchema = z.string().trim().max(200).optional();
@@ -77,4 +108,7 @@ export const PublicOrderBodySchema = z.object({
     variantId: objectIdHex.optional(),
     extras: z.array(objectIdHex).max(50).optional(),
   })).min(1).max(100),
-});
+}).refine(
+  ({ items }) => items.reduce((total, item) => total + item.quantity, 0) <= 100,
+  { path: ['items'], message: 'Total item quantity cannot exceed 100' }
+);

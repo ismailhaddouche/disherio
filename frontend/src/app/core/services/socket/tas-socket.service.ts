@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { SocketConnectionService } from './socket-connection.service';
 import type { TASAddItemData } from '../../../types/socket.types';
+import { createRequestId } from '../../utils/request-id';
 
 @Injectable({ providedIn: 'root' })
 export class TasSocketService {
@@ -51,7 +52,10 @@ export class TasSocketService {
   }
 
   tasAddItem(data: TASAddItemData): void {
-    this.connection.emit('tas:add_item', data);
+    this.connection.emit('tas:add_item', {
+      ...data,
+      requestId: data.requestId ?? createRequestId(),
+    });
   }
 
   tasServeServiceItem(itemId: string): void {

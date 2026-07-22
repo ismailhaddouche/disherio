@@ -843,7 +843,8 @@ main() {
     generate_caddyfile
     generate_docker_compose_override
     write_docker_secret_files
-    chmod 600 "$ENV_FILE" "$CADDYFILE" "$COMPOSE_OVERRIDE"
+    chmod 600 "$ENV_FILE" "$COMPOSE_OVERRIDE"
+    chmod 644 "$CADDYFILE"
     ensure_mongo_keyfile
 
     # Mostrar resumen

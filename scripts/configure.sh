@@ -137,7 +137,8 @@ write_http_caddyfile() {
   local port="${host#:}"
   cp "$ROOT_DIR/infrastructure/caddy-templates/Caddyfile.local-ip" "$CADDYFILE"
   sed -i -e "s|\${HTTP_PORT}|${port}|g" "$CADDYFILE"
-  chmod 600 "$CADDYFILE"
+  chmod 644 "$CADDYFILE"
+  warn "La configuración por IP local usa HTTP sin cifrar; limítala a una LAN privada de confianza."
 }
 
 # ── Change port ───────────────────────────────────────────────────────────────

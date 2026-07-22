@@ -94,6 +94,7 @@ const createPaymentBreaker = new CircuitBreaker(
         ? buildByUserTickets(activeItems, total)
         // ALL always settles in a single ticket; only SHARED honors `parts`.
         : buildSharedTickets(total, paymentType === 'SHARED' ? parts : 1);
+      if (tickets.length === 0) throw new Error(ErrorCode.NO_ITEMS_TO_PAY);
       const payment = await paymentRepository.createPayment({
         session_id: sessionId,
         restaurant_id: completedSession.restaurant_id.toString(),

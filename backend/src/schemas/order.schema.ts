@@ -6,6 +6,7 @@ import { RequestIdSchema } from '@disherio/shared';
 const objectId = z.string().regex(/^[a-f\d]{24}$/i);
 export const CreateOrderRequestSchema = z.object({ session_id: objectId });
 export const AddItemRequestSchema = z.object({
+  request_id: RequestIdSchema,
   order_id: objectId,
   session_id: objectId,
   dish_id: objectId,
@@ -24,7 +25,10 @@ export const BatchItemsRequestSchema = z.object({
     variantId: objectId.optional(),
     extras: z.array(objectId).max(50).optional(),
   })).min(1).max(100),
-});
+}).refine(
+  ({ items }) => items.reduce((total, item) => total + item.quantity, 0) <= 100,
+  { path: ['items'], message: 'Total item quantity cannot exceed 100' }
+);
 export const ItemStateRequestSchema = z.object({ state: z.enum(['ORDERED', 'ON_PREPARE', 'SERVED', 'CANCELED']) });
 export const AssignItemRequestSchema = z.object({ customer_id: objectId.nullable() });
 // `parts` only has meaning for SHARED payments: ALL always settles in a

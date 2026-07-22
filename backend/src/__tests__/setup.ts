@@ -12,15 +12,16 @@ process.env.NODE_ENV = 'test';
 process.env.LOG_LEVEL = 'silent';
 process.env.UPLOADS_DIR = process.env.UPLOADS_DIR || path.join(os.tmpdir(), 'disherio-test-uploads');
 
-// Mock logger before any imports
-jest.mock('../config/logger', () => ({
-  logger: {
+// Mock logger before any imports (the module supports both default and named imports).
+jest.mock('../config/logger', () => {
+  const logger = {
     info: jest.fn(),
     error: jest.fn(),
     warn: jest.fn(),
     debug: jest.fn(),
-  }
-}));
+  };
+  return { __esModule: true, default: logger, logger };
+});
 
 // Mock socket.io
 jest.mock('../config/socket', () => ({

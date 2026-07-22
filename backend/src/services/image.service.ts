@@ -65,13 +65,18 @@ export async function validateImageDimensions(
 
 export async function processAndSaveImage(
   file: Express.Multer.File,
-  folder: 'dishes' | 'restaurants' | 'categories'
+  folder: 'dishes' | 'restaurants' | 'categories',
+  restaurantId: string
 ): Promise<string> {
+  const normalizedRestaurantId = restaurantId.toLowerCase();
+  if (!/^[a-f\d]{24}$/.test(normalizedRestaurantId)) {
+    throw new Error('Invalid restaurant owner for image');
+  }
   // The output encoder below always writes WebP bytes, so the public filename
   // must also end in .webp. Keeping the upload's original extension would make
   // static hosting advertise the wrong Content-Type (and `nosniff` clients can
   // legitimately reject the image).
-  const secureFilename = generateSecureFilename('converted.webp', true);
+  const secureFilename = `${normalizedRestaurantId}-${generateSecureFilename('converted.webp', true)}`;
 
   // Get safe path (path traversal protection)
   const fullPath = getSecurePath(UPLOADS_DIR, folder, secureFilename);
@@ -111,7 +116,7 @@ export async function processAndSaveImage(
   return publicPath;
 }
 
-export async function deleteImage(imagePath: string): Promise<boolean> {
+export async function deleteImage(imagePath: string, restaurantId: string): Promise<boolean> {
   try {
     // Validate path has no path traversal
     if (imagePath.includes('..') || imagePath.includes('\\')) {
@@ -121,6 +126,18 @@ export async function deleteImage(imagePath: string): Promise<boolean> {
     // Extract filename and validate
     const filename = path.basename(imagePath);
     const folder = path.dirname(imagePath).replace('/uploads/', '').split('/')[0];
+    const normalizedRestaurantId = restaurantId.toLowerCase();
+    if (!/^[a-f\d]{24}$/.test(normalizedRestaurantId)) {
+      throw new Error('Invalid restaurant owner for image');
+    }
+
+    // New uploads are tenant-prefixed. Legacy unowned files are deliberately
+    // retained: deleting an orphan is safer than allowing one restaurant to
+    // remove a file referenced by another tenant.
+    if (!filename.toLowerCase().startsWith(`${normalizedRestaurantId}-`)) {
+      logger.warn({ imagePath, restaurantId }, 'Refused to delete image owned by another tenant');
+      return false;
+    }
 
     // Validate it's an allowed folder
     const allowedFolders = ['dishes', 'categories', 'restaurants'];

@@ -10,8 +10,12 @@ import { registerTotemHandlers } from '../sockets/totem.handler';
 import { socketAuthMiddleware, AuthenticatedSocket } from '../middlewares/socketAuth';
 import { registerGlobalDisconnectHandler } from '../sockets/middleware/connection-tracker';
 import { initSocketRedisAdapter } from './redis';
+import { checkRateLimit, getSocketClientAddress, getSocketHandshakeIdentity } from '../sockets/middleware/rate-limiter';
 
 let io: SocketServer | undefined;
+const activeConnectionsByAddress = new Map<string, number>();
+const MAX_CONNECTIONS_PER_ADDRESS = 100;
+const MAX_HANDSHAKES_PER_MINUTE = 120;
 
 // Build allowed origins for Socket.IO
 function getAllowedOrigins(): string[] {
@@ -68,6 +72,28 @@ export async function initSocket(httpServer: HttpServer): Promise<SocketServer> 
     // Continue without Redis adapter - will use default in-memory adapter
   }
 
+  // Reject connection floods before authentication performs any database work.
+  socketServer.use((socket, next) => {
+    const authenticatedSocket = socket as AuthenticatedSocket;
+    const address = getSocketClientAddress(authenticatedSocket);
+    if ((activeConnectionsByAddress.get(address) ?? 0) >= MAX_CONNECTIONS_PER_ADDRESS) {
+      next(new Error(ErrorCode.RATE_LIMIT_EXCEEDED));
+      return;
+    }
+
+    checkRateLimit(
+      getSocketHandshakeIdentity(authenticatedSocket),
+      'socket:handshake',
+      MAX_HANDSHAKES_PER_MINUTE,
+      60_000
+    ).then(({ allowed }) => {
+      next(allowed ? undefined : new Error(ErrorCode.RATE_LIMIT_EXCEEDED));
+    }).catch((err) => {
+      logger.error({ err, address }, 'Socket handshake limiter failed');
+      next(new Error(ErrorCode.SERVER_CONFIGURATION_ERROR));
+    });
+  });
+
   // Apply authentication middleware to all connections
   socketServer.use((socket, next) => {
     socketAuthMiddleware(socket as AuthenticatedSocket, next).catch((err) => {
@@ -81,6 +107,8 @@ export async function initSocket(httpServer: HttpServer): Promise<SocketServer> 
   logger.info('Global disconnect handler registered');
 
   socketServer.on('connection', (socket: AuthenticatedSocket) => {
+    const clientAddress = getSocketClientAddress(socket);
+    activeConnectionsByAddress.set(clientAddress, (activeConnectionsByAddress.get(clientAddress) ?? 0) + 1);
     logger.info({ socketId: socket.id, userId: socket.user?.staffId }, 'Client connected');
 
     const permissions = socket.user?.permissions ?? [];
@@ -104,6 +132,9 @@ export async function initSocket(httpServer: HttpServer): Promise<SocketServer> 
     registerTotemHandlers(socketServer, socket);
 
     socket.on('disconnect', () => {
+      const remaining = (activeConnectionsByAddress.get(clientAddress) ?? 1) - 1;
+      if (remaining > 0) activeConnectionsByAddress.set(clientAddress, remaining);
+      else activeConnectionsByAddress.delete(clientAddress);
       logger.info({ socketId: socket.id, userId: socket.user?.staffId }, 'Client disconnected');
     });
   });

@@ -46,6 +46,8 @@ export class ItemOrderRepository extends BaseRepository<IItemOrder> {
       item_base_price: number;
       item_disher_variant?: { variant_id: string; name: { lang: string; value: string }[]; price: number } | null;
       item_disher_extras: { extra_id: string; name: { lang: string; value: string }[]; price: number }[];
+      request_id?: string;
+      request_hash?: string;
     },
     session?: ClientSession
   ): Promise<IItemOrder> {
@@ -69,6 +71,18 @@ export class ItemOrderRepository extends BaseRepository<IItemOrder> {
       },
       session
     );
+  }
+
+  async findByRequestId(
+    sessionId: string,
+    requestId: string,
+    session?: ClientSession
+  ): Promise<IItemOrder | null> {
+    validateObjectId(sessionId, 'session_id');
+    return this.model.findOne({
+      session_id: new Types.ObjectId(sessionId),
+      request_id: requestId,
+    }).select('+request_hash').session(session ?? null).exec();
   }
 
   async findByOrderId(orderId: string, session: ClientSession): Promise<IItemOrder[]> {

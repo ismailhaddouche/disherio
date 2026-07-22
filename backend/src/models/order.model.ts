@@ -80,6 +80,8 @@ export interface IItemOrder extends Document {
   item_disher_extras: { extra_id: string; name: ILocalizedSnapshot[]; price: number }[];
   unlimited_order_item: boolean;
   batch_id?: string;
+  request_id?: string;
+  request_hash?: string;
   version: number;
 }
 
@@ -119,6 +121,8 @@ const ItemOrderSchema = new Schema<IItemOrder>(
     ],
     unlimited_order_item: { type: Boolean, default: false, index: true },
     batch_id: { type: String, index: true },
+    request_id: { type: String },
+    request_hash: { type: String, select: false },
     version: { type: Number, default: 0 },
   },
   {
@@ -142,6 +146,10 @@ ItemOrderSchema.index({ item_disher_type: 1, item_state: 1, createdAt: 1 });
 // Index for active items by session
 ItemOrderSchema.index({ session_id: 1, item_state: 1, createdAt: 1 });
 ItemOrderSchema.index({ session_id: 1, unlimited_order_item: 1, order_id: 1 });
+ItemOrderSchema.index(
+  { session_id: 1, request_id: 1 },
+  { unique: true, partialFilterExpression: { request_id: { $type: 'string' } } }
+);
 ItemOrderSchema.index({ last_activity_source: 1, updatedAt: -1 });
 ItemOrderSchema.index({ last_activity_user_id: 1, updatedAt: -1 });
 

@@ -38,7 +38,7 @@
         # serving onto a dynamic server (e.g. Express). index.html itself has no
         # inline scripts and Angular's inlineCritical CSS is disabled, so the
         # only remaining 'unsafe-inline' consumer is Angular's runtime styles.
-        Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https://api.qrserver.com; connect-src 'self' wss:; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+        Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https://api.qrserver.com; connect-src 'self' wss://{http.request.host}; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
 
         # Prevenir clickjacking - DENY aligned with CSP frame-ancestors 'none'
         X-Frame-Options "DENY"

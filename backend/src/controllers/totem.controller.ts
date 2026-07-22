@@ -31,7 +31,11 @@ export const listTotems = asyncHandler(async (req: Request, res: Response): Prom
 
 export const getTotem = asyncHandler(async (req: Request, res: Response): Promise<void> => {
   const totem = await TotemService.getTotemForRestaurant(String(req.params.id), req.user!.restaurantId);
-  res.json(totem);
+  res.json({
+    _id: totem._id,
+    totem_name: totem.totem_name,
+    totem_type: totem.totem_type,
+  });
 });
 
 export const createTotem = asyncHandler(async (req: Request, res: Response): Promise<void> => {

@@ -207,7 +207,7 @@ generate_caddy_config() {
     cp "$template" "$CADDYFILE"
     sed -i -e "s|\${HTTP_PORT}|${HTTP_PORT}|g" "$CADDYFILE"
   fi
-  chmod 600 "$CADDYFILE"
+  chmod 644 "$CADDYFILE"
 }
 
 # Check that the port is available.
@@ -371,7 +371,7 @@ cmd_install() {
     echo "  ¿Cómo vas a acceder a DisherIO?"
     echo ""
     echo "  [1] Dominio público con HTTPS  (ej: app.restaurante.com)"
-    echo "  [2] IP local                   (detectada: ${LOCAL_IP})"
+    echo "  [2] IP local por HTTP SIN CIFRAR (solo LAN de confianza: ${LOCAL_IP})"
     echo ""
     local choice
     read_or_default "  Elige opción [2]: " "2" choice
@@ -381,6 +381,10 @@ cmd_install() {
       3) err "La IP pública directa por HTTP no está permitida. Configura un dominio HTTPS o un túnel.";;
       *) err "Opción inválida";;
     esac
+  fi
+
+  if [[ "$INSTALL_MODE" == "local" ]]; then
+    warn "El modo IP local usa HTTP sin cifrar. Úsalo únicamente en una LAN privada de confianza."
   fi
 
   # Parameter 2: domain (domain mode only).
@@ -976,7 +980,7 @@ cmd_restore() {
 
   install -m 0600 "$staging/config/.env" "$ENV_FILE"
   write_docker_secret_files
-  install -m 0600 "$staging/config/Caddyfile" "$CADDYFILE"
+  install -m 0644 "$staging/config/Caddyfile" "$CADDYFILE"
   install -d -m 0700 "$ROOT_DIR/config"
   install -m 0600 "$staging/config/mongo-keyfile" "$ROOT_DIR/config/mongo-keyfile"
   chown 999:999 "$ROOT_DIR/config/mongo-keyfile" 2>/dev/null || true

@@ -1,5 +1,6 @@
 const metadata = jest.fn();
 const toFile = jest.fn();
+const unlink = jest.fn();
 const sharpPipeline = {
   metadata,
   rotate: jest.fn(),
@@ -18,10 +19,13 @@ jest.mock('fs', () => ({
   default: {
     existsSync: jest.fn().mockReturnValue(true),
     mkdirSync: jest.fn(),
+    promises: { unlink },
   },
 }));
 
-import { processAndSaveImage } from '../services/image.service';
+import { deleteImage, processAndSaveImage } from '../services/image.service';
+
+const RESTAURANT_ID = '507f1f77bcf86cd799439011';
 
 describe('image processing output', () => {
   beforeEach(() => {
@@ -39,10 +43,19 @@ describe('image processing output', () => {
       buffer: Buffer.from('image'),
     } as Express.Multer.File;
 
-    const publicPath = await processAndSaveImage(file, 'dishes');
+    const publicPath = await processAndSaveImage(file, 'dishes', RESTAURANT_ID);
 
-    expect(publicPath).toMatch(/^\/uploads\/dishes\/\d+-[\w-]+\.webp$/);
+    expect(publicPath).toMatch(new RegExp(`^/uploads/dishes/${RESTAURANT_ID}-\\d+-[\\w-]+\\.webp$`));
     expect(toFile).toHaveBeenCalledWith(expect.stringMatching(/\.webp$/));
     expect(sharpPipeline.webp).toHaveBeenCalledWith({ quality: 80 });
+  });
+
+  it('refuses to delete another restaurant tenant\'s image', async () => {
+    await expect(deleteImage(
+      '/uploads/dishes/507f1f77bcf86cd799439012-photo.webp',
+      RESTAURANT_ID
+    )).resolves.toBe(false);
+
+    expect(unlink).not.toHaveBeenCalled();
   });
 });

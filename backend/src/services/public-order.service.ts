@@ -47,6 +47,14 @@ export async function createPublicOrderFromQR(
   customerId?: string,
   sessionToken?: string
 ): Promise<PublicOrderResult> {
+  if (
+    items.length === 0
+    || items.length > 100
+    || items.reduce((total, item) => total + item.quantity, 0) > 100
+  ) {
+    throw new Error(ErrorCode.VALIDATION_ERROR);
+  }
+
   const session = await totemService.getPublicSessionByQR(qr, sessionId, sessionToken);
   const totem = await totemService.getTotemByQR(qr);
   if (!totem) throw new Error(ErrorCode.TOTEM_NOT_FOUND);
@@ -57,10 +65,6 @@ export async function createPublicOrderFromQR(
     customer_id: customerId ?? null,
     items: items.map(item => ({ ...item, extras: [...(item.extras ?? [])].sort() })),
   });
-
-  if (items.length === 0) {
-    throw new Error(ErrorCode.VALIDATION_ERROR);
-  }
 
   const { orderId, createdItems, created } = await withTransaction(async (dbSession) => {
     const lockedSession = await totemSessionRepo.lockById(sessionIdStr, dbSession);

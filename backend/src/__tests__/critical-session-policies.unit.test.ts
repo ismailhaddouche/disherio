@@ -14,6 +14,7 @@ let restaurantFindById: jest.Mock;
 let orderCreate: jest.Mock;
 let orderFindById: jest.Mock;
 let itemCreate: jest.Mock;
+let itemFindByRequestId: jest.Mock;
 let dishFindById: jest.Mock;
 
 const dbSession = { id: 'session' };
@@ -51,11 +52,13 @@ jest.mock('../repositories/order.repository', () => ({
     itemUpdateState = jest.fn();
     itemFindActiveBySessionId = jest.fn();
     itemCreate = jest.fn();
+    itemFindByRequestId = jest.fn();
     return {
       findById: itemFindById,
       updateState: itemUpdateState,
       findActiveBySessionId: itemFindActiveBySessionId,
       createItem: itemCreate,
+      findByRequestId: itemFindByRequestId,
     };
   }),
   PaymentRepository: jest.fn().mockImplementation(() => {
@@ -123,6 +126,7 @@ import { cleanupTemporaryTotem, notifySessionClosed } from '../services/session-
 import { emitSessionArchived, emitTicketPaid } from '../sockets/pos.handler';
 import { TotemSession } from '../models/totem.model';
 import { ErrorCode, TotemCallWaiterPayloadSchema, TotemRequestBillPayloadSchema } from '@disherio/shared';
+import { orderRequestHash } from '../services/order-request-policy.service';
 
 const SESSION_ID = '507f1f77bcf86cd799439013';
 const ITEM_ID = '507f1f77bcf86cd799439014';
@@ -291,6 +295,38 @@ describe('critical session policies', () => {
       item_disher_variant: null,
       item_disher_extras: [],
     }), dbSession);
+  });
+
+  it('returns an existing item for an idempotent add-item replay', async () => {
+    const requestId = '123e4567-e89b-42d3-a456-426614174000';
+    sessionLockIfStateIn.mockResolvedValue({
+      _id: SESSION_ID,
+      restaurant_id: { toString: () => RESTAURANT_ID },
+      totem_state: 'STARTED',
+    });
+    const existingItem = {
+      _id: ITEM_ID,
+      request_hash: expect.anything(),
+      item_disher_type: 'SERVICE',
+    };
+    itemFindByRequestId.mockImplementation(async () => ({
+      ...existingItem,
+      request_hash: orderRequestHash({
+        order_id: 'order-id',
+        session_id: SESSION_ID,
+        dish_id: 'dish-id',
+        customer_id: null,
+        variant_id: null,
+        extras: [],
+      }),
+    }));
+
+    await expect(addItemToOrder(
+      'order-id', SESSION_ID, 'dish-id', undefined, undefined, [], 'POS', undefined, requestId
+    )).resolves.toMatchObject({ _id: ITEM_ID });
+
+    expect(itemCreate).not.toHaveBeenCalled();
+    expect(orderFindById).not.toHaveBeenCalled();
   });
 
   it('rejects an excessive custom tip before reading payment state', async () => {

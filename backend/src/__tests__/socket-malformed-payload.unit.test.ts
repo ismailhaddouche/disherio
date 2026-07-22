@@ -105,6 +105,24 @@ describe('Malformed socket payloads (null/undefined)', () => {
         expectNamespacedError(emitMock, 'tas:error', 'INVALID_ITEM_ID');
       }
     );
+
+    it.each([
+      'tas:add_item',
+      'tas:request_bill',
+      'tas:call_waiter_response',
+      'tas:notify_customers',
+    ])('%s rejects a missing structured payload', async (event) => {
+      await expect(handlers[event](undefined as never)).resolves.toBeUndefined();
+      expectNamespacedError(emitMock, 'tas:error', 'VALIDATION_ERROR');
+    });
+
+    it('tas:notify_customers rejects an oversized message', async () => {
+      await expect(handlers['tas:notify_customers']({
+        sessionId: '507f1f77bcf86cd799439011',
+        message: 'x'.repeat(501),
+      } as never)).resolves.toBeUndefined();
+      expectNamespacedError(emitMock, 'tas:error', 'VALIDATION_ERROR');
+    });
   });
 
   describe('rateLimitMiddleware wrapper', () => {

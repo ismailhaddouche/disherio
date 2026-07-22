@@ -102,6 +102,13 @@ services:
   redis:
     image: redis:7-alpine@sha256:6ab0b6e7381779332f97b8ca76193e45b0756f38d4c0dcda72dbb3c32061ab99
     restart: unless-stopped
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
     command:
       - /bin/sh
       - -c
@@ -153,6 +160,13 @@ services:
           - backend
       backend_net: {}
     restart: unless-stopped
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
     depends_on:
       mongo:
         condition: service_healthy
@@ -223,6 +237,15 @@ services:
         aliases:
           - frontend
     restart: unless-stopped
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /data
+      - /config
     expose:
       - "4200"
     # Resource limits

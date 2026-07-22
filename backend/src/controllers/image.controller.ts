@@ -104,7 +104,11 @@ export const uploadDishImage = [
     if (dish.restaurant_id.toString() !== req.user!.restaurantId) {
       throw createError.forbidden('FORBIDDEN');
     }
-    const publicUrl = await ImageService.processAndSaveImage(req.file!, 'dishes');
+    const publicUrl = await ImageService.processAndSaveImage(
+      req.file!,
+      'dishes',
+      req.user!.restaurantId
+    );
     res.status(201).json({ url: publicUrl });
   })
 ];
@@ -120,7 +124,11 @@ export const uploadCategoryImage = [
     if (!category) {
       throw createError.notFound('CATEGORY_NOT_FOUND');
     }
-    const publicUrl = await ImageService.processAndSaveImage(req.file!, 'categories');
+    const publicUrl = await ImageService.processAndSaveImage(
+      req.file!,
+      'categories',
+      req.user!.restaurantId
+    );
     res.status(201).json({ url: publicUrl });
   })
 ];
@@ -129,7 +137,11 @@ export const uploadRestaurantLogo = [
   validateImageFile,
   asyncHandler(async (req: Request, res: Response): Promise<void> => {
     // The logo is scoped to the caller's own restaurant; no :id param needed.
-    const publicUrl = await ImageService.processAndSaveImage(req.file!, 'restaurants');
+    const publicUrl = await ImageService.processAndSaveImage(
+      req.file!,
+      'restaurants',
+      req.user!.restaurantId
+    );
     res.status(201).json({ url: publicUrl });
   })
 ];

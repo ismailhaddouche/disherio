@@ -10,6 +10,7 @@
  */
 
 import { createHash } from 'crypto';
+import { isIP } from 'net';
 import { logger } from '../../config/logger';
 import { getRedisClient, initRedis, type DisherRedisClient } from '../../config/redis';
 import type { AuthenticatedSocket } from '../../middlewares/socketAuth';
@@ -92,9 +93,40 @@ function getRateLimitKey(identity: string, event: string): string {
   return `ratelimit:${identity}:${event}`;
 }
 
+function normalizeAddress(address: string): string {
+  const trimmed = address.trim();
+  return trimmed.startsWith('::ffff:') ? trimmed.slice('::ffff:'.length) : trimmed;
+}
+
+function isTrustedProxyAddress(address: string): boolean {
+  const normalized = normalizeAddress(address);
+  return normalized === '127.0.0.1'
+    || normalized === '::1'
+    || /^10\./.test(normalized)
+    || /^192\.168\./.test(normalized)
+    || /^172\.(1[6-9]|2\d|3[01])\./.test(normalized)
+    || /^f[cd][0-9a-f]{2}:/i.test(normalized);
+}
+
+export function getSocketClientAddress(socket: AuthenticatedSocket): string {
+  const direct = normalizeAddress(socket.handshake.address || socket.conn.remoteAddress || '');
+  const forwarded = socket.handshake.headers?.['x-forwarded-for'];
+
+  if (direct && isTrustedProxyAddress(direct) && typeof forwarded === 'string') {
+    const candidate = normalizeAddress(forwarded.split(',')[0] ?? '');
+    if (isIP(candidate)) return candidate;
+  }
+
+  return direct && isIP(direct) ? direct : 'unknown';
+}
+
+export function getSocketHandshakeIdentity(socket: AuthenticatedSocket): string {
+  return `handshake:${createHash('sha256').update(getSocketClientAddress(socket)).digest('hex').slice(0, 32)}`;
+}
+
 function publicIdentity(socket: AuthenticatedSocket): string {
   const qr = typeof socket.data?.totemQr === 'string' ? socket.data.totemQr : '';
-  const address = socket.handshake.address || socket.conn.remoteAddress || 'unknown';
+  const address = getSocketClientAddress(socket);
   return `public:${createHash('sha256').update(`${address}:${qr}`).digest('hex').slice(0, 32)}`;
 }
 

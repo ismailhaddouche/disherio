@@ -277,13 +277,13 @@ export interface TotemBillRequestConfirmedEvent {
  * Data for adding an item via TAS
  */
 export interface TASAddItemData {
+  requestId: string;
   sessionId: string;
   orderId: string;
   dishId: string;
   customerId?: string;
   variantId?: string;
   extras?: string[];
-  itemData: Partial<ItemOrder>;
 }
 
 // ============================================

@@ -67,7 +67,24 @@ describe('PublicOrderService.createPublicOrderFromQR', () => {
     });
 
     await expect(createPublicOrderFromQR('qr-code', SESSION_ID, [], REQUEST_ID, undefined, 'tok-1')).rejects.toThrow('VALIDATION_ERROR');
-    expect(totemService.getPublicSessionByQR).toHaveBeenCalledWith('qr-code', SESSION_ID, 'tok-1');
+    expect(totemService.getPublicSessionByQR).not.toHaveBeenCalled();
+  });
+
+  it('rejects an order whose aggregate quantity exceeds 100 before database access', async () => {
+    await expect(createPublicOrderFromQR(
+      'qr-code',
+      SESSION_ID,
+      [
+        { dishId: DISH_ID, quantity: 50 },
+        { dishId: '507f1f77bcf86cd799439016', quantity: 50 },
+        { dishId: '507f1f77bcf86cd799439017', quantity: 1 },
+      ],
+      REQUEST_ID,
+      undefined,
+      'tok-1'
+    )).rejects.toThrow('VALIDATION_ERROR');
+
+    expect(totemService.getPublicSessionByQR).not.toHaveBeenCalled();
   });
 
   it('should validate the session token before processing the order', async () => {
