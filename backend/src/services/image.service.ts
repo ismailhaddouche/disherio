@@ -102,8 +102,10 @@ export async function processAndSaveImage(
   // Also validate it's not a malicious file disguised as image
   try {
     await sharp(file.buffer, {
-      // Security options to prevent denial of service attacks
-      limitInputPixels: 4000 * 4000, // Maximum pixels
+      // Security options to prevent denial of service attacks. Match the
+      // dimension limit in SECURITY_LIMITS so a photo that passed validation
+      // (up to 8000x8000) is not rejected again at resize time.
+      limitInputPixels: 8000 * 8000, // Maximum pixels
       sequentialRead: true, // Sequential read for large files
     })
       .rotate() // Respect EXIF orientation (mobile photos)

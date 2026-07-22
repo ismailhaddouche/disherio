@@ -10,8 +10,13 @@ export const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 // Security limits
 export const SECURITY_LIMITS = {
   MAX_FILE_SIZE: 5 * 1024 * 1024, // 5MB
-  MAX_WIDTH: 4000,
-  MAX_HEIGHT: 4000,
+  // Mobile cameras (e.g. Pixel 9) take 4080x3072 photos; rejecting those
+  // blocked every dish/category image uploaded from a phone. The pipeline
+  // (processAndSaveImage) resizes to 1200px wide anyway, so this limit only
+  // guards sharp against decoding absurd inputs — the 5MB byte cap already
+  // bounds the transfer. 8000x8000 covers modern phone sensors.
+  MAX_WIDTH: 8000,
+  MAX_HEIGHT: 8000,
   MAX_FILES_PER_REQUEST: 1,
 } as const;
 

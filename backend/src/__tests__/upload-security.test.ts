@@ -359,8 +359,10 @@ describe('Upload Security Constants', () => {
 
   it('should have correct security limits', () => {
     expect(SECURITY_LIMITS.MAX_FILE_SIZE).toBe(5 * 1024 * 1024); // 5MB
-    expect(SECURITY_LIMITS.MAX_WIDTH).toBe(4000);
-    expect(SECURITY_LIMITS.MAX_HEIGHT).toBe(4000);
+    // Wide enough for modern phone photos (Pixel 9: 4080px); the pipeline
+    // resizes to 1200px, the 5MB byte cap bounds the transfer.
+    expect(SECURITY_LIMITS.MAX_WIDTH).toBe(8000);
+    expect(SECURITY_LIMITS.MAX_HEIGHT).toBe(8000);
     expect(SECURITY_LIMITS.MAX_FILES_PER_REQUEST).toBe(1);
   });
 });
