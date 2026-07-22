@@ -91,7 +91,15 @@ export async function getPopularDishes(
   restaurantId: string,
   options: { limit: number; dateRange: DashboardDateRange; type?: 'KITCHEN' | 'SERVICE' }
 ) {
-  return dishRepo.getPopularDishes(restaurantId, options);
+  // Resolve the tenant's sessions first so the aggregation pre-filters by
+  // session_id (indexed) instead of scanning every restaurant's items. The
+  // date range applies to item creation inside the pipeline, not to the
+  // session set.
+  const sessions = await totemSessionRepo.findByRestaurantId(restaurantId);
+  return dishRepo.getPopularDishes(
+    sessions.map((session) => session._id.toString()),
+    options
+  );
 }
 
 export async function getCategoryStats(restaurantId: string) {

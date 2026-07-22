@@ -14,13 +14,15 @@ jest.mock('../../services/refresh-token.service', () => ({
 }));
 jest.mock('../../services/socket-session.service', () => ({
   disconnectStaffSockets: jest.fn().mockResolvedValue(undefined),
+  disconnectSocketsByAccessToken: jest.fn().mockResolvedValue(undefined),
 }));
 
 import {
   revokeRefreshFamily,
   verifyRefreshToken,
+  blocklistAccessToken,
 } from '../../services/refresh-token.service';
-import { disconnectStaffSockets } from '../../services/socket-session.service';
+import { disconnectSocketsByAccessToken } from '../../services/socket-session.service';
 
 describe('AuthController', () => {
   let req: Partial<Request>;
@@ -223,7 +225,10 @@ describe('AuthController', () => {
         })
       );
       expect(jsonMock).toHaveBeenCalledWith({ message: 'LOGOUT_SUCCESS' });
-      expect(disconnectStaffSockets).toHaveBeenCalledWith('staff123');
+      // Without an access token there is no device to identify, so no socket
+      // disconnection happens (logging out one device must not kick the
+      // others).
+      expect(disconnectSocketsByAccessToken).not.toHaveBeenCalled();
     });
 
     it('should clear secure cookie when request is HTTPS', async () => {
@@ -265,9 +270,35 @@ describe('AuthController', () => {
       await logout(req as Request, res as Response, next);
 
       expect(revokeRefreshFamily).toHaveBeenCalledWith('family-1');
-      expect(disconnectStaffSockets).toHaveBeenCalledWith('staff123');
+      // The refresh cookie revokes that family; without an access token the
+      // device cannot be identified, so its sockets are not forcibly closed.
+      expect(disconnectSocketsByAccessToken).not.toHaveBeenCalled();
       expect(clearCookieMock).toHaveBeenCalledWith('refresh_token', expect.any(Object));
       expect(jsonMock).toHaveBeenCalledWith({ message: 'LOGOUT_SUCCESS' });
+    });
+
+    it('disconnects only the sockets of the logged-out device', async () => {
+      req = {
+        secure: false,
+        headers: { authorization: 'Bearer access-token-of-this-device' },
+        cookies: {
+          auth_token: 'access-token-of-this-device',
+          refresh_token: 'opaque-refresh-token',
+        },
+      };
+      (blocklistAccessToken as jest.Mock).mockResolvedValue({ staffId: 'staff123' });
+      (verifyRefreshToken as jest.Mock).mockResolvedValue({
+        valid: true,
+        family: 'family-1',
+        payload: { staffId: 'staff123' },
+      });
+
+      await logout(req as Request, res as Response, next);
+
+      expect(revokeRefreshFamily).toHaveBeenCalledWith('family-1');
+      expect(disconnectSocketsByAccessToken).toHaveBeenCalledWith('access-token-of-this-device');
+      expect(clearCookieMock).toHaveBeenCalledWith('auth_token', expect.any(Object));
+      expect(clearCookieMock).toHaveBeenCalledWith('refresh_token', expect.any(Object));
     });
   });
 

@@ -17,7 +17,7 @@ interface PublicTotemHandshake {
   qr?: unknown;
 }
 
-function extractSocketToken(socket: AuthenticatedSocket): string | undefined {
+export function extractSocketToken(socket: AuthenticatedSocket): string | undefined {
   // Prefer HttpOnly cookie (sent automatically with withCredentials: true)
   const cookieHeader = socket.handshake.headers.cookie;
   if (cookieHeader) {

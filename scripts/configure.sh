@@ -19,6 +19,25 @@ warn() { echo -e "${YELLOW}[WARN]${RESET} $*"; }
 err()  { echo -e "${RED}[ERROR]${RESET} $*"; exit 1; }
 step() { echo -e "\n${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"; echo -e "${BOLD}  $*${RESET}"; echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"; }
 
+# Validate a port number before using it.
+valid_port() {
+  [[ "$1" =~ ^[0-9]+$ ]] && (( 10#$1 >= 1 && 10#$1 <= 65535 ))
+}
+
+# Validate a domain name before interpolating it into the Caddyfile via sed.
+# Without this a value containing |, & or newlines would inject sed/Caddyfile
+# directives (the script runs as root).
+valid_domain() {
+  [[ "$1" =~ ^([A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,63}$ ]]
+}
+
+# Validate an email address before interpolation; fall back to admin@<domain>
+# when the configured EMAIL fails validation instead of aborting, so a
+# malformed but previously-stored EMAIL never blocks reconfiguration.
+valid_email() {
+  [[ "$1" =~ ^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,63}$ ]]
+}
+
 require_root() {
   [[ $EUID -eq 0 ]] || err "Ejecuta como root: sudo ./configure.sh"
 }
@@ -96,12 +115,21 @@ change_network() {
     1)
       read -rp "  Dominio (ej: mi-restaurante.com): " domain
       [[ -z "$domain" ]] && err "Dominio requerido"
+      valid_domain "$domain" || err "Dominio inválido: $domain"
       port=443
       access_url="https://$domain"
+      # The EMAIL substitution below is sed-interpolated: never pass an
+      # unvalidated EMAIL through. Fall back to admin@<domain> when needed.
+      if [[ -n "$EMAIL" ]] && ! valid_email "$EMAIL"; then
+        warn "EMAIL en .env inválido; usando admin@${domain}"
+        EMAIL="admin@${domain}"
+      elif [[ -z "$EMAIL" ]]; then
+        EMAIL="admin@${domain}"
+      fi
       cp "$ROOT_DIR/infrastructure/caddy-templates/Caddyfile.domain" "$CADDYFILE"
       sed -i \
         -e "s|\${DOMAIN}|${domain}|g" \
-        -e "s|\${EMAIL}|${EMAIL:-admin@${domain}}|g" \
+        -e "s|\${EMAIL}|${EMAIL}|g" \
         "$CADDYFILE"
       echo ""
       echo -e "${YELLOW}  Registros DNS requeridos:${RESET}"
@@ -113,6 +141,7 @@ change_network() {
       port=80
       access_url="http://$domain"
       write_http_caddyfile ":80"
+      sed_env "HTTP_PORT" "80"
       warn "Añade '$LOCAL_IP $domain' a /etc/hosts en los clientes"
       ;;
     3)
@@ -120,9 +149,11 @@ change_network() {
       ;;
     *)
       read -rp "  Puerto [80]: " port; port="${port:-80}"
+      valid_port "$port" || err "Puerto inválido: $port"
       domain="$LOCAL_IP"
       access_url="http://$LOCAL_IP:$port"
       write_http_caddyfile ":$port"
+      sed_env "HTTP_PORT" "$port"
       ;;
   esac
 
@@ -147,15 +178,24 @@ change_port() {
   read -rp "  Nuevo puerto [80]: " new_port
   new_port="${new_port:-80}"
 
-  # Validate port is numeric and in valid range
-  [[ "$new_port" =~ ^[0-9]+$ ]] || err "Puerto inválido: $new_port"
-  [[ "$new_port" -ge 1 && "$new_port" -le 65535 ]] || err "Puerto fuera de rango (1-65535)"
+  valid_port "$new_port" || err "Puerto inválido: $new_port (1-65535)"
 
-  # Rewrite Caddyfile with new port (HTTP mode only)
-  sed -i "s/^:[0-9]*/\:$new_port/" "$CADDYFILE" 2>/dev/null || true
+  # Port changes are only supported in HTTP (local-ip) mode: the domain
+  # template requires public 80/443 for Let's Encrypt challenges, and the
+  # blind sed previously corrupted the domain Caddyfile by rewriting its
+  # :80 redirect to an arbitrary port.
+  if ! grep -q "http_port" "$CADDYFILE"; then
+    err "El cambio de puerto solo está soportado en modo HTTP (IP local). En modo dominio, Let's Encrypt requiere 80/443."
+  fi
+
+  # Regenerate the HTTP Caddyfile from the template with the new port and keep
+  # HTTP_PORT in .env in sync — the docker-compose host:container mapping and
+  # the Caddyfile listen port must agree, or the published port never reaches
+  # Caddy. (Both sides use the same ${HTTP_PORT} value.)
+  write_http_caddyfile ":$new_port"
+  sed_env "HTTP_PORT" "$new_port"
 
   current_url="${FRONTEND_URL:-http://localhost}"
-  # Replace port in URL: extract host, append new port
   local host="${current_url#http://}"
   host="${host#https://}"
   host="${host%%:*}"

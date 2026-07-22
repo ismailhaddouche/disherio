@@ -31,9 +31,11 @@ describe('ActivityLogRepository', () => {
     const repository = new ActivityLogRepository();
     const restaurantId = new Types.ObjectId().toString();
     const userId = new Types.ObjectId().toString();
+    const sessionId = new Types.ObjectId().toString();
 
     await repository.find({
       restaurantId,
+      sessionIds: [sessionId],
       userId,
       type: 'CUSTOMER',
       from: new Date('2026-01-01T00:00:00.000Z'),
@@ -42,6 +44,14 @@ describe('ActivityLogRepository', () => {
     });
 
     const pipeline = aggregate.mock.calls[0][0] as Array<Record<string, unknown>>;
+    // The leading match pre-filters by the tenant's sessions (indexed) so the
+    // lookups never scan other tenants' itemorders.
+    const firstMatch = pipeline[0]['$match'] as Record<string, unknown>;
+    expect(firstMatch['session_id']).toEqual({ $in: [new Types.ObjectId(sessionId)] });
+    expect(firstMatch['updatedAt']).toEqual({
+      $gte: new Date('2026-01-01T00:00:00.000Z'),
+      $lte: new Date('2026-01-31T23:59:59.999Z'),
+    });
     const filteredMatchIndex = pipeline.findIndex((stage) => {
       const match = stage['$match'] as Record<string, unknown> | undefined;
       return match?.['type'] === 'CUSTOMER';
@@ -69,10 +79,24 @@ describe('ActivityLogRepository', () => {
 
     await expect(repository.find({
       restaurantId: new Types.ObjectId().toString(),
+      sessionIds: [new Types.ObjectId().toString()],
       userId: 'invalid',
       limit: 100,
     })).rejects.toThrow('INVALID_USER_ID');
 
+    expect(aggregate).not.toHaveBeenCalled();
+  });
+
+  it('short-circuits without sessions instead of scanning every tenant', async () => {
+    const repository = new ActivityLogRepository();
+
+    const records = await repository.find({
+      restaurantId: new Types.ObjectId().toString(),
+      sessionIds: [],
+      limit: 100,
+    });
+
+    expect(records).toEqual([]);
     expect(aggregate).not.toHaveBeenCalled();
   });
 
@@ -93,7 +117,11 @@ describe('ActivityLogRepository', () => {
       },
     ]);
 
-    const records = await repository.find({ restaurantId, limit: 100 });
+    const records = await repository.find({
+      restaurantId,
+      sessionIds: [new Types.ObjectId().toString()],
+      limit: 100,
+    });
 
     const pipeline = aggregate.mock.calls[0][0] as Array<Record<string, unknown>>;
 

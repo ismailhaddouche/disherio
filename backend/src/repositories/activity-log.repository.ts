@@ -9,6 +9,10 @@ export type ActivityLogType = 'KDS' | 'POS' | 'TAS' | 'CUSTOMER';
 
 export interface ActivityLogQuery {
   restaurantId: string;
+  /** The restaurant's session ids, resolved by the service layer. The leading
+   * $match filters on the indexed session_id field so the aggregation never
+   * scans other tenants' itemorders. An empty list short-circuits to []. */
+  sessionIds: string[];
   from?: Date;
   to?: Date;
   userId?: string;
@@ -41,18 +45,23 @@ export class ActivityLogRepository {
     validateObjectId(query.restaurantId, 'restaurant_id');
     if (query.userId) validateObjectId(query.userId, 'user_id');
 
+    const validSessionIds = query.sessionIds
+      .filter((id) => Types.ObjectId.isValid(id))
+      .map((id) => new Types.ObjectId(id));
+    if (validSessionIds.length === 0) return [];
+
     const restaurantId = new Types.ObjectId(query.restaurantId);
-    const pipeline: PipelineStage[] = [];
+    // Tenant pre-filter on the indexed session_id field: without it the
+    // lookups below would run over the whole itemorders collection (all
+    // tenants) before the session.restaurant_id match could discard rows.
+    const firstMatch: Record<string, unknown> = { session_id: { $in: validSessionIds } };
     if (query.from || query.to) {
-      pipeline.push({
-        $match: {
-          updatedAt: {
-            ...(query.from ? { $gte: query.from } : {}),
-            ...(query.to ? { $lte: query.to } : {}),
-          },
-        },
-      });
+      firstMatch.updatedAt = {
+        ...(query.from ? { $gte: query.from } : {}),
+        ...(query.to ? { $lte: query.to } : {}),
+      };
     }
+    const pipeline: PipelineStage[] = [{ $match: firstMatch }];
 
     pipeline.push(
       {
@@ -179,12 +188,20 @@ export class ActivityLogRepository {
     return ItemOrder.aggregate<ActivityLogRecord>(pipeline).exec();
   }
 
-  async findUsers(restaurantIdValue: string): Promise<ActivityLogUser[]> {
+  async findUsers(restaurantIdValue: string, sessionIds: string[]): Promise<ActivityLogUser[]> {
     validateObjectId(restaurantIdValue, 'restaurant_id');
     const restaurantId = new Types.ObjectId(restaurantIdValue);
+    const validSessionIds = sessionIds
+      .filter((id) => Types.ObjectId.isValid(id))
+      .map((id) => new Types.ObjectId(id));
     const [staff, customerIds] = await Promise.all([
       Staff.find({ restaurant_id: restaurantId }).select('staff_name').lean().exec(),
-      ItemOrder.aggregate<{ _id: Types.ObjectId }>([
+      validSessionIds.length === 0
+        ? Promise.resolve([])
+        : ItemOrder.aggregate<{ _id: Types.ObjectId }>([
+        // Same tenant pre-filter as find(): restrict the lookup to this
+        // restaurant's sessions instead of the whole itemorders collection.
+        { $match: { session_id: { $in: validSessionIds } } },
         {
           $lookup: {
             from: TotemSession.collection.name,

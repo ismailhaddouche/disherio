@@ -36,6 +36,14 @@ interface OrderLimitErrorDetails {
 
 type ViewTab = 'menu' | 'my-orders' | 'all-orders';
 
+/**
+ * The cart store is a module-level singleton shared with the POS and across
+ * totem mounts. Track which totem session currently owns it so that a
+ * different session (another QR, or a table closed and reopened) never
+ * inherits the previous customer's items.
+ */
+let cartOwnerSessionId: string | null = null;
+
 @Component({
   selector: 'app-totem',
   standalone: true,
@@ -158,6 +166,7 @@ export class TotemComponent implements OnInit, OnDestroy {
           }
           // Keep the session credential in per-tab storage. Never place it in
           // the URL, where it can leak through history, screenshots or referrers.
+          this.resetCartForNewSession(session.session_id);
           this.saveSessionTokenToStorage(session.session_id, session.session_token);
           this.sessionInfo.set(session);
           // Check if we already have a customer in session storage
@@ -189,6 +198,7 @@ export class TotemComponent implements OnInit, OnDestroy {
             this.sessionClosedScreen.set(true);
             return;
           }
+          this.resetCartForNewSession(session.session_id);
           this.saveSessionTokenToStorage(session.session_id, session.session_token);
           this.sessionInfo.set(session);
         },
@@ -206,10 +216,24 @@ export class TotemComponent implements OnInit, OnDestroy {
     if (session) {
       this.clearSessionStorage(session.session_id);
     }
+    // Drop any items left in the shared cart so the next customer who scans
+    // this totem does not inherit them.
+    cartStore.clear();
+    cartOwnerSessionId = null;
     this.sessionClosedScreen.set(true);
     this.showNameModal.set(false);
     this.customerInfo.set(null);
     this.totemSocket.leaveTotemSession();
+  }
+
+  /**
+   * Clear the shared cart when a different totem session takes it over, so no
+   * customer inherits items from a previous session or from the POS.
+   */
+  private resetCartForNewSession(sessionId: string): void {
+    if (cartOwnerSessionId === sessionId) return;
+    cartStore.clear();
+    cartOwnerSessionId = sessionId;
   }
 
   /** Remove persisted session token and customer for a given session. */
@@ -411,6 +435,23 @@ export class TotemComponent implements OnInit, OnDestroy {
 
   incrementCartItem(item: CartItem) {
     this.cart.increment(item);
+  }
+
+  /**
+   * Identity of a cart line. The cart store merges lines only when dish,
+   * variant, extras and customer all match, so the same dish+variant can
+   * legitimately appear twice with different extras: the @for track key must
+   * include every component, otherwise Angular aborts rendering with NG0955.
+   */
+  cartItemTrack(item: CartItem): string {
+    const extrasKey = item.extras.map(extra => extra.extraId).sort().join('|');
+    return `${item.dishId}|${item.variantId ?? ''}|${item.customerId ?? ''}|${extrasKey}`;
+  }
+
+  /** Line total including extras, consistent with cartStore.calculateItemTotal. */
+  cartLineTotal(item: CartItem): number {
+    const extrasTotal = item.extras.reduce((sum, extra) => sum + extra.price, 0);
+    return (item.price + (item.variantPrice ?? 0) + extrasTotal) * item.quantity;
   }
 
   decrementCartItem(item: CartItem) {

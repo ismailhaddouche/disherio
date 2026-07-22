@@ -111,6 +111,7 @@ gen_secret() {
 
 # Genera todos los secretos necesarios una vez (idempotente si ya están en .env)
 ensure_secrets() {
+    MONGO_APP_USER="${MONGO_APP_USER:-disherio_app}"
     MONGO_ROOT_PASS="${MONGO_ROOT_PASS:-$(gen_secret 32)}"
     MONGO_APP_PASS="${MONGO_APP_PASS:-$(gen_secret 32)}"
     REDIS_PASSWORD="${REDIS_PASSWORD:-$(gen_secret 24)}"

@@ -1,3 +1,13 @@
+# =============================================================================
+# Fallback Caddyfile.
+# install.sh and scripts/configure.sh OVERWRITE this file at deploy time from
+# the templates under infrastructure/caddy-templates/. This version exists so
+# a bare `docker compose up` (without running an installer) still boots: it
+# serves HTTPS with Caddy's internal CA, which browsers flag as self-signed.
+# For a real deployment, run ./scripts/install.sh and pick a mode. Custom
+# access ports are NOT supported by this fallback — use configure.sh.
+# =============================================================================
+
 {
     admin off
     # Auto HTTPS habilitado - Caddy gestionara automaticamente los certificados
@@ -17,8 +27,9 @@
 # Usar este bloque cuando Caddy reciba un FQDN (ej. app.disherio.com)
 # ============================================
 :443 {
-    # TLS 1.3 como minimo protocolo
-    tls {
+    # No hostname is present, so Caddy cannot obtain a Let's Encrypt cert and
+    # falls back to its internal CA (self-signed). Be explicit about it.
+    tls internal {
         protocols tls1.3
     }
 

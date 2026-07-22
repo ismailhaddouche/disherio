@@ -10,7 +10,11 @@ import {
 } from '../utils/file-security';
 import logger from '../config/logger';
 
-const UPLOADS_DIR = process.env.UPLOADS_DIR || '/app/uploads';
+// Must resolve to the same directory index.ts serves via express.static:
+// env UPLOADS_DIR or <cwd>/uploads (which is /app/uploads in Docker, where
+// WORKDIR is /app). A divergent default here writes images to a directory
+// that is never served, so every uploaded image returns 404.
+const UPLOADS_DIR = process.env.UPLOADS_DIR || path.join(process.cwd(), 'uploads');
 
 // Ensure directory exists (in local it might be different, but in Docker it's /app/uploads)
 if (!fs.existsSync(UPLOADS_DIR)) {

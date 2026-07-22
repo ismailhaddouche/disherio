@@ -14,7 +14,7 @@ import {
   verifyRefreshToken,
   generateAccessToken,
 } from '../services/refresh-token.service';
-import { disconnectStaffSockets } from '../services/socket-session.service';
+import { disconnectSocketsByAccessToken } from '../services/socket-session.service';
 import { getEnv } from '../config/env';
 
 const ACCESS_COOKIE = 'auth_token';
@@ -128,13 +128,11 @@ export const refresh = asyncHandler(async (req: Request, res: Response) => {
 
 export const logout = asyncHandler(async (req: Request, res: Response) => {
   const isSecure = isSecureRequest(req);
-  let staffId = req.user?.staffId;
 
   try {
     const accessToken = extractAccessToken(req);
     if (accessToken) {
-      const verifiedPayload = await blocklistAccessToken(accessToken);
-      staffId = verifiedPayload?.staffId ?? staffId;
+      await blocklistAccessToken(accessToken);
     }
 
     // Revoke only the current refresh token family instead of every session,
@@ -145,14 +143,18 @@ export const logout = asyncHandler(async (req: Request, res: Response) => {
     if (refreshToken) {
       const verification = await verifyRefreshToken(refreshToken);
       if (verification.valid && verification.family) {
-        staffId = verification.payload?.staffId ?? staffId;
         await revokeRefreshFamily(verification.family);
       }
     }
-  } finally {
-    if (staffId) {
-      await disconnectStaffSockets(staffId);
+
+    // Disconnect only this device's sockets (those authenticated with the
+    // blocklisted access token). Without an access token there is no way to
+    // identify the device, and kicking every socket of the user would
+    // contradict the per-device revocation above.
+    if (accessToken) {
+      await disconnectSocketsByAccessToken(accessToken);
     }
+  } finally {
     res.clearCookie(ACCESS_COOKIE, cookieOptions(0, isSecure));
     res.clearCookie(REFRESH_COOKIE, cookieOptions(0, isSecure));
   }

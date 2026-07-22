@@ -83,6 +83,12 @@ export class TotemSessionRepository extends BaseRepository<ITotemSession> {
         restaurant_id: new Types.ObjectId(restaurantId),
         totem_state: { $in: ['STARTED', 'COMPLETE'] },
       })
+      // This listing feeds staff/POS screens: never load the ephemeral
+      // public-flow credential. (Controllers also strip it via
+      // sessionToResponse; exclude it here as defense in depth. The schema
+      // cannot use select:false because the QR issuance and token-validation
+      // flows legitimately read session_token.)
+      .select('-session_token')
       .sort({ session_date_start: -1 })
       .lean()
       .exec();
@@ -131,6 +137,9 @@ export class TotemSessionRepository extends BaseRepository<ITotemSession> {
     validateObjectId(totemId, 'totem_id');
     return this.model
       .find({ totem_id: new Types.ObjectId(totemId) })
+      // Staff-facing session history: the ephemeral session_token is never
+      // needed here (same reasoning as findActiveByRestaurantId).
+      .select('-session_token')
       .sort({ createdAt: -1 })
       .exec();
   }

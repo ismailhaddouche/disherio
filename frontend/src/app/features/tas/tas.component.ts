@@ -385,30 +385,14 @@ export class TasComponent extends OrderWorkspaceState implements OnInit, OnDestr
   }
 
   private deleteItemConfirmed(itemId: string): void {
-    // Use WebSocket to cancel item (emits to all connected clients)
+    // Single channel: the socket handler persists the cancellation, notifies
+    // KDS/customers/POS with the reason, and broadcasts tas:item_canceled
+    // back to this room (the store updates from that event; the success
+    // notification arrives via tas:item_canceled_confirm). The previous
+    // additional HTTP DELETE raced the socket: whichever landed second failed
+    // (CANCELED items cannot be deleted) and surfaced a bogus SERVER_ERROR
+    // even though the cancellation had succeeded.
     this.tasSocket.tasCancelItem(itemId, 'Canceled by waiter');
-
-    // Optimistically update UI
-    tasStore.updateItemState(itemId, 'CANCELED');
-
-    // Also persist via HTTP
-    this.tasService.deleteItem(itemId)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: () => {
-          this.notify.info(this.i18n.translate('tas.item_deleted'));
-        },
-        error: (err) => {
-          // Revert on error - reload session items from server
-          this.tasService.getSessionItems(this.selectedSession()!._id!)
-            .pipe(takeUntil(this.destroy$))
-            .subscribe({
-              next: (items) => tasStore.loadSessionItems(items),
-              error: () => this.notify.error(this.i18n.translate('errors.SERVER_ERROR')),
-            });
-          this.notify.error(this.i18n.translate('errors.SERVER_ERROR'));
-        },
-      });
   }
 
   markServiceItemServed(itemId: string) {

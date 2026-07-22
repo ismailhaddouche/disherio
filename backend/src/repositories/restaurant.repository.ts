@@ -47,16 +47,6 @@ export class RestaurantRepository extends BaseRepository<IRestaurant> {
     return this.model.findByIdAndUpdate(id, settings, { returnDocument: 'after' }).exec();
   }
 
-  async updateTheme(id: string, theme: string): Promise<IRestaurant | null> {
-    validateObjectId(id, 'restaurant_id');
-    return this.model.findByIdAndUpdate(id, { theme }, { returnDocument: 'after' }).exec();
-  }
-
-  async updateLanguage(id: string, language: string): Promise<IRestaurant | null> {
-    validateObjectId(id, 'restaurant_id');
-    return this.model.findByIdAndUpdate(id, { language }, { returnDocument: 'after' }).exec();
-  }
-
   async updateCurrency(id: string, currency: string): Promise<IRestaurant | null> {
     validateObjectId(id, 'restaurant_id');
     return this.model.findByIdAndUpdate(id, { currency }, { returnDocument: 'after' }).exec();

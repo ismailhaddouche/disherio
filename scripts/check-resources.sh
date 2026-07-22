@@ -7,6 +7,13 @@
 
 set -e
 
+# Resolve the compose project directory: the script lives in scripts/, the
+# project root is one level up. docker compose resolves the project itself
+# (name derived from the directory), so no hard-coded project name is needed.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(dirname "$SCRIPT_DIR")"
+DC="docker compose --project-directory \"$ROOT_DIR\" --file \"$ROOT_DIR/docker-compose.yml\""
+
 # Output colors
 RED='\033[0;31m'
 YELLOW='\033[1;33m'
@@ -52,8 +59,20 @@ num_mul() {
     fi
 }
 
-# Containers a monitorear
-CONTAINERS=("disherio_mongo" "disherio_backend" "disherio_frontend" "disherio_caddy")
+# Services to monitor (compose service names, NOT container names). Compose
+# names containers <project>-<service>-N, which depends on the project name,
+# so resolving by service name is the only stable approach.
+SERVICES=("mongo" "redis" "backend" "frontend" "caddy")
+
+# Resolve the running container for a compose service. Returns the container
+# id (empty when the service is not running). docker compose ps -q prints the
+# id of the running container for that service only.
+resolve_container() {
+    local service=$1
+    local id
+    id=$(eval "$DC ps -q '$service' 2>/dev/null" | head -n 1)
+    echo "$id"
+}
 
 # ============================================
 # Funciones
@@ -117,15 +136,17 @@ get_cpu_limit() {
     num_div "$cpu_quota" "$cpu_period"
 }
 
-# Check resource usage for one container.
+# Check resource usage for one container (resolved by compose service name).
 check_container_resources() {
-    local container=$1
+    local service=$1
+    local container
+    container=$(resolve_container "$service")
     local alerts=()
 
-    print_container_header "$container"
+    print_container_header "$service"
 
     # Check whether the container is running.
-    if ! docker ps --format "{{.Names}}" | grep -q "^${container}$"; then
+    if [ -z "$container" ] || ! docker ps --format "{{.ID}}" | grep -q "^${container}$"; then
         echo -e "${YELLOW}[WARN]  Container no está corriendo${NC}"
         return 1
     fi
@@ -206,10 +227,12 @@ show_summary() {
     local running_containers=0
     local alert_containers=0
 
-    for container in "${CONTAINERS[@]}"; do
+    for service in "${SERVICES[@]}"; do
         total_containers=$((total_containers + 1))
 
-        if docker ps --format "{{.Names}}" | grep -q "^${container}$"; then
+        local container
+        container=$(resolve_container "$service")
+        if [ -n "$container" ] && docker ps --format "{{.ID}}" | grep -q "^${container}$"; then
             running_containers=$((running_containers + 1))
             local stats=$(docker stats --no-stream --format "{{.CPUPerc}}|{{.MemPerc}}" "$container" 2>/dev/null || echo "0%|0%")
             local cpu=$(echo "$stats" | cut -d'|' -f1)
@@ -225,9 +248,9 @@ show_summary() {
                 alert_containers=$((alert_containers + 1))
             fi
 
-            printf "%-20s %-12s %-12s %-12b\n" "$container" "$cpu" "$mem" "$status"
+            printf "%-20s %-12s %-12s %-12b\n" "$service" "$cpu" "$mem" "$status"
         else
-            printf "%-20s %-12s %-12s %-12b\n" "$container" "-" "-" "${YELLOW}STOPPED${NC}"
+            printf "%-20s %-12s %-12s %-12b\n" "$service" "-" "-" "${YELLOW}STOPPED${NC}"
         fi
     done
 
@@ -249,8 +272,8 @@ watch_mode() {
         clear
         print_header
 
-        for container in "${CONTAINERS[@]}"; do
-            check_container_resources "$container"
+        for service in "${SERVICES[@]}"; do
+            check_container_resources "$service"
             echo ""
         done
 
@@ -270,14 +293,14 @@ Uso: $0 [opciones]
 Opciones:
     -w, --watch [segundos]   Modo de monitoreo continuo (default: 30s)
     -t, --threshold N        Umbral de alerta en porcentaje (default: 80)
-    -c, --container NOMBRE   Verificar solo un container específico
+    -c, --container NOMBRE   Verificar solo un servicio específico (mongo, redis, backend, frontend, caddy)
     -h, --help               Mostrar esta ayuda
 
 Ejemplos:
     $0                       Verificar todos los containers una vez
     $0 -w                    Monitoreo continuo cada 30 segundos
     $0 -w 60                 Monitoreo continuo cada 60 segundos
-    $0 -c disherio_mongo     Verificar solo MongoDB
+    $0 -c mongo            Verificar solo MongoDB
     $0 -t 90                 Usar umbral de 90% para alertas
 
 EOF
@@ -342,8 +365,8 @@ main() {
         if [ -n "$single_container" ]; then
             check_container_resources "$single_container"
         else
-            for container in "${CONTAINERS[@]}"; do
-                check_container_resources "$container"
+            for service in "${SERVICES[@]}"; do
+                check_container_resources "$service"
                 echo ""
             done
 

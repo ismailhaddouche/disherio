@@ -351,6 +351,30 @@ services:
     command: ["node", "dist/seeders/seed-examples.js"]
     restart: "no"
 
+  # One-shot service: fixes ownership of Caddy's named volumes. The
+  # caddy:2-alpine image initializes /data and /config as root:root, but the
+  # caddy service runs as uid 65532 and must write ACME certificates and
+  # autosaved config there. Runs as root with only the capabilities needed
+  # to chown; idempotent, safe on first boot and on pre-existing volumes.
+  caddy-init:
+    image: caddy:2-alpine@sha256:5f5c8640aae01df9654968d946d8f1a56c497f1dd5c5cda4cf95ab7c14d58648
+    user: "0:0"
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - chown -R 65532:65532 /data /config
+    restart: "no"
+
   caddy:
     image: caddy:2-alpine@sha256:5f5c8640aae01df9654968d946d8f1a56c497f1dd5c5cda4cf95ab7c14d58648
     restart: unless-stopped
@@ -359,9 +383,15 @@ services:
         condition: service_healthy
       frontend:
         condition: service_healthy
+      caddy-init:
+        condition: service_completed_successfully
     ports:
-      - "${HTTP_PORT:-80}:80"
-      - "${HTTPS_PORT:-443}:443"
+      # Same value on both sides: the Caddy templates listen on ${HTTP_PORT}/
+      # ${HTTPS_PORT} *inside* the container, so the published host port must
+      # equal the container port. (The previous host:80/443 fixed container
+      # mapping broke local-ip mode whenever HTTP_PORT/HTTPS_PORT changed.)
+      - "${HTTP_PORT:-80}:${HTTP_PORT:-80}"
+      - "${HTTPS_PORT:-443}:${HTTPS_PORT:-443}"
     expose:
       - "8080"
     volumes:

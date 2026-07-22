@@ -604,7 +604,8 @@ EOF
   done
   if [[ -n "$port_err" ]]; then
     warn "Puertos en uso:${port_err}. Caddy podría no arrancar."
-    warn "Libéralos o cambia HTTP_PORT/HTTPS_PORT en .env antes de iniciar."
+    warn "Libéralos o ajústalos con: sudo ./scripts/configure.sh (opción 2)."
+    warn "(El Caddyfile se materializa con el puerto al configurar; editarlo solo en .env no basta.)"
   else
     ok "Puertos ${HTTP_PORT}/${HTTPS_PORT} disponibles"
   fi
@@ -646,6 +647,15 @@ EOF
         2>/dev/null || echo "err")
   if [[ "$app_user_exists" == "yes" ]]; then
     ok "Usuario app presente"
+    # The volume predates this install: if config/secrets was lost and
+    # MONGO_APP_PASS was regenerated, the password stored in MongoDB no longer
+    # matches the secret the backend will use, and authentication would fail
+    # silently. Always reconcile the user's password with the current secret.
+    log "Sincronizando la contraseña del usuario app con el secreto actual..."
+    docker compose exec -T mongo sh -c \
+      'mongosh --quiet --eval "const fs=require(\"fs\"); const pw=fs.readFileSync(\"/run/secrets/mongo_root_password\",\"utf8\").trim(); const appPw=fs.readFileSync(\"/run/secrets/mongo_app_password\",\"utf8\").trim(); db.getSiblingDB(\"admin\").auth(process.env.MONGO_INITDB_ROOT_USERNAME,pw); db.getSiblingDB(\"disherio\").changeUserPassword(process.env.MONGO_APP_USER, appPw); print(\"password reconciled\")"' \
+      >> "$LOG_FILE" 2>&1 || err "No se pudo sincronizar la contraseña del usuario app"
+    ok "Contraseña del usuario app sincronizada"
   else
     log "Usuario app no encontrado. Creándolo a la fuerza..."
     # createUser throws when the user already exists; tolerate that case with try/catch.

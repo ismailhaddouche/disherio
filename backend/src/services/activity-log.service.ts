@@ -3,6 +3,7 @@ import {
   ActivityLogRepository,
   ActivityLogType,
 } from '../repositories/activity-log.repository';
+import { TotemSessionRepository } from '../repositories/totem.repository';
 
 export interface ActivityLogFilters {
   from?: Date;
@@ -12,6 +13,16 @@ export interface ActivityLogFilters {
 }
 
 const activityLogRepo = new ActivityLogRepository();
+const totemSessionRepo = new TotemSessionRepository();
+
+/**
+ * Resolve the restaurant's session ids so log aggregations pre-filter by the
+ * indexed session_id field instead of scanning every tenant's itemorders.
+ */
+async function getRestaurantSessionIds(restaurantId: string): Promise<string[]> {
+  const sessions = await totemSessionRepo.findByRestaurantId(restaurantId);
+  return sessions.map((session) => session._id.toString());
+}
 
 function actionFromState(state: string): string {
   switch (state) {
@@ -26,8 +37,10 @@ function actionFromState(state: string): string {
 }
 
 export async function getLogs(restaurantId: string, filters: ActivityLogFilters) {
+  const sessionIds = await getRestaurantSessionIds(restaurantId);
   const records = await activityLogRepo.find({
     restaurantId,
+    sessionIds,
     ...filters,
     limit: 100,
   });
@@ -59,5 +72,6 @@ export async function getLogs(restaurantId: string, filters: ActivityLogFilters)
 }
 
 export async function getLogUsers(restaurantId: string) {
-  return activityLogRepo.findUsers(restaurantId);
+  const sessionIds = await getRestaurantSessionIds(restaurantId);
+  return activityLogRepo.findUsers(restaurantId, sessionIds);
 }

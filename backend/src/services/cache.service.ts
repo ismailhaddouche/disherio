@@ -43,12 +43,18 @@ class CacheService {
       const redisUrl = getEnv().REDIS_URL || 'redis://localhost:6379';
       const redisPassword = getEnv().REDIS_PASSWORD;
 
+      // Bounded retries only during the initial connect: once the client has
+      // been ready, a Redis restart (e.g. `docker compose restart redis`)
+      // must be retried forever, otherwise the cache stays disabled until
+      // the whole process is restarted.
+      let everConnected = false;
+
       this.client = createClient({
         url: redisUrl,
         password: redisPassword,
         socket: {
           reconnectStrategy: (retries) => {
-            if (retries > 5) {
+            if (!everConnected && retries > 5) {
               logger.error('Redis max reconnection attempts reached');
               return false;
             }
@@ -68,6 +74,7 @@ class CacheService {
 
       this.client.on('ready', () => {
         logger.info('Redis client ready');
+        everConnected = true;
         this.isConnected = true;
       });
 

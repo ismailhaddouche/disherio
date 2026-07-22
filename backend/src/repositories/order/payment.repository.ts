@@ -118,7 +118,16 @@ export class PaymentRepository extends BaseRepository<IPayment> {
   ): Promise<PaymentHistoryEntry[]> {
     validateObjectId(restaurantId, 'restaurant_id');
 
-    const matchStage: Record<string, unknown> = {};
+    // Tenant pre-filter on the indexed restaurant_id field: without it the
+    // lookups below would join every tenant's payments before the restaurant
+    // match could discard rows. Legacy payments without restaurant_id are
+    // kept and validated against the joined totem after the lookup.
+    const matchStage: Record<string, unknown> = {
+      $or: [
+        { restaurant_id: new Types.ObjectId(restaurantId) },
+        { restaurant_id: { $exists: false } },
+      ],
+    };
     if (filters.from || filters.to) {
       matchStage.payment_date = {};
       if (filters.from) (matchStage.payment_date as Record<string, Date>).$gte = filters.from;
@@ -235,7 +244,24 @@ export class PaymentRepository extends BaseRepository<IPayment> {
       {
         $group: {
           _id: null,
-          totalRevenue: { $sum: '$payment_total' },
+          // Collected revenue only: sum the amounts of tickets actually paid.
+          // A Payment document is created when the bill is issued, but its
+          // tickets may never be settled (e.g. a shared bill nobody paid);
+          // counting payment_total here inflated the dashboard versus
+          // getSalesByDish/getDishStats, which only count PAID sessions.
+          // Ticket splits are cent-exact (calculation.utils), so the paid
+          // tickets of a fully settled payment add up to payment_total.
+          totalRevenue: {
+            $sum: {
+              $reduce: {
+                input: {
+                  $filter: { input: '$tickets', as: 'ticket', cond: '$$ticket.paid' },
+                },
+                initialValue: 0,
+                in: { $add: ['$$value', '$$this.ticket_amount'] },
+              },
+            },
+          },
           totalTransactions: { $sum: 1 },
           averageTicket: { $avg: '$payment_total' },
           allTickets: { $push: '$tickets' },

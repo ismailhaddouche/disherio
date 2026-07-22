@@ -1,6 +1,7 @@
 import { RestaurantRepository } from '../repositories/restaurant.repository';
 import { IRestaurant } from '../models/restaurant.model';
 import { cache, CacheKeys, CACHE_TTL, fetchWithCache } from './cache.service';
+import { deleteImage } from './image.service';
 import { createError } from '../utils/async-handler';
 import { ErrorCode } from '@disherio/shared';
 
@@ -71,6 +72,17 @@ export async function updateRestaurant(
   const updated = await restaurantRepo.updateRestaurant(id, data);
 
   const result = updated;
+
+  // Replacing the logo orphans the previous file; delete it only after the
+  // update is confirmed (same ordering as dish/category image cleanup).
+  if (
+    result
+    && data.logo_image_url !== undefined
+    && data.logo_image_url !== current.logo_image_url
+    && current.logo_image_url
+  ) {
+    await deleteImage(current.logo_image_url, id);
+  }
 
   const urlsToInvalidate = [...new Set(
     [previousUrl, result?.restaurant_url].filter((url): url is string => Boolean(url))

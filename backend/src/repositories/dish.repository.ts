@@ -314,14 +314,23 @@ export class DishRepository extends BaseRepository<IDish> {
   /**
    * Get dish statistics with aggregation pipeline.
    * Combines dish data with order statistics.
+   * Scoped to the restaurant's session ids (same pattern as
+   * ItemOrderRepository.getSalesByDish): the caller resolves the tenant's
+   * sessions first so the leading $match can use the session_id index
+   * instead of scanning every tenant's itemorders.
    */
   async getDishStats(
-    restaurantId: string,
+    sessionIds: string[],
     options?: { dateRange?: { from?: Date; to?: Date }; limit?: number }
   ): Promise<DishStats[]> {
-    validateObjectId(restaurantId, 'restaurant_id');
+    if (sessionIds.length === 0) return [];
 
     const { dateRange, limit = 10 } = options ?? {};
+
+    const validSessionIds = sessionIds
+      .filter(id => Types.ObjectId.isValid(id))
+      .map(id => new Types.ObjectId(id));
+    if (validSessionIds.length === 0) return [];
 
     // Aggregate from the item snapshots (itemorders), not from the live
     // dishes collection: historical items must survive dish deletion.
@@ -330,6 +339,7 @@ export class DishRepository extends BaseRepository<IDish> {
     const pipeline: PipelineStage[] = [
       {
         $match: {
+          session_id: { $in: validSessionIds },
           item_state: { $ne: 'CANCELED' },
           ...(dateRange?.from && { createdAt: { $gte: dateRange.from } }),
           ...(dateRange?.to && { createdAt: { $lte: dateRange.to } }),
@@ -344,7 +354,14 @@ export class DishRepository extends BaseRepository<IDish> {
         },
       },
       { $unwind: '$session' },
-      { $match: { 'session.restaurant_id': new Types.ObjectId(restaurantId) } },
+      {
+        $match: {
+          // Billed revenue/units only: items from unpaid sessions (STARTED/
+          // COMPLETE) do not count, so these figures stay reconciliable with
+          // getSalesByDish and paymentStats, which already filter on PAID.
+          'session.totem_state': 'PAID',
+        },
+      },
       {
         $group: {
           _id: '$item_dish_id',
@@ -446,20 +463,29 @@ export class DishRepository extends BaseRepository<IDish> {
   /**
    * Get popular dishes with revenue calculation.
    * Optimized for dashboard display.
+   * Scoped to the restaurant's session ids (same pattern as
+   * ItemOrderRepository.getSalesByDish) so the leading $match uses the
+   * session_id index instead of scanning every tenant's itemorders.
    */
   async getPopularDishes(
-    restaurantId: string,
+    sessionIds: string[],
     options?: {
       limit?: number;
       dateRange?: { from?: Date; to?: Date };
       type?: 'KITCHEN' | 'SERVICE';
     }
   ): Promise<Array<DishStats & { trend?: 'up' | 'down' | 'stable' }>> {
-    validateObjectId(restaurantId, 'restaurant_id');
+    if (sessionIds.length === 0) return [];
 
     const { limit = 5, dateRange, type } = options ?? {};
 
+    const validSessionIds = sessionIds
+      .filter(id => Types.ObjectId.isValid(id))
+      .map(id => new Types.ObjectId(id));
+    if (validSessionIds.length === 0) return [];
+
     const dateFilter: Record<string, unknown> = {
+      session_id: { $in: validSessionIds },
       item_state: { $ne: 'CANCELED' },
       ...(type && { item_disher_type: type }),
     };
@@ -481,7 +507,14 @@ export class DishRepository extends BaseRepository<IDish> {
         },
       },
       { $unwind: '$session' },
-      { $match: { 'session.restaurant_id': new Types.ObjectId(restaurantId) } },
+      {
+        $match: {
+          // Billed revenue/units only: items from unpaid sessions (STARTED/
+          // COMPLETE) do not count, so these figures stay reconciliable with
+          // getSalesByDish and paymentStats, which already filter on PAID.
+          'session.totem_state': 'PAID',
+        },
+      },
       {
         $group: {
           _id: '$item_dish_id',

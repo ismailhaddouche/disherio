@@ -14,7 +14,14 @@ import { checkRateLimit, getSocketClientAddress, getSocketHandshakeIdentity } fr
 
 let io: SocketServer | undefined;
 const activeConnectionsByAddress = new Map<string, number>();
-const MAX_CONNECTIONS_PER_ADDRESS = 100;
+// Cap concurrent sockets per client address (anti-flood). All the devices of
+// one restaurant typically share a single public IP (NAT): totems, customer
+// phones and staff terminals all land in the same bucket, so the default must
+// absorb a full dining room. Override via SOCKET_MAX_CONNECTIONS_PER_ADDRESS.
+const parsedMaxConnections = Number.parseInt(process.env.SOCKET_MAX_CONNECTIONS_PER_ADDRESS ?? '', 10);
+const MAX_CONNECTIONS_PER_ADDRESS = Number.isInteger(parsedMaxConnections) && parsedMaxConnections > 0
+  ? parsedMaxConnections
+  : 300;
 const MAX_HANDSHAKES_PER_MINUTE = 120;
 
 // Build allowed origins for Socket.IO

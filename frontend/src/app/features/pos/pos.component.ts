@@ -245,9 +245,13 @@ export class PosComponent extends OrderWorkspaceState implements OnInit, OnDestr
     });
 
     this.listen('kds:new_item', (item: ItemOrder) => {
-      if (item.session_id === this.selectedSession()?._id) {
-        this.sessionItems.update(items => [...items, item]);
-      }
+      if (item.session_id !== this.selectedSession()?._id) return;
+      // The HTTP response of our own sendOrder() also returns these items:
+      // deduplicate by _id so the ticket is never inflated (same guard the
+      // TAS workspace applies with addItemIfMissing).
+      this.sessionItems.update(items =>
+        items.some(existing => existing._id === item._id) ? items : [...items, item]
+      );
     });
 
     this.listen('pos:session_closed', (data: SessionClosedEvent) => {
@@ -406,7 +410,13 @@ export class PosComponent extends OrderWorkspaceState implements OnInit, OnDestr
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (result) => {
-          this.sessionItems.update(items => [...items, ...result.items]);
+          // The kds:new_item socket events for this batch may arrive before
+          // or after this response; skip any item already present.
+          this.sessionItems.update(items => {
+            const existingIds = new Set(items.map(item => item._id));
+            const newItems = result.items.filter(item => !existingIds.has(item._id));
+            return newItems.length > 0 ? [...items, ...newItems] : items;
+          });
           this.pendingItems.set([]);
           this.isSendingOrder.set(false);
           this.showMenu.set(false);

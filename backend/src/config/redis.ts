@@ -37,12 +37,25 @@ export async function initRedis(): Promise<DisherRedisClient> {
   }
 
   const url = getRedisUrl();
+  // Retry forever once the client has been connected at least once: a brief
+  // Redis restart (e.g. `docker compose restart redis`) must not permanently
+  // kill locks, rate limits and the socket adapter for this process. During
+  // the initial connect we still give up quickly so startup can proceed
+  // without cache (callers catch and degrade gracefully).
+  let everConnected = false;
   const client = createClient({
     url,
     password: getRedisPassword(),
     socket: {
-      reconnectStrategy: (retries) => retries >= 5 ? false : Math.min(retries * 50, 500),
+      reconnectStrategy: (retries) => {
+        if (!everConnected && retries >= 5) return false;
+        return Math.min(retries * 200, 3000);
+      },
     },
+  });
+
+  client.on('ready', () => {
+    everConnected = true;
   });
 
   client.on('error', (err) => {
@@ -100,17 +113,33 @@ export async function initSocketRedisAdapter(): Promise<{
 
   const url = getRedisUrl();
 
+  // Same reconnection policy as initRedis: bounded retries during the initial
+  // connect (startup falls back to the in-memory adapter), unlimited retries
+  // afterwards so a Redis restart does not permanently disable multi-node
+  // broadcasting.
+  let everConnected = false;
+  const reconnectStrategy = (retries: number): number | false => {
+    if (!everConnected && retries >= 5) return false;
+    return Math.min(retries * 200, 3000);
+  };
+
   // Create publisher client
   const publisher = createClient({
     url,
     password: getRedisPassword(),
-    socket: {
-      reconnectStrategy: (retries) => retries >= 5 ? false : Math.min(retries * 50, 500),
-    },
+    socket: { reconnectStrategy },
   });
 
   // Create subscriber client (duplicate)
   const subscriber = publisher.duplicate();
+
+  publisher.on('ready', () => {
+    everConnected = true;
+  });
+
+  subscriber.on('ready', () => {
+    everConnected = true;
+  });
 
   publisher.on('error', (err) => {
     logger.error({ err }, 'Redis pub client error');

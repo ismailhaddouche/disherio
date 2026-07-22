@@ -106,6 +106,19 @@ export async function updateDish(
     const updated = await dishRepo.updateDish(dishId, restaurantId, data);
     await invalidateDishCaches(dishId, restaurantId);
 
+    // Replacing (or clearing) the dish image orphans the previous file:
+    // delete it only after MongoDB has confirmed the entity update, same
+    // ordering guarantee as deleteDish. Legacy unowned files are retained by
+    // deleteImage itself.
+    if (
+      updated
+      && data.disher_url_image !== undefined
+      && data.disher_url_image !== existing.disher_url_image
+      && existing.disher_url_image
+    ) {
+      await deleteImage(existing.disher_url_image, restaurantId);
+    }
+
     return updated;
   };
 
@@ -172,6 +185,16 @@ export async function updateCategory(id: string, restaurantId: string, data: Upd
 
   const updated = await categoryRepo.updateCategory(id, restaurantId, data);
   await invalidateCategoryCaches(id, restaurantId);
+
+  // Same orphan cleanup as updateDish when the category image is replaced.
+  if (
+    updated
+    && data.category_image_url !== undefined
+    && data.category_image_url !== existing.category_image_url
+    && existing.category_image_url
+  ) {
+    await deleteImage(existing.category_image_url, restaurantId);
+  }
 
   return updated;
 }
