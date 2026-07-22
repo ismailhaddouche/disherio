@@ -249,10 +249,30 @@ export class DishFormComponent implements OnInit, OnDestroy {
       return hasName && hasValidPrice;
     });
 
+    // Build the PATCH payload with only schema fields: the backend's
+    // UpdateDishSchema is .strict() and rejects document metadata (_id,
+    // restaurant_id, createdAt, updatedAt, __v) that spreading this.dish()
+    // would otherwise send back. category_id is normalized to a string in
+    // case the backend returned a populated Category object.
+    const {
+      _id: _omitId,
+      restaurant_id: _omitRestaurant,
+      createdAt: _omitCreatedAt,
+      updatedAt: _omitUpdatedAt,
+      __v: _omitV,
+      ...editableFields
+    } = this.dish() as Record<string, unknown>;
+
+    const rawCategoryId = this.dish().category_id as unknown;
+    const categoryId = typeof rawCategoryId === 'string'
+      ? rawCategoryId
+      : (rawCategoryId as { _id?: string })?._id ?? '';
+
     const dishData = {
-      ...this.dish(),
+      ...editableFields,
+      category_id: categoryId,
       variants: validVariants,
-      extras: validExtras
+      extras: validExtras,
     };
 
     this.saving.set(true);

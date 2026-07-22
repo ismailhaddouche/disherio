@@ -188,9 +188,20 @@ export class CategoryFormComponent implements OnInit, OnDestroy {
     }
 
     this.saving.set(true);
-    // The backend schema rejects category_image_url: null; omit it when
-    // no image has been uploaded yet.
-    const { category_image_url, ...rest } = this.category();
+    // Build the payload with only schema fields: the backend's
+    // CategorySchema.partial().strict() rejects document metadata (_id,
+    // restaurant_id, createdAt, updatedAt, __v) that spreading this.category()
+    // would send back. category_image_url is omitted when null (the schema
+    // rejects null).
+    const {
+      _id: _omitId,
+      restaurant_id: _omitRestaurant,
+      createdAt: _omitCreatedAt,
+      updatedAt: _omitUpdatedAt,
+      __v: _omitV,
+      category_image_url,
+      ...rest
+    } = this.category() as Record<string, unknown>;
     const payload = category_image_url ? { ...rest, category_image_url } : rest;
     const obs = this.isEdit
       ? this.categoryService.update(this.category()._id!, payload)
