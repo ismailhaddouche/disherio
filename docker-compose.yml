@@ -117,6 +117,14 @@ services:
 
   redis:
     image: redis:7-alpine@sha256:6ab0b6e7381779332f97b8ca76193e45b0756f38d4c0dcda72dbb3c32061ab99
+    # The redis:7-alpine entrypoint only drops privileges to the redis user
+    # (UID 999) when the command starts with redis-server. Our command uses a
+    # /bin/sh -c wrapper to build redis.conf from the secret, so without an
+    # explicit user the process runs as root; with cap_drop ALL root cannot
+    # write to the redis-owned /data volume, and AOF fails with
+    # "append-only dir appendonlydir: Permission denied". Pin UID 999 so the
+    # process matches the volume ownership (same UID mongo uses).
+    user: "999:999"
     restart: unless-stopped
     cap_drop:
       - ALL
