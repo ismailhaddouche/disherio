@@ -263,7 +263,15 @@ write_docker_secret_files() {
   printf '%s' "$JWT_SECRET" > "$secret_dir/jwt_secret"
   printf '%s' "$JWT_REFRESH_SECRET" > "$secret_dir/jwt_refresh_secret"
   printf '%s' "$ADMIN_PASS" > "$secret_dir/admin_password"
-  chmod 600 "$secret_dir"/*
+  # The secret files are bind-mounted into containers that do not run as root
+  # (mongo runs as UID 999, backend as 1001, redis as its own user). A 0600
+  # mode owned by root makes them unreadable inside those containers, which
+  # crashes mongo with "/run/secrets/mongo_root_password: Permission denied"
+  # on real Linux hosts. The directory stays 0700 (root only), but each file
+  # must be world-readable so the non-root container UIDs can read the secret
+  # they are bind-mounted. This matches how the official mongo image expects
+  # *_FILE secrets to be readable.
+  chmod 644 "$secret_dir"/*
 }
 
 # =============================================================================

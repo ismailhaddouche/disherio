@@ -263,7 +263,8 @@ reset_admin_password() {
 
   install -d -m 0700 "$ROOT_DIR/config/secrets"
   printf '%s' "$new_pass" > "$ROOT_DIR/config/secrets/admin_password"
-  chmod 600 "$ROOT_DIR/config/secrets/admin_password"
+  # Readable by the non-root seed container UID (1001) that bind-mounts it.
+  chmod 644 "$ROOT_DIR/config/secrets/admin_password"
 
   if [[ -f "$ROOT_DIR/.credentials" ]]; then
     local credentials_tmp

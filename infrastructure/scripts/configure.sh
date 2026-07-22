@@ -133,7 +133,9 @@ write_docker_secret_files() {
     printf '%s' "$ADMIN_PASSWORD" > "$secret_dir/admin_password"
     printf '%s' "${CF_TUNNEL_TOKEN:-}" > "$secret_dir/cloudflare_tunnel_token"
     printf 'version: 3\nagent:\n  authtoken: %s\n' "${NGROK_AUTHTOKEN:-}" > "$secret_dir/ngrok_config"
-    chmod 600 "$secret_dir"/*
+    # Files must be readable by non-root container UIDs (mongo 999, backend
+    # 1001, redis). See install.sh write_docker_secret_files for the rationale.
+    chmod 644 "$secret_dir"/*
 }
 
 read_existing_secret() {
