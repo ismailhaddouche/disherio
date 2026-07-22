@@ -22,4 +22,10 @@ EXPOSE 4200
 RUN adduser -D -u 65532 caddy \
     && mkdir -p /data /config \
     && chown -R caddy:caddy /data /config
+# The base image sets cap_net_bind_service=ep on /usr/bin/caddy so it can bind
+# privileged ports without root. This frontend only listens on 4200, so the
+# capability is unnecessary; and its presence makes execve fail with EPERM
+# under no-new-privileges:true (the kernel refuses to apply file capabilities
+# in that mode). Strip it so the non-root caddy can start.
+RUN setcap -r /usr/bin/caddy
 USER caddy
