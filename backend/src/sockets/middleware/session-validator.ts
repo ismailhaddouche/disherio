@@ -1,9 +1,8 @@
 import { AuthenticatedSocket } from '../../middlewares/socketAuth';
-import { TotemSessionRepository, TotemRepository } from '../../repositories';
+import { TotemSessionRepository } from '../../repositories';
 import { logger } from '../../config/logger';
 
 const totemSessionRepo = new TotemSessionRepository();
-const totemRepo = new TotemRepository();
 
 export async function validateSessionAccess(
   socket: AuthenticatedSocket,
@@ -22,18 +21,10 @@ export async function validateSessionAccess(
       return { allowed: false, reason: 'SESSION_NOT_FOUND' };
     }
 
-    // Get totem to find restaurant_id
-    const totemId = session.totem_id?.toString();
-    if (!totemId) {
+    const sessionRestaurantId = session.restaurant_id?.toString();
+    if (!sessionRestaurantId) {
       return { allowed: false, reason: 'INVALID_SESSION_DATA' };
     }
-
-    const totem = await totemRepo.findById(totemId);
-    if (!totem) {
-      return { allowed: false, reason: 'TOTEM_NOT_FOUND' };
-    }
-
-    const sessionRestaurantId = totem.restaurant_id?.toString();
     const userRestaurantId = user.restaurantId;
 
     if (sessionRestaurantId !== userRestaurantId) {

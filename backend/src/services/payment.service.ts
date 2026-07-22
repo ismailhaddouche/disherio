@@ -23,7 +23,6 @@ const {
   items: itemRepository,
   payments: paymentRepository,
   restaurants: restaurantRepository,
-  totems: totemRepository,
   sessions: sessionRepository,
 } = orderRepositories;
 
@@ -44,9 +43,7 @@ export async function calculateSessionTotal(
 
   const session = await sessionRepository.findById(sessionId, dbSession);
   if (!session) throw new Error(ErrorCode.SESSION_NOT_FOUND);
-  const totem = await totemRepository.findById(session.totem_id.toString(), dbSession);
-  if (!totem) throw new Error(ErrorCode.TOTEM_NOT_FOUND);
-  const restaurant = await restaurantRepository.findById(totem.restaurant_id.toString(), dbSession);
+  const restaurant = await restaurantRepository.findById(session.restaurant_id.toString(), dbSession);
   if (!restaurant) throw new Error(ErrorCode.RESTAURANT_NOT_FOUND);
 
   const items = activeItems ?? await itemRepository.findActiveBySessionId(sessionId, dbSession);
@@ -97,22 +94,23 @@ const createPaymentBreaker = new CircuitBreaker(
         ? buildByUserTickets(activeItems, total)
         // ALL always settles in a single ticket; only SHARED honors `parts`.
         : buildSharedTickets(total, paymentType === 'SHARED' ? parts : 1);
-      const totem = await totemRepository.findById(completedSession.totem_id.toString());
-      if (!totem) throw new Error(ErrorCode.TOTEM_NOT_FOUND);
-
       const payment = await paymentRepository.createPayment({
         session_id: sessionId,
-        restaurant_id: totem.restaurant_id.toString(),
+        restaurant_id: completedSession.restaurant_id.toString(),
         totem_snapshot: {
-          totem_id: totem._id.toString(),
-          totem_name: totem.totem_name,
-          totem_type: totem.totem_type,
+          totem_id: completedSession.totem_snapshot.totem_id.toString(),
+          totem_name: completedSession.totem_snapshot.totem_name,
+          totem_type: completedSession.totem_snapshot.totem_type,
         },
         payment_type: paymentType,
         payment_total: total,
         tickets,
       }, session);
-      return { payment, closedFromStarted, restaurantId: totem.restaurant_id.toString() };
+      return {
+        payment,
+        closedFromStarted,
+        restaurantId: completedSession.restaurant_id.toString(),
+      };
     });
 
     if (result.closedFromStarted) {
@@ -216,15 +214,13 @@ export async function archiveSession(sessionId: string) {
     if ((await paymentRepository.findBySessionId(sessionId, session)).length === 0) {
       const { total } = await calculateSessionTotal(sessionId, undefined, undefined, session);
       if (total <= 0) throw new Error(ErrorCode.NO_ITEMS_TO_PAY);
-      const totem = await totemRepository.findById(completedSession.totem_id.toString());
-      if (!totem) throw new Error(ErrorCode.TOTEM_NOT_FOUND);
       await paymentRepository.createPayment({
         session_id: sessionId,
-        restaurant_id: totem.restaurant_id.toString(),
+        restaurant_id: completedSession.restaurant_id.toString(),
         totem_snapshot: {
-          totem_id: totem._id.toString(),
-          totem_name: totem.totem_name,
-          totem_type: totem.totem_type,
+          totem_id: completedSession.totem_snapshot.totem_id.toString(),
+          totem_name: completedSession.totem_snapshot.totem_name,
+          totem_type: completedSession.totem_snapshot.totem_type,
         },
         payment_type: 'ALL',
         payment_total: total,

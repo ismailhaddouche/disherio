@@ -43,6 +43,19 @@ describe('Dish image URL validation', () => {
     expect(result.success).toBe(true);
   });
 
+  it.each([
+    'javascript:alert(1)',
+    'data:image/svg+xml,<svg></svg>',
+    'file:///etc/passwd',
+    'ftp://cdn.example.com/dish.webp',
+  ])('should reject a non-HTTP absolute URL: %s', (disherUrlImage) => {
+    const result = CreateDishSchema.safeParse({
+      ...validDish,
+      disher_url_image: disherUrlImage,
+    });
+    expect(result.success).toBe(false);
+  });
+
   it('should reject null image URL', () => {
     const result = CreateDishSchema.safeParse({
       ...validDish,

@@ -78,6 +78,31 @@ describeWithIntegrationDb('Migration runner', () => {
     expect(applied).toEqual(['0001-a']);
   });
 
+  it('renews a short lease while a long migration is still running', async () => {
+    let releaseMigration!: () => void;
+    const migrationCanFinish = new Promise<void>((resolve) => {
+      releaseMigration = resolve;
+    });
+    const firstRun = runMigrations([{
+      name: '0001-long',
+      up: async () => migrationCanFinish,
+    }], { lockLeaseMs: 90, lockTimeoutMs: 1_000 });
+
+    await new Promise((resolve) => setTimeout(resolve, 180));
+    try {
+      await expect(runMigrations([], { lockLeaseMs: 90, lockTimeoutMs: 100 }))
+        .rejects.toThrow('MIGRATION_LOCK_TIMEOUT');
+    } finally {
+      releaseMigration();
+    }
+    await expect(firstRun).resolves.toEqual(['0001-long']);
+  });
+
+  it('rejects invalid migration lease durations', async () => {
+    await expect(runMigrations([], { lockLeaseMs: 0 }))
+      .rejects.toThrow('MIGRATION_LOCK_INVALID_LEASE');
+  });
+
   it('0001 creates the unique partial pin_lookup index', async () => {
     await runMigrations([migration0001]);
     const indexes = await Staff.collection.indexes();

@@ -1,15 +1,14 @@
 import { Types } from 'mongoose';
 import { ItemOrder, Payment } from '../models/order.model';
-import { Totem, TotemSession } from '../models/totem.model';
+import { TotemSession } from '../models/totem.model';
 import { createError } from '../utils/async-handler';
 
 export async function assertSessionInRestaurant(sessionId: string, restaurantId: string): Promise<void> {
-  const session = await TotemSession.findById(new Types.ObjectId(sessionId)).select('totem_id').lean();
+  const session = await TotemSession.findById(new Types.ObjectId(sessionId)).select('restaurant_id').lean();
   if (!session) {
     throw createError.notFound('SESSION_NOT_FOUND');
   }
-  const totem = await Totem.findById(session.totem_id).select('restaurant_id').lean();
-  if (!totem || totem.restaurant_id.toString() !== restaurantId) {
+  if (session.restaurant_id.toString() !== restaurantId) {
     throw createError.forbidden('FORBIDDEN');
   }
 }

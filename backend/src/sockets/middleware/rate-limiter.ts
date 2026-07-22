@@ -74,6 +74,17 @@ const DEFAULT_RATE_LIMIT = {
   windowMs: 60 * 1000,
 };
 
+// Increment and attach the TTL in one Redis operation. A separate INCR then
+// EXPIRE can strand a key without expiry if the connection drops in between,
+// permanently rate-limiting that identity after enough requests.
+const INCREMENT_WITH_EXPIRY_SCRIPT = `
+local current = redis.call('INCR', KEYS[1])
+if current == 1 then
+  redis.call('PEXPIRE', KEYS[1], ARGV[1])
+end
+return current
+`;
+
 /**
  * Get Redis key for rate limiting
  */
@@ -164,12 +175,13 @@ export async function checkRateLimit(
   }
 
   try {
-    // Increment the counter
-    const current = await redis.incr(key);
-
-    // Set expiry on first request
-    if (current === 1) {
-      await redis.expire(key, Math.ceil(config.windowMs / 1000));
+    const result = await redis.eval(INCREMENT_WITH_EXPIRY_SCRIPT, {
+      keys: [key],
+      arguments: [String(config.windowMs)],
+    });
+    const current = Number(result);
+    if (!Number.isSafeInteger(current) || current < 1) {
+      throw new Error('Invalid Redis rate-limit counter');
     }
 
     const allowed = current <= config.maxRequests;

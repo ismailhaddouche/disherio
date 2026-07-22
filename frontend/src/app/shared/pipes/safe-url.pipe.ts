@@ -1,7 +1,7 @@
 import { Pipe, PipeTransform, inject } from '@angular/core';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 
-const ALLOWED_PROTOCOLS = ['http:', 'https:', 'data:'];
+const ALLOWED_PROTOCOLS = ['http:', 'https:'];
 
 @Pipe({
   name: 'safeUrl',

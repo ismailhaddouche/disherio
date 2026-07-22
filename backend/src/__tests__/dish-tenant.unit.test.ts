@@ -1,5 +1,7 @@
 const dishRepo = {
   createDish: jest.fn(),
+  delete: jest.fn(),
+  findById: jest.fn(),
   findByIdAndRestaurant: jest.fn(),
   updateDish: jest.fn(),
 };
@@ -22,13 +24,14 @@ jest.mock('../services/cache.service', () => ({
   CACHE_TTL: { MENU: 1, CATEGORIES: 1 },
   fetchWithCache: jest.fn(),
 }));
-jest.mock('../services/image.service', () => ({ deleteImage: jest.fn() }));
+const mockDeleteImage = jest.fn();
+jest.mock('../services/image.service', () => ({ deleteImage: mockDeleteImage }));
 // Unit tests run without Redis: execute the locked section directly.
 jest.mock('../utils/locks', () => ({
   withLock: (_key: string, fn: () => Promise<unknown>) => fn(),
 }));
 
-import { createDish, updateDish } from '../services/dish.service';
+import { createDish, deleteDish, updateDish } from '../services/dish.service';
 
 const RESTAURANT_ID = '507f1f77bcf86cd799439011';
 const DISH_ID = '507f1f77bcf86cd799439012';
@@ -69,5 +72,17 @@ describe('dish category tenant enforcement', () => {
       .rejects.toThrow('CATEGORY_NOT_FOUND');
 
     expect(dishRepo.updateDish).not.toHaveBeenCalled();
+  });
+
+  it('preserves the image when deleting the database record fails', async () => {
+    dishRepo.findById.mockResolvedValue({
+      _id: DISH_ID,
+      restaurant_id: { toString: () => RESTAURANT_ID },
+      disher_url_image: '/uploads/dishes/soup.webp',
+    });
+    dishRepo.delete.mockRejectedValue(new Error('database unavailable'));
+
+    await expect(deleteDish(DISH_ID)).rejects.toThrow('database unavailable');
+    expect(mockDeleteImage).not.toHaveBeenCalled();
   });
 });

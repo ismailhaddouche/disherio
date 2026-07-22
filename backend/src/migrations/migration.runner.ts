@@ -106,18 +106,28 @@ export async function runMigrations(
   const collection = db.collection<RegistryDoc>(COLLECTION_NAME);
   const ownerId = randomUUID();
   const leaseMs = options.lockLeaseMs ?? LOCK_STALE_MS;
+  if (!Number.isFinite(leaseMs) || leaseMs <= 0) {
+    throw new Error('MIGRATION_LOCK_INVALID_LEASE');
+  }
   await acquireLock(collection, options.lockTimeoutMs ?? LOCK_TIMEOUT_MS, leaseMs, ownerId);
   let lockLost = false;
+  let renewalError: unknown;
   let renewalChain = Promise.resolve();
   const enqueueRenewal = (): Promise<void> => {
     renewalChain = renewalChain.then(async () => {
-      if (!(await renewLock(collection, ownerId, leaseMs))) lockLost = true;
+      if (lockLost) return;
+      try {
+        if (!(await renewLock(collection, ownerId, leaseMs))) lockLost = true;
+      } catch (error) {
+        renewalError = error;
+        lockLost = true;
+      }
     });
     return renewalChain;
   };
   const renewalTimer = setInterval(() => {
     void enqueueRenewal();
-  }, Math.max(100, Math.floor(leaseMs / 3)));
+  }, Math.max(1, Math.floor(leaseMs / 3)));
   renewalTimer.unref();
   try {
     const applied = new Set(
@@ -130,6 +140,11 @@ export async function runMigrations(
       await migration.up();
       await enqueueRenewal();
       if (lockLost) {
+        if (renewalError) {
+          const error = new Error('MIGRATION_LOCK_RENEWAL_FAILED');
+          (error as Error & { cause?: unknown }).cause = renewalError;
+          throw error;
+        }
         throw new Error('MIGRATION_LOCK_LOST: migration lease ownership changed');
       }
       await collection.insertOne({ _id: migration.name, appliedAt: new Date() });

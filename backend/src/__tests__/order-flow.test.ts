@@ -10,7 +10,7 @@ import {
 } from '../services/order.service';
 import { Restaurant } from '../models/restaurant.model';
 import { Role, Staff } from '../models/staff.model';
-import { SessionCustomer, Totem, TotemSession } from '../models/totem.model';
+import { ITotem, SessionCustomer, Totem, TotemSession } from '../models/totem.model';
 import { Dish, Category, ICategory, IDish } from '../models/dish.model';
 import { IItemOrder, IOrder, IPayment, Order } from '../models/order.model';
 import { TotemSessionRepository } from '../repositories/totem.repository';
@@ -26,6 +26,22 @@ jest.mock('../config/socket', () => ({
 const describeWithIntegrationDb = process.env.CI === 'true' || !!process.env.MONGODB_URI_TEST
   ? describe
   : describe.skip;
+
+async function createSessionForTotem(
+  totem: ITotem,
+  totemState: 'STARTED' | 'COMPLETE' = 'STARTED'
+) {
+  return TotemSession.create({
+    totem_id: totem._id,
+    restaurant_id: totem.restaurant_id,
+    totem_snapshot: {
+      totem_id: totem._id,
+      totem_name: totem.totem_name,
+      totem_type: totem.totem_type,
+    },
+    totem_state: totemState,
+  });
+}
 
 describeWithIntegrationDb('Order Flow Integration', () => {
   let restaurantId: string;
@@ -76,7 +92,7 @@ describeWithIntegrationDb('Order Flow Integration', () => {
     dishId = dish._id.toString();
 
     const totem = await Totem.create({ restaurant_id: restaurantId, totem_name: 'Mesa 1', totem_type: 'STANDARD' });
-    const session = await TotemSession.create({ totem_id: totem._id });
+    const session = await createSessionForTotem(totem);
     sessionId = session._id.toString();
   });
 
@@ -153,7 +169,7 @@ describeWithIntegrationDb('Order Flow Integration', () => {
       totem_name: 'Mesa 2',
       totem_type: 'STANDARD',
     });
-    const otherSession = await TotemSession.create({ totem_id: otherTotem._id });
+    const otherSession = await createSessionForTotem(otherTotem);
     const otherCustomer = await SessionCustomer.create({
       session_id: otherSession._id,
       customer_name: 'Other table customer',
@@ -182,10 +198,7 @@ describeWithIntegrationDb('Order Flow Integration', () => {
       totem_name: 'Correction table',
       totem_type: 'STANDARD',
     });
-    const correctionSession = await TotemSession.create({
-      totem_id: correctionTotem._id,
-      totem_state: 'COMPLETE',
-    });
+    const correctionSession = await createSessionForTotem(correctionTotem, 'COMPLETE');
 
     const result = await addBatchItems(
       correctionSession._id.toString(),
@@ -233,7 +246,7 @@ describeWithIntegrationDb('Order Flow Integration', () => {
       totem_name: 'Authorization table',
       totem_type: 'STANDARD',
     });
-    const authSession = await TotemSession.create({ totem_id: authTotem._id });
+    const authSession = await createSessionForTotem(authTotem);
     const authOrder = await createOrder(authSession._id.toString(), staffId) as IOrder;
     const item = await addItemToOrder(
       authOrder._id.toString(),

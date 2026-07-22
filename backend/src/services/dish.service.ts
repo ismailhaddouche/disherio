@@ -121,11 +121,15 @@ export async function deleteDish(dishId: string): Promise<IDish | null> {
   const existing = await dishRepo.findById(dishId);
   if (!existing) return null;
 
+  const deleted = await dishRepo.delete(dishId);
+  if (!deleted) return null;
+
+  // Delete the file only after MongoDB has confirmed the entity deletion. A
+  // failed file cleanup leaves a recoverable orphan; the reverse order would
+  // leave a live dish pointing at content that no longer exists.
   if (existing.disher_url_image) {
     await deleteImage(existing.disher_url_image);
   }
-
-  const deleted = await dishRepo.delete(dishId);
   await invalidateDishCaches(dishId, existing.restaurant_id.toString());
 
   return deleted;
@@ -185,11 +189,12 @@ export async function deleteCategory(id: string, restaurantId: string): Promise<
       throw new Error(ErrorCode.CATEGORY_HAS_DISHES);
     }
 
+    const deleted = await categoryRepo.deleteCategory(id, restaurantId);
+    if (!deleted) return null;
+
     if (existing.category_image_url) {
       await deleteImage(existing.category_image_url);
     }
-
-    const deleted = await categoryRepo.deleteCategory(id, restaurantId);
     await invalidateCategoryCaches(id, restaurantId);
 
     return deleted;

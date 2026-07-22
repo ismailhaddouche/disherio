@@ -1,14 +1,14 @@
 import { z } from 'zod';
-import { ImageUrlSchema } from './image.schema';
+import { HttpUrlSchema, ImageUrlSchema } from './image.schema';
 
 export const SocialLinksSchema = z.object({
-  facebook_url: z.string().url().optional(),
-  instagram_url: z.string().url().optional(),
+  facebook_url: HttpUrlSchema.optional(),
+  instagram_url: HttpUrlSchema.optional(),
 });
 
 export const RestaurantSchema = z.object({
   restaurant_name: z.string().min(2),
-  restaurant_url: z.string().url().optional(),
+  restaurant_url: HttpUrlSchema.optional(),
   logo_image_url: ImageUrlSchema.optional(),
   social_links: SocialLinksSchema.optional(),
   tax_rate: z.number().min(0).max(100),

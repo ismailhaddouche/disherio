@@ -12,11 +12,7 @@ export async function getRestaurantIdForSession(
   if (allowedStates && !allowedStates.includes(session.totem_state)) {
     throw new Error(ErrorCode.SESSION_NOT_ACTIVE);
   }
-
-  const totem = await orderRepositories.totems.findById(session.totem_id.toString());
-  if (!totem) throw new Error(ErrorCode.TOTEM_NOT_FOUND);
-
-  return totem.restaurant_id.toString();
+  return session.restaurant_id.toString();
 }
 
 export async function getCustomerInSession(customerId: string, sessionId: string) {

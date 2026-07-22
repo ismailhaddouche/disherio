@@ -67,8 +67,11 @@ export async function processAndSaveImage(
   file: Express.Multer.File,
   folder: 'dishes' | 'restaurants' | 'categories'
 ): Promise<string> {
-  // Generate secure filename with UUID
-  const secureFilename = generateSecureFilename(file.originalname, true);
+  // The output encoder below always writes WebP bytes, so the public filename
+  // must also end in .webp. Keeping the upload's original extension would make
+  // static hosting advertise the wrong Content-Type (and `nosniff` clients can
+  // legitimately reject the image).
+  const secureFilename = generateSecureFilename('converted.webp', true);
 
   // Get safe path (path traversal protection)
   const fullPath = getSecurePath(UPLOADS_DIR, folder, secureFilename);

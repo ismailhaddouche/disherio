@@ -13,6 +13,7 @@ export const migration0004 = {
       ],
     }).cursor();
     let backfilled = 0;
+    const unrecoverableSessionIds: string[] = [];
 
     for await (const session of sessions) {
       const totem = await Totem.findById(session.totem_id).lean().exec();
@@ -30,6 +31,7 @@ export const migration0004 = {
 
       if (!restaurantId || !snapshot?.totem_id || !snapshot.totem_name || !snapshot.totem_type) {
         logger.warn({ sessionId: session._id }, 'Unable to recover tenant snapshot for legacy session');
+        unrecoverableSessionIds.push(session._id.toString());
         continue;
       }
 
@@ -42,6 +44,12 @@ export const migration0004 = {
 
     if (backfilled > 0) {
       logger.info({ backfilled }, 'Back-filled session tenant snapshots');
+    }
+    if (unrecoverableSessionIds.length > 0) {
+      const sample = unrecoverableSessionIds.slice(0, 20).join(', ');
+      throw new Error(
+        `MIGRATION_0004_UNRECOVERABLE_SESSIONS: ${unrecoverableSessionIds.length} session(s): ${sample}`
+      );
     }
   },
 };

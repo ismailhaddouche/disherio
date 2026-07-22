@@ -126,15 +126,32 @@ import { ErrorCode, TotemCallWaiterPayloadSchema, TotemRequestBillPayloadSchema 
 
 const SESSION_ID = '507f1f77bcf86cd799439013';
 const ITEM_ID = '507f1f77bcf86cd799439014';
+const TOTEM_ID = '507f1f77bcf86cd799439015';
+const RESTAURANT_ID = '507f1f77bcf86cd799439016';
+
+function sessionFixture(
+  totemState: 'STARTED' | 'COMPLETE' | 'PAID' = 'STARTED',
+  totemName = 'Table 1',
+  totemType: 'STANDARD' | 'TEMPORARY' = 'STANDARD'
+) {
+  return {
+    _id: SESSION_ID,
+    totem_id: { toString: () => TOTEM_ID },
+    restaurant_id: { toString: () => RESTAURANT_ID },
+    totem_snapshot: {
+      totem_id: { toString: () => TOTEM_ID },
+      totem_name: totemName,
+      totem_type: totemType,
+    },
+    totem_state: totemState,
+  };
+}
 
 describe('critical session policies', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     paymentFindBySessionId.mockResolvedValue([{ _id: 'payment' }]);
-    sessionFindById.mockResolvedValue({
-      totem_id: { toString: () => '507f1f77bcf86cd799439015' },
-      totem_state: 'PAID',
-    });
+    sessionFindById.mockResolvedValue(sessionFixture('PAID'));
     totemFindById.mockResolvedValue({
       restaurant_id: { toString: () => '507f1f77bcf86cd799439016' },
     });
@@ -148,13 +165,9 @@ describe('critical session policies', () => {
       totem_id: { toString: () => totemId },
       totem_state: 'STARTED',
     });
-    sessionUpdateStateIf.mockResolvedValue({
-      _id: SESSION_ID,
-      totem_id: { toString: () => totemId },
-      totem_state: 'COMPLETE',
-    });
+    sessionUpdateStateIf.mockResolvedValue(sessionFixture('COMPLETE'));
     paymentFindBySessionId.mockResolvedValue([]);
-    sessionFindById.mockResolvedValue({ totem_id: { toString: () => totemId } });
+    sessionFindById.mockResolvedValue(sessionFixture('STARTED'));
     totemFindById.mockResolvedValue({
       _id: { toString: () => totemId },
       restaurant_id: { toString: () => restaurantId },
@@ -189,6 +202,7 @@ describe('critical session policies', () => {
         expect.objectContaining({ ticket_amount: 20.67, ticket_customer_name: 'Bob' }),
       ],
     }), dbSession);
+    expect(totemFindById).not.toHaveBeenCalled();
     expect(payment.tickets.reduce((sum: number, ticket: { ticket_amount: number }) =>
       sum + Math.round(ticket.ticket_amount * 100), 0)).toBe(3101);
     expect(notifySessionClosed).toHaveBeenCalledWith(SESSION_ID, {
@@ -214,7 +228,6 @@ describe('critical session policies', () => {
   });
 
   it('reports invalid persisted prices as a 400 operational error', async () => {
-    const totemId = '507f1f77bcf86cd799439015';
     const restaurantId = '507f1f77bcf86cd799439016';
     sessionLockIfStateIn.mockResolvedValue({ _id: SESSION_ID, totem_state: 'STARTED' });
     orderFindById.mockResolvedValue({
@@ -230,10 +243,7 @@ describe('critical session policies', () => {
       variants: [],
       extras: [],
     });
-    sessionFindById.mockResolvedValue({
-      totem_id: { toString: () => totemId },
-      totem_state: 'STARTED',
-    });
+    sessionFindById.mockResolvedValue(sessionFixture('STARTED'));
     totemFindById.mockResolvedValue({
       restaurant_id: { toString: () => restaurantId },
     });
@@ -250,7 +260,6 @@ describe('critical session policies', () => {
   });
 
   it('adds a complimentary service item with a zero price', async () => {
-    const totemId = '507f1f77bcf86cd799439015';
     const restaurantId = '507f1f77bcf86cd799439016';
     sessionLockIfStateIn.mockResolvedValue({ _id: SESSION_ID, totem_state: 'STARTED' });
     orderFindById.mockResolvedValue({
@@ -266,10 +275,7 @@ describe('critical session policies', () => {
       variants: [],
       extras: [],
     });
-    sessionFindById.mockResolvedValue({
-      totem_id: { toString: () => totemId },
-      totem_state: 'STARTED',
-    });
+    sessionFindById.mockResolvedValue(sessionFixture('STARTED'));
     totemFindById.mockResolvedValue({
       restaurant_id: { toString: () => restaurantId },
     });
@@ -299,7 +305,6 @@ describe('critical session policies', () => {
   });
 
   it('uses the transaction restaurant id when notifying KDS after commit', async () => {
-    const totemId = '507f1f77bcf86cd799439015';
     const restaurantId = '507f1f77bcf86cd799439016';
     sessionLockIfStateIn.mockResolvedValue({ _id: SESSION_ID, totem_state: 'STARTED' });
     orderFindById.mockResolvedValue({
@@ -315,10 +320,7 @@ describe('critical session policies', () => {
       variants: [],
       extras: [],
     });
-    sessionFindById.mockResolvedValueOnce({
-      totem_id: { toString: () => totemId },
-      totem_state: 'STARTED',
-    });
+    sessionFindById.mockResolvedValueOnce(sessionFixture('STARTED'));
     totemFindById.mockResolvedValue({
       restaurant_id: { toString: () => restaurantId },
     });
@@ -333,8 +335,8 @@ describe('critical session policies', () => {
 
   it('settles every ticket in the same transaction that archives the session', async () => {
     sessionUpdateStateIf
-      .mockResolvedValueOnce({ _id: SESSION_ID, totem_state: 'COMPLETE' })
-      .mockResolvedValueOnce({ _id: SESSION_ID, totem_state: 'PAID' });
+      .mockResolvedValueOnce(sessionFixture('COMPLETE'))
+      .mockResolvedValueOnce(sessionFixture('PAID'));
     paymentMarkAllTicketsPaid.mockResolvedValue({
       payment_total: 42,
       payment_type: 'ALL',
@@ -349,13 +351,8 @@ describe('critical session policies', () => {
   });
 
   it('archives and cleans up a temporary totem when the last ticket is paid', async () => {
-    const totemId = '507f1f77bcf86cd799439015';
     const restaurantId = '507f1f77bcf86cd799439016';
-    const paidSession = {
-      _id: SESSION_ID,
-      totem_id: { toString: () => totemId },
-      totem_state: 'PAID',
-    };
+    const paidSession = sessionFixture('PAID');
     paymentFindById.mockResolvedValue({ _id: 'payment' });
     paymentMarkTicketPaid.mockResolvedValue({
       session_id: { toString: () => SESSION_ID },
@@ -384,17 +381,10 @@ describe('critical session policies', () => {
     const totemId = '507f1f77bcf86cd799439015';
     const restaurantId = '507f1f77bcf86cd799439016';
     sessionUpdateStateIf
-      .mockResolvedValueOnce({
-        _id: SESSION_ID,
-        totem_id: { toString: () => totemId },
-        totem_state: 'COMPLETE',
-      })
-      .mockResolvedValueOnce({ _id: SESSION_ID, totem_state: 'PAID' });
+      .mockResolvedValueOnce(sessionFixture('COMPLETE', 'Terrace 1', 'TEMPORARY'))
+      .mockResolvedValueOnce(sessionFixture('PAID', 'Terrace 1', 'TEMPORARY'));
     paymentFindBySessionId.mockResolvedValue([]);
-    sessionFindById.mockResolvedValue({
-      totem_id: { toString: () => totemId },
-      totem_state: 'PAID',
-    });
+    sessionFindById.mockResolvedValue(sessionFixture('PAID', 'Terrace 1', 'TEMPORARY'));
     totemFindById.mockResolvedValue({
       _id: { toString: () => totemId },
       restaurant_id: { toString: () => restaurantId },

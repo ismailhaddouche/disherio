@@ -1,4 +1,4 @@
-import { buildByUserTickets } from '../utils/calculation.utils';
+import { buildByUserTickets, calculateTips } from '../utils/calculation.utils';
 
 describe('buildByUserTickets', () => {
   it('allocates the final payment total by customer amount and reconciles cents', () => {
@@ -32,5 +32,27 @@ describe('buildByUserTickets', () => {
     ], 36);
 
     expect(tickets.map((ticket) => ticket.ticket_amount)).toEqual([12, 24]);
+  });
+});
+
+describe('calculateTips', () => {
+  const mandatory = { tips_state: true, tips_type: 'MANDATORY', tips_rate: 10 };
+
+  it('does not allow an explicit zero to bypass a mandatory tip', () => {
+    expect(calculateTips(123.45, 0, mandatory)).toBe(12.35);
+  });
+
+  it('accepts a custom tip only when it is above the mandatory minimum', () => {
+    expect(calculateTips(100, 5, mandatory)).toBe(10);
+    expect(calculateTips(100, 15, mandatory)).toBe(15);
+    expect(calculateTips(100, Number.NaN, mandatory)).toBe(10);
+  });
+
+  it('keeps an explicit voluntary tip unchanged', () => {
+    expect(calculateTips(100, 4.567, {
+      tips_state: true,
+      tips_type: 'VOLUNTARY',
+      tips_rate: 10,
+    })).toBe(4.57);
   });
 });

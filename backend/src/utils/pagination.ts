@@ -21,13 +21,18 @@ export interface PaginatedResponse<T> {
 const DEFAULT_PAGE = 1;
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 100;
+const MAX_PAGE = 10_000;
+
+function boundedPositiveInteger(value: unknown, fallback: number, max: number): number {
+  if (typeof value !== 'string' || !/^\d+$/.test(value)) return fallback;
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed) || parsed < 1) return fallback;
+  return Math.min(parsed, max);
+}
 
 export function getPaginationParams(req: Request): PaginationParams {
-  const page = Math.max(1, parseInt(req.query.page as string) || DEFAULT_PAGE);
-  const limit = Math.min(
-    MAX_LIMIT,
-    Math.max(1, parseInt(req.query.limit as string) || DEFAULT_LIMIT)
-  );
+  const page = boundedPositiveInteger(req.query.page, DEFAULT_PAGE, MAX_PAGE);
+  const limit = boundedPositiveInteger(req.query.limit, DEFAULT_LIMIT, MAX_LIMIT);
 
   return {
     page,

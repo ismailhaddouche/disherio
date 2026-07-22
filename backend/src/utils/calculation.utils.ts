@@ -84,12 +84,16 @@ export function calculateTips(
   customTip: number | undefined,
   restaurant: RestaurantTipsConfig
 ): number {
-  if (customTip !== undefined && customTip >= 0) {
-    return parseFloat(customTip.toFixed(2));
+  const validCustomTip = customTip !== undefined && Number.isFinite(customTip) && customTip >= 0
+    ? customTip
+    : 0;
+  if (restaurant.tips_state && restaurant.tips_type === 'MANDATORY' && restaurant.tips_rate) {
+    const mandatoryTip = totalWithTax * (restaurant.tips_rate / 100);
+    return parseFloat(Math.max(mandatoryTip, validCustomTip).toFixed(2));
   }
 
-  if (restaurant.tips_state && restaurant.tips_type === 'MANDATORY' && restaurant.tips_rate) {
-    return parseFloat((totalWithTax * (restaurant.tips_rate / 100)).toFixed(2));
+  if (validCustomTip > 0) {
+    return parseFloat(validCustomTip.toFixed(2));
   }
 
   return 0;

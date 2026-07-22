@@ -74,16 +74,67 @@ const SESSION_TIMEOUT_MS = 24 * 60 * 60 * 1000; // 24 hours
 const CUSTOMER_TIMEOUT_MS = 12 * 60 * 60 * 1000; // 12 hours
 const CLEANUP_INTERVAL_MS = 10 * 60 * 1000; // Run cleanup every 10 minutes (was 1h)
 
-// Enforce maximum size on a Map by evicting oldest entries
-function enforceMapSize<K, V>(map: Map<K, V>, max: number): void {
-  if (map.size > max) {
-    const entriesToDelete = map.size - max;
-    let deleted = 0;
-    for (const key of map.keys()) {
-      if (deleted >= entriesToDelete) break;
-      map.delete(key);
-      deleted++;
+function detachCustomer(socketId: string, sessionId = customerSessions.get(socketId)): void {
+  if (sessionId) {
+    try {
+      const socket = getIO().sockets.sockets.get(socketId);
+      socket?.leave(`customer:session:${sessionId}`);
+      socket?.leave(`session:${sessionId}`);
+    } catch (error) {
+      logger.debug({ error, socketId, sessionId }, 'Socket server unavailable during customer cleanup');
     }
+    trackSocketLeaveRoom(socketId, `customer:session:${sessionId}`);
+    trackSocketLeaveRoom(socketId, `session:${sessionId}`);
+
+    const sockets = sessionCustomers.get(sessionId);
+    sockets?.delete(socketId);
+    if (sockets?.size === 0) sessionCustomers.delete(sessionId);
+  }
+
+  customerSessions.delete(socketId);
+  customerInfo.delete(socketId);
+  customerLastActivity.delete(socketId);
+}
+
+function detachSession(sessionId: string): void {
+  for (const socketId of [...(sessionCustomers.get(sessionId) ?? [])]) {
+    detachCustomer(socketId, sessionId);
+  }
+  sessionCustomers.delete(sessionId);
+  sessionLastActivity.delete(sessionId);
+  closingSessions.delete(sessionId);
+
+  const timeoutId = sessionCloseTimeouts.get(sessionId);
+  if (timeoutId) clearTimeout(timeoutId);
+  sessionCloseTimeouts.delete(sessionId);
+}
+
+function firstMapKey<K, V>(map: Map<K, V>): K | undefined {
+  return map.keys().next().value;
+}
+
+function enforceTrackingLimits(): void {
+  while (customerSessions.size > MAX_MAP_SIZE) {
+    const socketId = firstMapKey(customerSessions);
+    if (socketId === undefined) break;
+    detachCustomer(socketId);
+  }
+  while (customerInfo.size > MAX_MAP_SIZE || customerLastActivity.size > MAX_MAP_SIZE) {
+    const socketId = firstMapKey(customerInfo) ?? firstMapKey(customerLastActivity);
+    if (socketId === undefined) break;
+    detachCustomer(socketId);
+  }
+  while (sessionLastActivity.size > MAX_MAP_SIZE || sessionCloseTimeouts.size > MAX_TIMEOUT_MAP) {
+    const sessionId = sessionLastActivity.size > MAX_MAP_SIZE
+      ? firstMapKey(sessionLastActivity)
+      : firstMapKey(sessionCloseTimeouts);
+    if (sessionId === undefined) break;
+    detachSession(sessionId);
+  }
+  while (closingSessions.size > MAX_SESSION_CLOSE_SET) {
+    const sessionId = closingSessions.values().next().value;
+    if (sessionId === undefined) break;
+    detachSession(sessionId);
   }
 }
 
@@ -152,18 +203,7 @@ function cleanupStaleEntries(): void {
   // Clean up stale sessions
   for (const [sessionId, lastActivity] of sessionLastActivity.entries()) {
     if (now - lastActivity > SESSION_TIMEOUT_MS) {
-      // Clean up session-related data
-      sessionCustomers.delete(sessionId);
-      closingSessions.delete(sessionId);
-
-      // Clear any pending timeout
-      const timeoutId = sessionCloseTimeouts.get(sessionId);
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-        sessionCloseTimeouts.delete(sessionId);
-      }
-
-      sessionLastActivity.delete(sessionId);
+      detachSession(sessionId);
       cleanedSessions++;
     }
   }
@@ -171,9 +211,7 @@ function cleanupStaleEntries(): void {
   // Clean up stale customer entries
   for (const [socketId, lastActivity] of customerLastActivity.entries()) {
     if (now - lastActivity > CUSTOMER_TIMEOUT_MS) {
-      customerSessions.delete(socketId);
-      customerInfo.delete(socketId);
-      customerLastActivity.delete(socketId);
+      detachCustomer(socketId);
       cleanedCustomers++;
     }
   }
@@ -185,15 +223,7 @@ function cleanupStaleEntries(): void {
     );
   }
 
-  // Enforce maximum map sizes
-  enforceMapSize(customerSessions, MAX_MAP_SIZE);
-  enforceMapSize(customerInfo, MAX_MAP_SIZE);
-  enforceMapSize(sessionLastActivity, MAX_MAP_SIZE);
-  enforceMapSize(customerLastActivity, MAX_MAP_SIZE);
-  enforceMapSize(sessionCloseTimeouts, MAX_TIMEOUT_MAP);
-  if (closingSessions.size > MAX_SESSION_CLOSE_SET) {
-    closingSessions.clear();
-  }
+  enforceTrackingLimits();
 }
 
 // Start periodic cleanup
@@ -279,6 +309,9 @@ export async function closeSessionForCustomers(sessionId: string, data: {
             if (socket && socket.connected) {
               try {
                 socket.leave(`customer:session:${sessionId}`);
+                socket.leave(`session:${sessionId}`);
+                trackSocketLeaveRoom(socketId, `customer:session:${sessionId}`);
+                trackSocketLeaveRoom(socketId, `session:${sessionId}`);
                 socket.emit('totem:force_disconnect', {
                   reason: 'SESSION_CLOSED',
                   message: i18next.t('sockets.SESSION_ENDED_THANK_YOU'),
@@ -287,6 +320,9 @@ export async function closeSessionForCustomers(sessionId: string, data: {
                 logger.warn({ err: socketErr, socketId, sessionId }, 'Error disconnecting socket');
               }
             }
+            customerSessions.delete(socketId);
+            customerInfo.delete(socketId);
+            customerLastActivity.delete(socketId);
           });
 
           // Clear tracking for this session
@@ -395,6 +431,9 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
       const previousSession = customerSessions.get(socketId);
       if (previousSession && previousSession !== sessionId) {
         socket.leave(`customer:session:${previousSession}`);
+        socket.leave(`session:${previousSession}`);
+        trackSocketLeaveRoom(socketId, `customer:session:${previousSession}`);
+        trackSocketLeaveRoom(socketId, `session:${previousSession}`);
         const prevSet = sessionCustomers.get(previousSession);
         if (prevSet) {
           prevSet.delete(socketId);
@@ -494,6 +533,7 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
       const sessionId = customerSessions.get(socketId);
       if (sessionId) {
         socket.leave(`customer:session:${sessionId}`);
+        socket.leave(`session:${sessionId}`);
 
         const set = sessionCustomers.get(sessionId);
         if (set) {
@@ -509,6 +549,7 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
 
         // Track room leave in connection tracker
         trackSocketLeaveRoom(socketId, `customer:session:${sessionId}`);
+        trackSocketLeaveRoom(socketId, `session:${sessionId}`);
         updateSocketActivity(socketId);
 
         logger.info({ socketId, sessionId }, 'Customer left session');
@@ -687,6 +728,7 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
 
       // Join the general session room for item updates
       socket.join(`session:${sessionId}`);
+      trackSocketJoinRoom(socketId, `session:${sessionId}`);
 
       socket.emit('totem:items_subscribed', { sessionId });
       logger.info({ socketId, sessionId }, 'Customer subscribed to item updates');
