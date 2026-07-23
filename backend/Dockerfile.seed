@@ -28,6 +28,11 @@ RUN npm ci --omit=dev --workspace=shared --workspace=backend
 COPY --from=builder /app/shared/dist ./shared/dist
 COPY --from=builder /app/backend/dist ./dist
 
+# Bundle seed placeholder images so the example seeder can copy them into
+# the uploads volume at runtime. The seeder copies them to /app/uploads/
+# and sets the dish/category image URLs accordingly.
+COPY --from=builder /app/backend/src/seeders/images ./seed-images
+
 RUN chown -R nodejs:nodejs /app
 USER nodejs
 

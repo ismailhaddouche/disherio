@@ -361,6 +361,8 @@ services:
       - mongodb_uri
       - jwt_secret
       - jwt_refresh_secret
+    volumes:
+      - disherio_uploads:/app/uploads
     command: ["node", "dist/seeders/seed-examples.js"]
     restart: "no"
 

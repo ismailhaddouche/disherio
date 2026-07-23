@@ -1,4 +1,6 @@
 import 'dotenv/config';
+import fs from 'fs';
+import path from 'path';
 import mongoose from 'mongoose';
 import { Restaurant } from '../models/restaurant.model';
 import { Role, Staff } from '../models/staff.model';
@@ -38,17 +40,55 @@ async function seedExamples() {
 
     const restaurantId = restaurant._id;
 
+    // ── Copy seed placeholder images into the uploads volume ─────────────────
+    const seedImagesDir = path.resolve(__dirname, '..', '..', 'seed-images');
+    const uploadsDir = process.env.UPLOADS_DIR || path.resolve(process.cwd(), 'uploads');
+    const categoryUploadsDir = path.join(uploadsDir, 'categories');
+    const dishUploadsDir = path.join(uploadsDir, 'dishes');
+
+    fs.mkdirSync(categoryUploadsDir, { recursive: true });
+    fs.mkdirSync(dishUploadsDir, { recursive: true });
+
+    const copySeedImage = (srcName: string, destName: string, folder: string): string | null => {
+      const src = path.join(seedImagesDir, folder, srcName);
+      const dest = path.join(uploadsDir, folder, destName);
+      if (fs.existsSync(src)) {
+        fs.copyFileSync(src, dest);
+        return `/uploads/${folder}/${destName}`;
+      }
+      logger.warn(`Seed image not found: ${src}`);
+      return null;
+    };
+
+    // Category images
+    const catEntrantesImg = copySeedImage('seed-entrantes.webp', `${restaurantId}-seed-entrantes.webp`, 'categories');
+    const catBebidasImg = copySeedImage('seed-bebidas.webp', `${restaurantId}-seed-bebidas.webp`, 'categories');
+
+    // Dish images
+    const dishImages: Record<string, string | null> = {
+      'Croquetas de jamón': copySeedImage('seed-croquetas-jamon.webp', `${restaurantId}-seed-croquetas-jamon.webp`, 'dishes'),
+      'Ensalada César': copySeedImage('seed-ensalada-cesar.webp', `${restaurantId}-seed-ensalada-cesar.webp`, 'dishes'),
+      'Patatas bravas': copySeedImage('seed-patatas-bravas.webp', `${restaurantId}-seed-patatas-bravas.webp`, 'dishes'),
+      'Tabla de quesos': copySeedImage('seed-tabla-quesos.webp', `${restaurantId}-seed-tabla-quesos.webp`, 'dishes'),
+      'Agua mineral': copySeedImage('seed-agua-mineral.webp', `${restaurantId}-seed-agua-mineral.webp`, 'dishes'),
+      'Coca-Cola': copySeedImage('seed-coca-cola.webp', `${restaurantId}-seed-coca-cola.webp`, 'dishes'),
+      'Zumo de naranja natural': copySeedImage('seed-zumo-naranja.webp', `${restaurantId}-seed-zumo-naranja.webp`, 'dishes'),
+      'Café espresso': copySeedImage('seed-cafe-espresso.webp', `${restaurantId}-seed-cafe-espresso.webp`, 'dishes'),
+    };
+
     // ── Example categories ──────────────────────────────────────────────────
     const categories = [
       {
         name: { es: 'Entrantes', en: 'Starters', fr: 'Entrées' },
         order: 1,
         description: { es: 'Platos para empezar', en: 'Dishes to start', fr: 'Plats pour commencer' },
+        image: catEntrantesImg,
       },
       {
         name: { es: 'Bebidas', en: 'Drinks', fr: 'Boissons' },
         order: 2,
         description: { es: 'Refrescos, zumos y más', en: 'Soft drinks, juices and more', fr: 'Boissons, jus et plus' },
+        image: catBebidasImg,
       },
     ];
 
@@ -58,6 +98,13 @@ async function seedExamples() {
       const existing = await Category.findOne({ restaurant_id: restaurantId, 'category_name.value': cat.name[appLang] });
       if (existing) {
         categoryIds[cat.name.es] = existing._id;
+        // Set the image URL on an existing category if it was missing.
+        if (!existing.category_image_url && (cat as any).image) {
+          await Category.updateOne(
+            { _id: existing._id },
+            { $set: { category_image_url: (cat as any).image } },
+          );
+        }
         logger.info(`Category already exists: ${cat.name[appLang]}`);
       } else {
         const created = await Category.create({
@@ -73,6 +120,7 @@ async function seedExamples() {
             { lang: 'en', value: cat.description.en },
             { lang: 'fr', value: cat.description.fr },
           ],
+          category_image_url: (cat as any).image || undefined,
         });
         categoryIds[cat.name.es] = created._id;
         logger.info(`Category created: ${cat.name[appLang]}`);
@@ -89,6 +137,7 @@ async function seedExamples() {
         price: 6.50,
         type: 'KITCHEN' as const,
         alergens: ['gluten', 'lacteos'],
+        image: dishImages['Croquetas de jamón'],
       },
       {
         category: 'Entrantes',
@@ -97,6 +146,7 @@ async function seedExamples() {
         price: 8.00,
         type: 'KITCHEN' as const,
         alergens: ['gluten', 'lacteos'],
+        image: dishImages['Ensalada César'],
       },
       {
         category: 'Entrantes',
@@ -105,6 +155,7 @@ async function seedExamples() {
         price: 5.50,
         type: 'KITCHEN' as const,
         alergens: [],
+        image: dishImages['Patatas bravas'],
       },
       {
         category: 'Entrantes',
@@ -113,6 +164,7 @@ async function seedExamples() {
         price: 12.00,
         type: 'KITCHEN' as const,
         alergens: ['lacteos'],
+        image: dishImages['Tabla de quesos'],
       },
       // Bebidas
       {
@@ -122,6 +174,7 @@ async function seedExamples() {
         price: 1.50,
         type: 'SERVICE' as const,
         alergens: [],
+        image: dishImages['Agua mineral'],
       },
       {
         category: 'Bebidas',
@@ -130,6 +183,7 @@ async function seedExamples() {
         price: 2.00,
         type: 'SERVICE' as const,
         alergens: [],
+        image: dishImages['Coca-Cola'],
       },
       {
         category: 'Bebidas',
@@ -138,6 +192,7 @@ async function seedExamples() {
         price: 3.50,
         type: 'SERVICE' as const,
         alergens: [],
+        image: dishImages['Zumo de naranja natural'],
       },
       {
         category: 'Bebidas',
@@ -146,6 +201,7 @@ async function seedExamples() {
         price: 1.80,
         type: 'SERVICE' as const,
         alergens: [],
+        image: dishImages['Café espresso'],
       },
     ];
 
@@ -175,6 +231,7 @@ async function seedExamples() {
         disher_variant: false,
         variants: [],
         extras: [],
+        disher_url_image: (dish as any).image || undefined,
       });
       logger.info(`Dish created: ${dish.name[appLang]} (${dish.price}€)`);
     }
