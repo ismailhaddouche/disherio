@@ -31,7 +31,7 @@
 #   sudo -E ./scripts/install.sh install
 #
 # Optional non-interactive variables:
-#   DISHERIO_DEPLOY_MODE   = domain | local
+#   DISHERIO_DEPLOY_MODE   = domain | local | public
 #   DISHERIO_DOMAIN        = domain (only when DEPLOY_MODE=domain)
 #   DISHERIO_ACCESS_IP     = IP/host to advertise in local mode (overrides the
 #                            auto-detected one; useful when the internal IP is
@@ -39,7 +39,9 @@
 #   DISHERIO_LANGUAGE      = es | en | fr
 #   DISHERIO_RESTAURANT_NAME = restaurant name
 #   DISHERIO_CURRENCY       = EUR | USD | GBP
+#   DISHERIO_SEED_EXAMPLES  = y | n  (install demo categories, dishes and a table)
 #   DISHERIO_NONINTERACTIVE = 1  (fuerza modo non-interactive)
+#   DISHERIO_UNINSTALL_CONFIRM = SI  (confirmar uninstall en modo non-interactive)
 # =============================================================================
 set -euo pipefail
 umask 077
@@ -134,7 +136,15 @@ detect_distro() {
     # Normalize the distribution ID for the Docker repository.
     case "$distro" in
       linuxmint|pop|neon) distro="ubuntu"; codename="${UBUNTU_CODENAME:-$codename}";;
+      # Debian derivatives (raspbian, etc.) map to debian for Docker repo.
+      raspbian) distro="debian"; codename="${VERSION_CODENAME:-$codename}";;
     esac
+  fi
+  # Fallback: detect Debian via dpkg when os-release is missing.
+  if [[ "$distro" == "ubuntu" && ! -f /etc/os-release ]]; then
+    if dpkg -l 2>/dev/null | grep -qiE '^ii\s+debian-installer|^ii\s+base-files'; then
+      distro="debian"; codename="bookworm"
+    fi
   fi
   DISTRO_ID="$distro"
   DISTRO_CODENAME="$codename"
@@ -324,7 +334,8 @@ preflight_system() {
 
   local need_install=()
   # Check each required tool individually.
-  for tool in curl wget ca-certificates gnupg openssl apt-get; do
+  # jq is needed by some container introspection; git is needed for updates.
+  for tool in curl wget ca-certificates gnupg openssl apt-get git jq; do
     if ! command -v "$tool" &>/dev/null; then
       need_install+=("$tool")
     fi
@@ -348,6 +359,23 @@ preflight_system() {
   detect_distro
   detect_ip
   ok "Distro: ${DISTRO_ID}/${DISTRO_CODENAME} | IP local: ${LOCAL_IP} | IP pública: ${PUBLIC_IP:-n/a}"
+
+  # Resource pre-check: Docker + MongoDB + Redis + Caddy + build need at least
+  # 2 GB RAM and 5 GB disk. Warn early instead of failing mid-build.
+  if command -v free &>/dev/null; then
+    local avail_mb
+    avail_mb=$(free -m 2>/dev/null | awk '/^Mem:/ {print $7}')
+    if [[ -n "$avail_mb" ]] && (( avail_mb < 1024 )); then
+      warn "Memoria disponible baja (${avail_mb}MB). Se recomiendan al menos 2GB."
+    fi
+  fi
+  if command -v df &>/dev/null; then
+    local avail_disk_mb
+    avail_disk_mb=$(df -m / 2>/dev/null | awk 'NR==2 {print $4}')
+    if [[ -n "$avail_disk_mb" ]] && (( avail_disk_mb < 5120 )); then
+      warn "Espacio en disco bajo (${avail_disk_mb}MB disponible). Se recomiendan al menos 5GB."
+    fi
+  fi
 }
 
 # =============================================================================
@@ -410,7 +438,7 @@ cmd_install() {
     case "$DISHERIO_DEPLOY_MODE" in
       domain) INSTALL_MODE="domain";;
       local)  INSTALL_MODE="local";  CADDY_DOMAIN="$(resolve_local_access_ip)";;
-      public) INSTALL_MODE="local";  CADDY_DOMAIN="$PUBLIC_IP"; warn "Modo 'public' = IP pública por HTTP sin cifrar (sin TLS).";;
+      public) INSTALL_MODE="local";  CADDY_DOMAIN="${PUBLIC_IP:-$(resolve_local_access_ip)}"; warn "Modo 'public' = IP pública por HTTP sin cifrar (sin TLS).";;
       *) err "DISHERIO_DEPLOY_MODE inválido: '$DISHERIO_DEPLOY_MODE' (usar: domain|local|public)";;
     esac
     log "Deploy mode (env): $DISHERIO_DEPLOY_MODE"
@@ -469,6 +497,36 @@ cmd_install() {
   fi
 
   ok "Acceso: ${CADDY_DOMAIN}"
+
+  # Pre-check DNS resolution in domain mode so the installer fails fast
+  # instead of wasting 60+ seconds on Let's Encrypt challenges that cannot
+  # succeed when the domain does not resolve to this server.
+  if [[ "$INSTALL_MODE" == "domain" ]]; then
+    log "Verificando resolución DNS para ${CADDY_DOMAIN}..."
+    local resolved_ip=""
+    if command -v dig &>/dev/null; then
+      resolved_ip=$(dig +short "$CADDY_DOMAIN" A 2>/dev/null | head -1 || true)
+    elif command -v host &>/dev/null; then
+      resolved_ip=$(host -t A "$CADDY_DOMAIN" 2>/dev/null | awk '/has address/ {print $NF; exit}' || true)
+    elif command -v getent &>/dev/null; then
+      resolved_ip=$(getent hosts "$CADDY_DOMAIN" 2>/dev/null | awk '{print $1; exit}' || true)
+    fi
+    if [[ -z "$resolved_ip" ]]; then
+      err "El dominio ${CADDY_DOMAIN} no resuelve a ninguna IP. Configura el registro DNS A -> ${PUBLIC_IP:-tu IP pública} antes de instalar en modo domain."
+    fi
+    # Compare resolved IP against the server's public/local IP.
+    local server_ip="${PUBLIC_IP:-$LOCAL_IP}"
+    if [[ -n "$server_ip" && "$resolved_ip" != "$server_ip" ]]; then
+      warn "El dominio ${CADDY_DOMAIN} resuelve a ${resolved_ip} pero la IP de este servidor es ${server_ip}."
+      warn "Let's Encrypt no podrá emitir un certificado si el DNS no apunta a esta máquina."
+      if [[ "$NONINTERACTIVE" != "1" ]]; then
+        local dns_confirm
+        read -rp "¿Continuar de todas formas? (s/N): " dns_confirm
+        [[ "${dns_confirm:-n}" =~ ^[sSyY] ]] || err "Instalación cancelada. Corrige el DNS antes de continuar."
+      fi
+    fi
+    ok "DNS: ${CADDY_DOMAIN} -> ${resolved_ip}"
+  fi
 
   # Parameter 3: language.
   if [[ -n "${DISHERIO_LANGUAGE:-}" ]]; then
@@ -562,11 +620,25 @@ cmd_install() {
     apt-get update -qq >> "$LOG_FILE" 2>&1
     apt-get install -y -qq curl wget ca-certificates gnupg >> "$LOG_FILE" 2>&1
     install -m 0755 -d /etc/apt/keyrings
-    curl -fsSL "https://download.docker.com/linux/${DISTRO_ID}/gpg" -o /etc/apt/keyrings/docker.asc 2>>"$LOG_FILE"
+    # Determine the architecture for the Docker repo.
+    local arch
+    arch=$(dpkg --print-architecture 2>/dev/null || echo "amd64")
+    # Map common architecture names to Docker's naming.
+    case "$arch" in
+      amd64|x86_64)   arch="amd64";;
+      arm64|aarch64)  arch="arm64";;
+      armhf|armv7l)   arch="armhf";;
+      *) err "Arquitectura no soportada para Docker: $arch";;
+    esac
+    # Fetch the Docker GPG key; tolerate transient network issues.
+    curl -fsSL "https://download.docker.com/linux/${DISTRO_ID}/gpg" -o /etc/apt/keyrings/docker.asc 2>>"$LOG_FILE" \
+      || err "No se pudo descargar la clave GPG de Docker. Verifica la conectividad a download.docker.com."
     chmod a+r /etc/apt/keyrings/docker.asc
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/${DISTRO_ID} ${DISTRO_CODENAME} stable" > /etc/apt/sources.list.d/docker.list
-    apt-get update -qq >> "$LOG_FILE" 2>&1
-    apt-get install -y -qq docker-ce docker-ce-cli containerd.io docker-compose-plugin >> "$LOG_FILE" 2>&1
+    echo "deb [arch=${arch} signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/${DISTRO_ID} ${DISTRO_CODENAME} stable" > /etc/apt/sources.list.d/docker.list
+    apt-get update -qq >> "$LOG_FILE" 2>&1 \
+      || err "apt-get update fallido tras añadir el repositorio de Docker. Revisa /etc/apt/sources.list.d/docker.list"
+    apt-get install -y -qq docker-ce docker-ce-cli containerd.io docker-compose-plugin >> "$LOG_FILE" 2>&1 \
+      || err "No se pudo instalar Docker CE. Ver $LOG_FILE"
     systemctl enable --now docker >> "$LOG_FILE" 2>&1
     ok "Docker instalado"
   else
@@ -658,6 +730,22 @@ EOF
     warn "(El Caddyfile se materializa con el puerto al configurar; editarlo solo en .env no basta.)"
   else
     ok "Puertos ${HTTP_PORT}/${HTTPS_PORT} disponibles"
+  fi
+
+  # In domain mode, check that the firewall allows inbound 80/443 for
+  # Let's Encrypt challenges. Cloud VMs (GCloud, AWS, Azure) often block
+  # these by default. We can only warn, not fix it automatically.
+  if [[ "$INSTALL_MODE" == "domain" ]]; then
+    if command -v ufw &>/dev/null && ufw status 2>/dev/null | grep -q "active"; then
+      if ! ufw status 2>/dev/null | grep -qE "80/tcp.*ALLOW|443/tcp.*ALLOW"; then
+        warn "El firewall (ufw) podría estar bloqueando los puertos 80/443."
+        warn "Let's Encrypt necesita ambos puertos. Ejecuta: sudo ufw allow 80,443/tcp"
+      fi
+    fi
+    # Hint for GCloud / AWS / Azure users.
+    if [[ -f /etc/cloud/cloud.cfg.d/* ]] || command -v gcloud &>/dev/null; then
+      warn "Si estás en Google Cloud, verifica que el firewall permita 80/443 en la consola de GCP."
+    fi
   fi
 
   # ── PASO 6: Construir ────────────────────────────────────────────────────
@@ -752,8 +840,20 @@ EOF
 
   # 7.8 — Caddy (depende de backend + frontend sanos)
   log "Iniciando Caddy (proxy)..."
-  docker compose up -d caddy --wait --wait-timeout 60 >> "$LOG_FILE" 2>&1 \
-    || err "Caddy no arrancó. Ver $LOG_FILE"
+  # In domain mode, Caddy needs extra time to obtain the Let's Encrypt cert.
+  local caddy_timeout=60
+  if [[ "$INSTALL_MODE" == "domain" ]]; then
+    caddy_timeout=120
+  fi
+  if ! docker compose up -d caddy --wait --wait-timeout "$caddy_timeout" >> "$LOG_FILE" 2>&1; then
+    # Provide a domain-specific hint: the most common cause of Caddy failure
+    # in domain mode is Let's Encrypt not being able to verify the domain.
+    if [[ "$INSTALL_MODE" == "domain" ]]; then
+      err "Caddy no arrancó. En modo domain, la causa más común es que Let's Encrypt no puede verificar ${CADDY_DOMAIN}. Verifica que el DNS A record apunta a ${PUBLIC_IP:-esta IP} y que los puertos 80/443 están abiertos. Ver $LOG_FILE y 'docker compose logs caddy'."
+    else
+      err "Caddy no arrancó. Ver $LOG_FILE y 'docker compose logs caddy'."
+    fi
+  fi
   ok "Caddy listo"
 
   # Summary.
@@ -1115,19 +1215,43 @@ cmd_uninstall() {
   if [[ -t 0 ]] && [[ "${DISHERIO_NONINTERACTIVE:-}" != "1" ]]; then
     read -rp "¿Confirmar? (escribe SI): " confirm
   else
-    err "Uninstall requiere confirmación interactiva (escribe SI)"
+    # Non-interactive mode: require explicit env var to avoid accidental data loss.
+    if [[ "${DISHERIO_UNINSTALL_CONFIRM:-}" == "SI" ]]; then
+      confirm="SI"
+      log "Modo non-interactive: confirmación via DISHERIO_UNINSTALL_CONFIRM=SI"
+    else
+      err "Uninstall requiere confirmación interactiva (escribe SI) o DISHERIO_UNINSTALL_CONFIRM=SI en modo non-interactive"
+    fi
   fi
   if [[ "$confirm" != "SI" ]]; then echo "Cancelado."; exit 0; fi
 
   log "Deteniendo y eliminando contenedores..."
-  docker compose down --remove-orphans --volumes --rmi local >> "$LOG_FILE" 2>&1 || true
+  # Handle the case where .env or docker-compose.yml was already removed:
+  # fall back to stopping all disherio-* containers directly.
+  if [[ -f "$ROOT_DIR/docker-compose.yml" ]]; then
+    docker compose down --remove-orphans --volumes --rmi local >> "$LOG_FILE" 2>&1 || true
+  fi
+  # Force-remove any leftover disherio containers (e.g. exited seed containers
+  # that compose down may miss when the image is still referenced).
+  local leftover
+  leftover=$(docker ps -a --filter "name=disherio-" --format '{{.Names}}' 2>/dev/null || true)
+  if [[ -n "$leftover" ]]; then
+    log "Eliminando contenedores restantes: ${leftover//$'\n'/ }"
+    docker rm -f $leftover >> "$LOG_FILE" 2>&1 || true
+  fi
 
   log "Eliminando volúmenes..."
   docker volume rm disherio_mongo_data disherio_redis_data disherio_uploads \
     disherio_caddy_data disherio_caddy_config \
     2>/dev/null || true
+  # Prune anonymous dangling volumes left behind by compose.
+  docker volume prune -f >> "$LOG_FILE" 2>&1 || true
 
-  log "Eliminando keyFile..."
+  log "Eliminando imágenes de DisherIO..."
+  # Remove built images by name (not the external base images).
+  docker rmi disherio-backend disherio-frontend disherio-seed 2>/dev/null || true
+
+  log "Eliminando keyFile y secretos..."
   rm -f "$ROOT_DIR/config/mongo-keyfile" 2>/dev/null || true
 
   rm -f "$ENV_FILE" "$CREDENTIALS_FILE" "$CADDYFILE" "$ROOT_DIR/docker-compose.override.yml"
@@ -1186,12 +1310,15 @@ MODO NON-INTERACTIVE (CI/CD, SSH sin TTY, gcloud):
   sudo -E ./scripts/install.sh install
 
   Variables non-interactive:
-    DISHERIO_DEPLOY_MODE     domain | local
+    DISHERIO_DEPLOY_MODE     domain | local | public
     DISHERIO_DOMAIN           dominio (solo si DEPLOY_MODE=domain)
     DISHERIO_LANGUAGE         es | en | fr
     DISHERIO_RESTAURANT_NAME  nombre del restaurante
     DISHERIO_CURRENCY         EUR | USD | GBP
     DISHERIO_NONINTERACTIVE   1 (fuerza modo non-interactive)
+    DISHERIO_ACCESS_IP        IP/host para acceso en modo local (override)
+    DISHERIO_SEED_EXAMPLES    y | n (instalar datos de ejemplo)
+    DISHERIO_UNINSTALL_CONFIRM=SI  (confirmar uninstall en modo non-interactive)
 HELP
 }
 

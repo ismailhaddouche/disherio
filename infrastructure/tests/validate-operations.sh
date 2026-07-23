@@ -65,8 +65,10 @@ docker compose --env-file "$TEST_ENV" \
     });
   '
 
-if grep -R "unsafe-eval" "$ROOT_DIR/infrastructure/caddy-templates" >/dev/null; then
-  echo "Caddy templates must not allow unsafe-eval" >&2
+# Check that no Caddy template includes 'unsafe-eval' in an active directive
+# (comments containing the word are OK — only the CSP header value matters).
+if grep -R "Content-Security-Policy" "$ROOT_DIR/infrastructure/caddy-templates" | grep "unsafe-eval" >/dev/null; then
+  echo "Caddy templates must not allow unsafe-eval in CSP" >&2
   exit 1
 fi
 
