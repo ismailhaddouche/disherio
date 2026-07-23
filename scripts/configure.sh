@@ -161,7 +161,17 @@ change_network() {
       warn "Añade '$LOCAL_IP $domain' a /etc/hosts en los clientes"
       ;;
     3)
-      err "La IP pública directa por HTTP está deshabilitada. Usa un dominio HTTPS o un túnel."
+      # IP pública por HTTP directo (sin túnel, sin TLS). Let's Encrypt no
+      # emite certificados para IPs, así que este modo es HTTP plano.
+      port=80
+      access_url="http://${PUBLIC_IP}"
+      write_http_caddyfile ":${port}"
+      sed_env "HTTP_PORT" "${port}"
+      sed_env "LOCAL_IP" "${PUBLIC_IP}"
+      sed_env "DEPLOYMENT_MODE" "public-ip"
+      sed_env "TUNNEL_TYPE" "none"
+      warn "IP pública ${PUBLIC_IP} por HTTP SIN cifrar: las credenciales viajan en claro."
+      warn "Para HTTPS, usa un dominio (opción 1) o un túnel (configurador de despliegue)."
       ;;
     *)
       read -rp "  Puerto [80]: " port; port="${port:-80}"

@@ -410,7 +410,7 @@ cmd_install() {
     case "$DISHERIO_DEPLOY_MODE" in
       domain) INSTALL_MODE="domain";;
       local)  INSTALL_MODE="local";  CADDY_DOMAIN="$(resolve_local_access_ip)";;
-      public) err "El modo public por HTTP está deshabilitado. Usa domain o el configurador de túnel HTTPS.";;
+      public) INSTALL_MODE="local";  CADDY_DOMAIN="$PUBLIC_IP"; warn "Modo 'public' = IP pública por HTTP sin cifrar (sin TLS).";;
       *) err "DISHERIO_DEPLOY_MODE inválido: '$DISHERIO_DEPLOY_MODE' (usar: domain|local|public)";;
     esac
     log "Deploy mode (env): $DISHERIO_DEPLOY_MODE"
@@ -427,13 +427,14 @@ cmd_install() {
     echo ""
     echo "  [1] Dominio público con HTTPS  (ej: app.restaurante.com)"
     echo "  [2] IP local por HTTP SIN CIFRAR (solo LAN de confianza: ${LOCAL_IP})"
+    echo "  [3] IP pública por HTTP SIN CIFRAR (${PUBLIC_IP:-no detectada})"
     echo ""
     local choice
     read_or_default "  Elige opción [2]: " "2" choice
     case "$choice" in
       1) INSTALL_MODE="domain";;
       2) INSTALL_MODE="local"; CADDY_DOMAIN="$(resolve_local_access_ip)";;
-      3) err "La IP pública directa por HTTP no está permitida. Configura un dominio HTTPS o un túnel.";;
+      3) INSTALL_MODE="local"; CADDY_DOMAIN="${PUBLIC_IP}";;
       *) err "Opción inválida";;
     esac
   fi
@@ -443,6 +444,9 @@ cmd_install() {
       warn "Se detectó IP interna RFC1918 (${LOCAL_IP}) con IP pública ${PUBLIC_IP}."
       warn "Usando la IP pública por HTTP SIN CIFRAR: las credenciales viajan en claro."
       warn "Para cifrar el acceso, redespliega en modo 'domain' con un dominio."
+    elif [[ -n "$PUBLIC_IP" && "$CADDY_DOMAIN" == "$PUBLIC_IP" ]]; then
+      warn "IP pública ${PUBLIC_IP} por HTTP SIN CIFRAR: las credenciales viajan en claro."
+      warn "Para HTTPS, redespliega en modo 'domain' con un dominio o usa un túnel."
     else
       warn "El modo IP local usa HTTP sin cifrar. Úsalo únicamente en una LAN privada de confianza."
     fi

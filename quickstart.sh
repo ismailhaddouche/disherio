@@ -111,7 +111,7 @@ case "$DEPLOYMENT_MODE" in
             echo "Iniciando con ngrok..."
             docker compose --profile ngrok up -d --build
         else
-            echo "Iniciando sin túnel (modo público)..."
+            echo "Iniciando sin túnel (HTTP directo en IP pública)..."
             docker compose up -d --build
         fi
         ;;
@@ -149,11 +149,14 @@ case "$DEPLOYMENT_MODE" in
             echo "Esperando a que el túnel se conecte..."
             sleep 3
             docker compose logs --tail=5 cloudflared 2>/dev/null || true
-        else
+        elif [ "$TUNNEL_TYPE" = "ngrok" ]; then
             echo -e "${CYAN}URL pública (ngrok):${NC}"
             echo "  Esperando asignación..."
             sleep 5
             docker compose logs --tail=5 ngrok 2>/dev/null || true
+        else
+            echo -e "${CYAN}URL pública (HTTP directo, sin cifrar):${NC}"
+            echo -e "  ${BOLD}http://${LOCAL_IP}:${HTTP_PORT:-80}${NC}"
         fi
         ;;
     domain)

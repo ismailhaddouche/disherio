@@ -193,6 +193,18 @@ check_environment() {
             ;;
         public-ip)
             case "$TUNNEL_TYPE" in
+                none)
+                    print_info "IP pública por HTTP directo (sin túnel, sin TLS)"
+                    local http_port
+                    http_port=$(env_get "HTTP_PORT" "80")
+                    local local_ip
+                    local_ip=$(env_get "LOCAL_IP" "")
+                    if [ -n "$local_ip" ]; then
+                        print_info "URL pública: http://$local_ip:$http_port"
+                    else
+                        print_warning "LOCAL_IP no configurada"
+                    fi
+                    ;;
                 cloudflare)
                     secret_file="$PROJECT_ROOT/config/secrets/cloudflare_tunnel_token"
                     secret_value=""

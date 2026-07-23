@@ -82,12 +82,12 @@ get_local_ip() {
 }
 
 get_public_ip() {
-    # Obtiene la IP pública
+    # Obtiene la IP pública (prefiere IPv4; el Caddyfile local-ip bind usa :port)
     local ip=""
 
-    # Intenta múltiples servicios
+    # Intenta múltiples servicios forzando IPv4 (-4) para evitar resultados IPv6
     for service in "ifconfig.me" "icanhazip.com" "api.ipify.org"; do
-        ip=$(curl -s --max-time 5 "$service" 2>/dev/null || true)
+        ip=$(curl -s -4 --max-time 5 "$service" 2>/dev/null || true)
         if [ -n "$ip" ]; then
             break
         fi
@@ -167,6 +167,16 @@ valid_ipv4() {
     for octet in "${octets[@]}"; do (( 10#$octet <= 255 )) || return 1; done
 }
 
+# Indica si una IPv4 es privada (RFC1918) o loopback.
+is_rfc1918_local() {
+    local ip="$1"
+    [[ "$ip" =~ ^10\. ]] && return 0
+    [[ "$ip" =~ ^192\.168\. ]] && return 0
+    [[ "$ip" =~ ^172\.(1[6-9]|2[0-9]|3[01])\. ]] && return 0
+    [[ "$ip" == "127.0.0.1" ]] && return 0
+    return 1
+}
+
 # =============================================================================
 # MENÚ PRINCIPAL
 # =============================================================================
@@ -181,7 +191,7 @@ show_welcome() {
     echo ""
     echo -e "  ${GREEN}1. local${NC}      - Desarrollo local (localhost:4200)"
     echo -e "  ${GREEN}2. local-ip${NC}   - Red local (192.168.x.x) - Sin HTTPS"
-    echo -e "  ${GREEN}3. public-ip${NC}  - IP pública - Con túnel (Cloudflare/ngrok)"
+    echo -e "  ${GREEN}3. public-ip${NC}  - IP pública - Con túnel (Cloudflare/ngrok) o HTTP directo"
     echo -e "  ${GREEN}4. domain${NC}     - Dominio propio - Let's Encrypt automático"
     echo ""
     echo -e "${CYAN}Tu IP local:${NC} $(get_local_ip)"
@@ -197,7 +207,7 @@ select_deployment_mode() {
     options=(
         "local     - Desarrollo en localhost"
         "local-ip  - Red local (sin HTTPS)"
-        "public-ip - IP pública (con túnel)"
+        "public-ip - IP pública (túnel o HTTP directo)"
         "domain    - Dominio propio (HTTPS)"
     )
 
@@ -354,10 +364,9 @@ configure_public_ip() {
 
     echo ""
     print_warning "Las IPs públicas NO pueden obtener certificados SSL directamente."
-    print_info "Se requiere usar un túnel para obtener HTTPS."
     echo ""
 
-    echo -e "${BOLD}Opciones de túnel disponibles:${NC}"
+    echo -e "${BOLD}Opciones de exposición disponibles:${NC}"
     echo ""
     echo -e "  ${GREEN}1. Cloudflare Tunnel (Recomendado)${NC}"
     echo "     [OK] Gratuito, estable, sin límite de tiempo"
@@ -368,9 +377,14 @@ configure_public_ip() {
     echo "     [NO] URLs temporales cambian al reiniciar"
     echo "     [NO] Limitaciones en plan gratuito"
     echo ""
+    echo -e "  ${GREEN}3. Sin túnel (HTTP directo)${NC}"
+    echo "     [OK] Sin credenciales externas, despliegue inmediato"
+    echo "     [NO] HTTP sin cifrar (sin candado TLS)"
+    echo "     [NO] Las credenciales viajan en claro por la red"
+    echo ""
 
-    PS3=$'\nSelecciona una opción (1-2): '
-    options=("Cloudflare Tunnel (Recomendado)" "ngrok")
+    PS3=$'\nSelecciona una opción (1-3): '
+    options=("Cloudflare Tunnel (Recomendado)" "ngrok" "Sin túnel (HTTP directo)")
     select opt in "${options[@]}"; do
         case $REPLY in
             1)
@@ -381,6 +395,10 @@ configure_public_ip() {
                 TUNNEL_TYPE="ngrok"
                 break
                 ;;
+            3)
+                TUNNEL_TYPE="none"
+                break
+                ;;
             *)
                 print_error "Opción inválida."
                 ;;
@@ -389,9 +407,88 @@ configure_public_ip() {
 
     if [ "$TUNNEL_TYPE" == "cloudflare" ]; then
         configure_cloudflare_tunnel "$public_ip"
-    else
+    elif [ "$TUNNEL_TYPE" == "ngrok" ]; then
         configure_ngrok "$public_ip"
+    else
+        configure_public_ip_direct "$public_ip"
     fi
+}
+
+configure_public_ip_direct() {
+    local public_ip=$1
+
+    echo ""
+    print_header "Configuración: IP Pública sin túnel (HTTP directo)"
+    echo ""
+
+    print_warning "Este modo expone la aplicación por HTTP SIN CIFRAR en la IP pública."
+    print_warning "Las credenciales de login y los JWT viajarán en claro por la red."
+    print_info "Recomendado solo para VPS aislados de confianza o detrás de un proxy TLS externo."
+    echo ""
+
+    # Fallback: si la detección externa devolvió IPv6 o vacío, usar la IP de
+    # la interfaz local (en muchos VPS la IPv4 de la interfaz ya es la pública).
+    if ! valid_ipv4 "$public_ip"; then
+        local fallback
+        fallback=$(get_local_ip)
+        if valid_ipv4 "$fallback" && ! is_rfc1918_local "$fallback"; then
+            public_ip="$fallback"
+            print_info "Usando IP de interfaz como pública: $public_ip"
+        fi
+    fi
+
+    valid_ipv4 "$public_ip" || { print_error "No se pudo detectar una IPv4 pública válida ($public_ip). IndÍcala manualmente."; }
+
+    read -rp "IP pública [$public_ip]: " SELECTED_IP
+    SELECTED_IP=${SELECTED_IP:-$public_ip}
+    valid_ipv4 "$SELECTED_IP" || { print_error "Dirección IPv4 inválida"; exit 1; }
+
+    read -rp "Puerto HTTP [80]: " HTTP_PORT
+    HTTP_PORT=${HTTP_PORT:-80}
+    valid_port "$HTTP_PORT" || { print_error "Puerto HTTP inválido"; exit 1; }
+
+    echo ""
+    echo "La aplicación será accesible en:"
+    echo -e "  ${CYAN}http://$SELECTED_IP:$HTTP_PORT${NC}"
+    echo ""
+
+    # Reutilizamos el template de local-ip (bind 0.0.0.0 + puerto expuesto al host)
+    # pero con la IP pública como LOCAL_IP para que el backend anuncie la URL pública.
+    cat > "$ENV_FILE" << EOF
+# ============================================
+# DisherIo - Configuración IP Pública (HTTP directo, sin túnel)
+# ============================================
+
+# Modo de despliegue
+DEPLOYMENT_MODE=public-ip
+TUNNEL_TYPE=none
+
+# URLs (usar la IP pública)
+FRONTEND_URL=http://$SELECTED_IP:$HTTP_PORT
+
+# Configuración de red
+LOCAL_IP=$SELECTED_IP
+PORT=3000
+HTTP_PORT=$HTTP_PORT
+
+# Seguridad (credenciales en config/secrets/)
+JWT_EXPIRES=15m
+JWT_REFRESH_EXPIRES=7d
+ADMIN_USERNAME=admin
+
+# Base de datos (con autenticación)
+MONGO_ROOT_USER=admin
+MONGO_APP_USER=disherio_app
+
+# Redis
+REDIS_URL=redis://redis:6379
+
+# Logging
+LOG_LEVEL=info
+EOF
+
+    print_success "Archivo .env generado"
+    print_info "Tu aplicación estará disponible en: http://$SELECTED_IP:$HTTP_PORT"
 }
 
 configure_cloudflare_tunnel() {
@@ -645,7 +742,12 @@ generate_caddyfile() {
     print_header "Generando Caddyfile"
 
     local mode=$DEPLOYMENT_MODE
-    local template_file="$INFRA_DIR/caddy-templates/Caddyfile.$mode"
+    # public-ip sin túnel reutiliza el template de local-ip (bind 0.0.0.0 + puerto al host)
+    local template_mode=$mode
+    if [[ "$mode" == "public-ip" && "${TUNNEL_TYPE:-}" == "none" ]]; then
+        template_mode="local-ip"
+    fi
+    local template_file="$INFRA_DIR/caddy-templates/Caddyfile.$template_mode"
 
     if [ ! -f "$template_file" ]; then
         print_error "Template no encontrado: $template_file"
@@ -666,7 +768,7 @@ generate_caddyfile() {
         cp "$template_file" "$CADDYFILE"
 
         # Reemplazar variables según el modo
-        case $mode in
+        case $template_mode in
             local)
                 sed -e "s/\${CADDY_PORT}/$CADDY_PORT/g" "$CADDYFILE" > "$CADDYFILE.tmp" && mv "$CADDYFILE.tmp" "$CADDYFILE"
                 ;;
@@ -692,7 +794,12 @@ generate_docker_compose_override() {
     print_header "Generando Docker Compose Override"
 
     local mode=$DEPLOYMENT_MODE
-    local template_file="$INFRA_DIR/docker-compose.$mode.yml"
+    # public-ip sin túnel usa el override de local-ip (expone el puerto al host)
+    local template_mode=$mode
+    if [[ "$mode" == "public-ip" && "${TUNNEL_TYPE:-}" == "none" ]]; then
+        template_mode="local-ip"
+    fi
+    local template_file="$INFRA_DIR/docker-compose.$template_mode.yml"
 
     if [ -f "$template_file" ]; then
         cp "$template_file" "$COMPOSE_OVERRIDE"
@@ -751,10 +858,14 @@ show_summary() {
                 echo -e "  ${CYAN}Túnel:${NC} Cloudflare Tunnel"
                 echo -e "  ${CYAN}URL:${NC} https://$CF_TUNNEL_DOMAIN"
                 echo -e "  ${CYAN}Nota:${NC} HTTPS automático y gratuito"
-            else
+            elif [ "$TUNNEL_TYPE" == "ngrok" ]; then
                 echo -e "  ${CYAN}Túnel:${NC} ngrok"
                 echo -e "  ${CYAN}URL:${NC} Se mostrará al iniciar (docker compose logs -f ngrok)"
                 echo -e "  ${CYAN}Nota:${NC} URL temporal que cambia al reiniciar"
+            else
+                echo -e "  ${CYAN}Exposición:${NC} HTTP directo (sin túnel)"
+                echo -e "  ${CYAN}URL:${NC} http://${SELECTED_IP:-$LOCAL_IP}:${HTTP_PORT:-80}"
+                echo -e "  ${CYAN}Nota:${NC} HTTP sin cifrar; credenciales en claro por la red"
             fi
             ;;
         domain)
