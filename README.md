@@ -2,6 +2,15 @@
 
 [Spanish Version (README_es.md)](README_es.md) | [French Version (README_fr.md)](README_fr.md)
 
+> **Live Demo:** [http://194.26.100.91](http://194.26.100.91)
+>
+> | Role | Username | Password | URL |
+> |------|----------|----------|-----|
+> | Admin | `admin` | `s1kiyZYBLQjNaGW2j37W` | [http://194.26.100.91/admin](http://194.26.100.91/admin) |
+> | Kitchen (KDS) | `cocinero` | `cocinero` | [http://194.26.100.91/kds](http://194.26.100.91/kds) |
+> | Tables (TAS) | `camarero` | `camarero` | [http://194.26.100.91/tas](http://194.26.100.91/tas) |
+> | Cashier (POS) | `cajero` | `cajero` | [http://194.26.100.91/pos](http://194.26.100.91/pos) |
+
 DisherIo is an integrated restaurant management platform providing solutions for self-service ordering, table assistance, kitchen display systems (KDS), and point-of-sale (POS) operations.
 
 ---
