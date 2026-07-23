@@ -298,9 +298,12 @@ services:
   # One-shot seed service: creates default restaurant, roles and admin user
   seed:
     profiles: ["seed"]
+    # Use the published GHCR image in production; fall back to local build
+    # when the image is not available (e.g. development or offline install).
+    image: ${SEED_IMAGE:-ghcr.io/ismailhaddouche/disherio-seed:latest}
     build:
       context: .
-      dockerfile: backend/Dockerfile
+      dockerfile: backend/Dockerfile.seed
     depends_on:
       mongo:
         condition: service_healthy
@@ -333,9 +336,11 @@ services:
   # users are created only when this seeder runs outside production.
   seed-examples:
     profiles: ["seed"]
+    # Uses the same image as seed (the command differs); overridden below.
+    image: ${SEED_EXAMPLES_IMAGE:-ghcr.io/ismailhaddouche/disherio-seed:latest}
     build:
       context: .
-      dockerfile: backend/Dockerfile
+      dockerfile: backend/Dockerfile.seed
     depends_on:
       seed:
         condition: service_completed_successfully

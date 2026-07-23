@@ -755,6 +755,17 @@ EOF
   log "Descargando imágenes base..."
   docker compose pull >> "$LOG_FILE" 2>&1 || err "No se pudieron descargar las imágenes. Ver $LOG_FILE"
 
+  # Pull the published seed image from GHCR. If the pull fails (offline,
+  # first-time before CI publishes, or private registry), fall back to
+  # building locally so the installer always works.
+  log "Descargando imagen seed..."
+  if ! docker compose --profile seed pull seed >> "$LOG_FILE" 2>&1; then
+    warn "No se pudo descargar la imagen seed desde GHCR. Construyendo localmente..."
+    docker compose --profile seed build seed >> "$LOG_FILE" 2>&1 \
+      || err "Build de la imagen seed falló. Ver $LOG_FILE"
+  fi
+  ok "Imagen seed lista"
+
   log "Construyendo backend y frontend (3-5 min)..."
   docker compose build >> "$LOG_FILE" 2>&1 || err "Build fallido. Ver $LOG_FILE"
   ok "Imágenes construidas"

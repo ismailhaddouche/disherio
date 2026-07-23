@@ -19,6 +19,7 @@ env:
   REGISTRY: ghcr.io
   BACKEND_IMAGE: ghcr.io/${{ github.repository_owner }}/disherio-backend
   FRONTEND_IMAGE: ghcr.io/${{ github.repository_owner }}/disherio-frontend
+  SEED_IMAGE: ghcr.io/${{ github.repository_owner }}/disherio-seed
 
 jobs:
   # ============================================
@@ -241,10 +242,31 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+  verify-seed-image:
+    name: Verify Seed Image
+    runs-on: ubuntu-latest
+    needs: [lint-backend, lint-frontend, test-backend, test-frontend]
+
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4
+
+      - name: Verify seed image
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7
+        with:
+          context: .
+          file: ./backend/Dockerfile.seed
+          push: false
+          platforms: linux/amd64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
   publish-backend-image:
     name: Publish Backend Image
     runs-on: ubuntu-latest
-    needs: [verify-backend-image, verify-frontend-image]
+    needs: [verify-backend-image, verify-frontend-image, verify-seed-image]
     if: github.event_name != 'pull_request'
 
     permissions:
@@ -293,7 +315,7 @@ jobs:
   publish-frontend-image:
     name: Publish Frontend Image
     runs-on: ubuntu-latest
-    needs: [verify-backend-image, verify-frontend-image]
+    needs: [verify-backend-image, verify-frontend-image, verify-seed-image]
     if: github.event_name != 'pull_request'
 
     permissions:
@@ -339,10 +361,59 @@ jobs:
           cache-to: type=gha,mode=max
           platforms: linux/amd64,linux/arm64
 
+  publish-seed-image:
+    name: Publish Seed Image
+    runs-on: ubuntu-latest
+    needs: [verify-backend-image, verify-frontend-image, verify-seed-image]
+    if: github.event_name != 'pull_request'
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8 # v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4
+
+      - name: Login to Container Registry
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6
+        with:
+          images: ${{ env.SEED_IMAGE }}
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix=,suffix=,format=short
+
+      - name: Build and publish seed
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7
+        with:
+          context: .
+          file: ./backend/Dockerfile.seed
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64,linux/arm64
+
   cleanup-package-versions:
     name: Cleanup ${{ matrix.component }} Package Versions
     runs-on: ubuntu-latest
-    needs: [publish-backend-image, publish-frontend-image]
+    needs: [publish-backend-image, publish-frontend-image, publish-seed-image]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && success()
 
     permissions:
@@ -352,7 +423,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        component: [backend, frontend]
+        component: [backend, frontend, seed]
 
     steps:
       - name: Delete old package versions
