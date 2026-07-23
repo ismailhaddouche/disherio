@@ -180,9 +180,23 @@ async function seedExamples() {
     }
 
     // ── Example staff users (cook, waiter, cashier) ─────────────────────────
-    // The entry guard at the top already refuses to run in production without
-    // SEED_EXAMPLES_CONFIRM=true, so reaching this point means the operator
-    // explicitly opted in. Create the demo users regardless of NODE_ENV.
+    //
+    // SECURITY NOTE — well-known credentials in demo users
+    // ----------------------------------------------------
+    // The passwords below are intentionally trivial (cocinero/cocinero, etc.).
+    // This is an accepted design trade-off: the purpose of the example seed is
+    // to let an operator populate the database and immediately test every role
+    // (KDS, TAS, POS) without having to create accounts manually first.
+    //
+    // This is NOT secure for a real production deployment. It is safe only
+    // because the seeder refuses to run unless the operator explicitly opts in
+    // via SEED_EXAMPLES_CONFIRM=true (enforced by the entry guard at the top
+    // of this function). The installer sets that flag only when the user
+    // answers "yes" to "¿Instalar datos de ejemplo?".
+    //
+    // If the deployment is intended for real use, the operator should:
+    //   1. NOT enable example data, or
+    //   2. Delete or re-password these demo accounts after testing.
     const exampleUsers = [
       { role_name: 'KTS', username: 'cocinero', staff_name: 'Cocinero Demo', password: 'cocinero' },
       { role_name: 'TAS', username: 'camarero', staff_name: 'Camarero Demo', password: 'camarero' },
@@ -232,6 +246,7 @@ async function seedExamples() {
 
     logger.info('=== DisherIO example seed completed successfully ===');
     logger.info('Demo users: cocinero/cocinero (KTS), camarero/camarero (TAS), cajero/cajero (POS)');
+    logger.warn('These credentials are insecure — change or delete them before real use');
     logger.info('Example totem: Mesa 1');
 
   } catch (err) {
