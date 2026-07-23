@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#3b82f6"/>
+  <!-- Fork -->
+  <g fill="none" stroke="#ffffff" stroke-width="20" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Fork tines -->
+    <line x1="175" y1="120" x2="175" y2="200"/>
+    <line x1="200" y1="120" x2="200" y2="200"/>
+    <line x1="225" y1="120" x2="225" y2="200"/>
+    <!-- Fork handle -->
+    <path d="M175 200 L175 260 Q175 280 200 280 Q225 280 225 260 L225 200" fill="#ffffff" stroke="none"/>
+    <line x1="200" y1="280" x2="200" y2="392"/>
+  </g>
+  <!-- Knife -->
+  <g fill="none" stroke="#ffffff" stroke-width="20" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M305 120 L305 250" />
+    <path d="M305 120 Q335 130 335 200 Q335 250 305 250" fill="#ffffff" stroke="none"/>
+    <line x1="305" y1="250" x2="305" y2="392"/>
+  </g>
+</svg>
