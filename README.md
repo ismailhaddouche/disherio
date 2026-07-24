@@ -108,7 +108,7 @@ sudo ./scripts/install.sh
 ```
 
 The installer will ask:
-1. **Deployment type**: domain (HTTPS) / trusted local IP
+1. **Deployment type**: domain (HTTPS) / trusted local IP (HTTP) / public IP (HTTP, unencrypted)
 2. **Domain**: only if domain mode was selected
 3. **Language**: es / en / fr
 4. **Restaurant name**: default `DisherIO Restaurant`
