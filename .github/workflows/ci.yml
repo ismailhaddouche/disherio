@@ -15,12 +15,6 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
-env:
-  REGISTRY: ghcr.io
-  BACKEND_IMAGE: ghcr.io/${{ github.repository_owner }}/disherio-backend
-  FRONTEND_IMAGE: ghcr.io/${{ github.repository_owner }}/disherio-frontend
-  SEED_IMAGE: ghcr.io/${{ github.repository_owner }}/disherio-seed
-
 jobs:
   # ============================================
   # LINT & TYPE CHECK
@@ -281,7 +275,7 @@ jobs:
       cache: true
       cache-mode: max
       set-meta-labels: true
-      meta-images: ${{ env.BACKEND_IMAGE }}
+      meta-images: ghcr.io/${{ github.repository_owner }}/disherio-backend
       meta-tags: |
         type=ref,event=branch
         type=semver,pattern={{version}}
@@ -289,7 +283,7 @@ jobs:
         type=sha,prefix=,suffix=,format=short
     secrets:
       registry-auths: |
-        - registry: ${{ env.REGISTRY }}
+        - registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
@@ -311,7 +305,7 @@ jobs:
       cache: true
       cache-mode: max
       set-meta-labels: true
-      meta-images: ${{ env.FRONTEND_IMAGE }}
+      meta-images: ghcr.io/${{ github.repository_owner }}/disherio-frontend
       meta-tags: |
         type=ref,event=branch
         type=semver,pattern={{version}}
@@ -319,7 +313,7 @@ jobs:
         type=sha,prefix=,suffix=,format=short
     secrets:
       registry-auths: |
-        - registry: ${{ env.REGISTRY }}
+        - registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
@@ -341,7 +335,7 @@ jobs:
       cache: true
       cache-mode: max
       set-meta-labels: true
-      meta-images: ${{ env.SEED_IMAGE }}
+      meta-images: ghcr.io/${{ github.repository_owner }}/disherio-seed
       meta-tags: |
         type=ref,event=branch
         type=semver,pattern={{version}}
@@ -349,7 +343,7 @@ jobs:
         type=sha,prefix=,suffix=,format=short
     secrets:
       registry-auths: |
-        - registry: ${{ env.REGISTRY }}
+        - registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
