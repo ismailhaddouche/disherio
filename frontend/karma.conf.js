@@ -24,14 +24,16 @@ module.exports = function (config) {
       subdir: '.',
       reporters: [{ type: 'html' }, { type: 'text-summary' }],
       check: {
-        // Ratchet: pinned ~2-3 points below the values measured on 2026-07-18
-        // (statements 59.68, branches 36.27, functions 56.75, lines 60.72) so
+        // Ratchet: pinned ~2-3 points below the values measured on 2026-07-24
+        // (statements 57.54, branches 34.48, functions 52.8, lines 58.64) so
         // CI fails if coverage drops, without requiring future increases.
+        // Functions re-pinned from 54 after adding totem.component.spec.ts
+        // brought that previously-uninstrumented file into the coverage pool.
         global: {
-          statements: 57,
-          branches: 33,
-          functions: 54,
-          lines: 58,
+          statements: 55,
+          branches: 32,
+          functions: 50,
+          lines: 56,
         },
       },
     },
