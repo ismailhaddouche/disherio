@@ -151,7 +151,7 @@ createIndexIfNotExists(db.roles, { "restaurant_id": 1 });
 
 // Totem lookups (adapted to actual model)
 createIndexIfNotExists(db.totems, { "restaurant_id": 1 });
-createIndexIfNotExists(db.totems, { "totem_qr": 1 }, { unique: true, sparse: true });
+createIndexIfNotExists(db.totems, { "totem_qr": 1 }, { unique: true });
 
 // TotemSession lookups
 createIndexIfNotExists(db.totemsessions, { "totem_id": 1, "totem_state": 1 });

@@ -74,7 +74,7 @@ const expectedIndexes = {
   ],
   totems: [
     { key: { restaurant_id: 1 }, options: {}, description: 'Restaurant totems' },
-    { key: { totem_qr: 1 }, options: { unique: true, sparse: true }, description: 'Unique QR lookup' },
+    { key: { totem_qr: 1 }, options: { unique: true }, description: 'Unique QR lookup' },
   ],
   totemsessions: [
     { key: { totem_id: 1, totem_state: 1 }, options: {}, description: 'Totem sessions by state' },

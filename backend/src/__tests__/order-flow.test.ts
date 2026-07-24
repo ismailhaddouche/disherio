@@ -91,7 +91,7 @@ describeWithIntegrationDb('Order Flow Integration', () => {
     } as unknown as Partial<IDish>);
     dishId = dish._id.toString();
 
-    const totem = await Totem.create({ restaurant_id: restaurantId, totem_name: 'Mesa 1', totem_type: 'STANDARD' });
+    const totem = await Totem.create({ restaurant_id: restaurantId, totem_name: 'Mesa 1', totem_type: 'STANDARD', totem_qr: 'order-flow-totem-1' });
     const session = await createSessionForTotem(totem);
     sessionId = session._id.toString();
   });
@@ -168,6 +168,7 @@ describeWithIntegrationDb('Order Flow Integration', () => {
       restaurant_id: restaurantId,
       totem_name: 'Mesa 2',
       totem_type: 'STANDARD',
+      totem_qr: 'order-flow-totem-2',
     });
     const otherSession = await createSessionForTotem(otherTotem);
     const otherCustomer = await SessionCustomer.create({
@@ -197,6 +198,7 @@ describeWithIntegrationDb('Order Flow Integration', () => {
       restaurant_id: restaurantId,
       totem_name: 'Correction table',
       totem_type: 'STANDARD',
+      totem_qr: 'order-flow-correction',
     });
     const correctionSession = await createSessionForTotem(correctionTotem, 'COMPLETE');
 
@@ -245,6 +247,7 @@ describeWithIntegrationDb('Order Flow Integration', () => {
       restaurant_id: restaurantId,
       totem_name: 'Authorization table',
       totem_type: 'STANDARD',
+      totem_qr: 'order-flow-auth',
     });
     const authSession = await createSessionForTotem(authTotem);
     const authOrder = await createOrder(authSession._id.toString(), staffId) as IOrder;

@@ -5,7 +5,7 @@ import { ObjectIdSchema } from './common.schema';
 export const TotemSchema = z.object({
   restaurant_id: ObjectIdSchema,
   totem_name: z.string().min(1),
-  totem_qr: z.string().optional(),
+  totem_qr: z.string(),
   totem_type: z.enum(['STANDARD', 'TEMPORARY']),
   totem_start_date: z.string().datetime().optional(),
 }).strict();

@@ -72,27 +72,29 @@ import { ConfirmationService } from '../../../core/services/confirmation.service
               : ('totem.temporary_desc' | translate)) }}</mat-hint>
         </mat-form-field>
 
-        @if (isEditMode && totem()?.totem_qr) {
-          <div class="disher-qr-section">
-            <label class="admin-label">{{ 'totem.current_qr' | translate }}</label>
-            <div class="flex items-center gap-6">
-              <div class="disher-qr-image">
-                <app-qr-code
-                  [value]="getTotemUrl(totem()!.totem_qr!)"
-                  [ariaLabel]="'totem.current_qr' | translate"
-                  [size]="150"
-                  class="w-28"
-                />
-              </div>
-              <div class="flex-1">
-                <p class="disher-qr-url">{{ getTotemUrl(totem()!.totem_qr!) }}</p>
-                <button matButton type="button" (click)="copyQrUrl()" class="disher-copy-btn">
-                  <mat-icon aria-hidden="true">content_copy</mat-icon>
-                  {{ 'totem.copy_url' | translate }}
-                </button>
+        @if (isEditMode && totem(); as t) {
+          @if (t.totem_qr) {
+            <div class="disher-qr-section">
+              <label class="admin-label">{{ 'totem.current_qr' | translate }}</label>
+              <div class="flex items-center gap-6">
+                <div class="disher-qr-image">
+                  <app-qr-code
+                    [value]="getTotemUrl(t.totem_qr)"
+                    [ariaLabel]="'totem.current_qr' | translate"
+                    [size]="150"
+                    class="w-28"
+                  />
+                </div>
+                <div class="flex-1">
+                  <p class="disher-qr-url">{{ getTotemUrl(t.totem_qr) }}</p>
+                  <button matButton type="button" (click)="copyQrUrl()" class="disher-copy-btn">
+                    <mat-icon aria-hidden="true">content_copy</mat-icon>
+                    {{ 'totem.copy_url' | translate }}
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
+          }
         }
 
         @if (isEditMode && totem()?._id) {

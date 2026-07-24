@@ -440,7 +440,7 @@ List all totems for the restaurant.
 
 ### POST /totems
 
-Create a totem. A unique QR token is generated automatically.
+Create a totem. A unique QR token (`totem_qr`) is generated automatically by the server and is always present on the returned totem; it is never accepted from the client.
 
 **Auth:** Required (ADMIN)
 
@@ -452,7 +452,7 @@ Create a totem. A unique QR token is generated automatically.
 }
 ```
 
-**Response 201** — totem object including `totem_qr`
+**Response 201** — totem object including a server-generated, always-present `totem_qr`
 
 ---
 

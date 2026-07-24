@@ -13,13 +13,12 @@ function singleFieldIndexes(
 }
 
 describe('model indexes', () => {
-  it('defines one sparse unique QR index so legacy totems may omit a QR', () => {
+  it('defines one unique QR index for totem lookup', () => {
     const qrIndexes = singleFieldIndexes(Totem.schema.indexes() as SchemaIndex[], 'totem_qr');
 
     expect(qrIndexes).toHaveLength(1);
     expect(qrIndexes[0][1]).toEqual(expect.objectContaining({
       unique: true,
-      sparse: true,
     }));
   });
 

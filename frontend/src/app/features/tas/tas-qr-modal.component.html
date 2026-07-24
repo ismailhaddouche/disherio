@@ -7,21 +7,25 @@
       </button>
     </div>
     <div class="flex flex-col items-center p-6">
-      @if (session().totem?.totem_qr) {
-        <app-qr-code
-          [value]="getQrUrl(session().totem!.totem_qr!)"
-          [ariaLabel]="'totem.current_qr' | translate"
-          [size]="200"
-          class="w-48 rounded-disher-sm border border-outline-variant mb-4"
-        />
-        <p class="text-sm text-on-surface-variant mb-2 text-center break-all">{{ getQrUrl(session().totem!.totem_qr!) }}</p>
-        <button
-          (click)="copyToClipboard(getQrUrl(session().totem!.totem_qr!))"
-          class="btn-admin btn-secondary text-sm"
-        >
-          <span class="material-symbols-outlined text-sm">content_copy</span>
-          {{ 'common.copy' | translate }}
-        </button>
+      @if (session().totem; as totem) {
+        @if (totem.totem_qr) {
+          <app-qr-code
+            [value]="getQrUrl(totem.totem_qr)"
+            [ariaLabel]="'totem.current_qr' | translate"
+            [size]="200"
+            class="w-48 rounded-disher-sm border border-outline-variant mb-4"
+          />
+          <p class="text-sm text-on-surface-variant mb-2 text-center break-all">{{ getQrUrl(totem.totem_qr) }}</p>
+          <button
+            (click)="copyToClipboard(getQrUrl(totem.totem_qr))"
+            class="btn-admin btn-secondary text-sm"
+          >
+            <span class="material-symbols-outlined text-sm">content_copy</span>
+            {{ 'common.copy' | translate }}
+          </button>
+        } @else {
+          <p class="text-sm text-on-surface-variant">{{ 'totem.no_qr' | translate }}</p>
+        }
       } @else {
         <p class="text-sm text-on-surface-variant">{{ 'totem.no_qr' | translate }}</p>
       }

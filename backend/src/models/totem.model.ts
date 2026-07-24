@@ -12,7 +12,7 @@ const TotemSchema = new Schema<ITotem>(
   {
     restaurant_id: { type: Schema.Types.ObjectId, ref: 'Restaurant', required: true },
     totem_name: { type: String, required: true },
-    totem_qr: { type: String },
+    totem_qr: { type: String, required: true },
     totem_type: { type: String, enum: ['STANDARD', 'TEMPORARY'], required: true },
     totem_start_date: { type: Date, default: Date.now },
   },
@@ -23,7 +23,7 @@ const TotemSchema = new Schema<ITotem>(
 TotemSchema.index({ restaurant_id: 1, totem_type: 1 });
 
 // Unique index for QR lookup
-TotemSchema.index({ totem_qr: 1 }, { unique: true, sparse: true });
+TotemSchema.index({ totem_qr: 1 }, { unique: true });
 
 export const Totem = model<ITotem>('Totem', TotemSchema);
 
