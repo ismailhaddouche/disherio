@@ -99,10 +99,10 @@ async function seedExamples() {
       if (existing) {
         categoryIds[cat.name.es] = existing._id;
         // Set the image URL on an existing category if it was missing.
-        if (!existing.category_image_url && (cat as any).image) {
+        if (!existing.category_image_url && cat.image) {
           await Category.updateOne(
             { _id: existing._id },
-            { $set: { category_image_url: (cat as any).image } },
+            { $set: { category_image_url: cat.image } },
           );
         }
         logger.info(`Category already exists: ${cat.name[appLang]}`);
@@ -120,7 +120,7 @@ async function seedExamples() {
             { lang: 'en', value: cat.description.en },
             { lang: 'fr', value: cat.description.fr },
           ],
-          category_image_url: (cat as any).image || undefined,
+          category_image_url: cat.image || undefined,
         });
         categoryIds[cat.name.es] = created._id;
         logger.info(`Category created: ${cat.name[appLang]}`);
@@ -231,7 +231,7 @@ async function seedExamples() {
         disher_variant: false,
         variants: [],
         extras: [],
-        disher_url_image: (dish as any).image || undefined,
+        disher_url_image: dish.image || undefined,
       });
       logger.info(`Dish created: ${dish.name[appLang]} (${dish.price}€)`);
     }
