@@ -70,6 +70,7 @@ body {
 }
 
 html {
+  scroll-behavior: smooth;
   background: var(--mat-sys-surface-container-low);
   color: var(--mat-sys-on-surface);
 }
@@ -78,9 +79,48 @@ body {
   margin: 0;
   font-family: 'Roboto', sans-serif;
   -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  text-rendering: optimizeLegibility;
   touch-action: manipulation;
   background: var(--mat-sys-surface-container-low);
   color: var(--mat-sys-on-surface);
+}
+
+h1, h2, h3, h4, h5, h6 {
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+::selection {
+  background: var(--mat-sys-primary-container);
+  color: var(--mat-sys-on-primary-container);
+}
+
+// Slim, token-aware scrollbars
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--mat-sys-outline-variant) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-thumb {
+  border-radius: var(--disher-shape-full);
+  background: var(--mat-sys-outline-variant);
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--mat-sys-outline);
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 button,
@@ -116,27 +156,27 @@ textarea {
 
   // Base button: shared sizing, not meant to be used alone
   .btn-admin {
-    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-disher-sm px-5 py-2 text-sm font-medium transition-colors duration-disher-short-3 ease-disher-standard disabled:pointer-events-none disabled:opacity-50;
+    @apply inline-flex min-h-11 select-none items-center justify-center gap-2 rounded-disher-sm px-5 py-2 text-sm font-medium transition-all duration-disher-short-3 ease-disher-standard disabled:pointer-events-none disabled:opacity-50;
   }
 
   // Filled button (M3 primary action)
   .btn-primary {
-    @apply bg-primary text-on-primary shadow-disher-1 hover:shadow-disher-2;
+    @apply bg-primary text-on-primary shadow-disher-1 hover:-translate-y-px hover:shadow-disher-2 active:translate-y-0 active:shadow-disher-1;
   }
 
   // Outlined button (M3 secondary action)
   .btn-secondary {
-    @apply border border-outline bg-surface text-on-surface hover:bg-surface-container;
+    @apply border border-outline bg-surface text-on-surface hover:bg-surface-container active:bg-surface-container-high;
   }
 
   // Danger / error button (M3 error)
   .btn-danger {
-    @apply bg-error text-on-error hover:shadow-disher-1;
+    @apply bg-error text-on-error hover:-translate-y-px hover:shadow-disher-1 active:translate-y-0 active:shadow-none;
   }
 
   // Icon button (M3)
   .btn-icon {
-    @apply flex h-11 w-11 items-center justify-center rounded-disher-full text-on-surface-variant transition-colors duration-disher-short-3 ease-disher-standard hover:bg-surface-container-high hover:text-on-surface;
+    @apply flex h-11 w-11 select-none items-center justify-center rounded-disher-full text-on-surface-variant transition-all duration-disher-short-3 ease-disher-standard hover:bg-surface-container-high hover:text-on-surface active:bg-surface-container-highest;
   }
 
   // ── Admin Layout ──────────────────────────────────────────────────────────
@@ -189,6 +229,11 @@ textarea {
     @apply flex flex-col overflow-hidden rounded-disher-md border border-outline-variant bg-surface shadow-disher-1;
   }
 
+  // Interactive card: subtle M3 elevation lift on hover
+  .admin-card-interactive {
+    @apply transition-all duration-disher-short-4 ease-disher-standard hover:-translate-y-0.5 hover:border-outline hover:shadow-disher-2;
+  }
+
   // ── Tables ───────────────────────────────────────────────────────────────
 
   .admin-table-container {
@@ -205,6 +250,11 @@ textarea {
 
   .admin-td {
     @apply whitespace-nowrap border-b border-outline-variant px-5 py-3 text-sm text-on-surface;
+  }
+
+  // Table row with M3 state-layer hover
+  .admin-tr {
+    @apply transition-colors duration-disher-short-3 ease-disher-standard hover:bg-surface-container-low;
   }
 
   // ── App Shell ─────────────────────────────────────────────────────────────
@@ -228,7 +278,7 @@ textarea {
   // ── Navigation ────────────────────────────────────────────────────────────
 
   .nav-item {
-    @apply flex items-center gap-2 rounded-disher-sm px-3 py-2 text-sm font-medium text-on-surface-variant transition-colors duration-disher-short-3 ease-disher-standard hover:bg-surface-container-high hover:text-on-surface;
+    @apply flex items-center gap-2 rounded-disher-sm px-3 py-2 text-sm font-medium text-on-surface-variant transition-all duration-disher-short-3 ease-disher-standard hover:bg-surface-container-high hover:text-on-surface active:bg-surface-container-highest;
   }
 
   .nav-item-active {
