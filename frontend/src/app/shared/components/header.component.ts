@@ -168,16 +168,18 @@ import { AuthService } from '../../core/services/auth.service';
       justify-content: center;
       min-width: 24px;
       text-align: center;
-      font-size: 14px;
+      font-size: 16px;
       font-weight: 500;
       letter-spacing: 0.04em;
       line-height: 1;
+      vertical-align: middle;
     }
     .disher-chevron {
       display: inline-flex;
       align-items: center;
       justify-content: center;
       font-size: 20px;
+      vertical-align: middle;
     }
     .disher-language-option {
       min-width: 180px;
