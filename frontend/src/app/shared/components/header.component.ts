@@ -21,71 +21,73 @@ import { AuthService } from '../../core/services/auth.service';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <mat-toolbar class="disher-header" role="banner">
-      <div class="disher-header-left">
-        <a routerLink="/login" class="disher-logo-link" aria-label="DisherIO home">
-          <div class="disher-logo-mark" aria-hidden="true">D</div>
-          <span class="disher-wordmark">{{ 'DisherIO' }}</span>
-        </a>
-        @if (restaurantName()) {
-          <span class="disher-header-divider" aria-hidden="true"></span>
-          <span class="disher-restaurant-name" [title]="restaurantName()">{{ restaurantName() }}</span>
-        }
-      </div>
-
-      <div class="disher-header-right">
-        <button
-          matIconButton
-          type="button"
-          (click)="toggleTheme()"
-          [attr.aria-label]="'common.theme' | translate"
-          [attr.aria-pressed]="themeService.isDark()"
-        >
-          <span class="material-symbols-outlined">{{ themeService.isDark() ? 'light_mode' : 'dark_mode' }}</span>
-        </button>
-
-        <button
-          matButton
-          class="disher-language-trigger"
-          type="button"
-          [matMenuTriggerFor]="langMenu"
-          [attr.aria-haspopup]="true"
-          [attr.aria-expanded]="langMenuOpen()"
-          [attr.aria-label]="'common.language' | translate"
-          (menuOpened)="langMenuOpen.set(true)"
-          (menuClosed)="langMenuOpen.set(false)"
-        >
-          <span class="disher-language-code" aria-hidden="true">{{ currentLanguageCode() }}</span>
-          <span class="material-symbols-outlined disher-chevron" aria-hidden="true">expand_more</span>
-        </button>
-        <mat-menu #langMenu="matMenu" xPosition="before" [attr.aria-label]="'common.language' | translate">
-          @for (lang of availableLanguages(); track lang.code) {
-            <button
-              matMenuItem
-              class="disher-language-option"
-              (click)="setLanguage(lang.code)"
-              [attr.aria-current]="i18n.currentLang() === lang.code ? 'true' : null"
-            >
-              <span class="disher-language-option-content">
-                <span class="disher-language-name">{{ lang.name }}</span>
-                @if (i18n.currentLang() === lang.code) {
-                  <span class="material-symbols-outlined disher-check" aria-hidden="true">check</span>
-                } @else {
-                  <span class="disher-check-placeholder" aria-hidden="true"></span>
-                }
-              </span>
-            </button>
+      <div class="disher-header-inner">
+        <div class="disher-header-left">
+          <a routerLink="/login" class="disher-logo-link" aria-label="DisherIO home">
+            <div class="disher-logo-mark" aria-hidden="true">D</div>
+            <span class="disher-wordmark">{{ 'DisherIO' }}</span>
+          </a>
+          @if (restaurantName()) {
+            <span class="disher-header-divider" aria-hidden="true"></span>
+            <span class="disher-restaurant-name" [title]="restaurantName()">{{ restaurantName() }}</span>
           }
-        </mat-menu>
+        </div>
 
-        <button
-          matIconButton
-          type="button"
-          (click)="logout()"
-          [disabled]="isLoggingOut()"
-          [attr.aria-label]="'common.logout' | translate"
-        >
-          <span class="material-symbols-outlined">logout</span>
-        </button>
+        <div class="disher-header-right">
+          <button
+            matIconButton
+            type="button"
+            (click)="toggleTheme()"
+            [attr.aria-label]="'common.theme' | translate"
+            [attr.aria-pressed]="themeService.isDark()"
+          >
+            <span class="material-symbols-outlined">{{ themeService.isDark() ? 'light_mode' : 'dark_mode' }}</span>
+          </button>
+
+          <button
+            matButton
+            class="disher-language-trigger"
+            type="button"
+            [matMenuTriggerFor]="langMenu"
+            [attr.aria-haspopup]="true"
+            [attr.aria-expanded]="langMenuOpen()"
+            [attr.aria-label]="'common.language' | translate"
+            (menuOpened)="langMenuOpen.set(true)"
+            (menuClosed)="langMenuOpen.set(false)"
+          >
+            <span class="disher-language-code" aria-hidden="true">{{ currentLanguageCode() }}</span>
+            <span class="material-symbols-outlined disher-chevron" aria-hidden="true">expand_more</span>
+          </button>
+          <mat-menu #langMenu="matMenu" xPosition="before" [attr.aria-label]="'common.language' | translate">
+            @for (lang of availableLanguages(); track lang.code) {
+              <button
+                matMenuItem
+                class="disher-language-option"
+                (click)="setLanguage(lang.code)"
+                [attr.aria-current]="i18n.currentLang() === lang.code ? 'true' : null"
+              >
+                <span class="disher-language-option-content">
+                  <span class="disher-language-name">{{ lang.name }}</span>
+                  @if (i18n.currentLang() === lang.code) {
+                    <span class="material-symbols-outlined disher-check" aria-hidden="true">check</span>
+                  } @else {
+                    <span class="disher-check-placeholder" aria-hidden="true"></span>
+                  }
+                </span>
+              </button>
+            }
+          </mat-menu>
+
+          <button
+            matIconButton
+            type="button"
+            (click)="logout()"
+            [disabled]="isLoggingOut()"
+            [attr.aria-label]="'common.logout' | translate"
+          >
+            <span class="material-symbols-outlined">logout</span>
+          </button>
+        </div>
       </div>
     </mat-toolbar>
   `,
@@ -96,15 +98,25 @@ import { AuthService } from '../../core/services/auth.service';
       top: 0;
       z-index: 50;
       height: 56px;
-      padding: 0 16px;
+      padding: 0;
       display: flex;
       align-items: center;
-      justify-content: space-between;
       background: var(--mat-sys-surface-container);
       border-bottom: 1px solid var(--mat-sys-outline-variant);
       backdrop-filter: blur(8px);
     }
-    .disher-header-left { display: flex; align-items: center; gap: 12px; }
+    .disher-header-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      width: 100%;
+      max-width: 1600px;
+      height: 100%;
+      margin: 0 auto;
+      padding: 0 16px;
+    }
+    .disher-header-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
     .disher-header-right { display: flex; align-items: center; gap: 4px; }
     .disher-logo-link { display: flex; align-items: center; gap: 8px; text-decoration: none; }
     .disher-logo-mark {
@@ -141,13 +153,23 @@ import { AuthService } from '../../core/services/auth.service';
       color: var(--mat-sys-on-surface-variant);
     }
     @media (max-width: 768px) { .disher-restaurant-name { display: none; } }
-    .disher-language-trigger { min-width: 64px; }
+    .disher-language-trigger {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      height: 40px;
+      min-width: 64px;
+      padding: 0 8px 0 12px;
+      border-radius: var(--disher-shape-full);
+    }
     .disher-language-code {
       min-width: 24px;
       text-align: center;
       font-size: 14px;
       font-weight: 500;
       letter-spacing: 0.04em;
+      line-height: 1;
     }
     .disher-chevron { font-size: 20px; }
     .disher-language-option {
