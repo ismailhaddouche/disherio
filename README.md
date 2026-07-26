@@ -13,7 +13,7 @@
 >
 > **Self-service totem (Table 1 demo):** Scan the QR to place an order from the table — no login required.
 >
-> <img src="docs/images/qr-mesa1-demo.png" alt="QR code for Table 1 demo totem" width="158" height="163" />
+> <img src="docs/images/qr-mesa1-demo.png" alt="QR code for Table 1 demo totem" width="150" height="150" />
 
 DisherIo is an integrated restaurant management platform providing solutions for self-service ordering, table assistance, kitchen display systems (KDS), and point-of-sale (POS) operations.
 
