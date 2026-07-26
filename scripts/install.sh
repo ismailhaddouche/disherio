@@ -1023,18 +1023,21 @@ cmd_backup() {
   install -d -m 0700 "$staging/database" "$staging/uploads" "$staging/config" "$staging/config/secrets"
 
   log "Creando backup autenticado..."
+  # The mongo container mounts /tmp as tmpfs, which docker cp (daemon-side)
+  # cannot see. Stage the dump inside the data volume instead.
+  local dump_dir="/data/db/.backup_dump_${ts}"
   docker compose exec -T mongo sh -c \
     'mongodump --db disherio --username "$MONGO_INITDB_ROOT_USERNAME" \
     --password "$(cat /run/secrets/mongo_root_password)" --authenticationDatabase admin \
-    --out "$1" --quiet' sh "/tmp/dump_${ts}" >> "$LOG_FILE" 2>&1 \
+    --out "$1" --quiet' sh "$dump_dir" >> "$LOG_FILE" 2>&1 \
     || err "mongodump falló. Ver $LOG_FILE"
 
   # Docker 29 no longer resolves the '<path>/.' suffix when copying FROM a
   # container ("Could not find the file ... in container"). Copy the dump's
   # inner database directory instead; the archive layout is unchanged.
-  docker compose cp "mongo:/tmp/dump_${ts}/disherio" "$staging/database/" >> "$LOG_FILE" 2>&1 \
+  docker compose cp "mongo:${dump_dir}/disherio" "$staging/database/" >> "$LOG_FILE" 2>&1 \
     || err "copy falló"
-  docker compose exec -T mongo rm -rf "/tmp/dump_${ts}" 2>/dev/null || true
+  docker compose exec -T --user 0 mongo rm -rf "$dump_dir" 2>/dev/null || true
 
   log "Incluyendo uploads y configuración recuperable..."
   # Same Docker 29 limitation: copy the directory itself to a non-existent
@@ -1205,13 +1208,15 @@ cmd_restore() {
     || err "MongoDB no arrancó con la configuración restaurada"
   docker compose up --force-recreate --exit-code-from mongo-init-replica mongo-init-replica >> "$LOG_FILE" 2>&1 \
     || err "No se pudo inicializar el replica set"
-  docker compose cp "$staging/database/." "mongo:/tmp/disherio-restore/" >> "$LOG_FILE" 2>&1 \
+  # Stage the restore inside the data volume: /tmp is tmpfs in the mongo
+  # container and docker cp cannot see through it.
+  docker compose cp "$staging/database/." "mongo:/data/db/.disherio-restore/" >> "$LOG_FILE" 2>&1 \
     || err "No se pudo copiar el dump a MongoDB"
   docker compose exec -T mongo sh -c \
     'mongorestore --drop --username "$MONGO_INITDB_ROOT_USERNAME" \
     --password "$(cat /run/secrets/mongo_root_password)" --authenticationDatabase admin \
-    /tmp/disherio-restore' >> "$LOG_FILE" 2>&1 || err "mongorestore falló"
-  docker compose exec -T mongo rm -rf /tmp/disherio-restore >/dev/null 2>&1 || true
+    /data/db/.disherio-restore' >> "$LOG_FILE" 2>&1 || err "mongorestore falló"
+  docker compose exec -T --user 0 mongo rm -rf /data/db/.disherio-restore >/dev/null 2>&1 || true
 
   docker compose up -d redis backend --wait --wait-timeout 180 >> "$LOG_FILE" 2>&1 \
     || err "Backend o Redis no arrancaron tras restaurar"
