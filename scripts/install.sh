@@ -1008,6 +1008,17 @@ cmd_logs() {
   fi
 }
 
+# HMAC-SHA256 of a file using DISHERIO_BACKUP_PASS as the key. The key is
+# derived through stdin (never exposed on the command line) and passed as
+# hexkey: OpenSSL 3.0 (Ubuntu 24.04) does not support the 'keyenv:' macopt,
+# and deriving the key keeps MACs identical across OpenSSL versions.
+backup_hmac_sha256() {
+  local file="$1"
+  local hexkey
+  hexkey=$(printf '%s' "$DISHERIO_BACKUP_PASS" | openssl dgst -sha256 -hex | awk '{print $NF}') || return 1
+  openssl dgst -sha256 -mac HMAC -macopt "hexkey:${hexkey}" "$file" | awk '{print $NF}'
+}
+
 cmd_backup() {
   [[ $EUID -eq 0 ]] || err "Ejecuta el backup como root para incluir la configuración protegida"
   cd "$ROOT_DIR"
@@ -1082,8 +1093,7 @@ cmd_backup() {
     -pass env:DISHERIO_BACKUP_PASS -in "$archive" -out "$cipher_archive" \
     || err "No se pudo cifrar el backup"
   local backup_mac
-  backup_mac=$(DISHERIO_BACKUP_PASS="$backup_pass" openssl dgst -sha256 -mac HMAC \
-    -macopt keyenv:DISHERIO_BACKUP_PASS "$cipher_archive" | awk '{print $NF}') \
+  backup_mac=$(DISHERIO_BACKUP_PASS="$backup_pass" backup_hmac_sha256 "$cipher_archive") \
     || err "No se pudo autenticar el backup"
   [[ "$backup_mac" =~ ^[a-fA-F0-9]{64}$ ]] || err "OpenSSL devolvió un HMAC no válido"
   {
@@ -1136,8 +1146,7 @@ cmd_restore() {
       [[ "$expected_mac" =~ ^[a-fA-F0-9]{64}$ ]] || err "Cabecera de autenticación del backup no válida"
       encrypted_input="$staging/backup.cipher"
       tail -n +3 "$archive" > "$encrypted_input"
-      actual_mac=$(DISHERIO_BACKUP_PASS="$restore_pass" openssl dgst -sha256 -mac HMAC \
-        -macopt keyenv:DISHERIO_BACKUP_PASS "$encrypted_input" | awk '{print $NF}') \
+      actual_mac=$(DISHERIO_BACKUP_PASS="$restore_pass" backup_hmac_sha256 "$encrypted_input") \
         || err "No se pudo verificar la autenticidad del backup"
       [[ "$actual_mac" == "$expected_mac" ]] \
         || err "La autenticación del backup falló (archivo alterado o contraseña incorrecta)"
