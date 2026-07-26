@@ -162,8 +162,12 @@ import { AuthService } from '../../core/services/auth.service';
       min-width: 64px;
       padding: 0 8px 0 12px;
       border-radius: var(--disher-shape-full);
+      line-height: 1;
     }
     .disher-language-code {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
       min-width: 24px;
       text-align: center;
       font-size: 14px;
@@ -171,7 +175,12 @@ import { AuthService } from '../../core/services/auth.service';
       letter-spacing: 0.04em;
       line-height: 1;
     }
-    .disher-chevron { font-size: 20px; }
+    .disher-chevron {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+    }
     .disher-language-option {
       min-width: 180px;
     }
