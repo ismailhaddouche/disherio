@@ -4,6 +4,7 @@ import { asyncHandler, createError } from '../utils/async-handler';
 import * as TotemService from '../services/totem.service';
 import { assertCanMutateTotem } from '../services/totem.service';
 import * as DishService from '../services/dish.service';
+import * as RestaurantService from '../services/restaurant.service';
 import * as OrderService from '../services/order.service';
 import * as OrderOwnershipService from '../services/order-ownership.service';
 import * as OrderRequestPolicy from '../services/order-request-policy.service';
@@ -92,11 +93,24 @@ export const getMenuDishes = asyncHandler(async (req: Request, res: Response): P
     throw createError.notFound('TOTEM_NOT_FOUND');
   }
   const restaurantId = totem.restaurant_id.toString();
-  const [categories, dishes] = await Promise.all([
+  const [categories, dishes, restaurant] = await Promise.all([
     DishService.getCategoriesByRestaurant(restaurantId),
     DishService.getDishesByRestaurant(restaurantId),
+    RestaurantService.getRestaurantById(restaurantId),
   ]);
-  res.json({ categories, dishes });
+  // Public visitors get the restaurant's language configuration so the totem
+  // UI defaults to the restaurant's default language and the language
+  // selector only offers the enabled ones.
+  res.json({
+    categories,
+    dishes,
+    restaurant: restaurant
+      ? {
+          default_language: restaurant.default_language,
+          enabled_languages: restaurant.enabled_languages,
+        }
+      : null,
+  });
 });
 
 export const getActiveSessions = asyncHandler(async (req: Request, res: Response): Promise<void> => {

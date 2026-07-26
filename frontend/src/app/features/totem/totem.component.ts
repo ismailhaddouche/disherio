@@ -18,7 +18,9 @@ import {
   TotemService,
   type PublicTotemCustomer,
   type PublicTotemSession,
+  type PublicMenuRestaurant,
 } from '../../core/services/totem.service';
+import type { Language } from '../../core/services/i18n.service';
 import type { Dish, Category, ItemOrder, OrderLimitStatus } from '../../types';
 import { ConfirmationService } from '../../core/services/confirmation.service';
 import { getDishCategoryId } from '../../shared/utils/dish-category.utils';
@@ -93,6 +95,11 @@ export class TotemComponent implements OnInit, OnDestroy {
   // replaces it with a thank-you / closed screen.
   sessionClosedScreen = signal(false);
 
+  // Language selector (public visitors switch between the restaurant's
+  // enabled languages; the default comes from the restaurant settings).
+  langMenuOpen = signal(false);
+  availableLanguages = computed(() => this.i18n.getAvailableLanguages());
+
   // Dish detail modal signals
   selectedDish = this.cart.selectedDish;
   selectedVariantId = this.cart.selectedVariantId;
@@ -119,6 +126,27 @@ export class TotemComponent implements OnInit, OnDestroy {
   }
 
   /**
+   * Public visitors inherit the restaurant's language setup: the UI defaults
+   * to the restaurant's default language unless this visitor already picked
+   * one explicitly (persisted in localStorage by setLanguage), and the
+   * selector only offers the enabled languages.
+   */
+  private applyRestaurantLanguages(restaurant: PublicMenuRestaurant): void {
+    if (restaurant.enabled_languages?.length) {
+      this.i18n.setEnabledLanguages(restaurant.enabled_languages);
+    }
+    const visitorChoice = localStorage.getItem('disherio-language');
+    if (!visitorChoice && restaurant.default_language) {
+      this.i18n.setLanguage(restaurant.default_language);
+    }
+  }
+
+  selectLanguage(lang: Language): void {
+    this.i18n.setLanguage(lang);
+    this.langMenuOpen.set(false);
+  }
+
+  /**
    * Extract the category id from a dish. The backend menu endpoint populates
    * `category_id` into a full category object, so it can arrive as either a
    * plain id string or `{ _id: string, ... }`. Normalize to the id string.
@@ -137,7 +165,8 @@ export class TotemComponent implements OnInit, OnDestroy {
     this.totemService.getMenuByQR(qr)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
-        next: ({ categories, dishes }) => {
+        next: ({ categories, dishes, restaurant }) => {
+          if (restaurant) this.applyRestaurantLanguages(restaurant);
           if (categories.length) this.restaurantName.set(this.i18n.translate('totem.menu'));
           this.categories.set(categories);
           this.dishes.set(dishes);

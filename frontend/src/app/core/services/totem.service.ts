@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import type { Category, Dish, ItemOrder, OrderLimitStatus, Totem } from '../../types';
+import type { Language } from '../../store/auth.store';
 import { createRequestId } from '../utils/request-id';
 export type { Totem };
 
@@ -31,6 +32,11 @@ export interface PublicTotemSession {
 export interface PublicTotemCustomer {
   customer_id: string;
   customer_name: string;
+}
+
+export interface PublicMenuRestaurant {
+  default_language: Language;
+  enabled_languages: Language[];
 }
 
 @Injectable({
@@ -66,8 +72,8 @@ export class TotemService {
 
   // ==================== PUBLIC TOTEM FLOW (customer-facing) ====================
 
-  getMenuByQR(qr: string): Observable<{ categories: Category[]; dishes: Dish[] }> {
-    return this.http.get<{ categories: Category[]; dishes: Dish[] }>(`${this.apiUrl}/menu/${qr}/dishes`);
+  getMenuByQR(qr: string): Observable<{ categories: Category[]; dishes: Dish[]; restaurant: PublicMenuRestaurant | null }> {
+    return this.http.get<{ categories: Category[]; dishes: Dish[]; restaurant: PublicMenuRestaurant | null }>(`${this.apiUrl}/menu/${qr}/dishes`);
   }
 
   getTotemByQR(qr: string): Observable<Totem> {

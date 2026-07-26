@@ -30,6 +30,43 @@
               <span>{{ customerInfo()?.customer_name }}</span>
             </div>
           }
+          <!-- Language Selector -->
+          <div class="relative">
+            <button
+              (click)="langMenuOpen.set(!langMenuOpen())"
+              class="flex items-center gap-1 px-2 py-2 rounded-full bg-surface-container-high text-on-surface-variant hover:bg-surface-container-highest transition-colors"
+              [title]="i18n.translate('common.language')"
+              [attr.aria-label]="i18n.translate('common.language')"
+              [attr.aria-expanded]="langMenuOpen()"
+              aria-haspopup="true"
+            >
+              <span class="material-symbols-outlined text-base">language</span>
+              <span class="text-xs font-medium uppercase">{{ i18n.currentLang() }}</span>
+            </button>
+            @if (langMenuOpen()) {
+              <button
+                type="button"
+                class="fixed inset-0 z-10 cursor-default bg-transparent"
+                (click)="langMenuOpen.set(false)"
+                [attr.aria-label]="i18n.translate('common.close')"
+                tabindex="-1"
+              ></button>
+              <div class="absolute right-0 top-full mt-1 z-20 min-w-32 rounded-xl bg-surface-container-high shadow-lg border border-outline-variant py-1">
+                @for (lang of availableLanguages(); track lang.code) {
+                  <button
+                    (click)="selectLanguage(lang.code)"
+                    class="w-full flex items-center justify-between gap-2 px-4 py-2 text-sm text-on-surface hover:bg-surface-container-highest transition-colors"
+                    [class.font-semibold]="i18n.currentLang() === lang.code"
+                  >
+                    <span>{{ lang.name }}</span>
+                    @if (i18n.currentLang() === lang.code) {
+                      <span class="material-symbols-outlined text-base text-primary">check</span>
+                    }
+                  </button>
+                }
+              </div>
+            }
+          </div>
           <!-- Theme Toggle -->
           <button
             (click)="themeService.toggleTheme()"

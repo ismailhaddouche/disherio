@@ -1,5 +1,5 @@
 import { HttpInterceptorFn, HttpErrorResponse, HttpRequest, HttpHandlerFn } from '@angular/common/http';
-import { inject } from '@angular/core';
+import { inject, Injector } from '@angular/core';
 import { catchError, throwError, Observable, retry, timer } from 'rxjs';
 import { ErrorHandlerService } from '../services/error-handler.service';
 import { I18nService } from '../services/i18n.service';
@@ -30,7 +30,12 @@ function isPublicTotemRequest(req: HttpRequest<unknown>): boolean {
  */
 export const errorInterceptor: HttpInterceptorFn = (req: HttpRequest<unknown>, next: HttpHandlerFn) => {
   const errorHandler = inject(ErrorHandlerService);
-  const i18n = inject(I18nService);
+  // Lazy lookup instead of inject(I18nService): I18nService requests its
+  // initial catalog over HTTP in its constructor, and that request passes
+  // through this interceptor. Eager injection here would be a circular
+  // dependency that silently kills the first catalog request, leaving raw
+  // i18n keys on screen for the browser's language.
+  const injector = inject(Injector);
 
   return next(req).pipe(
     catchError((error: HttpErrorResponse) => {
@@ -67,7 +72,7 @@ export const errorInterceptor: HttpInterceptorFn = (req: HttpRequest<unknown>, n
           break;
 
         case 429:
-          handleRateLimit(error, errorHandler, i18n);
+          handleRateLimit(error, errorHandler, injector.get(I18nService));
           break;
 
         case 500:
