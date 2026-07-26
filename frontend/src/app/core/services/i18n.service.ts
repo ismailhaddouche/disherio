@@ -82,11 +82,15 @@ export class I18nService {
 
   /**
    * Awaited by an APP_INITIALIZER so the first paint already has the initial
-   * language catalog. Resolves without a catalog when the request fails;
-   * translate() then falls back to returning keys until a retry succeeds.
+   * language catalog. Every enabled catalog is preloaded (they are small),
+   * so switching languages never renders raw keys while a fetch is in
+   * flight. Resolves without a catalog when a request fails; translate()
+   * then falls back to returning keys until a retry succeeds.
    */
   async ensureInitialCatalog(): Promise<void> {
-    await this.loadCatalog(this._currentLang());
+    await Promise.all(
+      [...this._enabledLanguages()].map((lang) => this.loadCatalog(lang))
+    );
   }
 
   private loadCatalog(lang: Language): Promise<void> {

@@ -14,6 +14,7 @@ import { provideNativeDateAdapter } from '@angular/material/core';
 import { MatIconRegistry } from '@angular/material/icon';
 import { routes } from './app.routes';
 import { jwtInterceptor } from './core/interceptors/jwt.interceptor';
+import { langInterceptor } from './core/interceptors/lang.interceptor';
 import { errorInterceptor } from './core/interceptors/error.interceptor';
 import { GlobalErrorHandler } from './core/services/global-error.handler';
 import { AuthService } from './core/services/auth.service';
@@ -63,7 +64,7 @@ export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes, withPreloading(AuthPreloadingStrategy)),
-    provideHttpClient(withInterceptors([errorInterceptor, jwtInterceptor])),
+    provideHttpClient(withInterceptors([errorInterceptor, langInterceptor, jwtInterceptor])),
     provideAnimations(),
     provideNativeDateAdapter(),
     {

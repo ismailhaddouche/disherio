@@ -8,14 +8,19 @@
  * affected by the public path.
  */
 
-import { socketAuthMiddleware, AuthenticatedSocket } from '../middlewares/socketAuth';
+import { socketAuthMiddleware, AuthenticatedSocket, normalizeSocketLang } from '../middlewares/socketAuth';
 import * as TotemService from '../services/totem.service';
 import { ErrorCode } from '@disherio/shared';
 import { isAccessTokenRevoked } from '../services/refresh-token.service';
+import { isAccessSessionCurrent } from '../services/access-session.service';
 import jwt from 'jsonwebtoken';
 
 jest.mock('../services/refresh-token.service', () => ({
   isAccessTokenRevoked: jest.fn().mockResolvedValue(false),
+}));
+
+jest.mock('../services/access-session.service', () => ({
+  isAccessSessionCurrent: jest.fn().mockResolvedValue(true),
 }));
 
 jest.mock('../services/totem.service');
@@ -126,5 +131,90 @@ describe('socketAuthMiddleware — public totem handshake', () => {
     await expect(socketAuthMiddleware(socket, fn)).rejects.toThrow('redis unavailable');
     expect(fn).not.toHaveBeenCalled();
     expect(socket.user).toBeUndefined();
+  });
+});
+
+describe('socketAuthMiddleware — handshake language', () => {
+  beforeEach(() => {
+    // The previous describe resets all mocks; restore the async
+    // implementations the staff auth path relies on.
+    (isAccessTokenRevoked as jest.Mock).mockResolvedValue(false);
+    (isAccessSessionCurrent as jest.Mock).mockResolvedValue(true);
+  });
+
+  afterEach(() => jest.resetAllMocks());
+
+  it('stores the language announced by a public totem connection', async () => {
+    (TotemService.getTotemByQR as jest.Mock).mockResolvedValue({ _id: 't1', totem_qr: VALID_QR });
+    const socket = buildSocket({ publicTotem: true, qr: VALID_QR, lang: 'fr' });
+    const { fn, calls } = nextCapture();
+
+    await socketAuthMiddleware(socket, fn);
+
+    expect(calls[0]).toBeUndefined();
+    expect(socket.data.lang).toBe('fr');
+  });
+
+  it('defaults the language to es when it is missing or unsupported', async () => {
+    (TotemService.getTotemByQR as jest.Mock).mockResolvedValue({ _id: 't1', totem_qr: VALID_QR });
+
+    const unsupported = buildSocket({ publicTotem: true, qr: VALID_QR, lang: 'de' });
+    await socketAuthMiddleware(unsupported, nextCapture().fn);
+    expect(unsupported.data.lang).toBe('es');
+
+    const missing = buildSocket({ publicTotem: true, qr: VALID_QR });
+    await socketAuthMiddleware(missing, nextCapture().fn);
+    expect(missing.data.lang).toBe('es');
+  });
+
+  it('stores the language announced by a staff connection', async () => {
+    process.env.JWT_SECRET = 'socket-test-secret-that-is-at-least-32-chars';
+    const token = jwt.sign({
+      staffId: 'staff1',
+      restaurantId: 'restaurant1',
+      role: 'ADMIN',
+      permissions: ['ADMIN'],
+      name: 'Admin',
+    }, process.env.JWT_SECRET);
+    const socket = buildSocket({ token, lang: 'en' });
+    const { fn, calls } = nextCapture();
+
+    await socketAuthMiddleware(socket, fn);
+
+    expect(calls[0]).toBeUndefined();
+    expect(socket.user).toBeDefined();
+    expect(socket.data.lang).toBe('en');
+    expect(isAccessSessionCurrent).toHaveBeenCalled();
+  });
+
+  it('defaults the staff language to es when none is announced', async () => {
+    process.env.JWT_SECRET = 'socket-test-secret-that-is-at-least-32-chars';
+    const token = jwt.sign({
+      staffId: 'staff1',
+      restaurantId: 'restaurant1',
+      role: 'ADMIN',
+      permissions: ['ADMIN'],
+      name: 'Admin',
+    }, process.env.JWT_SECRET);
+    const socket = buildSocket({ token });
+    const { fn, calls } = nextCapture();
+
+    await socketAuthMiddleware(socket, fn);
+
+    expect(calls[0]).toBeUndefined();
+    expect(socket.data.lang).toBe('es');
+  });
+});
+
+describe('normalizeSocketLang', () => {
+  it('accepts supported languages and defaults everything else to es', () => {
+    expect(normalizeSocketLang('es')).toBe('es');
+    expect(normalizeSocketLang('en')).toBe('en');
+    expect(normalizeSocketLang('fr')).toBe('fr');
+    expect(normalizeSocketLang('de')).toBe('es');
+    expect(normalizeSocketLang('')).toBe('es');
+    expect(normalizeSocketLang(undefined)).toBe('es');
+    expect(normalizeSocketLang(null)).toBe('es');
+    expect(normalizeSocketLang(42)).toBe('es');
   });
 });

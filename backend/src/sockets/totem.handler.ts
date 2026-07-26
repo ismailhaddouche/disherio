@@ -2,14 +2,20 @@ import { Server } from 'socket.io';
 import i18next from 'i18next';
 
 import { logger } from '../config/logger';
-import { AuthenticatedSocket } from '../middlewares/socketAuth';
+import { AuthenticatedSocket, normalizeSocketLang } from '../middlewares/socketAuth';
 import { getIO } from '../config/socket';
-import { notifyTASHelpRequest, notifyTASBillRequest } from './tas.handler';
+import { emitToTASLocalized, notifyTASHelpRequest, notifyTASBillRequest } from './tas.handler';
 import { TotemSessionRepository } from '../repositories';
 import { ItemOrderRepository } from '../repositories/order.repository';
 import { trackSocketConnection, cleanupSocketConnection, trackSocketJoinRoom, trackSocketLeaveRoom, updateSocketActivity } from './middleware/connection-tracker';
 import { bindSocketRateLimitToCustomer, rateLimitMiddleware } from './middleware/rate-limiter';
 import { validateSocketPayload } from './middleware/validate-payload';
+import {
+  addSessionCustomer,
+  removeSessionCustomer,
+  clearSessionCustomers,
+  getSessionCustomerCount,
+} from './totem-session-state';
 import * as TotemService from '../services/totem.service';
 import type {
   LocalizedField,
@@ -63,7 +69,12 @@ const customerInfo = new Map<string, {
   socketId: string;
   joinedAt: string;
   sessionToken?: string;
+  lang?: string;
 }>(); // socketId -> customer info
+
+function socketLang(data: unknown): string {
+  return normalizeSocketLang((data as { lang?: unknown } | undefined)?.lang);
+}
 
 // Track last activity time for cleanup
 const sessionLastActivity = new Map<string, number>(); // sessionId -> timestamp
@@ -89,6 +100,7 @@ function detachCustomer(socketId: string, sessionId = customerSessions.get(socke
     const sockets = sessionCustomers.get(sessionId);
     sockets?.delete(socketId);
     if (sockets?.size === 0) sessionCustomers.delete(sessionId);
+    void removeSessionCustomer(sessionId, socketId);
   }
 
   customerSessions.delete(socketId);
@@ -146,6 +158,14 @@ function getSessionCustomers(sessionId: string): Array<{ customerId?: string; cu
   return Array.from(socketIds)
     .map(socketId => customerInfo.get(socketId))
     .filter((info): info is NonNullable<typeof info> => info !== undefined);
+}
+
+/**
+ * Cluster-wide count of customers at a table, backed by the shared
+ * (Redis) session state so customers connected to other nodes are included.
+ */
+export async function getActiveCustomerCount(sessionId: string): Promise<number> {
+  return getSessionCustomerCount(sessionId);
 }
 
 /**
@@ -250,6 +270,9 @@ export async function closeSessionForCustomers(sessionId: string, data: {
   closedByName?: string;
   totalAmount?: number;
   reason?: string;
+  // i18n key translated per recipient; takes precedence over `reason` so each
+  // customer sees the close cause in their own UI language.
+  reasonKey?: string;
   stateAlreadyTransitioned?: boolean;
 }): Promise<boolean> {
   try {
@@ -273,16 +296,19 @@ export async function closeSessionForCustomers(sessionId: string, data: {
       }
     }
 
-    // Notify all customers at the table
-    io.to(`customer:session:${sessionId}`).emit('totem:session_closed', {
+    // Notify all customers at the table, localizing the message in each
+    // customer's own UI language (carried in the socket handshake auth).
+    await emitToCustomersLocalized(sessionId, 'totem:session_closed', (lng) => ({
       sessionId,
       closedBy: data.closedBy,
       closedByName: data.closedByName,
       totalAmount: data.totalAmount,
-      reason: data.reason || i18next.t('sockets.BILL_REQUESTED'),
-      message: i18next.t('sockets.SESSION_CLOSED_NO_MORE_ORDERS'),
+      reason: data.reasonKey
+        ? i18next.t(data.reasonKey, { lng })
+        : data.reason || i18next.t('sockets.BILL_REQUESTED', { lng }),
+      message: i18next.t('sockets.SESSION_CLOSED_NO_MORE_ORDERS', { lng }),
       timestamp: new Date().toISOString(),
-    });
+    }));
 
     // Clear any existing timeout for this session
     const existingTimeout = sessionCloseTimeouts.get(sessionId);
@@ -293,53 +319,49 @@ export async function closeSessionForCustomers(sessionId: string, data: {
 
     // Force disconnect all customers from the room after a short delay
     const timeoutId = setTimeout(() => {
-      try {
-        // Verify session still exists in our tracking
-        if (!sessionCustomers.has(sessionId)) {
+      void (async () => {
+        try {
+          const customerRoom = `customer:session:${sessionId}`;
+          const sessionRoom = `session:${sessionId}`;
+
+          await emitToCustomersLocalized(sessionId, 'totem:force_disconnect', (lng) => ({
+            reason: 'SESSION_CLOSED',
+            message: i18next.t('sockets.SESSION_ENDED_THANK_YOU', { lng }),
+          }));
+
+          // Drop every socket from the session rooms cluster-wide through the
+          // adapter: customer sockets may be connected to other nodes.
+          io.in(customerRoom).socketsLeave(customerRoom);
+          io.in(sessionRoom).socketsLeave(sessionRoom);
+
+          // Node-local tracking cleanup
+          const socketIds = sessionCustomers.get(sessionId);
+          if (socketIds) {
+            for (const socketId of socketIds) {
+              trackSocketLeaveRoom(socketId, customerRoom);
+              trackSocketLeaveRoom(socketId, sessionRoom);
+              customerSessions.delete(socketId);
+              customerInfo.delete(socketId);
+              customerLastActivity.delete(socketId);
+            }
+            sessionCustomers.delete(sessionId);
+          }
+
+          // Cluster-wide tracking cleanup
+          await clearSessionCustomers(sessionId);
+
+          // Clear the Set when done
           closingSessions.delete(sessionId);
           sessionCloseTimeouts.delete(sessionId);
-          return;
+          sessionLastActivity.delete(sessionId);
+
+          logger.info({ sessionId }, 'Session close timeout completed, all customers disconnected');
+        } catch (timeoutErr) {
+          logger.error({ err: timeoutErr, sessionId }, 'Error in session close timeout');
+          closingSessions.delete(sessionId);
+          sessionCloseTimeouts.delete(sessionId);
         }
-
-        const socketIds = sessionCustomers.get(sessionId);
-        if (socketIds) {
-          socketIds.forEach(socketId => {
-            // Verify socket still exists before operating
-            const socket = io.sockets.sockets.get(socketId);
-            if (socket && socket.connected) {
-              try {
-                socket.leave(`customer:session:${sessionId}`);
-                socket.leave(`session:${sessionId}`);
-                trackSocketLeaveRoom(socketId, `customer:session:${sessionId}`);
-                trackSocketLeaveRoom(socketId, `session:${sessionId}`);
-                socket.emit('totem:force_disconnect', {
-                  reason: 'SESSION_CLOSED',
-                  message: i18next.t('sockets.SESSION_ENDED_THANK_YOU'),
-                });
-              } catch (socketErr) {
-                logger.warn({ err: socketErr, socketId, sessionId }, 'Error disconnecting socket');
-              }
-            }
-            customerSessions.delete(socketId);
-            customerInfo.delete(socketId);
-            customerLastActivity.delete(socketId);
-          });
-
-          // Clear tracking for this session
-          sessionCustomers.delete(sessionId);
-        }
-
-        // Clear the Set when done
-        closingSessions.delete(sessionId);
-        sessionCloseTimeouts.delete(sessionId);
-        sessionLastActivity.delete(sessionId);
-
-        logger.info({ sessionId }, 'Session close timeout completed, all customers disconnected');
-      } catch (timeoutErr) {
-        logger.error({ err: timeoutErr, sessionId }, 'Error in session close timeout');
-        closingSessions.delete(sessionId);
-        sessionCloseTimeouts.delete(sessionId);
-      }
+      })();
     }, 5000); // Give 5 seconds for clients to show the message
 
     // Store timeout reference for cleanup
@@ -379,6 +401,8 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
   // Customers may not be authenticated (public QR access)
   // But we can identify them by their socket ID
   const socketId = socket.id;
+  // UI language the customer announced in the handshake auth (socketAuth).
+  const lang = socketLang(socket.data);
 
   // Track this connection
   trackSocketConnection(socket, 'TOTEM');
@@ -421,8 +445,8 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
         socket.emit('totem:error', {
           message: 'SESSION_CLOSED',
           details: sessionClosing
-            ? i18next.t('sockets.SESSION_CLOSING_IN_PROGRESS')
-            : i18next.t('sockets.SESSION_CLOSED_NO_MORE_ORDERS'),
+            ? i18next.t('sockets.SESSION_CLOSING_IN_PROGRESS', { lng: lang })
+            : i18next.t('sockets.SESSION_CLOSED_NO_MORE_ORDERS', { lng: lang }),
         });
         return;
       }
@@ -441,6 +465,7 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
             sessionCustomers.delete(previousSession);
           }
         }
+        void removeSessionCustomer(previousSession, socketId);
         // Notify others that this customer left
         const prevInfo = customerInfo.get(socketId);
         if (prevInfo) {
@@ -477,12 +502,23 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
       // Store customer info, binding the verified session token to this socket
       // so subsequent events (request_bill, call_waiter, ...) can re-validate it.
       const joinedAt = new Date().toISOString();
+      const displayName = customerName || i18next.t('common.CUSTOMER', { lng: lang, defaultValue: 'Customer' });
       customerInfo.set(socketId, {
         customerId,
-        customerName: customerName || i18next.t('common.CUSTOMER', { defaultValue: 'Customer' }),
+        customerName: displayName,
         socketId,
         joinedAt,
         sessionToken: session.session_token,
+        lang,
+      });
+
+      // Cluster-wide "who is at the table" tracking (Redis-backed, with
+      // in-memory fallback) so any node can enumerate session customers.
+      void addSessionCustomer(sessionId, {
+        customerId,
+        customerName: displayName,
+        socketId,
+        joinedAt,
       });
 
       logger.info({ socketId, sessionId, customerName }, 'Customer joined session');
@@ -503,21 +539,22 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
       });
 
       // Notify other customers at the same table that someone joined
-      emitToCustomers(sessionId, 'totem:customer_joined_table', {
+      await emitToCustomersLocalized(sessionId, 'totem:customer_joined_table', (lng) => ({
         sessionId,
         customerId,
-        customerName: customerName || i18next.t('common.CUSTOMER', { defaultValue: 'Customer' }),
+        customerName: customerName || i18next.t('common.CUSTOMER', { lng, defaultValue: 'Customer' }),
         joinedAt,
-      });
+      }));
 
-      // Notify TAS that a customer joined
-      io.to(`tas:session:${sessionId}`).emit('tas:customer_joined', {
+      // Notify TAS that a customer joined (staff-facing: localized per staff
+      // member's own UI language)
+      void emitToTASLocalized(sessionId, 'tas:customer_joined', (lng) => ({
         sessionId,
-        customerName: customerName || i18next.t('common.CUSTOMER', { defaultValue: 'Customer' }),
+        customerName: customerName || i18next.t('common.CUSTOMER', { lng, defaultValue: 'Customer' }),
         customerId,
         totalCustomersAtTable: sessionCustomers.get(sessionId)?.size || 1,
         timestamp: joinedAt,
-      });
+      }));
 
     } catch (err: unknown) {
       logger.error({ err, socketId }, 'totem:join_session error');
@@ -546,6 +583,7 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
         customerSessions.delete(socketId);
         customerInfo.delete(socketId);
         customerLastActivity.delete(socketId);
+        void removeSessionCustomer(sessionId, socketId);
 
         // Track room leave in connection tracker
         trackSocketLeaveRoom(socketId, `customer:session:${sessionId}`);
@@ -600,7 +638,9 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
         customerId: boundCustomer.customerId,
         customerName: boundCustomer.customerName,
         tableId,
-        message: message || i18next.t('sockets.NEEDS_HELP'),
+        // Staff-facing default text is applied per recipient in
+        // notifyTASHelpRequest so each staff member sees their own language.
+        message,
         timestamp: new Date().toISOString(),
       };
 
@@ -611,7 +651,7 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
       // Confirm to customer
       socket.emit('totem:help_request_sent', {
         success: true,
-        message: i18next.t('sockets.WAITER_COMING'),
+        message: i18next.t('sockets.WAITER_COMING', { lng: lang }),
         timestamp: new Date().toISOString(),
       });
 
@@ -647,7 +687,7 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
       if (isSessionClosing(sessionId)) {
         socket.emit('totem:error', {
           message: 'SESSION_ALREADY_CLOSED',
-          details: i18next.t('sockets.BILL_ALREADY_REQUESTED'),
+          details: i18next.t('sockets.BILL_ALREADY_REQUESTED', { lng: lang }),
         });
         return;
       }
@@ -657,7 +697,7 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
       if (sessionClosed) {
         socket.emit('totem:error', {
           message: 'SESSION_ALREADY_CLOSED',
-          details: i18next.t('sockets.BILL_ALREADY_REQUESTED'),
+          details: i18next.t('sockets.BILL_ALREADY_REQUESTED', { lng: lang }),
         });
         return;
       }
@@ -669,7 +709,6 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
       const persisted = await closeSessionForCustomers(sessionId, {
         closedBy: 'customer',
         closedByName: boundCustomer.customerName,
-        reason: i18next.t('sockets.BILL_REQUESTED_BY_CUSTOMER'),
       });
       if (!persisted) {
         socket.emit('totem:error', { message: 'SESSION_ALREADY_CLOSED' });
@@ -694,7 +733,7 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
       // Confirm to customer
       socket.emit('totem:bill_request_sent', {
         success: true,
-        message: i18next.t('sockets.BILL_REQUEST_SENT'),
+        message: i18next.t('sockets.BILL_REQUEST_SENT', { lng: lang }),
         timestamp: new Date().toISOString(),
       });
 
@@ -897,6 +936,40 @@ export function emitToCustomers(sessionId: string, event: string, data: unknown)
   try {
     const io = getIO();
     io.to(`customer:session:${sessionId}`).emit(event, data);
+    logger.debug({ sessionId, event }, 'Emitted event to customers');
+  } catch (err) {
+    logger.error({ err, sessionId, event }, 'Failed to emit event to customers');
+  }
+}
+
+/**
+ * Emit an event to every customer in a session, building the payload per
+ * recipient so translated strings match each customer's UI language.
+ * fetchSockets reaches customers connected to other nodes via the adapter;
+ * when it is unavailable or the room is empty, falls back to a single room
+ * broadcast in the default language.
+ */
+export async function emitToCustomersLocalized(
+  sessionId: string,
+  event: string,
+  buildPayload: (lng: string) => unknown
+): Promise<void> {
+  const io = getIO();
+  const roomName = `customer:session:${sessionId}`;
+  try {
+    const customerSockets = await io.in(roomName).fetchSockets();
+    if (customerSockets.length > 0) {
+      for (const customerSocket of customerSockets) {
+        customerSocket.emit(event, buildPayload(socketLang(customerSocket.data)));
+      }
+      logger.debug({ sessionId, event }, 'Emitted localized event to customers');
+      return;
+    }
+  } catch (err) {
+    logger.warn({ err, sessionId, event }, 'fetchSockets failed; falling back to room broadcast');
+  }
+  try {
+    io.to(roomName).emit(event, buildPayload('es'));
     logger.debug({ sessionId, event }, 'Emitted event to customers');
   } catch (err) {
     logger.error({ err, sessionId, event }, 'Failed to emit event to customers');

@@ -12,6 +12,7 @@ export async function notifySessionClosed(
     closedBy?: 'waiter' | 'pos';
     closedByName?: string;
     reason?: string;
+    reasonKey?: string;
   }
 ): Promise<void> {
   emitSessionClosed(sessionId, options.state, options.closedBy ?? 'waiter', options.restaurantId);
@@ -19,6 +20,7 @@ export async function notifySessionClosed(
     closedBy: options.closedBy ?? 'waiter',
     closedByName: options.closedByName,
     reason: options.reason,
+    reasonKey: options.reasonKey,
     stateAlreadyTransitioned: true,
   });
 }

@@ -19,9 +19,9 @@ import {
 import { ItemOrder, IItemOrder } from '../models/order.model';
 import { TotemSession } from '../models/totem.model';
 import { logger } from '../config/logger';
-import { AuthenticatedSocket } from '../middlewares/socketAuth';
+import { AuthenticatedSocket, normalizeSocketLang } from '../middlewares/socketAuth';
 import { getIO } from '../config/socket';
-import { notifyCustomerFromWaiter, closeSessionForCustomers } from './totem.handler';
+import { notifyCustomerFromWaiter, closeSessionForCustomers, emitToCustomersLocalized } from './totem.handler';
 import { notifyKDSItemCanceled } from './kds.handler';
 import { addItemToOrder, updateItemState } from '../services/order.service';
 import { trackSocketConnection, cleanupSocketConnection, trackSocketJoinRoom, trackSocketLeaveRoom, updateSocketActivity } from './middleware/connection-tracker';
@@ -511,7 +511,7 @@ export function registerTasHandlers(io: Server, socket: AuthenticatedSocket): vo
       const persisted = await closeSessionForCustomers(sessionId, {
         closedBy: requestedBy === 'waiter' ? 'waiter' : 'pos',
         closedByName: user.name,
-        reason: i18next.t(requestedBy === 'waiter' ? 'sockets.BILL_REQUESTED_BY_WAITER' : 'sockets.BILL_REQUESTED_BY_CUSTOMER'),
+        reasonKey: requestedBy === 'waiter' ? 'sockets.BILL_REQUESTED_BY_WAITER' : 'sockets.BILL_REQUESTED_BY_CUSTOMER',
       });
       if (!persisted) {
         socket.emit('tas:error', { message: 'SESSION_NOT_ACTIVE' });
@@ -572,12 +572,12 @@ export function registerTasHandlers(io: Server, socket: AuthenticatedSocket): vo
 
       // Acknowledge the call
       if (acknowledged) {
-        emitToCustomers(sessionId, 'waiter:acknowledged', {
+        await emitToCustomersLocalized(sessionId, 'waiter:acknowledged', (lng) => ({
           staffId,
           staffName: user.name,
-          message: message || i18next.t('sockets.WAITER_COMING_ASSIST'),
+          message: message || i18next.t('sockets.WAITER_COMING_ASSIST', { lng }),
           timestamp: new Date().toISOString(),
-        });
+        }));
 
         socket.emit('tas:call_acknowledged_confirm', { success: true, sessionId });
         logger.info({ sessionId, staffId }, 'Waiter acknowledged customer call');
@@ -668,6 +668,39 @@ export function emitToTAS(sessionId: string, event: string, data: unknown): void
 }
 
 /**
+ * Emit an event to every TAS client in a session, building the payload per
+ * recipient so translated strings match each staff member's UI language
+ * (announced in the socket handshake auth). Falls back to a single room
+ * broadcast in the default language when fetchSockets is unavailable.
+ */
+export async function emitToTASLocalized(
+  sessionId: string,
+  event: string,
+  buildPayload: (lng: string) => unknown
+): Promise<void> {
+  const io = getIO();
+  const roomName = `tas:session:${sessionId}`;
+  try {
+    const tasSockets = await io.in(roomName).fetchSockets();
+    if (tasSockets.length > 0) {
+      for (const tasSocket of tasSockets) {
+        tasSocket.emit(event, buildPayload(normalizeSocketLang(tasSocket.data?.lang)));
+      }
+      logger.debug({ sessionId, event }, 'Emitted localized event to TAS');
+      return;
+    }
+  } catch (err) {
+    logger.warn({ err, sessionId, event }, 'fetchSockets failed; falling back to TAS room broadcast');
+  }
+  try {
+    io.to(roomName).emit(event, buildPayload('es'));
+    logger.debug({ sessionId, event }, 'Emitted event to TAS');
+  } catch (err) {
+    logger.error({ err, sessionId, event }, 'Failed to emit event to TAS');
+  }
+}
+
+/**
  * Notify TAS when a customer places a new order via totem/app.
  * orderData is passed through verbatim; callers send ad-hoc payloads mixing
  * Mongoose item documents and metadata, so no shared contract models it exactly.
@@ -682,11 +715,12 @@ export function notifyTASNewOrder(sessionId: string, orderData: object): void {
 /**
  * Notify TAS when a customer requests help
  */
-export function notifyTASHelpRequest(sessionId: string, customerData: TASHelpRequest): void {
-  emitToTAS(sessionId, 'tas:help_requested', {
+export function notifyTASHelpRequest(sessionId: string, customerData: TASHelpRequest & { message?: string }): void {
+  void emitToTASLocalized(sessionId, 'tas:help_requested', (lng) => ({
     ...customerData,
+    message: customerData.message || i18next.t('sockets.NEEDS_HELP', { lng }),
     timestamp: new Date().toISOString(),
-  });
+  }));
 }
 
 /**

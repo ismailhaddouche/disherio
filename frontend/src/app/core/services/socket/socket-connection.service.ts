@@ -1,6 +1,7 @@
 import { Injectable, OnDestroy } from '@angular/core';
 import { io, Socket } from 'socket.io-client';
 import { environment } from '../../../../environments/environment';
+import { resolveActiveLanguage } from '../../interceptors/lang.interceptor';
 import { SocketEventHub, SocketEventState } from './socket-event-hub';
 
 type SocketEventCallback<T> = (data: T) => void;
@@ -148,12 +149,18 @@ export class SocketConnectionService implements OnDestroy {
     if (this.socket?.connected) return;
 
     // Public totem customers authenticate with their QR token at handshake
-    // time instead of a staff JWT. Staff sessions send no `auth` field here
-    // and fall through to cookie-based JWT auth on the server.
+    // time instead of a staff JWT. Staff sessions fall through to
+    // cookie-based JWT auth on the server. Both carry the UI language so the
+    // server localizes socket messages per recipient; a function auth
+    // payload is re-evaluated on every (re)connect.
     const isPublic = !!this.currentTotemQr;
     const auth = isPublic
-      ? { publicTotem: true, qr: this.currentTotemQr }
-      : undefined;
+      ? (cb: (data: object) => void) => cb({
+        publicTotem: true,
+        qr: this.currentTotemQr,
+        lang: resolveActiveLanguage(),
+      })
+      : (cb: (data: object) => void) => cb({ lang: resolveActiveLanguage() });
 
     try {
       this.socket = io(environment.wsUrl, {

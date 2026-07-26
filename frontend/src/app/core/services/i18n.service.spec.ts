@@ -31,10 +31,13 @@ describe('I18nService', () => {
 
   // Flushing resolves the HTTP observable, but the catalog signal updates in
   // a microtask; awaiting the pending load makes assertions deterministic.
+  // ensureInitialCatalog preloads every enabled catalog, so all in-flight
+  // requests must be flushed before awaiting it.
   async function useLanguage(lang: Language): Promise<void> {
     service.setLanguage(lang);
-    flushCatalog(lang);
-    await service.ensureInitialCatalog();
+    const ready = service.ensureInitialCatalog();
+    flushAllCatalogs();
+    await ready;
   }
 
   beforeEach(() => {
@@ -87,16 +90,29 @@ describe('I18nService', () => {
     it('should return the key while the catalog is still loading', async () => {
       service.setLanguage('es');
       expect(service.translate('common.loading')).toBe('common.loading');
-      flushCatalog('es');
-      await service.ensureInitialCatalog();
+      const ready = service.ensureInitialCatalog();
+      flushAllCatalogs();
+      await ready;
       expect(service.translate('common.loading')).toBe('Cargando...');
     });
 
     it('should resolve ensureInitialCatalog once the catalog arrives', async () => {
       service.setLanguage('fr');
       const ready = service.ensureInitialCatalog();
-      flushCatalog('fr');
+      flushAllCatalogs();
       await expectAsync(ready).toBeResolved();
+      expect(service.translate('common.loading')).toBe('Chargement...');
+    });
+
+    it('should preload every enabled catalog so language switches never hit the network', async () => {
+      const ready = service.ensureInitialCatalog();
+      flushAllCatalogs();
+      await ready;
+
+      service.setLanguage('fr');
+      // The French catalog is already loaded: no HTTP request is fired and
+      // the translation is available synchronously (no raw-key flash).
+      httpMock.expectNone('/assets/i18n/fr.json');
       expect(service.translate('common.loading')).toBe('Chargement...');
     });
 

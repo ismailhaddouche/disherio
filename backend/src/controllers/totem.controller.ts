@@ -1,5 +1,4 @@
 import { Request, Response } from 'express';
-import i18next from 'i18next';
 import { ErrorCode } from '@disherio/shared';
 import { asyncHandler, createError } from '../utils/async-handler';
 import * as TotemService from '../services/totem.service';
@@ -127,7 +126,7 @@ export const closeSession = asyncHandler(async (req: Request, res: Response): Pr
     restaurantId: req.user!.restaurantId,
     state: 'COMPLETE',
     closedByName: req.user?.name,
-    reason: i18next.t('sockets.SESSION_CLOSED_BY_STAFF'),
+    reasonKey: 'sockets.SESSION_CLOSED_BY_STAFF',
   });
   res.json(sessionToResponse(session as SessionLike));
 });
@@ -165,7 +164,7 @@ export const cancelSession = asyncHandler(async (req: Request, res: Response): P
     restaurantId: req.user!.restaurantId,
     state: 'CANCELLED',
     closedByName: req.user?.name,
-    reason: i18next.t('sockets.SESSION_CANCELLED'),
+    reasonKey: 'sockets.SESSION_CANCELLED',
   });
   await SessionLifecycleEffects.cleanupTemporaryTotem(session);
   res.json(sessionToResponse(session as SessionLike));

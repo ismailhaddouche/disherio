@@ -15,6 +15,14 @@ export interface AuthenticatedSocket extends Socket {
 interface PublicTotemHandshake {
   publicTotem?: unknown;
   qr?: unknown;
+  lang?: unknown;
+}
+
+const SOCKET_LANGUAGES = ['es', 'en', 'fr'] as const;
+
+export function normalizeSocketLang(value: unknown): string {
+  const lang = typeof value === 'string' ? value : '';
+  return (SOCKET_LANGUAGES as readonly string[]).includes(lang) ? lang : 'es';
 }
 
 export function extractSocketToken(socket: AuthenticatedSocket): string | undefined {
@@ -55,6 +63,7 @@ export async function socketAuthMiddleware(
     socket.user = undefined;
     socket.data.publicTotem = true;
     socket.data.totemQr = qr;
+    socket.data.lang = normalizeSocketLang(handshake.lang);
     return next();
   }
 
@@ -86,5 +95,8 @@ export async function socketAuthMiddleware(
   }
 
   socket.user = payload;
+  // Staff UIs announce their interface language in the handshake auth so
+  // staff-facing notifications (TAS) can be localized per recipient.
+  socket.data.lang = normalizeSocketLang((socket.handshake.auth as { lang?: unknown } | undefined)?.lang);
   next();
 }
