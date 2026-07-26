@@ -6,7 +6,7 @@
 >
 > | Role | Username | Password | URL |
 > |------|----------|----------|-----|
-> | Admin | `admin` | `s1kiyZYBLQjNaGW2j37W` | [http://194.26.100.91/admin](http://194.26.100.91/admin) |
+> | Admin | `admin` | `T9ABYm8BQHgrkqAjCLFi` | [http://194.26.100.91/admin](http://194.26.100.91/admin) |
 > | Kitchen (KDS) | `cocinero` | `cocinero` | [http://194.26.100.91/kds](http://194.26.100.91/kds) |
 > | Tables (TAS) | `camarero` | `camarero` | [http://194.26.100.91/tas](http://194.26.100.91/tas) |
 > | Cashier (POS) | `cajero` | `cajero` | [http://194.26.100.91/pos](http://194.26.100.91/pos) |
