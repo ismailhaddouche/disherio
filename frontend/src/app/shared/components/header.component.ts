@@ -111,9 +111,7 @@ import { AuthService } from '../../core/services/auth.service';
       justify-content: space-between;
       gap: 16px;
       width: 100%;
-      max-width: 1600px;
       height: 100%;
-      margin: 0 auto;
       padding: 0 16px;
     }
     .disher-header-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
