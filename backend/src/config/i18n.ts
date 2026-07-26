@@ -7,6 +7,11 @@ export async function initI18n(): Promise<void> {
     lng: 'es',
     fallbackLng: 'es',
     supportedLngs: ['es', 'en', 'fr'],
+    // i18next only loads the active lng at init; t(..., { lng }) never
+    // lazy-loads other languages. Preload every supported language so
+    // per-request/per-socket localization actually resolves instead of
+    // silently falling back to Spanish.
+    preload: ['es', 'en', 'fr'],
     backend: {
       // This file lives in dist/config/, so __dirname is /app/dist/config.
       // The locales are copied to /app/dist/locales, one level up.
