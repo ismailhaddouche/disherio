@@ -35,16 +35,6 @@ import { AuthService } from '../../core/services/auth.service';
 
         <div class="disher-header-right">
           <button
-            matIconButton
-            type="button"
-            (click)="toggleTheme()"
-            [attr.aria-label]="'common.theme' | translate"
-            [attr.aria-pressed]="themeService.isDark()"
-          >
-            <span class="material-symbols-outlined">{{ themeService.isDark() ? 'light_mode' : 'dark_mode' }}</span>
-          </button>
-
-          <button
             matButton
             class="disher-language-trigger"
             type="button"
@@ -77,6 +67,16 @@ import { AuthService } from '../../core/services/auth.service';
               </button>
             }
           </mat-menu>
+
+          <button
+            matIconButton
+            type="button"
+            (click)="toggleTheme()"
+            [attr.aria-label]="'common.theme' | translate"
+            [attr.aria-pressed]="themeService.isDark()"
+          >
+            <span class="material-symbols-outlined">{{ themeService.isDark() ? 'light_mode' : 'dark_mode' }}</span>
+          </button>
 
           <button
             matIconButton
