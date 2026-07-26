@@ -111,11 +111,15 @@ export class I18nService {
   }
 
   private loadLanguage(): void {
-    // Priority: 1. Auth store preferences, 2. localStorage, 3. Browser language, 4. English
+    // Priority: 1. Auth store preferences, 2. localStorage, 3. Browser language, 4. English.
+    // Only resolves the language; it must NOT fire the catalog request here.
+    // An HTTP call during construction re-enters the interceptor chain, whose
+    // ErrorHandlerService injects this very service — a circular dependency
+    // that silently kills the request. ensureInitialCatalog (APP_INITIALIZER)
+    // preloads every enabled catalog once construction is done.
     const userPrefs = authStore.preferences();
     if (userPrefs?.language) {
       this._currentLang.set(userPrefs.language);
-      void this.loadCatalog(userPrefs.language);
       return;
     }
 
@@ -123,7 +127,6 @@ export class I18nService {
       const saved = localStorage.getItem('disherio-language');
       if (saved && isKnownLanguage(saved)) {
         this._currentLang.set(saved);
-        void this.loadCatalog(saved);
         return;
       }
 
@@ -131,13 +134,11 @@ export class I18nService {
       const browserLang = navigator.language.split('-')[0];
       if (isKnownLanguage(browserLang)) {
         this._currentLang.set(browserLang);
-        void this.loadCatalog(browserLang);
         return;
       }
     }
 
     this._currentLang.set('en');
-    void this.loadCatalog('en');
   }
 
   setLanguage(lang: Language): void {
