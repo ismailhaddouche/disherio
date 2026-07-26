@@ -1029,12 +1029,18 @@ cmd_backup() {
     --out "$1" --quiet' sh "/tmp/dump_${ts}" >> "$LOG_FILE" 2>&1 \
     || err "mongodump falló. Ver $LOG_FILE"
 
-  docker compose cp "mongo:/tmp/dump_${ts}/." "$staging/database/" >> "$LOG_FILE" 2>&1 \
+  # Docker 29 no longer resolves the '<path>/.' suffix when copying FROM a
+  # container ("Could not find the file ... in container"). Copy the dump's
+  # inner database directory instead; the archive layout is unchanged.
+  docker compose cp "mongo:/tmp/dump_${ts}/disherio" "$staging/database/" >> "$LOG_FILE" 2>&1 \
     || err "copy falló"
   docker compose exec -T mongo rm -rf "/tmp/dump_${ts}" 2>/dev/null || true
 
   log "Incluyendo uploads y configuración recuperable..."
-  docker compose cp "backend:/app/uploads/." "$staging/uploads/" >> "$LOG_FILE" 2>&1 \
+  # Same Docker 29 limitation: copy the directory itself to a non-existent
+  # destination so the uploads land directly in $staging/uploads.
+  rmdir "$staging/uploads" 2>/dev/null || true
+  docker compose cp "backend:/app/uploads" "$staging/uploads" >> "$LOG_FILE" 2>&1 \
     || err "No se pudieron copiar los uploads"
   install -m 0600 "$ENV_FILE" "$staging/config/.env"
   install -m 0600 "$CADDYFILE" "$staging/config/Caddyfile"
