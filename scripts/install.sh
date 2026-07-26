@@ -1030,7 +1030,7 @@ cmd_backup() {
 
   install -d -m 0700 "$backup_dir"
   staging=$(mktemp -d "${backup_dir}/.backup_${ts}.XXXXXX")
-  trap 'rm -rf "$staging"' RETURN
+  trap '[ -z "${staging:-}" ] || rm -rf "$staging"' RETURN
   install -d -m 0700 "$staging/database" "$staging/uploads" "$staging/config" "$staging/config/secrets"
 
   log "Creando backup autenticado..."
@@ -1123,7 +1123,7 @@ cmd_restore() {
   local staging entry confirm=""
   staging=$(mktemp -d /tmp/disherio-restore.XXXXXX)
   chmod 700 "$staging"
-  trap 'rm -rf "$staging"' RETURN
+  trap '[ -z "${staging:-}" ] || rm -rf "$staging"' RETURN
 
   # V2 encrypted backups are authenticated before decryption. Legacy OpenSSL
   # and plain .tar.gz backups remain readable for migration.
