@@ -19,6 +19,18 @@ import type { AuthenticatedSocket } from '../../middlewares/socketAuth';
 const inMemoryCounters = new Map<string, { count: number; resetAt: number }>();
 const IN_MEMORY_CLEANUP_INTERVAL = 60_000; // 1 minute
 
+// Throttle the degraded-mode warning so a Redis outage does not spam the
+// logs once per rate-limited event.
+const IN_MEMORY_WARN_THROTTLE_MS = 60_000;
+let lastInMemoryWarnAt = 0;
+
+function warnInMemoryFallback(eventType: string): void {
+  const now = Date.now();
+  if (now - lastInMemoryWarnAt < IN_MEMORY_WARN_THROTTLE_MS) return;
+  lastInMemoryWarnAt = now;
+  logger.warn({ eventType }, 'Redis unavailable; rate limiting degraded to in-memory counters');
+}
+
 function cleanupInMemoryCounters(): void {
   const now = Date.now();
   for (const [key, entry] of inMemoryCounters.entries()) {
@@ -203,7 +215,7 @@ export async function checkRateLimit(
 
   // Development/test retain an in-memory fallback; production fails closed.
   if (!redis) {
-    return unavailableRateLimitResult(key, config.maxRequests, config.windowMs);
+    return unavailableRateLimitResult(key, config.maxRequests, config.windowMs, eventType);
   }
 
   try {
@@ -222,7 +234,7 @@ export async function checkRateLimit(
     return { allowed, remaining };
   } catch (err) {
     logger.error({ err, identity, eventType }, 'Redis rate limit check failed');
-    return unavailableRateLimitResult(key, config.maxRequests, config.windowMs);
+    return unavailableRateLimitResult(key, config.maxRequests, config.windowMs, eventType);
   }
 }
 
@@ -248,11 +260,13 @@ function checkInMemoryRateLimit(
 function unavailableRateLimitResult(
   key: string,
   maxRequests: number,
-  windowMs: number
+  windowMs: number,
+  eventType: string
 ): { allowed: boolean; remaining: number } {
   // Production is deliberately fail-closed: a Redis outage must not turn a
   // distributed limit into independent per-node buckets that can be bypassed.
   if (process.env.NODE_ENV === 'production') return { allowed: false, remaining: 0 };
+  warnInMemoryFallback(eventType);
   return checkInMemoryRateLimit(key, maxRequests, windowMs);
 }
 
