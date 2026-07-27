@@ -1,9 +1,8 @@
-import { Component, inject, computed, OnInit, ChangeDetectionStrategy, signal } from '@angular/core';
+import { Component, inject, computed, OnInit, ChangeDetectionStrategy, signal, HostListener } from '@angular/core';
 import { finalize } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
-import { MatMenuModule } from '@angular/material/menu';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatIconModule } from '@angular/material/icon';
 import { I18nService } from '../../core/services/i18n.service';
@@ -17,7 +16,7 @@ import { AuthService } from '../../core/services/auth.service';
 @Component({
   selector: 'app-header',
   standalone: true,
-  imports: [CommonModule, RouterLink, TranslatePipe, MatButtonModule, MatMenuModule, MatToolbarModule, MatIconModule],
+  imports: [CommonModule, RouterLink, TranslatePipe, MatButtonModule, MatToolbarModule, MatIconModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <mat-toolbar class="disher-header" role="banner">
@@ -34,39 +33,44 @@ import { AuthService } from '../../core/services/auth.service';
         </div>
 
         <div class="disher-header-right">
-          <button
-            matButton
-            class="disher-language-trigger"
-            type="button"
-            [matMenuTriggerFor]="langMenu"
-            [attr.aria-haspopup]="true"
-            [attr.aria-expanded]="langMenuOpen()"
-            [attr.aria-label]="'common.language' | translate"
-            (menuOpened)="langMenuOpen.set(true)"
-            (menuClosed)="langMenuOpen.set(false)"
-          >
-            <span class="disher-language-code" aria-hidden="true">{{ currentLanguageCode() }}</span>
-            <span class="material-symbols-outlined disher-chevron" aria-hidden="true">expand_more</span>
-          </button>
-          <mat-menu #langMenu="matMenu" xPosition="before" [attr.aria-label]="'common.language' | translate">
-            @for (lang of availableLanguages(); track lang.code) {
+          <div class="disher-language-selector relative">
+            <button
+              type="button"
+              (click)="langMenuOpen.set(!langMenuOpen())"
+              class="flex items-center gap-1 px-2 py-2 rounded-full bg-surface-container-high text-on-surface-variant hover:bg-surface-container-highest transition-colors"
+              [title]="'common.language' | translate"
+              [attr.aria-label]="'common.language' | translate"
+              [attr.aria-expanded]="langMenuOpen()"
+              aria-haspopup="true"
+            >
+              <span class="material-symbols-outlined text-base">language</span>
+              <span class="text-xs font-medium uppercase">{{ i18n.currentLang() }}</span>
+            </button>
+            @if (langMenuOpen()) {
               <button
-                matMenuItem
-                class="disher-language-option"
-                (click)="setLanguage(lang.code)"
-                [attr.aria-current]="i18n.currentLang() === lang.code ? 'true' : null"
-              >
-                <span class="disher-language-option-content">
-                  <span class="disher-language-name">{{ lang.name }}</span>
-                  @if (i18n.currentLang() === lang.code) {
-                    <span class="material-symbols-outlined disher-check" aria-hidden="true">check</span>
-                  } @else {
-                    <span class="disher-check-placeholder" aria-hidden="true"></span>
-                  }
-                </span>
-              </button>
+                type="button"
+                class="fixed inset-0 z-10 cursor-default bg-transparent"
+                (click)="langMenuOpen.set(false)"
+                [attr.aria-label]="'common.close' | translate"
+                tabindex="-1"
+              ></button>
+              <div class="absolute right-0 top-full mt-1 z-20 min-w-32 rounded-xl bg-surface-container-high shadow-lg border border-outline-variant py-1">
+                @for (lang of availableLanguages(); track lang.code) {
+                  <button
+                    type="button"
+                    (click)="selectLanguage(lang.code)"
+                    class="w-full flex items-center justify-between gap-2 px-4 py-2 text-sm text-on-surface hover:bg-surface-container-highest transition-colors"
+                    [class.font-semibold]="i18n.currentLang() === lang.code"
+                  >
+                    <span>{{ lang.name }}</span>
+                    @if (i18n.currentLang() === lang.code) {
+                      <span class="material-symbols-outlined text-base text-primary">check</span>
+                    }
+                  </button>
+                }
+              </div>
             }
-          </mat-menu>
+          </div>
 
           <button
             matIconButton
@@ -151,58 +155,6 @@ import { AuthService } from '../../core/services/auth.service';
       color: var(--mat-sys-on-surface-variant);
     }
     @media (max-width: 768px) { .disher-restaurant-name { display: none; } }
-    .disher-language-trigger {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 2px;
-      height: 40px;
-      min-width: 64px;
-      padding: 0 8px 0 12px;
-      border-radius: var(--disher-shape-full);
-      line-height: 1;
-    }
-    .disher-language-code {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-width: 24px;
-      text-align: center;
-      font-size: 16px;
-      font-weight: 500;
-      letter-spacing: 0.04em;
-      line-height: 1;
-      vertical-align: middle;
-    }
-    .disher-chevron {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 20px;
-      vertical-align: middle;
-    }
-    .disher-language-option {
-      min-width: 180px;
-    }
-    .disher-language-option-content {
-      width: 100%;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-    .disher-language-name {
-      flex: 1;
-      min-width: 0;
-      text-align: left;
-    }
-    .disher-check,
-    .disher-check-placeholder {
-      flex: 0 0 20px;
-      width: 20px;
-      height: 20px;
-      margin-left: auto;
-    }
-    .disher-check { color: var(--mat-sys-primary); }
   `],
 })
 export class HeaderComponent implements OnInit {
@@ -216,20 +168,24 @@ export class HeaderComponent implements OnInit {
   readonly availableLanguages = computed(() => this.i18n.getAvailableLanguages());
   readonly langMenuOpen = signal(false);
 
-  readonly currentLanguageCode = computed(() => {
-    const lang = this.i18n.currentLang();
-    const languageCodes: Record<Language, string> = { es: 'ES', en: 'EN', fr: 'FR' };
-    return languageCodes[lang];
-  });
-
   readonly restaurantName = computed(() => this.restaurantService.restaurantName());
 
   ngOnInit(): void {
     this.restaurantService.loadRestaurant();
   }
 
-  setLanguage(lang: Language): void {
+  @HostListener('document:click', ['$event'])
+  protected onDocumentClick(event: MouseEvent): void {
+    if (!this.langMenuOpen()) return;
+    const target = event.target as HTMLElement | null;
+    if (!target?.closest('.disher-language-selector')) {
+      this.langMenuOpen.set(false);
+    }
+  }
+
+  selectLanguage(lang: Language): void {
     this.i18n.setLanguage(lang);
+    this.langMenuOpen.set(false);
   }
 
   toggleTheme(): void {

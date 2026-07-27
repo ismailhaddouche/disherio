@@ -1,6 +1,4 @@
-import { OverlayContainer } from '@angular/cdk/overlay';
-import { NoopAnimationsModule } from '@angular/platform-browser/animations';
-import { TestBed, fakeAsync, tick } from '@angular/core/testing';
+import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { signal, type WritableSignal } from '@angular/core';
 import { HeaderComponent } from './header.component';
@@ -20,7 +18,6 @@ describe('HeaderComponent', () => {
 
   let currentLanguage: WritableSignal<Language>;
   let enabledLanguages: WritableSignal<Language[]>;
-  let overlayContainer: OverlayContainer;
   let authService: jasmine.SpyObj<AuthService>;
 
   beforeEach(async () => {
@@ -46,7 +43,7 @@ describe('HeaderComponent', () => {
     };
 
     await TestBed.configureTestingModule({
-      imports: [HeaderComponent, NoopAnimationsModule],
+      imports: [HeaderComponent],
       providers: [
         provideRouter([]),
         { provide: I18nService, useValue: i18n },
@@ -55,14 +52,18 @@ describe('HeaderComponent', () => {
         { provide: AuthService, useValue: authService },
       ],
     }).compileComponents();
-
-    overlayContainer = TestBed.inject(OverlayContainer);
   });
 
   afterEach(() => {
     authStore.clearAuth();
-    overlayContainer.getContainerElement().innerHTML = '';
   });
+
+  const openLanguageMenu = (element: HTMLElement): void => {
+    (element.querySelector('.disher-language-selector > button') as HTMLButtonElement).click();
+  };
+
+  const languageOptions = (element: HTMLElement): HTMLButtonElement[] =>
+    Array.from(element.querySelectorAll<HTMLButtonElement>('.disher-language-selector .absolute button'));
 
   it('calls the backend and clears local auth after logout succeeds', () => {
     const fixture = TestBed.createComponent(HeaderComponent);
@@ -82,66 +83,56 @@ describe('HeaderComponent', () => {
     expect(authStore.clearAuth).toHaveBeenCalled();
   });
 
-  it('renders the current language code only once in the trigger', () => {
+  it('renders the totem-style trigger with globe icon and current language code', () => {
     const fixture = TestBed.createComponent(HeaderComponent);
     fixture.detectChanges();
 
-    const trigger = fixture.nativeElement.querySelector('.disher-language-trigger') as HTMLElement;
-    const codes = trigger.querySelectorAll('.disher-language-code');
+    const trigger = fixture.nativeElement.querySelector('.disher-language-selector > button') as HTMLElement;
+    const icons = trigger.querySelectorAll('.material-symbols-outlined');
+    const code = trigger.querySelector('.uppercase');
 
-    expect(codes.length).toBe(1);
-    expect(codes[0].textContent?.trim()).toBe('ES');
-    expect(trigger.querySelector('.disher-lang-label')).toBeNull();
+    expect(icons.length).toBe(1);
+    expect(icons[0].textContent?.trim()).toBe('language');
+    expect(code?.textContent?.trim()).toBe('es');
   });
 
-  it('renders each available language once as an aligned menu row', fakeAsync(() => {
+  it('renders each available language once in the dropdown with a check on the active one', () => {
     const fixture = TestBed.createComponent(HeaderComponent);
     fixture.detectChanges();
 
-    (fixture.nativeElement.querySelector('.disher-language-trigger') as HTMLButtonElement).click();
+    openLanguageMenu(fixture.nativeElement);
     fixture.detectChanges();
-    tick();
 
-    const options = Array.from(
-      overlayContainer.getContainerElement().querySelectorAll<HTMLButtonElement>('.disher-language-option')
-    );
-    const names = options.map((option) => option.querySelector('.disher-language-name')?.textContent?.trim());
+    const options = languageOptions(fixture.nativeElement);
+    const names = options.map((option) => option.querySelector('span')?.textContent?.trim());
 
     expect(options.length).toBe(3);
     expect(names).toEqual(['Español', 'English', 'Français']);
     expect(new Set(names).size).toBe(names.length);
-    const optionRects = options.map((option) => option.getBoundingClientRect());
-    expect(optionRects[1].top).toBeGreaterThan(optionRects[0].top);
-    expect(optionRects[2].top).toBeGreaterThan(optionRects[1].top);
-    const nameOffsets = options.map((option) =>
-      Math.round(option.querySelector('.disher-language-name')?.getBoundingClientRect().left ?? -1)
-    );
-    expect(new Set(nameOffsets).size).toBe(1);
-    options.forEach((option) => {
-      expect(option.querySelectorAll('.disher-language-name').length).toBe(1);
-      expect(option.querySelectorAll('.disher-check, .disher-check-placeholder').length).toBe(1);
-    });
-  }));
 
-  it('updates the trigger and keeps the available language list reactive', fakeAsync(() => {
+    const checks = options.map(
+      (option) => option.querySelector('.material-symbols-outlined')?.textContent?.trim() ?? null
+    );
+    expect(checks).toEqual(['check', null, null]);
+  });
+
+  it('updates the language and closes the dropdown on selection', () => {
     enabledLanguages.set(['es', 'fr']);
     const fixture = TestBed.createComponent(HeaderComponent);
     fixture.detectChanges();
 
-    (fixture.nativeElement.querySelector('.disher-language-trigger') as HTMLButtonElement).click();
+    openLanguageMenu(fixture.nativeElement);
     fixture.detectChanges();
-    tick();
 
-    const options = overlayContainer
-      .getContainerElement()
-      .querySelectorAll<HTMLButtonElement>('.disher-language-option');
+    const options = languageOptions(fixture.nativeElement);
     expect(options.length).toBe(2);
 
     options[1].click();
     fixture.detectChanges();
-    tick();
 
     expect(currentLanguage()).toBe('fr');
-    expect(fixture.nativeElement.querySelector('.disher-language-code').textContent.trim()).toBe('FR');
-  }));
+    const trigger = fixture.nativeElement.querySelector('.disher-language-selector > button') as HTMLElement;
+    expect(trigger.querySelector('.uppercase')?.textContent?.trim()).toBe('fr');
+    expect(fixture.nativeElement.querySelector('.disher-language-selector .absolute')).toBeNull();
+  });
 });
