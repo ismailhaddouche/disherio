@@ -1,5 +1,19 @@
 # DisherIo
 
+[![DisherIo](https://img.shields.io/badge/DisherIo-Restaurant_Platform-1E88E5)](https://hismar.dev)
+[![License](https://img.shields.io/badge/License-AGPL--3.0--only-yellow)](LICENSE)
+[![Developer](https://img.shields.io/badge/Developer-hismar.dev-orange)](https://hismar.dev)
+
+![Node.js](https://img.shields.io/badge/Node.js-24-339933?logo=nodedotjs&logoColor=white)
+![Express](https://img.shields.io/badge/Express-5.2-000000?logo=express&logoColor=white)
+![Angular](https://img.shields.io/badge/Angular-21.2-DD0031?logo=angular&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?logo=typescript&logoColor=white)
+![MongoDB](https://img.shields.io/badge/MongoDB-7-47A248?logo=mongodb&logoColor=white)
+![Redis](https://img.shields.io/badge/Redis-7-DC382D?logo=redis&logoColor=white)
+![Socket.IO](https://img.shields.io/badge/Socket.IO-4.8-010101?logo=socketdotio&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-Compose_v2-2496ED?logo=docker&logoColor=white)
+![Caddy](https://img.shields.io/badge/Caddy-2-00C7B7?logo=caddy&logoColor=white)
+
 [Spanish Version (README_es.md)](README_es.md) | [French Version (README_fr.md)](README_fr.md)
 
 > **Live Demo:** [http://194.26.100.91](http://194.26.100.91)
@@ -15,6 +29,36 @@
 >
 > <img src="docs/images/qr-mesa1-demo.png" alt="QR code for Table 1 demo totem" width="150" height="150" />
 
+## Gallery
+
+Step-by-step walkthroughs live in the [User Guide](docs/USER_GUIDE.md).
+
+### Administration
+
+| Control Panel | Menu | Totems |
+|:---:|:---:|:---:|
+| [![Dashboard](docs/images/gallery/admin-dashboard-desktop.jpg)](docs/images/gallery/admin-dashboard-desktop.jpg) | [![Menu](docs/images/gallery/admin-menu-desktop.jpg)](docs/images/gallery/admin-menu-desktop.jpg) | [![Totems](docs/images/gallery/admin-totems-desktop.jpg)](docs/images/gallery/admin-totems-desktop.jpg) |
+
+### Kitchen (KDS) and Cashier (POS)
+
+| Order board | Stock control | Sessions | Payment |
+|:---:|:---:|:---:|:---:|
+| [![KDS board](docs/images/gallery/kds-board-desktop.jpg)](docs/images/gallery/kds-board-desktop.jpg) | [![KDS stock](docs/images/gallery/kds-stock-desktop.jpg)](docs/images/gallery/kds-stock-desktop.jpg) | [![POS sessions](docs/images/gallery/pos-tables-desktop.jpg)](docs/images/gallery/pos-tables-desktop.jpg) | [![POS payment](docs/images/gallery/pos-payment-desktop.jpg)](docs/images/gallery/pos-payment-desktop.jpg) |
+
+### Table Assistance (TAS)
+
+| Tables | Session detail | Pending cart |
+|:---:|:---:|:---:|
+| [![TAS tables](docs/images/gallery/tas-tables-desktop.jpg)](docs/images/gallery/tas-tables-desktop.jpg) | [![TAS session](docs/images/gallery/tas-session-desktop.jpg)](docs/images/gallery/tas-session-desktop.jpg) | [![TAS cart](docs/images/gallery/tas-cart-desktop.jpg)](docs/images/gallery/tas-cart-desktop.jpg) |
+
+### Customer Totem (mobile)
+
+| Welcome | Menu | My order |
+|:---:|:---:|:---:|
+| <img src="docs/images/gallery/totem-welcome-mobile.jpg" alt="Totem welcome" width="195" /> | <img src="docs/images/gallery/totem-menu-mobile.jpg" alt="Totem menu" width="195" /> | <img src="docs/images/gallery/totem-cart-mobile.jpg" alt="Totem cart" width="195" /> |
+
+---
+
 DisherIo is an integrated restaurant management platform providing solutions for self-service ordering, table assistance, kitchen display systems (KDS), and point-of-sale (POS) operations.
 
 ---
@@ -22,12 +66,13 @@ DisherIo is an integrated restaurant management platform providing solutions for
 ## Table of Contents
 
 1. [Documentation Index](#documentation-index)
-2. [Core Modules](#core-modules)
-3. [Technology Stack](#technology-stack)
-4. [Quick Start](#quick-start)
-5. [Service Architecture](#service-architecture)
-6. [Administration](#administration)
-7. [License](#license)
+2. [Gallery](#gallery)
+3. [Core Modules](#core-modules)
+4. [Technology Stack](#technology-stack)
+5. [Quick Start](#quick-start)
+6. [Service Architecture](#service-architecture)
+7. [Administration](#administration)
+8. [License](#license)
 
 ---
 
@@ -42,8 +87,10 @@ DisherIo is an integrated restaurant management platform providing solutions for
 | [Development Guide](docs/DEVELOPMENT.md) | Local setup, verification commands, frontend build/test standards |
 | [Troubleshooting](docs/ERRORS.md) | Error codes, diagnostic procedures, log inspection |
 | [Error Codes Reference](docs/ERROR_CODES.md) | Complete ErrorCode enum with HTTP status mapping |
+| [User Guide](docs/USER_GUIDE.md) | Annotated walkthrough of every module with screenshots |
 | [Uninstallation Guide](docs/UNINSTALL.md) | Full decommissioning procedures |
 | [Deployment and Infrastructure Guide](docs/DEPLOYMENT.md) | Deployment modes, infrastructure topology, security, operation, and scaling |
+| [HTTPS and TLS Setup](docs/HTTPS.md) | TLS modes, certificates, security headers, verification, and troubleshooting |
 
 ---
 

@@ -15,7 +15,7 @@ function walk(directory) {
 
 const markdownFiles = [
   ...fs.readdirSync(root)
-    .filter((name) => /^(README(?:_[a-z]+)?|HTTPS-SETUP)\.md$/i.test(name))
+    .filter((name) => /^README(?:_[a-z]+)?\.md$/i.test(name))
     .map((name) => path.join(root, name)),
   ...walk(path.join(root, 'docs')).filter((file) => file.endsWith('.md')),
 ];
