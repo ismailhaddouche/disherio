@@ -84,7 +84,7 @@ const routeMounts = new Map([
   ['health.routes.ts', '/health'],
   ['metrics.routes.ts', '/metrics'],
 ]);
-const apiReference = fs.readFileSync(path.join(root, 'docs/api-contracts.md'), 'utf8');
+const apiReference = fs.readFileSync(path.join(root, 'docs/API_CONTRACTS.md'), 'utf8');
 for (const [filename, mount] of routeMounts) {
   const source = fs.readFileSync(path.join(root, 'backend/src/routes', filename), 'utf8');
   for (const match of source.matchAll(/router\.(get|post|put|patch|delete)\(\s*['"]([^'"]+)['"]/g)) {
@@ -98,7 +98,7 @@ for (const [filename, mount] of routeMounts) {
       'm',
     );
     if (!documentedContract.test(apiReference)) {
-      failures.push(`docs/api-contracts.md: missing executable contract ${method} ${route}`);
+      failures.push(`docs/API_CONTRACTS.md: missing executable contract ${method} ${route}`);
     }
   }
 }

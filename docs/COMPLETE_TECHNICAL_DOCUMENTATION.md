@@ -286,7 +286,7 @@ Body-validation middleware returns field errors under `errors`. Rate-limit
 responses add `retryAfter`, and authentication can return an `errorCode`-only
 `401` for an invalid or missing refresh credential.
 
-The complete route and event inventory is maintained in `api-contracts.md`.
+The complete route and event inventory is maintained in [API_CONTRACTS.md](API_CONTRACTS.md).
 
 ## 10. Real-Time Communication
 
@@ -515,13 +515,16 @@ Production Compose configuration must fail when required secrets are absent.
 |----------|---------|
 | `ARCHITECTURE.md` | Detailed runtime topology, stack, security, and design patterns |
 | `SECURITY.md` | Canonical trust model, enforced controls, exceptions, and audit guide |
-| `api-contracts.md` | HTTP routes and Socket.IO event contracts |
+| `API_CONTRACTS.md` | HTTP routes and Socket.IO event contracts |
 | `DEVELOPMENT.md` | Local development and verification workflow |
 | `DEPLOYMENT.md` | Deployment modes, infrastructure topology, and operations |
+| `HTTPS.md` | TLS modes, certificates, security headers, and verification |
 | `INSTALL.md` | Installation requirements and procedures |
 | `CONFIGURE.md` | Runtime configuration and maintenance |
 | `ERRORS.md` | Troubleshooting and operational diagnostics |
 | `ERROR_CODES.md` | Shared application error-code reference |
+| `MIGRATIONS.md` | Versioned database migration runner and authoring rules |
+| `USER_GUIDE.md` | Annotated walkthrough of every module with screenshots |
 | `UNINSTALL.md` | Safe decommissioning procedure |
 | `architecture/ADR-001-folder-structure.md` | Folder-structure decision |
 | `architecture/ADR-002-repository-pattern.md` | Repository-pattern decision |

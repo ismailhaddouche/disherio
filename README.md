@@ -78,19 +78,35 @@ DisherIo is an integrated restaurant management platform providing solutions for
 
 ## Documentation Index
 
+Full index with Architecture Decision Records: [docs/README.md](docs/README.md)
+
+### For Users
+
+| Document | Description |
+|----------|-------------|
+| [User Guide](docs/USER_GUIDE.md) | Annotated walkthrough of every module with screenshots |
+
+### For Operators
+
 | Document | Description |
 |----------|-------------|
 | [Installation Guide](docs/INSTALL.md) | System requirements, guided installer, deployment procedures |
 | [Configuration and Maintenance](docs/CONFIGURE.md) | Script usage, hot-reconfiguration, backups, and local resource checks |
-| [Architecture and Technology Stack](docs/ARCHITECTURE.md) | Service topology, design patterns, security model |
-| [Security Model and Audit Guide](docs/SECURITY.md) | Enforced controls, trust boundaries, accepted limitations, audit classification |
-| [Development Guide](docs/DEVELOPMENT.md) | Local setup, verification commands, frontend build/test standards |
-| [Troubleshooting](docs/ERRORS.md) | Error codes, diagnostic procedures, log inspection |
-| [Error Codes Reference](docs/ERROR_CODES.md) | Complete ErrorCode enum with HTTP status mapping |
-| [User Guide](docs/USER_GUIDE.md) | Annotated walkthrough of every module with screenshots |
-| [Uninstallation Guide](docs/UNINSTALL.md) | Full decommissioning procedures |
 | [Deployment and Infrastructure Guide](docs/DEPLOYMENT.md) | Deployment modes, infrastructure topology, security, operation, and scaling |
 | [HTTPS and TLS Setup](docs/HTTPS.md) | TLS modes, certificates, security headers, verification, and troubleshooting |
+| [Troubleshooting](docs/ERRORS.md) | Error codes, diagnostic procedures, log inspection |
+| [Uninstallation Guide](docs/UNINSTALL.md) | Full decommissioning procedures |
+
+### For Developers
+
+| Document | Description |
+|----------|-------------|
+| [Development Guide](docs/DEVELOPMENT.md) | Local setup, verification commands, frontend build/test standards |
+| [Architecture and Technology Stack](docs/ARCHITECTURE.md) | Service topology, design patterns, security model |
+| [API Reference](docs/API_CONTRACTS.md) | HTTP routes and Socket.IO event contracts |
+| [Error Codes Reference](docs/ERROR_CODES.md) | Complete ErrorCode enum with HTTP status mapping |
+| [Database Migrations](docs/MIGRATIONS.md) | Versioned migration runner and authoring rules |
+| [Security Model and Audit Guide](docs/SECURITY.md) | Enforced controls, trust boundaries, accepted limitations, audit classification |
 
 ---
 
