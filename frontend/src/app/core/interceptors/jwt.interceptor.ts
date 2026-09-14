@@ -15,9 +15,18 @@ import { LoginResponse } from '../services/auth.service';
 interface RefreshResult {
   response: LoginResponse;
   accepted: boolean;
+  revision: number;
 }
 
 let refreshRequest$: Observable<RefreshResult> | null = null;
+
+function isAuthenticationError(error: HttpErrorResponse): boolean {
+  const errorCode = error.error?.errorCode;
+  return error.status === 401
+    || errorCode === ErrorCode.UNAUTHORIZED
+    || errorCode === ErrorCode.INVALID_TOKEN
+    || errorCode === ErrorCode.SESSION_EXPIRED;
+}
 
 function refreshSession(http: HttpClient): Observable<RefreshResult> {
   if (!refreshRequest$) {
@@ -32,6 +41,7 @@ function refreshSession(http: HttpClient): Observable<RefreshResult> {
             Date.now() + response.expires_in_ms,
             authRevision
           ),
+          revision: authStore.revision(),
         })),
         finalize(() => {
           refreshRequest$ = null;
@@ -61,39 +71,49 @@ export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
     void router.navigate(['/login'], { queryParams: { returnUrl: currentUrl } });
   };
 
+  const clearRejectedSession = (error: HttpErrorResponse, revision: number): void => {
+    if (isAuthenticationError(error) && authStore.revision() === revision) {
+      authStore.clearAuth();
+      navigateToLogin();
+    }
+  };
+
   return next(req).pipe(
     catchError((error: HttpErrorResponse) => {
-      const errorCode = error.error?.errorCode;
-      const isAuthenticationError =
-        error.status === 401 ||
-        errorCode === ErrorCode.UNAUTHORIZED ||
-        errorCode === ErrorCode.INVALID_TOKEN ||
-        errorCode === ErrorCode.SESSION_EXPIRED;
       const isAuthEndpoint = req.url.includes(`${environment.apiUrl}/auth/`);
       // Public totem endpoints use an ephemeral session token, not a staff JWT.
       // Their 401s are handled inline by the totem component; never attempt a
       // staff refresh or redirect to /login for them.
       const isPublicTotem = req.url.startsWith(`${environment.apiUrl}/totems/menu/`);
 
-      if (isAuthenticationError && !isAuthEndpoint && !isPublicTotem && authStore.isAuthenticated()) {
+      // An expired access token is precisely when the refresh cookie is needed.
+      // The presence of UI context permits an attempt; the server validates it.
+      if (isAuthenticationError(error) && !isAuthEndpoint && !isPublicTotem && authStore.user()) {
+        const authRevision = authStore.revision();
         return refreshSession(rawHttp).pipe(
-          switchMap(({ accepted }) => {
-            if (!accepted) {
+          catchError((refreshError: HttpErrorResponse) => {
+            clearRejectedSession(refreshError, authRevision);
+            return throwError(() => refreshError);
+          }),
+          switchMap(({ accepted, revision }) => {
+            if (!accepted || authStore.revision() !== revision) {
               return throwError(() => new HttpErrorResponse({ status: 401, statusText: 'Session ended' }));
             }
-            return next(req);
-          }),
-          catchError((refreshError: HttpErrorResponse) => {
-            authStore.clearAuth();
-            navigateToLogin();
-            return throwError(() => refreshError);
+            // A business or transport failure of the retry does not invalidate
+            // the refreshed session. A late rejection must not clear a new login.
+            return next(req).pipe(
+              catchError((retryError: HttpErrorResponse) => {
+                clearRejectedSession(retryError, revision);
+                return throwError(() => retryError);
+              })
+            );
           })
         );
       }
 
       // Auth endpoints (login/refresh) surface their 401 to the caller so the
       // login page can show the error; redirecting here would drop returnUrl.
-      if (isAuthenticationError && !isAuthEndpoint && !isPublicTotem) {
+      if (isAuthenticationError(error) && !isAuthEndpoint && !isPublicTotem) {
         authStore.clearAuth();
         navigateToLogin();
       }

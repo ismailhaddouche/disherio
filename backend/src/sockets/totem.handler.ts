@@ -14,7 +14,8 @@ import {
   addSessionCustomer,
   removeSessionCustomer,
   clearSessionCustomers,
-  getSessionCustomerCount,
+  getSessionCustomers as getSharedSessionCustomers,
+  type SessionCustomerInfo,
 } from './totem-session-state';
 import * as TotemService from '../services/totem.service';
 import type {
@@ -30,6 +31,11 @@ import {
   TotemCallWaiterPayloadSchema,
   TotemSessionIdPayloadSchema,
 } from '@disherio/shared';
+import {
+  acknowledgeJoinFailure,
+  acknowledgeJoinSuccess,
+  type SocketJoinAcknowledge,
+} from './socket-ack';
 
 /**
  * Totem/Customer Socket Handler
@@ -150,22 +156,52 @@ function enforceTrackingLimits(): void {
   }
 }
 
-// Get all customers in a session
-function getSessionCustomers(sessionId: string): Array<{ customerId?: string; customerName: string; socketId: string; joinedAt: string }> {
-  const socketIds = sessionCustomers.get(sessionId);
-  if (!socketIds) return [];
+/**
+ * Return customers that are both present in shared state and currently joined
+ * to the cluster-wide customer room. A process crash cannot run its disconnect
+ * handler, so this reconciliation also removes orphaned Redis hash fields.
+ *
+ * If the adapter cannot enumerate sockets, retain the shared snapshot. A
+ * transient adapter failure must not make every customer disappear.
+ */
+async function getActiveSessionCustomers(
+  io: Server,
+  sessionId: string
+): Promise<SessionCustomerInfo[]> {
+  const trackedCustomers = await getSharedSessionCustomers(sessionId);
+  if (trackedCustomers.length === 0) return [];
 
-  return Array.from(socketIds)
-    .map(socketId => customerInfo.get(socketId))
-    .filter((info): info is NonNullable<typeof info> => info !== undefined);
+  try {
+    const activeSockets = await io.in(`customer:session:${sessionId}`).fetchSockets();
+    const activeSocketIds = new Set(activeSockets.map(activeSocket => activeSocket.id));
+    const staleCustomers = trackedCustomers.filter(customer => !activeSocketIds.has(customer.socketId));
+
+    if (staleCustomers.length > 0) {
+      await Promise.all(
+        staleCustomers.map(customer => removeSessionCustomer(sessionId, customer.socketId))
+      );
+      logger.info(
+        { sessionId, staleSocketIds: staleCustomers.map(customer => customer.socketId) },
+        'Removed stale totem customer presence after room reconciliation'
+      );
+    }
+
+    return trackedCustomers.filter(customer => activeSocketIds.has(customer.socketId));
+  } catch (err) {
+    logger.warn(
+      { err, sessionId },
+      'Could not reconcile totem customer presence; using shared snapshot'
+    );
+    return trackedCustomers;
+  }
 }
 
 /**
- * Cluster-wide count of customers at a table, backed by the shared
- * (Redis) session state so customers connected to other nodes are included.
+ * Cluster-wide count of live customers at a table. Shared state supplies the
+ * customer metadata and Socket.IO room membership removes crash leftovers.
  */
 export async function getActiveCustomerCount(sessionId: string): Promise<number> {
-  return getSessionCustomerCount(sessionId);
+  return (await getActiveSessionCustomers(getIO(), sessionId)).length;
 }
 
 /**
@@ -415,17 +451,22 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
    * Customer joins a session room (after scanning QR)
    * Payload: { sessionId: string, customerName?: string }
    */
-  socket.on('totem:join_session', rateLimitMiddleware(socket, 'totem:join_session', async (data: TotemJoinSessionPayload) => {
+  socket.on('totem:join_session', rateLimitMiddleware(socket, 'totem:join_session', async (
+    data: TotemJoinSessionPayload,
+    acknowledge?: SocketJoinAcknowledge
+  ) => {
     try {
       const { sessionId, qr, customerName, customerId, sessionToken } = data;
 
       // Authenticated staff sockets must not act as totem customers.
       if (socket.user) {
         socket.emit('totem:error', { message: 'FORBIDDEN' });
+        acknowledgeJoinFailure(acknowledge, 'FORBIDDEN');
         return;
       }
 
       if (!validateSocketPayload(socket, 'totem', 'totem:join_session', TotemJoinSessionPayloadSchema, data)) {
+        acknowledgeJoinFailure(acknowledge, 'VALIDATION_ERROR');
         return;
       }
 
@@ -448,6 +489,7 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
             ? i18next.t('sockets.SESSION_CLOSING_IN_PROGRESS', { lng: lang })
             : i18next.t('sockets.SESSION_CLOSED_NO_MORE_ORDERS', { lng: lang }),
         });
+        acknowledgeJoinFailure(acknowledge, 'SESSION_CLOSED');
         return;
       }
 
@@ -481,7 +523,7 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
 
       // Join new session
       const roomName = `customer:session:${sessionId}`;
-      socket.join(roomName);
+      await socket.join(roomName);
 
       // Track customer session
       customerSessions.set(socketId, sessionId);
@@ -514,7 +556,7 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
 
       // Cluster-wide "who is at the table" tracking (Redis-backed, with
       // in-memory fallback) so any node can enumerate session customers.
-      void addSessionCustomer(sessionId, {
+      await addSessionCustomer(sessionId, {
         customerId,
         customerName: displayName,
         socketId,
@@ -524,7 +566,9 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
       logger.info({ socketId, sessionId, customerName }, 'Customer joined session');
 
       // Get current customers in session for the new customer
-      const existingCustomers = getSessionCustomers(sessionId).filter(c => c.socketId !== socketId);
+      const activeCustomers = await getActiveSessionCustomers(io, sessionId);
+      const existingCustomers = activeCustomers
+        .filter(c => c.socketId !== socketId);
 
       socket.emit('totem:session_joined', {
         sessionId,
@@ -537,6 +581,7 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
         })),
         timestamp: joinedAt,
       });
+      acknowledgeJoinSuccess(acknowledge);
 
       // Notify other customers at the same table that someone joined
       await emitToCustomersLocalized(sessionId, 'totem:customer_joined_table', (lng) => ({
@@ -548,17 +593,19 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
 
       // Notify TAS that a customer joined (staff-facing: localized per staff
       // member's own UI language)
+      const totalCustomersAtTable = activeCustomers.length;
       void emitToTASLocalized(sessionId, 'tas:customer_joined', (lng) => ({
         sessionId,
         customerName: customerName || i18next.t('common.CUSTOMER', { lng, defaultValue: 'Customer' }),
         customerId,
-        totalCustomersAtTable: sessionCustomers.get(sessionId)?.size || 1,
+        totalCustomersAtTable,
         timestamp: joinedAt,
       }));
 
     } catch (err: unknown) {
       logger.error({ err, socketId }, 'totem:join_session error');
       socket.emit('totem:error', { message: 'SESSION_ACCESS_DENIED' });
+      acknowledgeJoinFailure(acknowledge, 'SESSION_ACCESS_DENIED');
     }
   }));
 
@@ -797,7 +844,7 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
       sessionLastActivity.set(sessionId, Date.now());
 
       // Get all customers at this table
-      const customersAtTable = getSessionCustomers(sessionId).map(c => ({
+      const customersAtTable = (await getActiveSessionCustomers(io, sessionId)).map(c => ({
         customerId: c.customerId,
         customerName: c.customerName,
         joinedAt: c.joinedAt,
@@ -864,7 +911,7 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
 
   // ==================== DISCONNECT ====================
 
-  socket.on('disconnect', () => {
+  socket.on('disconnect', async () => {
     try {
       const sessionId = customerSessions.get(socketId);
       const info = customerInfo.get(socketId);
@@ -890,6 +937,7 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
         customerSessions.delete(socketId);
         customerInfo.delete(socketId);
         customerLastActivity.delete(socketId);
+        const remainingCustomers = await removeSessionCustomer(sessionId, socketId);
 
         logger.info({ socketId, sessionId, customerName: info?.customerName }, 'Customer disconnected');
 
@@ -908,13 +956,10 @@ export function registerTotemHandlers(io: Server, socket: AuthenticatedSocket): 
           sessionId,
           customerId: info?.customerId,
           customerName: info?.customerName,
-          remainingCustomers: sessionCustomers.get(sessionId)?.size || 0,
+          remainingCustomers,
           timestamp: new Date().toISOString(),
         });
       }
-
-      // Remove all listeners registered by this socket to prevent memory leaks
-      socket.removeAllListeners();
 
       // Clean up connection tracking
       cleanupSocketConnection(socketId);

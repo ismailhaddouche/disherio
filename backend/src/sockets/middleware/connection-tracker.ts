@@ -44,6 +44,19 @@ export function trackSocketConnection(
   // The `id` fallback covers user payloads that expose the id as `id` instead of `staffId`.
   const user = (socket as AuthenticatedSocket).user as (AuthenticatedSocket['user'] & { id?: string });
   const socketId = socket.id;
+  const existing = activeConnections.get(socketId);
+
+  // A staff socket can register KDS, POS, TAS and TOTEM handlers on the same
+  // physical connection. Preserve metadata and rooms collected by previous
+  // registrations instead of overwriting them on every handler.
+  if (existing) {
+    if (!existing.namespaces.includes(handlerType)) existing.namespaces.push(handlerType);
+    existing.lastActivity = new Date();
+    existing.permissions = Array.from(new Set([...existing.permissions, ...(user?.permissions ?? [])]));
+    if (!connectionsByType.has(handlerType)) connectionsByType.set(handlerType, new Set());
+    connectionsByType.get(handlerType)!.add(socketId);
+    return;
+  }
 
   const connectionMeta: ConnectionMetadata = {
     socketId,
@@ -84,6 +97,14 @@ export function trackSocketConnection(
     userId: connectionMeta.userId,
     totalConnections: activeConnections.size,
   }, 'Socket connection tracked');
+}
+
+/** Aggregate-only diagnostics; never exposes identities, addresses or rooms. */
+export function getConnectionTrackerStats(): { active: number; byType: Record<string, number> } {
+  return {
+    active: activeConnections.size,
+    byType: Object.fromEntries(Array.from(connectionsByType, ([type, sockets]) => [type, sockets.size])),
+  };
 }
 
 /**
@@ -171,16 +192,6 @@ export function registerGlobalDisconnectHandler(io: Server): void {
       try {
         // Clean up tracking
         cleanupSocketConnection(socket.id);
-
-        // Force remove all listeners as a safety net
-        socket.removeAllListeners();
-
-        // Leave all rooms
-        for (const room of socket.rooms) {
-          if (room !== socket.id) {
-            socket.leave(room);
-          }
-        }
 
         logger.debug({ socketId: socket.id, reason }, 'Global disconnect cleanup executed');
       } catch (err) {

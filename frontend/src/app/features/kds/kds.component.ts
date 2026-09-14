@@ -92,6 +92,9 @@ export class KdsComponent implements OnInit, OnDestroy {
   private i18n = inject(I18nService);
   private destroy$ = new Subject<void>();
   private socketListenerDisposers: Array<() => void> = [];
+  private itemsLoadGeneration = 0;
+  private dishesLoadGeneration = 0;
+  private itemMutationGeneration = 0;
 
   ordered = kdsStore.ordered;
   onPrepare = kdsStore.onPrepare;
@@ -138,6 +141,12 @@ export class KdsComponent implements OnInit, OnDestroy {
     this.destroy$.subscribe(() => clearInterval(connectionInterval));
 
     this.setupSocketListeners();
+    this.connection.connectionRestored$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => {
+        this.loadItems();
+        if (this.showStockPanel()) this.loadDishes();
+      });
     this.loadItems();
   }
 
@@ -165,16 +174,26 @@ export class KdsComponent implements OnInit, OnDestroy {
   }
 
   loadItems() {
+    const generation = ++this.itemsLoadGeneration;
+    const mutationGeneration = this.itemMutationGeneration;
     this.loading.set(true);
     this.kdsService.getKitchenItems()
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (items) => {
+          if (generation !== this.itemsLoadGeneration) return;
+          // A live event may be newer than the database snapshot captured by
+          // this request. Fetch once more instead of overwriting that event.
+          if (mutationGeneration !== this.itemMutationGeneration) {
+            this.loadItems();
+            return;
+          }
           kdsStore.setItems(items);
           this.joinItemSessions(items);
           this.loading.set(false);
         },
         error: () => {
+          if (generation !== this.itemsLoadGeneration) return;
           this.loading.set(false);
           this.notify.error(this.i18n.translate('kds.load_error'));
         },
@@ -185,6 +204,7 @@ export class KdsComponent implements OnInit, OnDestroy {
     this.connection.kdsNewItem$
       .pipe(takeUntil(this.destroy$))
       .subscribe(item => {
+        this.itemMutationGeneration++;
         const sessionId = item['session_id']?.toString();
         if (sessionId) this.kdsSocket.joinKdsSession(sessionId);
         this.notify.info(this.i18n.translate('kds.new_item_received'));
@@ -197,6 +217,7 @@ export class KdsComponent implements OnInit, OnDestroy {
     });
 
     this.listen('kds:item_prepared', (data: { itemId: string }) => {
+      this.itemMutationGeneration++;
       this.processingItem.set(null);
       this.processingAction.set(null);
       kdsStore.updateItemState(data.itemId, 'ON_PREPARE');
@@ -204,6 +225,7 @@ export class KdsComponent implements OnInit, OnDestroy {
     });
 
     this.listen('kds:item_served', (data: { itemId: string }) => {
+      this.itemMutationGeneration++;
       this.processingItem.set(null);
       this.processingAction.set(null);
       kdsStore.updateItemState(data.itemId, 'SERVED');
@@ -211,6 +233,7 @@ export class KdsComponent implements OnInit, OnDestroy {
     });
 
     this.listen('kds:item_canceled', (data: { itemId: string }) => {
+      this.itemMutationGeneration++;
       this.processingItem.set(null);
       this.processingAction.set(null);
       kdsStore.updateItemState(data.itemId, 'CANCELED');
@@ -218,10 +241,12 @@ export class KdsComponent implements OnInit, OnDestroy {
     });
 
     this.listen('item:state_changed', (data: { itemId: string; newState: string }) => {
+      this.itemMutationGeneration++;
       kdsStore.updateItemState(data.itemId, data.newState as KdsItem['item_state']);
     });
 
     this.listen('item:deleted', (data: { itemId: string }) => {
+      this.itemMutationGeneration++;
       kdsStore.removeItem(data.itemId);
     });
   }
@@ -255,16 +280,26 @@ export class KdsComponent implements OnInit, OnDestroy {
     if (!this.isConnected()) { this.notify.error(this.i18n.translate('kds.not_connected')); return; }
     this.processingItem.set(itemId);
     this.processingAction.set('prepare');
+    if (!this.connection.emit('kds:item_prepare', { itemId })) {
+      this.processingItem.set(null);
+      this.processingAction.set(null);
+      this.notify.error(this.i18n.translate('kds.not_connected'));
+      return;
+    }
     this.emitWithTimeout(itemId, 'prepare');
-    this.connection.emit('kds:item_prepare', { itemId });
   }
 
   serveItem(itemId: string) {
     if (!this.isConnected()) { this.notify.error(this.i18n.translate('kds.not_connected')); return; }
     this.processingItem.set(itemId);
     this.processingAction.set('serve');
+    if (!this.connection.emit('kds:item_serve', { itemId })) {
+      this.processingItem.set(null);
+      this.processingAction.set(null);
+      this.notify.error(this.i18n.translate('kds.not_connected'));
+      return;
+    }
     this.emitWithTimeout(itemId, 'serve');
-    this.connection.emit('kds:item_serve', { itemId });
   }
 
   cancelItem(itemId: string) {
@@ -280,20 +315,28 @@ export class KdsComponent implements OnInit, OnDestroy {
     if (!this.isConnected() || this.processingItem()) return;
     this.processingItem.set(itemId);
     this.processingAction.set('cancel');
+    if (!this.connection.emit('kds:item_cancel', { itemId, reason: this.i18n.translate('kds.cancel_reason_kitchen') })) {
+      this.processingItem.set(null);
+      this.processingAction.set(null);
+      this.notify.error(this.i18n.translate('kds.not_connected'));
+      return;
+    }
     this.emitWithTimeout(itemId, 'cancel');
-    this.connection.emit('kds:item_cancel', { itemId, reason: this.i18n.translate('kds.cancel_reason_kitchen') });
   }
 
   loadDishes() {
+    const generation = ++this.dishesLoadGeneration;
     this.loadingDishes.set(true);
-    this.dishService.list()
+    this.dishService.listForManagement()
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (resp) => {
+          if (generation !== this.dishesLoadGeneration) return;
           this.dishes.set(resp.data as DishListItem[]);
           this.loadingDishes.set(false);
         },
         error: () => {
+          if (generation !== this.dishesLoadGeneration) return;
           this.loadingDishes.set(false);
           this.notify.error(this.i18n.translate('errors.SERVER_ERROR'));
         },

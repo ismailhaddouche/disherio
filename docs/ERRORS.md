@@ -108,6 +108,20 @@ And `docker-compose.yml` has `- disherio_uploads:/srv/uploads:ro` on the caddy s
   (`docker compose logs redis`).
 - **Auth failure**: Verify cookies are being sent (`withCredentials: true` on frontend). Check `TRUST_PROXY=true` in backend env
 
+The frontend retries automatically, falls back to long-polling when WebSocket
+establishment is unavailable, rejoins profile rooms, and reloads authoritative
+HTTP snapshots after reconnect. A brief `Disconnected`/`Connected` transition
+is therefore expected to self-heal without a page refresh. Inspect the profile
+error event and browser network log if it does not.
+
+If many devices behind one NAT address reconnect together, check for
+`RATE_LIMIT_EXCEEDED` during the handshake. Defaults permit 300 concurrent
+connections and 900 handshakes/minute/address. Increase
+`SOCKET_MAX_CONNECTIONS_PER_ADDRESS` and
+`SOCKET_MAX_HANDSHAKES_PER_MINUTE` only after measuring the device count and
+retaining an anti-flood margin. See [Socket.IO reliability](SOCKET_RELIABILITY.md)
+for the recovery contract and staging stress checklist.
+
 ### 6. Let's Encrypt certificate not issued
 
 **Symptom**: Caddy logs show `obtaining certificate` but never `certificate obtained`.

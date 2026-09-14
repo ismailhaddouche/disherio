@@ -71,10 +71,11 @@
                 <p class="text-xs text-on-surface-variant text-center py-1">{{ 'tas.no_sessions' | translate }}</p>
               }
             </div>
-            @if (!hasOpenSession()) {
+            @if (!hasOpenSession(totem._id)) {
               <!-- Open new session button -->
               <button
                 (click)="actions().startSession(totem._id)"
+                [disabled]="actions().isStartingSession()"
                 class="w-full mt-2 text-xs py-1.5 bg-success text-on-success rounded-disher-sm font-medium"
               >
                 {{ 'tas.session.open' | translate }}
@@ -102,7 +103,8 @@
         />
         <button
           (click)="actions().createTemporaryTotem()"
-          [disabled]="actions().isCreatingTotem() || !actions().newTotemName().trim() || hasOpenSession()"
+          [disabled]="actions().isCreatingTotem() || !actions().newTotemName().trim()"
+          [attr.aria-label]="'tas.create_temp' | translate"
           class="btn-primary btn-admin px-3"
         >
           <span class="material-symbols-outlined text-sm">add</span>

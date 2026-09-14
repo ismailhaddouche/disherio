@@ -9,6 +9,7 @@ import { createFakeRedis } from './helpers/fake-redis';
 let sessionUpdateStateIf: jest.Mock;
 let roomEmit: jest.Mock;
 let socketsLeave: jest.Mock;
+let fetchSockets: jest.Mock;
 let inRoom: jest.Mock;
 
 jest.unmock('../sockets/totem.handler');
@@ -47,7 +48,8 @@ describe('totem handler with shared session state', () => {
     fakeRedis.reset();
     roomEmit = jest.fn();
     socketsLeave = jest.fn();
-    inRoom = jest.fn(() => ({ socketsLeave }));
+    fetchSockets = jest.fn().mockResolvedValue([]);
+    inRoom = jest.fn(() => ({ socketsLeave, fetchSockets }));
   });
 
   afterEach(() => {
@@ -117,8 +119,34 @@ describe('totem handler with shared session state', () => {
 
     await state.addSessionCustomer('s1', { customerName: 'A', socketId: 'sock-a', joinedAt: 't' });
     await state.addSessionCustomer('s1', { customerName: 'B', socketId: 'sock-b', joinedAt: 't' });
+    fetchSockets.mockResolvedValue([{ id: 'sock-a' }, { id: 'sock-b' }]);
 
     expect(await getActiveCustomerCount('s1')).toBe(2);
     expect(await getActiveCustomerCount('unknown')).toBe(0);
+  });
+
+  it('purges customer presence left behind by a crashed socket node', async () => {
+    const { getActiveCustomerCount } = await import('../sockets/totem.handler');
+    const state = await import('../sockets/totem-session-state');
+
+    await state.addSessionCustomer('s1', { customerName: 'Active', socketId: 'sock-active', joinedAt: 't' });
+    await state.addSessionCustomer('s1', { customerName: 'Ghost', socketId: 'sock-stale', joinedAt: 't' });
+    fetchSockets.mockResolvedValue([{ id: 'sock-active' }]);
+
+    expect(await getActiveCustomerCount('s1')).toBe(1);
+    expect(await state.getSessionCustomers('s1')).toEqual([
+      expect.objectContaining({ socketId: 'sock-active' }),
+    ]);
+  });
+
+  it('keeps the shared presence snapshot when room reconciliation fails', async () => {
+    const { getActiveCustomerCount } = await import('../sockets/totem.handler');
+    const state = await import('../sockets/totem-session-state');
+
+    await state.addSessionCustomer('s1', { customerName: 'A', socketId: 'sock-a', joinedAt: 't' });
+    fetchSockets.mockRejectedValue(new Error('adapter unavailable'));
+
+    expect(await getActiveCustomerCount('s1')).toBe(1);
+    expect(await state.getSessionCustomerCount('s1')).toBe(1);
   });
 });

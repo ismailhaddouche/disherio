@@ -1,5 +1,5 @@
 <!-- Session header bar -->
-<header class="flex items-center gap-3 p-3 bg-surface border-b border-outline-variant">
+<header class="flex shrink-0 flex-wrap items-center gap-2 p-3 bg-surface border-b border-outline-variant">
   <!-- Hamburger toggle for tables sidebar -->
   <button
     (click)="toggleTables.emit()"
@@ -9,8 +9,8 @@
     <span class="material-symbols-outlined">menu</span>
   </button>
 
-  <div class="flex-1 min-w-0">
-    <div class="flex items-center gap-2">
+  <div class="flex-1 min-w-[calc(100%-60px)] md:min-w-0">
+    <div class="flex flex-wrap items-center gap-2">
       <h2 class="text-lg font-bold text-on-surface truncate">{{ session().totem?.totem_name }}</h2>
       @if (session()._id) {
         <span class="text-xs text-on-surface-variant font-mono">#{{ session()._id!.slice(-8) }}</span>

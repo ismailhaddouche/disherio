@@ -9,9 +9,9 @@ export class TasSocketService {
   private currentTasSessionId: string | null = null;
 
   constructor() {
-    this.connection.registerReconnectHandler((socket) => {
+    this.connection.registerReconnectHandler(async (socket) => {
       if (this.currentTasSessionId) {
-        socket.emit('tas:join', this.currentTasSessionId);
+        await this.connection.emitReconnectJoin(socket, 'tas:join', this.currentTasSessionId);
       }
     });
     this.connection.registerResetHandler(() => {
@@ -51,27 +51,27 @@ export class TasSocketService {
     }
   }
 
-  tasAddItem(data: TASAddItemData): void {
-    this.connection.emit('tas:add_item', {
+  tasAddItem(data: TASAddItemData): boolean {
+    return this.connection.emit('tas:add_item', {
       ...data,
       requestId: data.requestId ?? createRequestId(),
     });
   }
 
-  tasServeServiceItem(itemId: string): void {
-    this.connection.emit('tas:serve_service_item', { itemId });
+  tasServeServiceItem(itemId: string): boolean {
+    return this.connection.emit('tas:serve_service_item', { itemId });
   }
 
-  tasCancelItem(itemId: string, reason?: string): void {
-    this.connection.emit('tas:cancel_item', { itemId, reason });
+  tasCancelItem(itemId: string, reason?: string): boolean {
+    return this.connection.emit('tas:cancel_item', { itemId, reason });
   }
 
   tasRequestBill(sessionId: string, options?: {
     requestedBy?: 'waiter' | 'customer';
     customerId?: string;
     splitType?: 'ALL' | 'BY_USER' | 'SHARED';
-  }): void {
-    this.connection.emit('tas:request_bill', {
+  }): boolean {
+    return this.connection.emit('tas:request_bill', {
       sessionId,
       requestedBy: options?.requestedBy || 'waiter',
       customerId: options?.customerId,
@@ -79,16 +79,16 @@ export class TasSocketService {
     });
   }
 
-  tasAcknowledgeCustomerCall(sessionId: string, message?: string): void {
-    this.connection.emit('tas:call_waiter_response', {
+  tasAcknowledgeCustomerCall(sessionId: string, message?: string): boolean {
+    return this.connection.emit('tas:call_waiter_response', {
       sessionId,
       acknowledged: true,
       message,
     });
   }
 
-  tasNotifyCustomers(sessionId: string, message: string, type: 'info' | 'warning' | 'success' = 'info'): void {
-    this.connection.emit('tas:notify_customers', {
+  tasNotifyCustomers(sessionId: string, message: string, type: 'info' | 'warning' | 'success' = 'info'): boolean {
+    return this.connection.emit('tas:notify_customers', {
       sessionId,
       message,
       type,

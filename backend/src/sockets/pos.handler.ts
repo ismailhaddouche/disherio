@@ -6,6 +6,11 @@ import { getIO } from '../config/socket';
 import { trackSocketConnection, cleanupSocketConnection, trackSocketJoinRoom, trackSocketLeaveRoom, updateSocketActivity } from './middleware/connection-tracker';
 import { rateLimitMiddleware } from './middleware/rate-limiter';
 import { validateSessionAccess } from './middleware/session-validator';
+import {
+  acknowledgeJoinFailure,
+  acknowledgeJoinSuccess,
+  type SocketJoinAcknowledge,
+} from './socket-ack';
 
 export function registerPosHandlers(_io: Server, socket: AuthenticatedSocket): void {
   const user = socket.user;
@@ -32,9 +37,13 @@ export function registerPosHandlers(_io: Server, socket: AuthenticatedSocket): v
   socket.join(restaurantRoom);
   trackSocketJoinRoom(socket.id, restaurantRoom);
 
-  socket.on('pos:join', rateLimitMiddleware(socket, 'pos:join', async (sessionId: string) => {
+  socket.on('pos:join', rateLimitMiddleware(socket, 'pos:join', async (
+    sessionId: string,
+    acknowledge?: SocketJoinAcknowledge
+  ) => {
     if (!sessionId || typeof sessionId !== 'string') {
       socket.emit('pos:error', { message: 'INVALID_SESSION_ID' });
+      acknowledgeJoinFailure(acknowledge, 'INVALID_SESSION_ID');
       return;
     }
 
@@ -44,11 +53,12 @@ export function registerPosHandlers(_io: Server, socket: AuthenticatedSocket): v
       socket.emit('pos:error', {
         message: validation.reason || 'UNAUTHORIZED'
       });
+      acknowledgeJoinFailure(acknowledge, validation.reason || 'UNAUTHORIZED');
       return;
     }
 
-    socket.join(`session:${sessionId}`);
-    socket.join(`pos:session:${sessionId}`);
+    await socket.join(`session:${sessionId}`);
+    await socket.join(`pos:session:${sessionId}`);
 
     // Track room joins
     trackSocketJoinRoom(socket.id, `session:${sessionId}`);
@@ -56,6 +66,7 @@ export function registerPosHandlers(_io: Server, socket: AuthenticatedSocket): v
     updateSocketActivity(socket.id);
 
     logger.info({ socketId: socket.id, userId: user.staffId, sessionId }, 'POS/TAS joined session room');
+    acknowledgeJoinSuccess(acknowledge);
   }));
 
   socket.on('pos:leave', rateLimitMiddleware(socket, 'pos:leave', (sessionId: string) => {
@@ -75,9 +86,6 @@ export function registerPosHandlers(_io: Server, socket: AuthenticatedSocket): v
 
   socket.on('disconnect', () => {
     try {
-      // Remove all listeners registered by this socket to prevent memory leaks
-      socket.removeAllListeners();
-
       // Clean up connection tracking
       cleanupSocketConnection(socket.id);
 

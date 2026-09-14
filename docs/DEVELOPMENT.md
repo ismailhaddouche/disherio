@@ -86,6 +86,30 @@ browser disconnects, and launcher errors; CI must not suppress that status.
 
 ## Frontend Build Standards
 
+### Browser UI verification
+
+The Playwright suite serves the production build on `127.0.0.1:4300` and uses
+local HTTP/Socket.IO fixtures. No database or credentials are needed. It checks
+all routed screens at 360×800, 768×1024, and 1440×900 in both themes, plus
+ordering, payment previews, table isolation, workspace navigation, client socket
+updates, and forced transport-loss recovery for KDS, POS, TAS, and the public
+totem. This is a frontend regression suite, not a live-backend test.
+
+```bash
+npm run build --workspace=frontend
+npm run test:ui --workspace=frontend
+```
+
+On Windows the suite uses installed Microsoft Edge. On other platforms install
+Playwright Chromium with `npx playwright install chromium`; `E2E_BROWSER=chrome`
+or `E2E_BROWSER=msedge` selects an installed browser channel. Screenshots and
+failed-test traces are written under `.cache/ui-tests/` (ignored by Git).
+Rebuild after frontend changes: this suite deliberately tests compiled assets,
+not a development server. See [Frontend review](FRONTEND_REVIEW.md) for scope
+and remaining live-integration checks.
+
+### Angular conventions
+
 Angular is configured with:
 
 - Standalone components

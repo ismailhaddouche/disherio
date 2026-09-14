@@ -216,6 +216,33 @@ describe('RestaurantService', () => {
   });
 
   describe('Multiple Loads', () => {
+    it('does not let a late header load overwrite saved settings', () => {
+      service.loadRestaurant();
+      const initial = httpMock.expectOne(`${environment.apiUrl}/restaurant/me`);
+      service.updateSettings({ currency: 'USD' }).subscribe();
+      httpMock.expectOne(`${environment.apiUrl}/restaurant/settings`).flush({ message: 'Saved', settings: createMockRestaurant({ currency: 'USD' }) });
+      initial.flush(createMockRestaurant({ currency: 'EUR' }));
+      expect(service.currency()).toBe('USD');
+    });
+
+    it('synchronizes display signals with the canonical settings response', () => {
+      service.loadRestaurant();
+      httpMock.expectOne(`${environment.apiUrl}/restaurant/me`).flush(createMockRestaurant());
+      service.updateSettings({ restaurant_name: 'Updated', currency: 'USD' }).subscribe();
+      const request = httpMock.expectOne(`${environment.apiUrl}/restaurant/settings`);
+      expect(request.request.method).toBe('PATCH');
+      request.flush({ message: 'Saved', settings: createMockRestaurant({ restaurant_name: 'Updated', currency: 'USD' }) });
+      expect(service.restaurantName()).toBe('Updated');
+      expect(service.currency()).toBe('USD');
+    });
+
+    it('does not publish failed settings changes', () => {
+      service.updateSettings({ restaurant_name: 'Failed', currency: 'USD' }).subscribe({ error: () => undefined });
+      httpMock.expectOne(`${environment.apiUrl}/restaurant/settings`).flush({}, { status: 500, statusText: 'Error' });
+      expect(service.restaurantName()).toBe('DisherIO');
+      expect(service.currency()).toBe('EUR');
+    });
+
     it('should update restaurant on subsequent loads', async () => {
       const restaurant1 = createMockRestaurant({
         _id: 'rest1',

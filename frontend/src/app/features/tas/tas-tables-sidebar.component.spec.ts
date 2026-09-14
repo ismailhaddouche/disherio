@@ -25,6 +25,7 @@ function createActionsMock() {
     totemSessions: signal<TotemSession[]>([]),
     newTotemName: signal(''),
     isCreatingTotem: signal(false),
+    isStartingSession: signal(false),
     loadTotemSessions: jasmine.createSpy('loadTotemSessions'),
     startSession: jasmine.createSpy('startSession'),
     createTemporaryTotem: jasmine.createSpy('createTemporaryTotem'),
@@ -49,7 +50,7 @@ describe('TasTablesSidebarComponent', () => {
     fixture = TestBed.createComponent(TasTablesSidebarComponent);
     component = fixture.componentInstance;
     fixture.componentRef.setInput('actions', actions as unknown as TasSessionActionsService);
-    fixture.componentRef.setInput('hasOpenSession', false);
+    fixture.componentRef.setInput('sessions', []);
     fixture.detectChanges();
   });
 
@@ -98,7 +99,7 @@ describe('TasTablesSidebarComponent', () => {
   });
 
   it('hides the open-session button when a session is already open', () => {
-    fixture.componentRef.setInput('hasOpenSession', true);
+    fixture.componentRef.setInput('sessions', [createSession()]);
     actions.selectedTotemId.set('totem-1');
     fixture.detectChanges();
 
@@ -115,5 +116,14 @@ describe('TasTablesSidebarComponent', () => {
     (fixture.nativeElement.querySelector('button[aria-label="common.close"]') as HTMLButtonElement).click();
 
     expect(closedSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it('allows opening a different table while another has an open session', () => {
+    fixture.componentRef.setInput('sessions', [createSession()]);
+    actions.selectedTotemId.set('totem-2');
+    fixture.detectChanges();
+    expect(component.hasOpenSession('totem-1')).toBeTrue();
+    expect(component.hasOpenSession('totem-2')).toBeFalse();
+    expect(fixture.nativeElement.textContent).toContain('tas.session.open');
   });
 });

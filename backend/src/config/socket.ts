@@ -22,7 +22,13 @@ const parsedMaxConnections = Number.parseInt(process.env.SOCKET_MAX_CONNECTIONS_
 const MAX_CONNECTIONS_PER_ADDRESS = Number.isInteger(parsedMaxConnections) && parsedMaxConnections > 0
   ? parsedMaxConnections
   : 300;
-const MAX_HANDSHAKES_PER_MINUTE = 120;
+const parsedMaxHandshakes = Number.parseInt(process.env.SOCKET_MAX_HANDSHAKES_PER_MINUTE ?? '', 10);
+// A restaurant commonly puts every staff terminal and customer device behind
+// one NAT address. Reserve capacity for three full reconnect waves per minute
+// so a router or Wi-Fi flap does not make healthy clients throttle each other.
+const MAX_HANDSHAKES_PER_MINUTE = Number.isInteger(parsedMaxHandshakes) && parsedMaxHandshakes > 0
+  ? parsedMaxHandshakes
+  : Math.max(600, MAX_CONNECTIONS_PER_ADDRESS * 3);
 
 // Build allowed origins for Socket.IO
 function getAllowedOrigins(): string[] {

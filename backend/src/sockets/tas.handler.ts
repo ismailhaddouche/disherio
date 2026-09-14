@@ -28,6 +28,11 @@ import { trackSocketConnection, cleanupSocketConnection, trackSocketJoinRoom, tr
 import { rateLimitMiddleware } from './middleware/rate-limiter';
 import { validateSessionAccess } from './middleware/session-validator';
 import { sanitizeSocketError, validateSocketPayload } from './middleware/validate-payload';
+import {
+  acknowledgeJoinFailure,
+  acknowledgeJoinSuccess,
+  type SocketJoinAcknowledge,
+} from './socket-ack';
 
 /**
  * TAS (Table Assistance Service) Socket Handler
@@ -145,9 +150,13 @@ export function registerTasHandlers(io: Server, socket: AuthenticatedSocket): vo
    * Join TAS session room and subscribe to all events for this session
    * Payload: { sessionId: string }
    */
-  socket.on('tas:join', rateLimitMiddleware(socket, 'tas:join', async (sessionId: string) => {
+  socket.on('tas:join', rateLimitMiddleware(socket, 'tas:join', async (
+    sessionId: string,
+    acknowledge?: SocketJoinAcknowledge
+  ) => {
     if (!sessionId || typeof sessionId !== 'string') {
       socket.emit('tas:error', { message: 'INVALID_SESSION_ID' });
+      acknowledgeJoinFailure(acknowledge, 'INVALID_SESSION_ID');
       return;
     }
 
@@ -157,12 +166,13 @@ export function registerTasHandlers(io: Server, socket: AuthenticatedSocket): vo
       socket.emit('tas:error', {
         message: validation.reason || 'UNAUTHORIZED'
       });
+      acknowledgeJoinFailure(acknowledge, validation.reason || 'UNAUTHORIZED');
       return;
     }
 
     const roomName = `tas:session:${sessionId}`;
-    socket.join(roomName);
-    socket.join(`session:${sessionId}`);
+    await socket.join(roomName);
+    await socket.join(`session:${sessionId}`);
 
     // Track subscription
     if (!tasSessionSubscriptions.has(sessionId)) {
@@ -188,6 +198,7 @@ export function registerTasHandlers(io: Server, socket: AuthenticatedSocket): vo
 
     logger.info({ socketId: socket.id, staffId, sessionId }, 'TAS joined session');
     socket.emit('tas:joined', { sessionId, timestamp: new Date().toISOString() });
+    acknowledgeJoinSuccess(acknowledge);
   }));
 
   /**
@@ -637,9 +648,6 @@ export function registerTasHandlers(io: Server, socket: AuthenticatedSocket): vo
 
       // Clean up activity tracking
       tasLastActivity.delete(socket.id);
-
-      // Remove all listeners registered by this socket to prevent memory leaks
-      socket.removeAllListeners();
 
       // Clean up connection tracking
       cleanupSocketConnection(socket.id);

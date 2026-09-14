@@ -24,8 +24,10 @@ Central index of the project documentation. All documents are in English.
 | Document | Description |
 |----------|-------------|
 | [Development Guide](DEVELOPMENT.md) | Local setup, verification commands, frontend build/test standards |
+| [Frontend review](FRONTEND_REVIEW.md) | Profile coverage, responsive conventions, regression fixes, and verification limits |
 | [Architecture and Technology Stack](ARCHITECTURE.md) | Service topology, design patterns, security model |
 | [API Reference](API_CONTRACTS.md) | HTTP routes and Socket.IO event contracts, verified against route definitions |
+| [Socket.IO Reliability](SOCKET_RELIABILITY.md) | Authorization, reconnect reconciliation, network-loss tests, guarantees, and limits |
 | [Error Codes Reference](ERROR_CODES.md) | Complete ErrorCode enum with HTTP status mapping |
 | [Database Migrations](MIGRATIONS.md) | Versioned migration runner and authoring rules |
 | [Complete Technical Documentation](COMPLETE_TECHNICAL_DOCUMENTATION.md) | Consolidated high-level technical reference |

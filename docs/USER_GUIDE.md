@@ -101,6 +101,11 @@ The dashboard summarizes restaurant activity for a selectable date range:
 
 ## Point of Sale (POS)
 
+On phones and tablets, use the **Tables**, **Orders**, and **Ticket** navigation
+buttons to switch full-width panels. Desktop screens show the panels side by
+side. Unsent drafts stay attached to their table when switching sessions; they
+are kept in memory and are not preserved after reloading or leaving the workspace.
+
 ### Sessions and Tables
 
 ![POS tables](images/gallery/pos-tables-desktop.jpg)
@@ -125,6 +130,10 @@ The dashboard summarizes restaurant activity for a selectable date range:
 ---
 
 ## Table Assistance Service (TAS)
+
+Selecting a session closes the table drawer. Reopen it with **Tables**; use
+**Pending** for the cart. Both drawers can be dismissed with Escape. A table can
+be opened even while a different table has an active session.
 
 ### Table Overview
 

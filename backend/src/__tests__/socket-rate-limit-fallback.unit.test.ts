@@ -15,8 +15,9 @@ describe('Socket rate limiter without Redis', () => {
 
   it('still enforces limits via in-memory counters and logs the degraded mode', async () => {
     const identity = 'staff:fallback-enforce';
-    // kds:join is a JOIN_LEAVE event: 10 requests per minute
-    for (let i = 0; i < 10; i++) {
+    // kds:join is a JOIN_LEAVE event: 600 requests per minute so a KDS can
+    // resubscribe many active tables after several brief network flaps.
+    for (let i = 0; i < 600; i++) {
       expect((await checkRateLimit(identity, 'kds:join')).allowed).toBe(true);
     }
 

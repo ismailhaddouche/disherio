@@ -1,7 +1,6 @@
 import { Subject } from 'rxjs';
 import { Socket } from 'socket.io-client';
 import { kdsStore } from '../../../store/kds.store';
-import { tasStore } from '../../../store/tas.store';
 import type {
   ItemDeletedPayload,
   ItemStateChangedPayload,
@@ -130,15 +129,12 @@ export class SocketEventHub {
 
   setupTasListeners(socket: Socket, state: SocketEventState): void {
     this.addTasListener(socket, 'tas:item_added', (event: TASItemEvent) => {
-      tasStore.addItem(event.item);
       this.tasItemAdded.next(event);
     });
     this.addTasListener(socket, 'tas:service_item_served', (event: TASItemStateEvent) => {
-      tasStore.updateItemState(event.itemId, 'SERVED');
       this.tasItemServed.next(event);
     });
     this.addTasListener(socket, 'tas:item_canceled', (event: TASItemStateEvent) => {
-      tasStore.updateItemState(event.itemId, 'CANCELED');
       this.tasItemCanceled.next(event);
     });
     this.addTasListener(socket, 'tas:bill_requested', (event: TASBillEvent) => {
@@ -148,7 +144,6 @@ export class SocketEventHub {
       this.tasHelpRequested.next(event);
     });
     this.addTasListener(socket, 'tas:new_customer_order', (event: TASNewCustomerOrderEvent) => {
-      if (event.item) tasStore.addItem(event.item);
       this.tasNewCustomerOrder.next(event);
     });
     this.addTasListener(socket, 'tas:customer_bill_request', (event: TASCustomerBillRequestEvent) => {
@@ -231,19 +226,16 @@ export class SocketEventHub {
         break;
       case 'tas:item_added': {
         const typed = payload as TASItemEvent;
-        tasStore.addItem(typed.item);
         this.tasItemAdded.next(typed);
         break;
       }
       case 'tas:service_item_served': {
         const typed = payload as TASItemStateEvent;
-        tasStore.updateItemState(typed.itemId, 'SERVED');
         this.tasItemServed.next(typed);
         break;
       }
       case 'tas:item_canceled': {
         const typed = payload as TASItemStateEvent;
-        tasStore.updateItemState(typed.itemId, 'CANCELED');
         this.tasItemCanceled.next(typed);
         break;
       }
@@ -251,7 +243,6 @@ export class SocketEventHub {
       case 'tas:help_requested': this.tasHelpRequested.next(payload as TASHelpRequest); break;
       case 'tas:new_customer_order': {
         const typed = payload as TASNewCustomerOrderEvent;
-        if (typed.item) tasStore.addItem(typed.item);
         this.tasNewCustomerOrder.next(typed);
         break;
       }

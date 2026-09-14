@@ -24,10 +24,11 @@ function createSession(overrides: Partial<TotemSession> = {}): TotemSession {
   };
 }
 
-function createActionsMock(): Pick<PosSessionActionsService, 'newTotemName' | 'isCreatingTotem' | 'startSession' | 'createTemporaryTotem'> {
+function createActionsMock(): Pick<PosSessionActionsService, 'newTotemName' | 'isCreatingTotem' | 'isStartingSession' | 'startSession' | 'createTemporaryTotem'> {
   return {
     newTotemName: signal(''),
     isCreatingTotem: signal(false),
+    isStartingSession: signal(false),
     startSession: jasmine.createSpy('startSession'),
     createTemporaryTotem: jasmine.createSpy('createTemporaryTotem'),
   };
@@ -56,13 +57,24 @@ describe('PosSessionsSidebarComponent', () => {
     fixture.componentRef.setInput('closedSessions', []);
     fixture.componentRef.setInput('sessionItems', []);
     fixture.componentRef.setInput('availableTotems', []);
-    fixture.componentRef.setInput('hasOpenSession', false);
     fixture.componentRef.setInput('showTicketHistory', false);
     fixture.componentRef.setInput('actions', actions as unknown as PosSessionActionsService);
     fixture.detectChanges();
   });
 
   afterEach(() => authStore.clearAuth());
+
+  it('allows a temporary table while an unrelated table is open', () => {
+    fixture.componentRef.setInput('activeSessions', [createSession()]);
+    actions.newTotemName.set('New patio');
+    fixture.detectChanges();
+    const input = fixture.nativeElement.querySelector('input') as HTMLInputElement;
+    const button = fixture.nativeElement.querySelector('button[aria-label="pos.new_table"]') as HTMLButtonElement;
+    expect(input.disabled).toBeFalse();
+    expect(button.disabled).toBeFalse();
+    button.click();
+    expect(actions.createTemporaryTotem).toHaveBeenCalledTimes(1);
+  });
 
   it('renders the active sessions and emits the selected one on click', () => {
     const session = createSession();

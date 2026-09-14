@@ -83,6 +83,14 @@ describe('Malformed socket payloads (null/undefined)', () => {
       await expect(handlers['kds:item_prepare']({} as never)).resolves.toBeUndefined();
       expectNamespacedError(emitMock, 'kds:error', 'INVALID_ITEM_ID');
     });
+
+    it('acknowledges a rejected room join without leaving recovery pending', async () => {
+      const acknowledge = jest.fn();
+
+      await expect(handlers['kds:join']('' as never, acknowledge as never)).resolves.toBeUndefined();
+
+      expect(acknowledge).toHaveBeenCalledWith({ success: false, error: 'INVALID_SESSION_ID' });
+    });
   });
 
   describe('TAS handlers', () => {
@@ -152,6 +160,19 @@ describe('Malformed socket payloads (null/undefined)', () => {
         (wrapped as (...args: unknown[]) => Promise<unknown>)({ itemId: 'x' })
       ).resolves.toBeUndefined();
       expectNamespacedError(emitMock, 'tas:error', 'INTERNAL_ERROR');
+    });
+
+    it('acknowledges an unexpected middleware failure', async () => {
+      const { socket } = fakeSocket(['TAS']);
+      const acknowledge = jest.fn();
+      const wrapped = rateLimitMiddleware(socket, 'tas:cancel_item', async () => {
+        throw new Error('boom');
+      });
+
+      await expect(
+        (wrapped as (...args: unknown[]) => Promise<unknown>)({ itemId: 'x' }, acknowledge)
+      ).resolves.toBeUndefined();
+      expect(acknowledge).toHaveBeenCalledWith({ success: false, error: 'INTERNAL_ERROR' });
     });
   });
 });

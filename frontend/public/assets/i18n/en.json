@@ -1,4 +1,5 @@
 {
+  "common.workspaces": "Workspaces",
   "admin.menu.categories": "Categories",
   "admin.menu.dashboard": "Dashboard",
   "admin.menu.dishes": "Menu",

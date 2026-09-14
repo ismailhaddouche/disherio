@@ -12,6 +12,7 @@ import { TotemService, type PublicTotemSession } from '../../core/services/totem
 import { ConfirmationService } from '../../core/services/confirmation.service';
 import { TotemCartService } from './totem-cart.service';
 import { TotemComponent } from './totem.component';
+import type { ItemOrder } from '../../types';
 
 interface TotemComponentInternals {
   refreshSessionInfo: () => void;
@@ -20,7 +21,22 @@ interface TotemComponentInternals {
 describe('TotemComponent cart session isolation', () => {
   let totemSessionClosed$: Subject<void>;
   let totemForceDisconnect$: Subject<void>;
+  let connectionRestored$: Subject<void>;
   let startSessionByQR: jasmine.Spy;
+  let getCustomerOrders: jasmine.Spy;
+  let getSessionOrders: jasmine.Spy;
+
+  const order = (id: string): ItemOrder => ({
+    _id: id,
+    order_id: 'order-1',
+    session_id: 'session-reconnect-1',
+    item_dish_id: 'dish-1',
+    item_state: 'ORDERED',
+    item_disher_type: 'KITCHEN',
+    item_name_snapshot: [{ lang: 'en', value: id }],
+    item_base_price: 10,
+    item_disher_extras: [],
+  });
 
   function createSession(sessionId: string): PublicTotemSession {
     return {
@@ -40,7 +56,10 @@ describe('TotemComponent cart session isolation', () => {
   beforeEach(() => {
     totemSessionClosed$ = new Subject<void>();
     totemForceDisconnect$ = new Subject<void>();
+    connectionRestored$ = new Subject<void>();
     startSessionByQR = jasmine.createSpy('startSessionByQR');
+    getCustomerOrders = jasmine.createSpy('getCustomerOrders').and.returnValue(of([]));
+    getSessionOrders = jasmine.createSpy('getSessionOrders').and.returnValue(of([]));
 
     TestBed.configureTestingModule({
       providers: [
@@ -57,6 +76,7 @@ describe('TotemComponent cart session isolation', () => {
             releaseConnection: jasmine.createSpy('releaseConnection'),
             totemSessionClosed$,
             totemForceDisconnect$,
+            connectionRestored$,
           },
         },
         {
@@ -85,6 +105,8 @@ describe('TotemComponent cart session isolation', () => {
           useValue: {
             getMenuByQR: () => of({ categories: [], dishes: [] }),
             startSessionByQR,
+            getCustomerOrders,
+            getSessionOrders,
           },
         },
         { provide: ConfirmationService, useValue: { confirm: () => of(true) } },
@@ -94,7 +116,10 @@ describe('TotemComponent cart session isolation', () => {
     cartStore.clear();
   });
 
-  afterEach(() => cartStore.clear());
+  afterEach(() => {
+    cartStore.clear();
+    sessionStorage.removeItem('totem_customer_session-reconnect-1');
+  });
 
   it('empties the cart when the waiter closes the session', () => {
     startSessionByQR.and.returnValue(of(createSession('session-close-1')));
@@ -142,5 +167,64 @@ describe('TotemComponent cart session isolation', () => {
     (component as unknown as TotemComponentInternals).refreshSessionInfo();
 
     expect(cartStore.items()).toHaveSize(1);
+  });
+
+  it('refreshes the session token before reconciling orders after reconnect', () => {
+    const sessionId = 'session-reconnect-1';
+    const refreshedSession$ = new Subject<PublicTotemSession>();
+    const original = createSession(sessionId);
+    const refreshed = { ...original, session_token: 'rotated-token' };
+    sessionStorage.setItem(`totem_customer_${sessionId}`, JSON.stringify({
+      customer_id: 'customer-1',
+      customer_name: 'Alex',
+    }));
+    startSessionByQR.and.returnValues(of(original), refreshedSession$);
+    const component = createComponent();
+    component.ngOnInit();
+    component.currentView.set('my-orders');
+
+    connectionRestored$.next();
+    expect(getCustomerOrders).not.toHaveBeenCalled();
+
+    refreshedSession$.next(refreshed);
+    expect(getCustomerOrders).toHaveBeenCalledOnceWith(
+      'qr-token-1',
+      sessionId,
+      'customer-1',
+      'rotated-token'
+    );
+  });
+
+  it('ignores an older session refresh that completes after a newer one', () => {
+    const original = createSession('session-race-1');
+    const older = new Subject<PublicTotemSession>();
+    const newer = new Subject<PublicTotemSession>();
+    startSessionByQR.and.returnValues(of(original), older, newer);
+    const component = createComponent();
+    component.ngOnInit();
+
+    const internals = component as unknown as TotemComponentInternals;
+    internals.refreshSessionInfo();
+    internals.refreshSessionInfo();
+    newer.next({ ...original, session_token: 'newer-token' });
+    older.next({ ...original, session_token: 'older-token' });
+
+    expect(component.sessionInfo()?.session_token).toBe('newer-token');
+  });
+
+  it('ignores an older order snapshot that completes after a newer one', () => {
+    const older = new Subject<ItemOrder[]>();
+    const newer = new Subject<ItemOrder[]>();
+    startSessionByQR.and.returnValue(of(createSession('session-reconnect-1')));
+    getSessionOrders.and.returnValues(older, newer);
+    const component = createComponent();
+    component.ngOnInit();
+
+    component.setView('all-orders');
+    component.setView('all-orders');
+    newer.next([order('newer-item')]);
+    older.next([order('older-item')]);
+
+    expect(component.allOrders().map(entry => entry._id)).toEqual(['newer-item']);
   });
 });

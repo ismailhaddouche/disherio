@@ -102,7 +102,9 @@ Full index with Architecture Decision Records: [docs/README.md](docs/README.md)
 | Document | Description |
 |----------|-------------|
 | [Development Guide](docs/DEVELOPMENT.md) | Local setup, verification commands, frontend build/test standards |
+| [Frontend review](docs/FRONTEND_REVIEW.md) | All-profile responsive review and repeatable browser checks |
 | [Architecture and Technology Stack](docs/ARCHITECTURE.md) | Service topology, design patterns, security model |
+| [Socket.IO reliability review](docs/SOCKET_RELIABILITY.md) | Authorization, reconnect reconciliation, failure tests, guarantees, and limits |
 | [API Reference](docs/API_CONTRACTS.md) | HTTP routes and Socket.IO event contracts |
 | [Error Codes Reference](docs/ERROR_CODES.md) | Complete ErrorCode enum with HTTP status mapping |
 | [Database Migrations](docs/MIGRATIONS.md) | Versioned migration runner and authoring rules |
@@ -123,6 +125,8 @@ Transaction, ticket splitting, payment history, order processing, and session ar
 
 ### Table Assistance Service (TAS)
 Digital waiter tools for table management, service requests, and customer communication. Socket.IO channel `tas:*` with `TAS` permission required.
+Closing or reopening the selected session preserves its displayed bill details.
+Switching tables clears the previous table's details while the new selection loads.
 
 ### Administrative Dashboard
 Centralized analytics, staff administration, menu configuration, and business intelligence reporting. Protected by `ADMIN` CASL permission (`can('manage', 'all')`).

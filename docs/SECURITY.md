@@ -52,7 +52,12 @@ permission names in `sessionStorage`. This state controls navigation and visual
 elements only. It is deliberately not trusted by the API: changing it can make
 the browser display a screen, but every protected HTTP route and Socket.IO
 operation still requires a valid server credential, CASL permission, and tenant
-ownership. An API rejection clears the UI state and returns the user to login.
+ownership. When a protected request rejects authentication, the frontend tries
+the refresh cookie even if the recorded access-token expiry has passed. A
+rejected refresh or a second authentication rejection clears the matching UI
+session and returns the user to login. Network, rate-limit, permission, and
+business errors do not log out the user. Late refresh results cannot replace or
+clear a newer login's UI state.
 
 ## CSRF and Cross-Origin Requests
 

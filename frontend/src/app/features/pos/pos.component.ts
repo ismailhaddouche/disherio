@@ -46,6 +46,7 @@ import type {
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './pos.component.html',
+  styleUrl: './pos.component.scss',
   providers: [PosTicketHistoryService, PosSessionActionsService],
 })
 export class PosComponent extends OrderWorkspaceState implements OnInit, OnDestroy {
@@ -58,7 +59,8 @@ export class PosComponent extends OrderWorkspaceState implements OnInit, OnDestr
   protected readonly sessionActions = inject(PosSessionActionsService);
   private destroy$ = new Subject<void>();
   private socketListenerDisposers: Array<() => void> = [];
-  private connectionStatusInitialized = false;
+  private dataLoadGeneration = 0;
+  private sessionDetailsLoadGeneration = 0;
 
   /** Workspace state passed down to the extracted presentational children. */
   readonly workspace: OrderWorkspaceState = this;
@@ -75,6 +77,7 @@ export class PosComponent extends OrderWorkspaceState implements OnInit, OnDestr
 
   // Menu data
   showMenu = signal(false);
+  mobilePanel = signal<'tables' | 'order' | 'ticket'>('tables');
   dishes = signal<Dish[]>([]);
   categories = signal<Array<{ _id: string; category_name: LocalizedField }>>([]);
   isSendingOrder = signal(false);
@@ -154,6 +157,9 @@ export class PosComponent extends OrderWorkspaceState implements OnInit, OnDestr
     this.connection.acquireConnection();
     this.loadData();
     this.setupSocketListeners();
+    this.connection.connectionRestored$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => this.loadData());
     this.checkConnection();
     const connInterval = setInterval(() => this.checkConnection(), 2000);
     this.destroy$.subscribe(() => clearInterval(connInterval));
@@ -178,22 +184,18 @@ export class PosComponent extends OrderWorkspaceState implements OnInit, OnDestr
   }
 
   private checkConnection() {
-    const wasConnected = this.isConnected();
-    const connected = this.connection.isConnected();
-    this.isConnected.set(connected);
-    if (this.connectionStatusInitialized && !wasConnected && connected) {
-      this.loadData();
-    }
-    this.connectionStatusInitialized = true;
+    this.isConnected.set(this.connection.isConnected());
   }
 
   private loadData() {
+    const generation = ++this.dataLoadGeneration;
     this.isLoading.set(true);
 
     this.tasService.getActiveSessions()
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (sessions) => {
+          if (generation !== this.dataLoadGeneration) return;
           this.sessions.set(sessions);
           const selected = this.selectedSession();
           if (selected?._id) {
@@ -208,7 +210,9 @@ export class PosComponent extends OrderWorkspaceState implements OnInit, OnDestr
           }
           this.isLoading.set(false);
         },
-        error: () => this.isLoading.set(false),
+        error: () => {
+          if (generation === this.dataLoadGeneration) this.isLoading.set(false);
+        },
       });
 
     // Refresh totems so terminal temporary tables disappear after reconnect.
@@ -216,6 +220,7 @@ export class PosComponent extends OrderWorkspaceState implements OnInit, OnDestr
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (totems) => {
+          if (generation !== this.dataLoadGeneration) return;
           const validTotems = totems
             .filter((t): t is typeof t & { _id: string } => !!t._id)
             .map(t => ({ _id: t._id, totem_name: t.totem_name, totem_type: t.totem_type }));
@@ -229,6 +234,7 @@ export class PosComponent extends OrderWorkspaceState implements OnInit, OnDestr
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: ({ dishes, categories }) => {
+          if (generation !== this.dataLoadGeneration) return;
           this.dishes.set(dishes);
           this.categories.set(categories);
         },
@@ -311,6 +317,7 @@ export class PosComponent extends OrderWorkspaceState implements OnInit, OnDestr
   }
 
   selectSession(session: TotemSession) {
+    this.mobilePanel.set('order');
     this.showTicketHistory.set(false);
     this.showMenu.set(false);
     this.selectedCustomerId.set(null);
@@ -318,7 +325,9 @@ export class PosComponent extends OrderWorkspaceState implements OnInit, OnDestr
   }
 
   private loadSessionDetails(session: TotemSession): void {
+    const generation = ++this.sessionDetailsLoadGeneration;
     const sessionId = session._id!;
+    this.switchDraftSession(sessionId);
     this.selectedSession.set(session);
     this.sessionItems.set([]);
     this.customers.set([]);
@@ -327,7 +336,8 @@ export class PosComponent extends OrderWorkspaceState implements OnInit, OnDestr
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (items) => {
-          if (this.selectedSession()?._id === sessionId) this.sessionItems.set(items);
+          if (generation === this.sessionDetailsLoadGeneration
+            && this.selectedSession()?._id === sessionId) this.sessionItems.set(items);
         },
         error: () => undefined,
       });
@@ -337,7 +347,8 @@ export class PosComponent extends OrderWorkspaceState implements OnInit, OnDestr
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (customers) => {
-          if (this.selectedSession()?._id === sessionId) this.customers.set(customers);
+          if (generation === this.sessionDetailsLoadGeneration
+            && this.selectedSession()?._id === sessionId) this.customers.set(customers);
         },
         error: () => undefined,
       });
@@ -346,6 +357,8 @@ export class PosComponent extends OrderWorkspaceState implements OnInit, OnDestr
   }
 
   openTicketHistory() {
+    this.switchDraftSession(null);
+    this.mobilePanel.set('order');
     this.showMenu.set(false);
     this.selectedSession.set(null);
     this.sessionItems.set([]);
@@ -355,12 +368,14 @@ export class PosComponent extends OrderWorkspaceState implements OnInit, OnDestr
 
   addCustomer() {
     const name = this.newCustomerName().trim();
-    if (!name || !this.selectedSession()) return;
+    const sessionId = this.selectedSession()?._id;
+    if (!name || !sessionId) return;
 
-    this.tasService.createCustomer(this.selectedSession()!._id!, name)
+    this.tasService.createCustomer(sessionId, name)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (customer) => {
+          if (this.selectedSession()?._id !== sessionId) return;
           this.customers.update(current => [...current, customer]);
           this.newCustomerName.set('');
           this.showAddCustomer.set(false);
@@ -395,10 +410,11 @@ export class PosComponent extends OrderWorkspaceState implements OnInit, OnDestr
 
   sendOrder() {
     const session = this.selectedSession();
-    if (!session || this.pendingItems().length === 0) return;
+    if (!session || this.pendingItems().length === 0 || this.isSendingOrder()) return;
 
     this.isSendingOrder.set(true);
-    const batchItems = this.pendingItems().map(item => ({
+    const submitted = this.pendingItems();
+    const batchItems = submitted.map(item => ({
       dishId: item.dish._id!,
       quantity: item.quantity,
       customerId: item.customerId || undefined,
@@ -410,6 +426,9 @@ export class PosComponent extends OrderWorkspaceState implements OnInit, OnDestr
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (result) => {
+          this.completePendingOrder(session._id!, submitted);
+          this.isSendingOrder.set(false);
+          if (this.selectedSession()?._id !== session._id) return;
           // The kds:new_item socket events for this batch may arrive before
           // or after this response; skip any item already present.
           this.sessionItems.update(items => {
@@ -417,9 +436,8 @@ export class PosComponent extends OrderWorkspaceState implements OnInit, OnDestr
             const newItems = result.items.filter(item => !existingIds.has(item._id));
             return newItems.length > 0 ? [...items, ...newItems] : items;
           });
-          this.pendingItems.set([]);
-          this.isSendingOrder.set(false);
           this.showMenu.set(false);
+          this.mobilePanel.set('ticket');
           this.notify.success(this.i18n.translate('tas.order_sent'));
         },
         error: (err) => {
@@ -431,7 +449,7 @@ export class PosComponent extends OrderWorkspaceState implements OnInit, OnDestr
 
   processPayment() {
     const session = this.selectedSession();
-    if (!session || !this.paymentType()) return;
+    if (!session || !this.paymentType() || this.isProcessingPayment()) return;
 
     this.isProcessingPayment.set(true);
 

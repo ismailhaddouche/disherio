@@ -144,6 +144,8 @@ examples empty.
 | `FRONTEND_URL` | (auto) | Full URL for CORS/Socket.IO origins |
 | `TRUST_PROXY` | `true` | Trust Caddy's `X-Forwarded-*` headers |
 | `LOG_LEVEL` | `info` | Pino log level |
+| `SOCKET_MAX_CONNECTIONS_PER_ADDRESS` | `300` | Concurrent Socket.IO connections allowed behind one client/NAT address |
+| `SOCKET_MAX_HANDSHAKES_PER_MINUTE` | `900` | Socket.IO handshakes per client/NAT address; default supports three full reconnect waves |
 
 ### Database (MongoDB)
 

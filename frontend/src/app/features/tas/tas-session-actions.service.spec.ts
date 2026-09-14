@@ -6,7 +6,7 @@ import { ConfirmationService } from '../../core/services/confirmation.service';
 import { TasService } from '../../core/services/tas.service';
 import { TasSocketService } from '../../core/services/socket/tas-socket.service';
 import { tasStore } from '../../store/tas.store';
-import type { TotemSession } from '../../types';
+import type { Customer, ItemOrder, TotemSession } from '../../types';
 import { TasSessionActionsService } from './tas-session-actions.service';
 
 function createSession(overrides: Partial<TotemSession> = {}): TotemSession {
@@ -71,6 +71,35 @@ describe('TasSessionActionsService', () => {
   });
 
   describe('loadTotemSessions', () => {
+    it('ignores an older response after the user switches tables', () => {
+      const first = new Subject<TotemSession[]>();
+      const second = new Subject<TotemSession[]>();
+      tasService.getTotemSessions.and.returnValues(first, second);
+      service.totemSessions.set([createSession()]);
+
+      service.loadTotemSessions('totem-1');
+      service.loadTotemSessions('totem-2');
+      expect(service.totemSessions()).toEqual([]);
+      const currentSessions = [createSession({ _id: 'session-2', totem_id: 'totem-2' })];
+      second.next(currentSessions);
+      first.next([createSession()]);
+
+      expect(service.selectedTotemId()).toBe('totem-2');
+      expect(service.totemSessions()).toEqual(currentSessions);
+    });
+
+    it('keeps the newest result when the same table is requested twice', () => {
+      const first = new Subject<TotemSession[]>();
+      const second = new Subject<TotemSession[]>();
+      tasService.getTotemSessions.and.returnValues(first, second);
+      service.loadTotemSessions('totem-1');
+      service.loadTotemSessions('totem-1');
+      second.next([createSession({ totem_state: 'COMPLETE' })]);
+      first.next([createSession({ totem_state: 'STARTED' })]);
+
+      expect(service.totemSessions()[0].totem_state).toBe('COMPLETE');
+    });
+
     it('keeps only operational sessions and tracks the selected totem', () => {
       tasService.getTotemSessions.and.returnValue(of([
         createSession({ _id: 'session-1', totem_state: 'STARTED' }),
@@ -145,6 +174,14 @@ describe('TasSessionActionsService', () => {
       const session = createSession();
       tasStore.setSessions([session]);
       tasStore.selectSession(session);
+      const items: ItemOrder[] = [{
+        _id: 'item-1', order_id: 'order-1', session_id: 'session-1', item_dish_id: 'dish-1',
+        item_state: 'SERVED', item_disher_type: 'KITCHEN', item_name_snapshot: [],
+        item_base_price: 12, item_disher_extras: [],
+      }];
+      const customers: Customer[] = [{ _id: 'customer-1', session_id: 'session-1', customer_name: 'Ana' }];
+      tasStore.setSessionItems(items);
+      tasStore.setCustomers(customers);
       service.totemSessions.set([session]);
       tasService.closeSession.and.returnValue(of({ ...session, totem_state: 'COMPLETE' }));
 
@@ -153,6 +190,9 @@ describe('TasSessionActionsService', () => {
       expect(tasStore.sessions()[0].totem_state).toBe('COMPLETE');
       expect(service.totemSessions()[0].totem_state).toBe('COMPLETE');
       expect(tasStore.selectedSession()?.totem_state).toBe('COMPLETE');
+      expect(tasStore.sessionItems()).toEqual(items);
+      expect(tasStore.customers()).toEqual(customers);
+      expect(tasStore.sessionTotal()).toBe(12);
       expect(service.isClosingSession()).toBeFalse();
       expect(notification.success).toHaveBeenCalledOnceWith('tas.session_closed');
     });

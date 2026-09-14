@@ -66,6 +66,9 @@ export class TotemComponent implements OnInit, OnDestroy {
   private confirmation = inject(ConfirmationService);
   private cart = inject(TotemCartService);
   private destroy$ = new Subject<void>();
+  private sessionRequestGeneration = 0;
+  private myOrdersRequestGeneration = 0;
+  private allOrdersRequestGeneration = 0;
 
   restaurantName = signal('');
   categories = signal<Category[]>([]);
@@ -132,6 +135,7 @@ export class TotemComponent implements OnInit, OnDestroy {
    * selector only offers the enabled languages.
    */
   private applyRestaurantLanguages(restaurant: PublicMenuRestaurant): void {
+    this.menuCurrency.set(restaurant.currency ?? 'EUR');
     if (restaurant.enabled_languages?.length) {
       this.i18n.setEnabledLanguages(restaurant.enabled_languages);
     }
@@ -145,6 +149,8 @@ export class TotemComponent implements OnInit, OnDestroy {
     this.i18n.setLanguage(lang);
     this.langMenuOpen.set(false);
   }
+
+  readonly menuCurrency = signal('EUR');
 
   /**
    * Extract the category id from a dish. The backend menu endpoint populates
@@ -160,6 +166,9 @@ export class TotemComponent implements OnInit, OnDestroy {
     if (!qr) return;
     this.qrToken = qr;
     this.connection.acquireConnection(qr);
+    this.connection.connectionRestored$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => this.resynchronizeAfterReconnect());
 
     // Load menu dishes
     this.totemService.getMenuByQR(qr)
@@ -167,7 +176,6 @@ export class TotemComponent implements OnInit, OnDestroy {
       .subscribe({
         next: ({ categories, dishes, restaurant }) => {
           if (restaurant) this.applyRestaurantLanguages(restaurant);
-          if (categories.length) this.restaurantName.set(this.i18n.translate('totem.menu'));
           this.categories.set(categories);
           this.dishes.set(dishes);
         },
@@ -178,10 +186,12 @@ export class TotemComponent implements OnInit, OnDestroy {
       });
 
     // Get or create session for this totem
+    const sessionRequestGeneration = ++this.sessionRequestGeneration;
     this.totemService.startSessionByQR(qr)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (session) => {
+          if (sessionRequestGeneration !== this.sessionRequestGeneration) return;
           if (session.totem_name) {
             this.restaurantName.set(session.totem_name);
           }
@@ -216,23 +226,44 @@ export class TotemComponent implements OnInit, OnDestroy {
       .subscribe(() => this.handleSessionClosed());
   }
 
-  private refreshSessionInfo() {
+  private refreshSessionInfo(afterRefresh?: () => void) {
     if (!this.qrToken) return;
+    const generation = ++this.sessionRequestGeneration;
+    const previousSessionId = this.sessionInfo()?.session_id;
     this.totemService.startSessionByQR(this.qrToken)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (session) => {
+          if (generation !== this.sessionRequestGeneration) return;
           if (session.totem_state !== 'STARTED' || !session.session_token) {
             this.sessionInfo.set(session);
-            this.sessionClosedScreen.set(true);
+            this.handleSessionClosed();
             return;
           }
           this.resetCartForNewSession(session.session_id);
           this.saveSessionTokenToStorage(session.session_id, session.session_token);
           this.sessionInfo.set(session);
+          this.sessionClosedScreen.set(false);
+          if (previousSessionId === session.session_id && this.customerInfo()) {
+            this.joinSession(session.session_id, this.customerInfo()!);
+          } else if (previousSessionId !== session.session_id) {
+            this.customerInfo.set(null);
+            this.loadCustomerFromStorage(session.session_id);
+          }
+          afterRefresh?.();
         },
         error: () => undefined,
       });
+  }
+
+  private resynchronizeAfterReconnect(): void {
+    // Session tokens rotate on reopen. Refresh the session first, then use
+    // the new credential for the active order snapshot; parallel requests
+    // could otherwise fail with the stale token and leave the view outdated.
+    this.refreshSessionInfo(() => {
+      if (this.currentView() === 'my-orders') this.loadMyOrders();
+      else if (this.currentView() === 'all-orders') this.loadAllOrders();
+    });
   }
 
   /**
@@ -241,6 +272,10 @@ export class TotemComponent implements OnInit, OnDestroy {
    * leave the socket room.
    */
   private handleSessionClosed(): void {
+    // Invalidate every recovery response that was captured before the close.
+    this.sessionRequestGeneration++;
+    this.myOrdersRequestGeneration++;
+    this.allOrdersRequestGeneration++;
     const session = this.sessionInfo();
     if (session) {
       this.clearSessionStorage(session.session_id);
@@ -301,6 +336,7 @@ export class TotemComponent implements OnInit, OnDestroy {
       return;
     }
 
+    const generation = ++this.myOrdersRequestGeneration;
     this.loadingMyOrders.set(true);
     this.totemService.getCustomerOrders(
       this.qrToken,
@@ -311,11 +347,12 @@ export class TotemComponent implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (orders) => {
+          if (generation !== this.myOrdersRequestGeneration) return;
           this.myOrders.set(orders);
           this.loadingMyOrders.set(false);
         },
         error: (err) => {
-          this.loadingMyOrders.set(false);
+          if (generation === this.myOrdersRequestGeneration) this.loadingMyOrders.set(false);
         },
       });
   }
@@ -324,16 +361,18 @@ export class TotemComponent implements OnInit, OnDestroy {
     const session = this.sessionInfo();
     if (!session || !this.qrToken) return;
 
+    const generation = ++this.allOrdersRequestGeneration;
     this.loadingAllOrders.set(true);
     this.totemService.getSessionOrders(this.qrToken, session.session_id, session.session_token)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (orders) => {
+          if (generation !== this.allOrdersRequestGeneration) return;
           this.allOrders.set(orders);
           this.loadingAllOrders.set(false);
         },
         error: (err) => {
-          this.loadingAllOrders.set(false);
+          if (generation === this.allOrdersRequestGeneration) this.loadingAllOrders.set(false);
         },
       });
   }
@@ -549,13 +588,12 @@ export class TotemComponent implements OnInit, OnDestroy {
             cartStore.clear();
           }
           this.showCart.set(false);
-          this.refreshSessionInfo();
-          // Refresh orders if we're in orders view
-          if (this.currentView() === 'my-orders') {
-            this.loadMyOrders();
-          } else if (this.currentView() === 'all-orders') {
-            this.loadAllOrders();
-          }
+          // Refresh the session credential first, then use that exact snapshot
+          // for the order request. This is the same ordering used on reconnect.
+          this.refreshSessionInfo(() => {
+            if (this.currentView() === 'my-orders') this.loadMyOrders();
+            else if (this.currentView() === 'all-orders') this.loadAllOrders();
+          });
         },
         error: (err) => {
           this.submittingOrder.set(false);

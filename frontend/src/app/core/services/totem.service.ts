@@ -37,6 +37,7 @@ export interface PublicTotemCustomer {
 export interface PublicMenuRestaurant {
   default_language: Language;
   enabled_languages: Language[];
+  currency?: string;
 }
 
 @Injectable({

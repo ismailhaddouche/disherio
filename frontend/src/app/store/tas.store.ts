@@ -128,8 +128,11 @@ export const tasStore: TasStore = {
   },
 
   selectSession(session: TotemSession | null) {
+    const previousSessionId = _selectedSession()?._id;
     _selectedSession.set(session);
-    if (session) {
+    // State-only updates (close/reopen) keep the bill visible. Changing tables
+    // or deselecting must discard the previous table's items and customers.
+    if (!session || !session._id || session._id !== previousSessionId) {
       _sessionItems.set([]);
       _customers.set([]);
     }

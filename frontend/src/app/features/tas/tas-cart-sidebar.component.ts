@@ -14,6 +14,7 @@ import type { OrderWorkspaceState } from '../../store/order-workspace.state';
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './tas-cart-sidebar.component.html',
   styles: [':host { display: contents; }'],
+  host: { '(document:keydown.escape)': 'closed.emit()' },
 })
 export class TasCartSidebarComponent {
   protected readonly i18n = inject(I18nService);

@@ -175,7 +175,7 @@ export class PosSessionActionsService implements OnDestroy {
 
   createTemporaryTotem(): void {
     const name = this.newTotemName().trim();
-    if (!name) return;
+    if (!name || this.isCreatingTotem()) return;
 
     this.isCreatingTotem.set(true);
     this.tasService.createTotem({

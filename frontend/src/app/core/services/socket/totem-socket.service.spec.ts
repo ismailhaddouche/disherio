@@ -10,7 +10,7 @@ describe('TotemSocketService', () => {
     connection = jasmine.createSpyObj('SocketConnectionService', [
       'registerTotemEventDelegate', 'registerReconnectHandler', 'registerResetHandler',
       'isConnected', 'hasSocket', 'getIsPublicTotemConnection', 'getConnectedTotemQr',
-      'setPublicTotemQr', 'connect', 'disconnect', 'emit', 'emitRaw',
+      'setPublicTotemQr', 'connect', 'disconnect', 'emit',
     ]);
     TestBed.configureTestingModule({
       providers: [{ provide: SocketConnectionService, useValue: connection }],
@@ -72,5 +72,46 @@ describe('TotemSocketService', () => {
 
   it('should return false for isTotemSessionClosedState initially', () => {
     expect(service.isTotemSessionClosedState()).toBe(false);
+  });
+
+  it('rejoins when the session token rotates after reconnect reconciliation', () => {
+    connection.hasSocket.and.returnValue(true);
+    connection.isConnected.and.returnValue(true);
+    connection.emit.and.returnValue(true);
+    connection.getIsPublicTotemConnection.and.returnValue(true);
+    connection.getConnectedTotemQr.and.returnValue('table-1');
+
+    service.joinTotemSession('session-1', 'table-1', 'Alex', 'customer-1', 'token-1');
+    service.joinTotemSession('session-1', 'table-1', 'Alex', 'customer-1', 'token-1');
+    service.joinTotemSession('session-1', 'table-1', 'Alex', 'customer-1', 'token-2');
+
+    expect(connection.emit).toHaveBeenCalledTimes(2);
+    expect(connection.emit).toHaveBeenCalledWith('totem:join_session', jasmine.objectContaining({
+      sessionId: 'session-1',
+      sessionToken: 'token-2',
+    }));
+  });
+
+  it('does not queue a duplicate join while the connection is still opening', () => {
+    connection.hasSocket.and.returnValue(true);
+    connection.isConnected.and.returnValue(false);
+    connection.getIsPublicTotemConnection.and.returnValue(true);
+    connection.getConnectedTotemQr.and.returnValue('table-1');
+
+    service.joinTotemSession('session-1', 'table-1', 'Alex', 'customer-1', 'token-1');
+
+    expect(connection.emit).not.toHaveBeenCalled();
+  });
+
+  it('rebuilds a reconnecting socket when its handshake uses the wrong QR', () => {
+    connection.hasSocket.and.returnValue(true);
+    connection.isConnected.and.returnValue(false);
+    connection.getIsPublicTotemConnection.and.returnValue(true);
+    connection.getConnectedTotemQr.and.returnValue('old-table');
+
+    service.joinTotemSession('session-1', 'new-table', 'Alex', 'customer-1', 'token-1');
+
+    expect(connection.disconnect).toHaveBeenCalledTimes(1);
+    expect(connection.connect).toHaveBeenCalledTimes(1);
   });
 });

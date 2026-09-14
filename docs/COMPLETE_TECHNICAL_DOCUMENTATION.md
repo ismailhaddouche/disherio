@@ -323,6 +323,14 @@ Redis pub/sub distributes Socket.IO events when multiple backend instances are
 running. Event handlers validate payloads, tenant scope, and state transitions
 before persisting or broadcasting changes.
 
+The browser prefers WebSocket and can try HTTP long-polling if WebSocket
+establishment fails. After every successful reconnect, domain services rejoin
+their rooms and KDS/POS/TAS/totem views reload canonical HTTP snapshots. This is
+required because the Redis Pub/Sub adapter does not replay packets missed while
+a client is offline. Public totem recovery refreshes the ephemeral session token
+before reloading orders. Detailed guarantees and operational limits are in
+[Socket.IO reliability](SOCKET_RELIABILITY.md).
+
 POS and TAS connections also join restaurant-scoped rooms. Close, cancel,
 reopen, and archive events update all connected clients for that restaurant,
 including clients that have not selected the affected session. Close/cancel

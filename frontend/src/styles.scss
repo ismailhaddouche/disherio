@@ -183,7 +183,7 @@ textarea {
 
   // Filled button (M3 primary action)
   .btn-primary {
-    @apply bg-primary text-on-primary shadow-disher-1 hover:-translate-y-px hover:shadow-disher-2 active:translate-y-0 active:shadow-disher-1;
+    @apply bg-primary text-on-primary hover:shadow-disher-1 active:shadow-none;
   }
 
   // Outlined button (M3 secondary action)
@@ -198,7 +198,7 @@ textarea {
 
   // Icon button (M3)
   .btn-icon {
-    @apply flex h-11 w-11 select-none items-center justify-center rounded-disher-full text-on-surface-variant transition-all duration-disher-short-3 ease-disher-standard hover:bg-surface-container-high hover:text-on-surface active:bg-surface-container-highest;
+    @apply flex h-11 w-11 shrink-0 select-none items-center justify-center rounded-disher-full text-on-surface-variant transition-colors duration-disher-short-3 ease-disher-standard hover:bg-surface-container-high hover:text-on-surface active:bg-surface-container-highest;
   }
 
   // ── Admin Layout ──────────────────────────────────────────────────────────
@@ -238,7 +238,7 @@ textarea {
   }
 
   .admin-input {
-    @apply w-full rounded-disher-sm border border-outline-variant bg-surface px-3 py-2 text-sm text-on-surface outline-none transition-colors duration-disher-short-3 ease-disher-standard placeholder:text-on-surface-variant focus:border-primary focus:ring-2 focus:ring-primary/20;
+    @apply w-full min-w-0 min-h-11 rounded-disher-sm border border-outline-variant bg-surface px-3 py-2 text-sm text-on-surface outline-none transition-colors duration-disher-short-3 ease-disher-standard placeholder:text-on-surface-variant focus:border-primary focus:ring-2 focus:ring-primary/20;
   }
 
   .admin-select {
@@ -259,7 +259,7 @@ textarea {
   // ── Tables ───────────────────────────────────────────────────────────────
 
   .admin-table-container {
-    @apply overflow-hidden rounded-disher-md border border-outline-variant bg-surface shadow-disher-1;
+    @apply overflow-x-auto rounded-disher-md border border-outline-variant bg-surface shadow-disher-1;
   }
 
   .admin-table {
@@ -305,6 +305,31 @@ textarea {
 
   .nav-item-active {
     @apply bg-primary-container text-on-primary-container hover:bg-primary-container hover:text-on-primary-container;
+  }
+}
+
+// Operational touchscreens share the same minimum control size. Scoped to
+// custom controls; Angular Material manages its own touch targets.
+:where(app-pos, app-tas, app-kds, app-totem) button {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+:where(app-pos, app-tas, app-totem) [role='dialog'] {
+  max-height: calc(100dvh - 32px);
+  max-width: calc(100vw - 32px);
+}
+
+app-tas aside[role='dialog'] {
+  min-width: 0;
+  max-height: 100dvh;
+  max-width: calc(100vw - 16px);
+}
+
+@media (max-width: 639px) {
+  :where(app-pos, app-tas, app-totem) input,
+  :where(app-pos, app-tas, app-totem) select {
+    font-size: 16px;
   }
 }
 

@@ -3,7 +3,7 @@
  *
  * Redis-based rate limiting for multi-node support with in-memory fallback.
  * Provides rate limiting per stable staff, customer, or public QR/address identity:
- * - join/leave events: 10 per minute
+ * - join/leave events: 600 per minute (KDS rejoins every active table after a network flap)
  * - order events: 30 per minute
  * - message events: 60 per minute
  * - customer/totem events: 20 per minute (more restrictive for public access)
@@ -44,10 +44,12 @@ cleanupInterval.unref();
 
 // Rate limit configurations by event category
 const RATE_LIMITS = {
-  // Join/leave events: 10 per minute
+  // A KDS subscribes once per active table and repeats those joins after every
+  // reconnect. Keep this bounded, but high enough for a full restaurant and
+  // several brief network flaps in the same minute.
   JOIN_LEAVE: {
     events: ['kds:join', 'kds:leave', 'pos:join', 'pos:leave', 'tas:join', 'tas:leave'],
-    maxRequests: 10,
+    maxRequests: 600,
     windowMs: 60 * 1000, // 1 minute
   },
   // Order events: 30 per minute
@@ -159,6 +161,16 @@ export function bindSocketRateLimitToCustomer(socket: AuthenticatedSocket, custo
  */
 function includesEvent(events: readonly string[], eventType: string): boolean {
   return events.includes(eventType);
+}
+
+function acknowledgeMiddlewareFailure(args: unknown[], error: string): void {
+  const possibleAck = args.at(-1);
+  if (typeof possibleAck === 'function') {
+    (possibleAck as (result: { success: false; error: string }) => void)({
+      success: false,
+      error,
+    });
+  }
 }
 
 /**
@@ -320,13 +332,17 @@ export function rateLimitMiddleware<TArgs extends unknown[], TResult>(
           'Socket rate limit exceeded'
         );
 
-        socket.emit('error', {
+        const errorPayload = {
           code: 'RATE_LIMITED',
           message: 'Too many requests',
           event: eventType,
           retryAfter: Math.ceil(config.windowMs / 1000),
           remaining,
-        });
+        };
+        socket.emit('error', errorPayload);
+        const namespace = eventType.split(':')[0];
+        if (namespace) socket.emit(`${namespace}:error`, errorPayload);
+        acknowledgeMiddlewareFailure(args, 'RATE_LIMITED');
 
         return;
       }
@@ -345,6 +361,7 @@ export function rateLimitMiddleware<TArgs extends unknown[], TResult>(
       // clients receive it on their usual error channel.
       const namespace = eventType.split(':')[0] || 'socket';
       socket.emit(`${namespace}:error`, { message: 'INTERNAL_ERROR' });
+      acknowledgeMiddlewareFailure(args, 'INTERNAL_ERROR');
     }
   };
 }

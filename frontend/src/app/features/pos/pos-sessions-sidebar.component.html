@@ -1,4 +1,4 @@
-<aside class="w-64 bg-surface border-r border-outline-variant flex flex-col">
+<aside class="w-full xl:w-72 min-w-0 bg-surface border-r border-outline-variant flex flex-col">
   <header class="p-3 border-b border-outline-variant">
     <div class="flex items-center justify-between">
       <h2 class="font-bold flex items-center gap-1">
@@ -118,6 +118,7 @@
             <span class="truncate text-on-surface">{{ totem.totem_name }}</span>
             <button
               (click)="actions().startSession(totem._id)"
+              [disabled]="actions().isStartingSession()"
               class="text-xs px-2 py-1 bg-success text-on-success rounded ml-2 whitespace-nowrap"
             >
               {{ 'tas.session.open' | translate }}
@@ -136,13 +137,13 @@
           [ngModel]="actions().newTotemName()"
           (ngModelChange)="actions().newTotemName.set($event)"
           [placeholder]="'totem.name_placeholder' | translate"
-          class="flex-1 px-3 py-2 text-sm border rounded-lg bg-surface bg-surface-container-high border-outline-variant"
+          class="admin-input flex-1"
           (keyup.enter)="actions().createTemporaryTotem()"
-          [disabled]="hasOpenSession()"
+          [disabled]="actions().isCreatingTotem()"
         />
         <button
           (click)="actions().createTemporaryTotem()"
-          [disabled]="!actions().newTotemName().trim() || actions().isCreatingTotem() || hasOpenSession()"
+          [disabled]="!actions().newTotemName().trim() || actions().isCreatingTotem()"
           class="px-3 py-2 bg-primary text-on-primary rounded-lg disabled:opacity-50"
           [attr.aria-label]="'pos.new_table' | translate"
         >

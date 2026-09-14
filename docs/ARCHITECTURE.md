@@ -58,7 +58,7 @@ The platform utilizes a monorepo architecture organized into three primary modul
 | Framework | Express 5.2 | HTTP server |
 | Database | MongoDB 7 + Mongoose 9.3 | Persistence with replica set `rs0` (transactions) |
 | Cache | Redis 7 + redis 5.11 | Distributed cache, Socket.IO adapter, JWT blocklist |
-| Real-time | Socket.IO 4.8 + @socket.io/redis-adapter 8.3 | WebSocket with Redis pub/sub for multi-node |
+| Real-time | Socket.IO 4.8 + @socket.io/redis-adapter 8.3 | WebSocket-first with long-polling fallback and Redis pub/sub for multi-node |
 | Auth | jsonwebtoken 9.0 | JWT access tokens (15m) + opaque refresh tokens (7d, Redis-backed) |
 | Authorization | CASL 6.8 | Attribute-Based Access Control (abilities per role) |
 | Validation | Zod 4.3 | Schema validation (shared with frontend) |
@@ -191,7 +191,22 @@ remote QR reuse as an accepted risk until one is configured or implemented.
 
 Public Socket.IO connections must present the totem QR token in the handshake `auth` payload (`{ publicTotem: true, qr: '<token>' }`) and the server validates it against the database before accepting the connection; a bare `publicTotem: true` flag without a valid QR is rejected. Session state transitions (`STARTED → COMPLETE → PAID`, `STARTED → CANCELLED`, `COMPLETE → STARTED`) are atomic `findOneAndUpdate` operations filtered by the current state. Closing preserves the `COMPLETE` session in active POS/TAS views for payment; reopening rotates its session token in the same transactional write. Archiving creates a full-payment record when necessary and marks every ticket paid in the same transaction as `COMPLETE → PAID`, then removes the session from active views. Payments retain restaurant and table snapshots so history survives temporary-totem cleanup. `BY_USER` tickets use the same active-item snapshot as the payment total and allocate tip and rounding differences proportionally so ticket cents reconcile exactly with `payment_total`. The last ticket paid follows the same archive path and cleanup semantics. POS, TAS, and KDS sockets subscribe to restaurant-scoped rooms for discovery, while session rooms carry scoped updates. Close, cancel, reopen, and archive transitions update every connected session list without requiring the affected session to be selected. Close/cancel events carry the persisted target state, preventing a cancelled session from being rendered as pending payment. A partial unique MongoDB index allows at most one `STARTED` session per totem, while a unique payment index permits at most one `Payment` per session. Item mutations and public order-limit validation serialize on the same session document and reject any session with a payment snapshot. A session that already has a `Payment` record cannot be reopened.
 
-Totem customer presence ("who is at the table") is tracked cluster-wide in Redis (`totem-session-state.ts`, with an in-memory fallback when Redis is unavailable): customers are registered on `totem:join_session`, removed on leave/disconnect, and cleared when the session close timeout fires. The scheduled force-disconnect after a session close is adapter-based — it broadcasts `totem:force_disconnect` to the customer room (localized per recipient when the adapter can enumerate sockets) and calls `io.in(room).socketsLeave(room)` — so customers connected to any node are notified and detached, not just the node-local ones. `getActiveCustomerCount` exposes the cluster-wide customer count.
+Totem customer presence ("who is at the table") is tracked cluster-wide in Redis (`totem-session-state.ts`, with an in-memory fallback when Redis is unavailable): customers are registered on `totem:join_session`, removed on leave/disconnect, and cleared when the session close timeout fires. Presence reads reconcile the shared records with adapter-wide room membership and purge orphaned Redis fields left when a backend process dies before its disconnect handler runs; if enumeration itself fails, the server retains the shared snapshot instead of incorrectly declaring the table empty. The scheduled force-disconnect after a session close is adapter-based — it broadcasts `totem:force_disconnect` to the customer room (localized per recipient when the adapter can enumerate sockets) and calls `io.in(room).socketsLeave(room)` — so customers connected to any node are notified and detached, not just the node-local ones. `getActiveCustomerCount` exposes this reconciled cluster-wide customer count.
+
+### Real-time delivery and recovery
+
+Socket.IO preserves event order on a live connection, but the application uses
+the Redis Pub/Sub adapter, which does not persist or replay packets emitted while
+a device is offline. Frontend recovery is therefore application-level: a
+successful reconnect re-emits active room joins and triggers canonical HTTP
+snapshot reloads in KDS, POS, TAS, and the public totem after the server
+acknowledges room membership (with a bounded five-second timeout). Request
+generations prevent older overlapping snapshots from overwriting newer state.
+The totem refreshes its
+session first so a rotated token is used by later order requests. WebSocket is
+preferred and HTTP long-polling is an establishment fallback. See
+[Socket.IO reliability](SOCKET_RELIABILITY.md) for the guarantee boundary,
+limits, corrected failure modes, and network-loss verification.
 
 ### Internationalization
 

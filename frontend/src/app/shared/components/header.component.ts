@@ -5,6 +5,7 @@ import { Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatIconModule } from '@angular/material/icon';
+import { MatMenuModule } from '@angular/material/menu';
 import { I18nService } from '../../core/services/i18n.service';
 import type { Language } from '../../core/services/i18n.service';
 import { ThemeService } from '../../core/services/theme.service';
@@ -16,13 +17,13 @@ import { AuthService } from '../../core/services/auth.service';
 @Component({
   selector: 'app-header',
   standalone: true,
-  imports: [CommonModule, RouterLink, TranslatePipe, MatButtonModule, MatToolbarModule, MatIconModule],
+  imports: [CommonModule, RouterLink, TranslatePipe, MatButtonModule, MatToolbarModule, MatIconModule, MatMenuModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <mat-toolbar class="disher-header" role="banner">
       <div class="disher-header-inner">
         <div class="disher-header-left">
-          <a routerLink="/login" class="disher-logo-link" aria-label="DisherIO home">
+          <a [routerLink]="workspaces()[0]?.route ?? '/login'" class="disher-logo-link" aria-label="DisherIO home">
             <div class="disher-logo-mark" aria-hidden="true">D</div>
             <span class="disher-wordmark">{{ 'DisherIO' }}</span>
           </a>
@@ -33,6 +34,19 @@ import { AuthService } from '../../core/services/auth.service';
         </div>
 
         <div class="disher-header-right">
+          @if (workspaces().length > 1) {
+            <button matIconButton [matMenuTriggerFor]="workspaceMenu" [attr.aria-label]="'common.workspaces' | translate">
+              <span class="material-symbols-outlined" aria-hidden="true">apps</span>
+            </button>
+            <mat-menu #workspaceMenu="matMenu">
+              @for (workspace of workspaces(); track workspace.route) {
+                <a mat-menu-item [routerLink]="workspace.route">
+                  <mat-icon>{{ workspace.icon }}</mat-icon>
+                  <span>{{ workspace.label | translate }}</span>
+                </a>
+              }
+            </mat-menu>
+          }
           <div class="disher-language-selector relative">
             <button
               type="button"
@@ -169,6 +183,17 @@ export class HeaderComponent implements OnInit {
   readonly langMenuOpen = signal(false);
 
   readonly restaurantName = computed(() => this.restaurantService.restaurantName());
+  readonly workspaces = computed(() => [
+    { permission: 'ADMIN', route: '/admin', label: 'admin.title', icon: 'dashboard' },
+    { permission: 'POS', route: '/pos', label: 'pos.title', icon: 'point_of_sale' },
+    { permission: 'TAS', route: '/tas', label: 'tas.title', icon: 'table_restaurant' },
+    { permission: 'KTS', route: '/kds', label: 'kds.title', icon: 'restaurant' },
+  ].filter(workspace => authStore.user()?.permissions.includes(workspace.permission)));
+
+  @HostListener('document:keydown.escape')
+  closeLanguageMenu(): void {
+    this.langMenuOpen.set(false);
+  }
 
   ngOnInit(): void {
     this.restaurantService.loadRestaurant();

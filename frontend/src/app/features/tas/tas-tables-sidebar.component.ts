@@ -14,13 +14,18 @@ import type { TasSessionActionsService } from './tas-session-actions.service';
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './tas-tables-sidebar.component.html',
   styles: [':host { display: contents; }'],
+  host: { '(document:keydown.escape)': 'closed.emit()' },
 })
 export class TasTablesSidebarComponent {
   protected readonly i18n = inject(I18nService);
 
   readonly actions = input.required<TasSessionActionsService>();
   readonly selectedSessionId = input<string | undefined>();
-  readonly hasOpenSession = input.required<boolean>();
+  readonly sessions = input.required<TotemSession[]>();
+
+  hasOpenSession(totemId: string): boolean {
+    return this.sessions().some(session => session.totem_id === totemId && session.totem_state === 'STARTED');
+  }
 
   readonly sessionSelect = output<TotemSession>();
   readonly closed = output<void>();

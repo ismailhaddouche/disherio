@@ -7,10 +7,10 @@ export class KdsSocketService {
   private currentKdsSessionIds = new Set<string>();
 
   constructor() {
-    this.connection.registerReconnectHandler((socket) => {
-      for (const sessionId of this.currentKdsSessionIds) {
-        socket.emit('kds:join', sessionId);
-      }
+    this.connection.registerReconnectHandler(async (socket) => {
+      await Promise.all(Array.from(this.currentKdsSessionIds, sessionId =>
+        this.connection.emitReconnectJoin(socket, 'kds:join', sessionId)
+      ));
     });
   }
 

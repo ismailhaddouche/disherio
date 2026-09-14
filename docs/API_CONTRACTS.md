@@ -533,9 +533,19 @@ Get the full menu (categories + dishes) for the restaurant linked to a QR token.
 ```json
 {
   "categories": [...],
-  "dishes": [...]
+  "dishes": [...],
+  "restaurant": {
+    "default_language": "en",
+    "enabled_languages": ["en", "es", "fr"],
+    "currency": "USD"
+  }
 }
 ```
+
+The public restaurant projection contains only interface languages and currency
+(`restaurant` is `null` when unavailable). The customer menu uses this currency
+for dish prices, extras, cart totals, and order views; it does not load the
+staff-only restaurant endpoint.
 
 ---
 
@@ -820,6 +830,21 @@ as `{ "errors": { "field": ["message"] } }`. Rate-limit responses include
 
 Connect to Socket.IO with `withCredentials: true`. The `auth_token` cookie is sent automatically during the handshake.
 
+The browser prefers WebSocket and can fall back to HTTP long-polling. On every
+successful reconnect, clients rejoin their active rooms and reload canonical
+HTTP snapshots. KDS/POS/TAS/totem join events accept an optional Socket.IO
+acknowledgement callback and return `{ success: boolean, error?: string }`;
+recovery waits for authorization and room membership to complete, bounded by a
+five-second client timeout, before starting those snapshots. Live event ordering is preserved, but offline packets are not
+durably replayed by the Redis Pub/Sub adapter; consumers must not treat the
+event stream as a database. See [Socket.IO reliability](SOCKET_RELIABILITY.md).
+
+Default anti-flood limits are 300 concurrent connections/address, 900
+handshakes/address/minute, 600 join/leave events/identity/minute, 30 state/order
+events/identity/minute, 60 staff message events/identity/minute, and 20 public
+events/identity/minute. A rejected event emits both `error` and the matching
+profile error event so current and generic clients can handle it.
+
 The KDS namespace requires the `KTS` permission. An authenticated KDS socket
 automatically joins its restaurant discovery room so the first kitchen item of
 a new session is delivered; `kds:join` adds the session-scoped subscription.
@@ -828,7 +853,7 @@ a new session is delivered; `kds:join` adds the session-scoped subscription.
 
 | Event | Payload | Description |
 |-------|---------|-------------|
-| `kds:join` | `sessionId: string` | Subscribe to a session room |
+| `kds:join` | `sessionId: string`, optional acknowledgement | Subscribe to a session room; acknowledgement follows membership registration |
 | `kds:leave` | `sessionId: string` | Leave a session room |
 | `kds:item_prepare` | `{ itemId: string }` | Transition item to `ON_PREPARE` |
 | `kds:item_cancel` | `{ itemId: string, reason?: string }` | Cancel an active item |
@@ -851,7 +876,7 @@ a new session is delivered; `kds:join` adds the session-scoped subscription.
 
 | Event | Payload | Description |
 |-------|---------|-------------|
-| `pos:join` | `sessionId: string` | Subscribe to session updates |
+| `pos:join` | `sessionId: string`, optional acknowledgement | Subscribe to session updates; acknowledgement follows membership registration |
 | `pos:leave` | `sessionId: string` | Unsubscribe |
 
 ### POS server-to-client events
@@ -884,7 +909,7 @@ For customers using totems or mobile devices to place orders.
 
 | Event | Payload | Description |
 |-------|---------|-------------|
-| `totem:join_session` | `{ sessionId: string, qr: string, sessionToken: string, customerName?: string, customerId?: string }` | Join the session scoped by its QR and session credentials |
+| `totem:join_session` | `{ sessionId: string, qr: string, sessionToken: string, customerName?: string, customerId?: string }`, optional acknowledgement | Join the session scoped by its QR and session credentials; acknowledgement follows membership registration |
 | `totem:leave_session` | - | Leave current session |
 | `totem:call_waiter` | `{ sessionId, tableId?, message? }` | Request help as the customer bound at join time |
 | `totem:request_bill` | `{ sessionId, splitType? }` | Request bill as the customer bound at join time |
@@ -901,7 +926,7 @@ For customers using totems or mobile devices to place orders.
 | `totem:help_request_sent` | `{ success, message, timestamp }` | Help request sent |
 | `totem:bill_request_sent` | `{ success, message, timestamp }` | Bill request sent |
 | `totem:items_subscribed` | `{ sessionId }` | Subscribed to updates |
-| `totem:table_info` | `{ sessionId, customersAtTable[], totalCustomers, myCustomerId?, myCustomerName?, timestamp }` | Table info with all customers |
+| `totem:table_info` | `{ sessionId, customersAtTable[], totalCustomers, myCustomerId?, myCustomerName?, timestamp }` | Cluster-wide table presence from shared Redis state |
 | `totem:my_orders` | `{ sessionId, customerId, orders, totalOrders, timestamp }` | Orders for the bound customer |
 | `totem:customer_joined_table` | `{ sessionId, customerId?, customerName, joinedAt }` | Another customer joined |
 | `totem:customer_left_table` | `{ sessionId, customerId?, customerName, leftAt }` | A customer left |
@@ -924,7 +949,7 @@ Requires the `TAS` permission.
 
 | Event | Payload | Description |
 |-------|---------|-------------|
-| `tas:join` | `sessionId: string` | Join TAS session room |
+| `tas:join` | `sessionId: string`, optional acknowledgement | Join TAS session room; acknowledgement follows membership registration |
 | `tas:leave` | `sessionId: string` | Leave TAS session room |
 | `tas:add_item` | `{ sessionId, orderId, dishId, customerId?, variantId?, extras?, itemData }` | Add item to order |
 | `tas:serve_service_item` | `{ itemId: string }` | Mark SERVICE item as served |

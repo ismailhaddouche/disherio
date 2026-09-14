@@ -8,6 +8,11 @@ import { trackSocketConnection, cleanupSocketConnection, trackSocketJoinRoom, tr
 import { rateLimitMiddleware } from './middleware/rate-limiter';
 import { validateSessionAccess } from './middleware/session-validator';
 import { updateItemState } from '../services/order.service';
+import {
+  acknowledgeJoinFailure,
+  acknowledgeJoinSuccess,
+  type SocketJoinAcknowledge,
+} from './socket-ack';
 
 /**
  * KDS (Kitchen Display System) Socket Handler
@@ -102,9 +107,13 @@ export function registerKdsHandlers(_io: Server, socket: AuthenticatedSocket): v
    * Join KDS session room
    * Payload: { sessionId: string }
    */
-  socket.on('kds:join', rateLimitMiddleware(socket, 'kds:join', async (sessionId: string) => {
+  socket.on('kds:join', rateLimitMiddleware(socket, 'kds:join', async (
+    sessionId: string,
+    acknowledge?: SocketJoinAcknowledge
+  ) => {
     if (!sessionId || typeof sessionId !== 'string') {
       socket.emit('kds:error', { message: 'INVALID_SESSION_ID' });
+      acknowledgeJoinFailure(acknowledge, 'INVALID_SESSION_ID');
       return;
     }
 
@@ -114,12 +123,13 @@ export function registerKdsHandlers(_io: Server, socket: AuthenticatedSocket): v
       socket.emit('kds:error', {
         message: validation.reason || 'UNAUTHORIZED'
       });
+      acknowledgeJoinFailure(acknowledge, validation.reason || 'UNAUTHORIZED');
       return;
     }
 
     const roomName = `kitchen:session:${sessionId}`;
-    socket.join(roomName);
-    socket.join(`session:${sessionId}`);
+    await socket.join(roomName);
+    await socket.join(`session:${sessionId}`);
 
     // Track subscription
     if (!kdsSessionSubscriptions.has(sessionId)) {
@@ -145,6 +155,7 @@ export function registerKdsHandlers(_io: Server, socket: AuthenticatedSocket): v
 
     logger.info({ socketId: socket.id, staffId, sessionId }, 'KDS joined session');
     socket.emit('kds:joined', { sessionId, timestamp: new Date().toISOString() });
+    acknowledgeJoinSuccess(acknowledge);
   }));
 
   /**
@@ -434,9 +445,6 @@ export function registerKdsHandlers(_io: Server, socket: AuthenticatedSocket): v
 
       // Clean up activity tracking
       kdsLastActivity.delete(socket.id);
-
-      // Remove all listeners registered by this socket to prevent memory leaks
-      socket.removeAllListeners();
 
       // Clean up connection tracking
       cleanupSocketConnection(socket.id);

@@ -1,6 +1,20 @@
-<div class="app-workspace flex text-on-surface">
+<div class="app-workspace flex flex-col text-on-surface">
+  <nav class="pos-navigation" [attr.aria-label]="'pos.tables' | translate">
+    <button class="btn-admin" [attr.aria-pressed]="mobilePanel() === 'tables'" (click)="mobilePanel.set('tables')">
+      <span class="material-symbols-outlined" aria-hidden="true">table_restaurant</span>{{ 'pos.tables' | translate }}
+    </button>
+    <button class="btn-admin" [attr.aria-pressed]="mobilePanel() === 'order'" (click)="mobilePanel.set('order')">
+      <span class="material-symbols-outlined" aria-hidden="true">restaurant</span>{{ 'totem.orders_tab' | translate }}
+    </button>
+    <button class="btn-admin" [attr.aria-pressed]="mobilePanel() === 'ticket'" [disabled]="!selectedSession()" (click)="showMenu.set(false); mobilePanel.set('ticket')">
+      <span class="material-symbols-outlined" aria-hidden="true">receipt_long</span>{{ 'pos.ticket' | translate }}
+      @if (pendingCount()) { <span class="text-xs">({{ pendingCount() }})</span> }
+    </button>
+  </nav>
+  <div class="flex flex-1 min-h-0 overflow-hidden">
 
   <!-- LEFT PANEL: Sessions & Totems -->
+  <div class="pos-pane pos-tables" [class.mobile-hidden]="mobilePanel() !== 'tables'">
   <app-pos-sessions-sidebar
     [isConnected]="isConnected()"
     [isLoading]="isLoading()"
@@ -9,15 +23,15 @@
     [selectedSessionId]="selectedSession()?._id"
     [sessionItems]="sessionItems()"
     [availableTotems]="availableTotems()"
-    [hasOpenSession]="hasOpenSession()"
     [showTicketHistory]="showTicketHistory()"
     [actions]="sessionActions"
     (sessionSelect)="selectSession($event)"
     (openHistory)="openTicketHistory()"
   />
+  </div>
 
   <!-- CENTER PANEL: Session items -->
-  <main class="flex-1 flex flex-col min-w-0 overflow-hidden">
+  <main class="pos-pane flex-1 flex flex-col min-w-0 overflow-hidden" [class.mobile-hidden]="mobilePanel() !== 'order' || showMenu()">
     @if (showTicketHistory()) {
       <app-pos-ticket-history-panel />
     } @else if (selectedSession(); as session) {
@@ -29,7 +43,7 @@
         [(newCustomerName)]="newCustomerName"
         (addCustomer)="addCustomer()"
         (assignSelect)="assignItemFromSelect($event.itemId, $event.event)"
-        (addOrder)="showMenu.set(true)"
+        (addOrder)="showMenu.set(true); mobilePanel.set('order')"
       />
     } @else {
       <!-- No Session Selected -->
@@ -41,7 +55,8 @@
   </main>
 
   <!-- RIGHT PANEL: Menu (when adding items) or Ticket -->
-  @if (!showTicketHistory()) {
+  @if (!showTicketHistory() && selectedSession()) {
+    <div class="pos-pane" [class.mobile-hidden]="showMenu() ? mobilePanel() !== 'order' : mobilePanel() !== 'ticket'">
     @if (showMenu()) {
       <app-pos-menu-panel
         [state]="workspace"
@@ -61,7 +76,9 @@
         (charge)="openPaymentModal()"
       />
     }
+    </div>
   }
+  </div>
 
   <!-- Dish Detail Modal (for variants/extras) -->
   @if (selectedDish(); as dish) {

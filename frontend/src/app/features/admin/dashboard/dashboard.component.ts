@@ -33,6 +33,7 @@ interface OrderStatusItem {
         </div>
 
         <div class="flex flex-wrap items-center gap-3">
+          <div class="flex items-center gap-2">
           <label class="admin-label mb-0 whitespace-nowrap" for="dateFrom">{{ 'common.from' | translate }}</label>
           <input
             id="dateFrom"
@@ -41,6 +42,8 @@ interface OrderStatusItem {
             (change)="onDateFromChange($event)"
             class="admin-input w-auto py-1.5"
           />
+          </div>
+          <div class="flex items-center gap-2">
           <label class="admin-label mb-0 whitespace-nowrap" for="dateTo">{{ 'common.to' | translate }}</label>
           <input
             id="dateTo"
@@ -49,6 +52,7 @@ interface OrderStatusItem {
             (change)="onDateToChange($event)"
             class="admin-input w-auto py-1.5"
           />
+          </div>
 
           <button matButton (click)="loadData()" class="disher-refresh-btn">
             <mat-icon aria-hidden="true">refresh</mat-icon>

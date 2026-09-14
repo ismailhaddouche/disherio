@@ -10,9 +10,9 @@ export class PosSocketService {
   private currentPosSessionId: string | null = null;
 
   constructor() {
-    this.connection.registerReconnectHandler((socket) => {
+    this.connection.registerReconnectHandler(async (socket) => {
       if (this.currentPosSessionId) {
-        socket.emit('pos:join', this.currentPosSessionId);
+        await this.connection.emitReconnectJoin(socket, 'pos:join', this.currentPosSessionId);
       }
     });
   }

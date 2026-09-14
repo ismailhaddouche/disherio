@@ -1,11 +1,11 @@
-<div class="flex h-[calc(100vh-56px)] overflow-hidden bg-surface-container-low">
+<div class="app-workspace flex">
 
   <!-- ═══ LEFT SIDEBAR: Tables (collapsible) ═══ -->
   @if (tablesSidebarOpen()) {
     <app-tas-tables-sidebar
       [actions]="sessionActions"
       [selectedSessionId]="selectedSession()?._id"
-      [hasOpenSession]="hasOpenSession()"
+      [sessions]="activeSessions()"
       (sessionSelect)="selectSession($event)"
       (closed)="toggleTablesSidebar()"
     />

@@ -23,7 +23,6 @@ export class PosSessionsSidebarComponent {
   readonly selectedSessionId = input<string | undefined>();
   readonly sessionItems = input.required<ItemOrder[]>();
   readonly availableTotems = input.required<PosTotemRef[]>();
-  readonly hasOpenSession = input.required<boolean>();
   readonly showTicketHistory = input.required<boolean>();
   readonly actions = input.required<PosSessionActionsService>();
 

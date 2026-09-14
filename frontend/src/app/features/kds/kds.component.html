@@ -1,15 +1,15 @@
 <div class="app-workspace flex flex-col p-3 gap-3">
 
   <!-- Header -->
-  <header class="flex shrink-0 items-center justify-between rounded-lg border border-outline-variant bg-surface shadow-disher-1">
-    <div class="flex items-center gap-2">
+  <header class="flex shrink-0 flex-wrap gap-3 p-3 items-center justify-between rounded-disher-md border border-outline-variant bg-surface">
+    <div class="flex items-center gap-2 min-w-0">
       <span class="material-symbols-outlined text-2xl text-primary">restaurant</span>
       <div>
         <h1 class="font-medium text-base text-on-surface leading-tight">{{ 'kds.title' | translate }}</h1>
         <p class="text-xs text-on-surface-variant">{{ ordered().length + onPrepare().length }} {{ 'kds.pending' | translate }}</p>
       </div>
     </div>
-    <div class="flex items-center gap-2">
+    <div class="flex flex-wrap items-center gap-2">
       <span class="status-pill"
              [class.bg-success-container]="isConnected()" [class.text-on-success-container]="isConnected()"
              [class.bg-error-container]="!isConnected()" [class.text-on-error-container]="!isConnected()">
@@ -41,7 +41,7 @@
           <span class="material-symbols-outlined text-sm" [class.animate-spin]="loadingDishes()">refresh</span>
         </button>
       </div>
-      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
         @for (dish of dishes(); track dish._id) {
           <div class="flex items-center justify-between p-2 rounded-lg border"
                [class.border-success]="dish.disher_status === 'ACTIVATED'"

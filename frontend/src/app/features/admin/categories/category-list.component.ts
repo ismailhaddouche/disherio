@@ -127,7 +127,7 @@ import { ConfirmationService } from '../../../core/services/confirmation.service
       font-weight: 700;
       padding: 4px 10px;
       border-radius: var(--disher-shape-full);
-      background: color-mix(in srgb, var(--mat-sys-scrim) 60%, transparent);
+      background: var(--mat-sys-surface-container-high);
       color: var(--mat-sys-on-surface);
       backdrop-filter: blur(8px);
       border: 1px solid color-mix(in srgb, var(--mat-sys-outline-variant) 20%, transparent);

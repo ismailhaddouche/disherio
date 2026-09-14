@@ -6,6 +6,8 @@ import { getDishCategoryId } from '../shared/utils/dish-category.utils';
 export type PaymentType = 'ALL' | 'SHARED' | 'BY_USER';
 
 export interface PendingOrderItem {
+  /** Local identity survives quantity edits, but changes after removal/re-add. */
+  draftId?: number;
   dish: Dish;
   quantity: number;
   variantId: string | null;
@@ -23,6 +25,33 @@ export abstract class OrderWorkspaceState {
   isAddingItem = signal(false);
   itemQuantity = signal(1);
   pendingItems = signal<PendingOrderItem[]>([]);
+  private draftSessionId: string | null = null;
+  private readonly sessionDrafts = new Map<string, PendingOrderItem[]>();
+  private nextDraftItemId = 0;
+
+  /** Drafts belong to a session, never to the currently visible table panel. */
+  switchDraftSession(sessionId: string | null): void {
+    if (sessionId === this.draftSessionId) return;
+    if (this.draftSessionId) this.sessionDrafts.set(this.draftSessionId, this.pendingItems());
+    this.draftSessionId = sessionId;
+    this.pendingItems.set(sessionId ? this.sessionDrafts.get(sessionId) ?? [] : []);
+    this.selectedDish.set(null);
+    this.selectedCustomerId.set(null);
+    this.assignToCustomerId.set(null);
+    this.closePaymentModal();
+  }
+
+  /** Consume only the submitted snapshot, preserving edits made while HTTP was pending. */
+  completePendingOrder(sessionId: string, submitted: PendingOrderItem[]): void {
+    const current = sessionId === this.draftSessionId ? this.pendingItems() : this.sessionDrafts.get(sessionId) ?? [];
+    const remaining = current.map(item => {
+      const sent = submitted.find(candidate => candidate === item ||
+        (candidate.draftId !== undefined && candidate.draftId === item.draftId));
+      return sent ? { ...item, quantity: item.quantity - sent.quantity } : item;
+    }).filter(item => item.quantity > 0);
+    if (sessionId === this.draftSessionId) this.pendingItems.set(remaining);
+    this.sessionDrafts.set(sessionId, remaining);
+  }
 
   showPaymentModal = signal(false);
   paymentType = signal<PaymentType | null>(null);
@@ -123,6 +152,7 @@ export abstract class OrderWorkspaceState {
   }
 
   quickAddToCart(dish: Dish): void {
+    if (!this.canQueueDish()) return;
     this.mergePendingItem({
       dish: { ...dish },
       quantity: 1,
@@ -239,16 +269,10 @@ export abstract class OrderWorkspaceState {
   }
 
   private mergePendingItem(candidate: PendingOrderItem): void {
-    const existingIndex = this.pendingItems().findIndex(item =>
-      item.dish._id === candidate.dish._id &&
-      item.variantId === candidate.variantId &&
-      item.customerId === candidate.customerId &&
-      item.extras.length === candidate.extras.length &&
-      item.extras.every(extraId => candidate.extras.includes(extraId))
-    );
+    const existingIndex = this.pendingItems().findIndex(item => this.samePendingItem(item, candidate));
 
     if (existingIndex === -1) {
-      this.pendingItems.update(items => [...items, candidate]);
+      this.pendingItems.update(items => [...items, { ...candidate, draftId: ++this.nextDraftItemId }]);
       return;
     }
 
@@ -270,6 +294,12 @@ export abstract class OrderWorkspaceState {
       ticket_customer_name: undefined,
       paid: false,
     }];
+  }
+
+  private samePendingItem(item: PendingOrderItem, candidate: PendingOrderItem): boolean {
+    return item.dish._id === candidate.dish._id && item.variantId === candidate.variantId &&
+      item.customerId === candidate.customerId && item.extras.length === candidate.extras.length &&
+      item.extras.every(extraId => candidate.extras.includes(extraId));
   }
 
   private createSharedPaymentTickets(now: number): PaymentTicket[] {

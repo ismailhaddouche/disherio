@@ -1,5 +1,5 @@
 import { Injectable, OnDestroy, inject, signal } from '@angular/core';
-import { Subject } from 'rxjs';
+import { Subject, Subscription } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { TasService } from '../../core/services/tas.service';
 import { TasSocketService } from '../../core/services/socket/tas-socket.service';
@@ -29,6 +29,7 @@ export class TasSessionActionsService implements OnDestroy {
   private readonly notify = inject(NotificationService);
   private readonly confirmation = inject(ConfirmationService);
   private readonly destroy$ = new Subject<void>();
+  private totemSessionsRequest?: Subscription;
   private context!: TasSessionActionsContext;
 
   // Temporary totem creation
@@ -67,8 +68,10 @@ export class TasSessionActionsService implements OnDestroy {
   }
 
   loadTotemSessions(totemId: string): void {
+    this.totemSessionsRequest?.unsubscribe();
     this.selectedTotemId.set(totemId);
-    this.tasService.getTotemSessions(totemId)
+    this.totemSessions.set([]);
+    this.totemSessionsRequest = this.tasService.getTotemSessions(totemId)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (sessions) => {
@@ -81,7 +84,7 @@ export class TasSessionActionsService implements OnDestroy {
 
   createTemporaryTotem(): void {
     const name = this.newTotemName().trim();
-    if (!name) return;
+    if (!name || this.isCreatingTotem()) return;
     this.isCreatingTotem.set(true);
     this.tasService.createTotem({
       totem_name: name,

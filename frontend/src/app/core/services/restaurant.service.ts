@@ -1,6 +1,6 @@
 import { Injectable, inject, signal, computed, DestroyRef } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, tap } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { environment } from '../../../environments/environment';
 import type { Restaurant } from '../../types';
@@ -14,16 +14,20 @@ export class RestaurantService {
   private destroyRef = inject(DestroyRef);
 
   private restaurant = signal<Restaurant | null>(null);
+  private stateRevision = 0;
 
   readonly restaurantName = computed(() => this.restaurant()?.restaurant_name ?? 'DisherIO');
   readonly logoUrl = computed(() => this.restaurant()?.logo_image_url);
   readonly currency = computed(() => this.restaurant()?.currency ?? 'EUR');
 
   loadRestaurant() {
+    const revision = ++this.stateRevision;
     this.http.get<Restaurant>(`${environment.apiUrl}/restaurant/me`)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (data) => this.restaurant.set(data),
+        next: (data) => {
+          if (revision === this.stateRevision) this.restaurant.set(data);
+        },
         error: () => undefined
       });
   }
@@ -33,11 +37,20 @@ export class RestaurantService {
   }
 
   getSettings(): Observable<RestaurantSettings> {
-    return this.http.get<RestaurantSettings>(`${environment.apiUrl}/restaurant/settings`);
+    return this.http.get<RestaurantSettings>(`${environment.apiUrl}/restaurant/settings`).pipe(
+      tap(settings => this.applySettings(settings))
+    );
   }
 
   updateSettings(payload: Partial<RestaurantSettings>): Observable<{ message: string; settings: RestaurantSettings }> {
-    return this.http.patch<{ message: string; settings: RestaurantSettings }>(`${environment.apiUrl}/restaurant/settings`, payload);
+    return this.http.patch<{ message: string; settings: RestaurantSettings }>(`${environment.apiUrl}/restaurant/settings`, payload).pipe(
+      tap(({ settings }) => this.applySettings(settings))
+    );
+  }
+
+  private applySettings(settings: RestaurantSettings): void {
+    this.stateRevision++;
+    this.restaurant.update(current => ({ ...current, ...settings }));
   }
 }
 

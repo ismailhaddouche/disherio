@@ -8,6 +8,7 @@
     "watch": "ng build --watch --configuration development",
     "test": "ng test --watch=false --browsers=ChromeNoSandbox",
     "test:watch": "ng test",
+    "test:ui": "playwright test",
     "format": "prettier --write \"src/**/*.ts\" \"src/**/*.html\" \"src/**/*.scss\""
   },
   "private": true,
@@ -39,6 +40,7 @@
     "@angular/build": "^21.2.19",
     "@angular/cli": "^21.2.19",
     "@angular/compiler-cli": "^21.2.18",
+    "@playwright/test": "^1.63.0",
     "@types/jasmine": "^5.1.7",
     "@types/node": "^22.15.0",
     "@types/qrcode": "^1.5.6",

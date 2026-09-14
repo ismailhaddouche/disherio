@@ -2,6 +2,7 @@ import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { OfflineIndicatorComponent } from './shared/components/offline-indicator';
 import { UpdateService } from './core/services/update.service';
+import { ThemeService } from './core/services/theme.service';
 
 /**
  * Root application component with offline support.
@@ -18,6 +19,9 @@ import { UpdateService } from './core/services/update.service';
   styleUrl: './app.scss',
 })
 export class App {
+  // Initialize the saved theme even on routes without the shared header.
+  private readonly themeService = inject(ThemeService);
+
   // UpdateService activates on construction (subscribes to versionUpdates and
   // schedules periodic update checks); injecting it here is what wires SW
   // update detection up. Do not remove the injection.

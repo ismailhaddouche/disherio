@@ -59,7 +59,8 @@ export class TasComponent extends OrderWorkspaceState implements OnInit, OnDestr
   private socketCoordinator = inject(TasSocketCoordinator);
   protected readonly sessionActions = inject(TasSessionActionsService);
   private destroy$ = new Subject<void>();
-  private connectionStatusInitialized = false;
+  private dataLoadGeneration = 0;
+  private sessionDetailsLoadGeneration = 0;
 
   /** Workspace state passed down to the extracted presentational children. */
   readonly workspace: OrderWorkspaceState = this;
@@ -136,19 +137,16 @@ export class TasComponent extends OrderWorkspaceState implements OnInit, OnDestr
 
     this.loadData();
     this.setupSocketListeners();
+    this.connection.connectionRestored$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => this.loadData());
     this.checkConnection();
     const connInterval = setInterval(() => this.checkConnection(), 2000);
     this.destroy$.subscribe(() => clearInterval(connInterval));
   }
 
   private checkConnection() {
-    const wasConnected = this.isConnected();
-    const connected = this.connection.isConnected();
-    this.isConnected.set(connected);
-    if (this.connectionStatusInitialized && !wasConnected && connected) {
-      this.loadData();
-    }
-    this.connectionStatusInitialized = true;
+    this.isConnected.set(this.connection.isConnected());
   }
 
   ngOnDestroy() {
@@ -168,6 +166,7 @@ export class TasComponent extends OrderWorkspaceState implements OnInit, OnDestr
   }
 
   private loadData() {
+    const generation = ++this.dataLoadGeneration;
     tasStore.setLoading(true);
 
     // Load active sessions
@@ -175,6 +174,7 @@ export class TasComponent extends OrderWorkspaceState implements OnInit, OnDestr
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (sessions) => {
+          if (generation !== this.dataLoadGeneration) return;
           tasStore.setSessions(sessions);
           this.sessionActions.refreshTotemSessions(sessions);
           const sessionsById = new Map(sessions.map(session => [session._id, session]));
@@ -182,7 +182,7 @@ export class TasComponent extends OrderWorkspaceState implements OnInit, OnDestr
           if (selected?._id) {
             const refreshed = sessionsById.get(selected._id);
             if (refreshed) {
-              this.selectSession({ ...selected, ...refreshed });
+              this.loadSessionDetails({ ...selected, ...refreshed });
             } else {
               tasStore.selectSession(null);
               tasStore.setSessionItems([]);
@@ -191,7 +191,9 @@ export class TasComponent extends OrderWorkspaceState implements OnInit, OnDestr
           }
           tasStore.setLoading(false);
         },
-        error: () => tasStore.setLoading(false),
+        error: () => {
+          if (generation === this.dataLoadGeneration) tasStore.setLoading(false);
+        },
       });
 
     // Load all totems
@@ -199,6 +201,7 @@ export class TasComponent extends OrderWorkspaceState implements OnInit, OnDestr
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (totems) => {
+          if (generation !== this.dataLoadGeneration) return;
           const validTotems = totems
             .filter((t): t is typeof t & { _id: string } => !!t._id)
             .map(t => ({ _id: t._id, totem_name: t.totem_name, totem_type: t.totem_type }));
@@ -212,6 +215,7 @@ export class TasComponent extends OrderWorkspaceState implements OnInit, OnDestr
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: ({ dishes, categories }) => {
+          if (generation !== this.dataLoadGeneration) return;
           tasStore.setDishes(dishes, categories);
         },
         error: () => undefined,
@@ -234,7 +238,14 @@ export class TasComponent extends OrderWorkspaceState implements OnInit, OnDestr
   }
 
   selectSession(session: TotemSession) {
+    this.tablesSidebarOpen.set(false);
+    this.loadSessionDetails(session);
+  }
+
+  private loadSessionDetails(session: TotemSession): void {
+    const generation = ++this.sessionDetailsLoadGeneration;
     const sessionId = session._id!;
+    this.switchDraftSession(sessionId);
     tasStore.selectSession(session);
 
     // Load session items
@@ -242,7 +253,8 @@ export class TasComponent extends OrderWorkspaceState implements OnInit, OnDestr
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (items) => {
-          if (this.selectedSession()?._id === sessionId) tasStore.setSessionItems(items);
+          if (generation === this.sessionDetailsLoadGeneration
+            && this.selectedSession()?._id === sessionId) tasStore.setSessionItems(items);
         },
         error: () => undefined,
       });
@@ -252,7 +264,8 @@ export class TasComponent extends OrderWorkspaceState implements OnInit, OnDestr
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (customers) => {
-          if (this.selectedSession()?._id === sessionId) tasStore.setCustomers(customers);
+          if (generation === this.sessionDetailsLoadGeneration
+            && this.selectedSession()?._id === sessionId) tasStore.setCustomers(customers);
         },
         error: () => undefined,
       });
@@ -263,12 +276,14 @@ export class TasComponent extends OrderWorkspaceState implements OnInit, OnDestr
 
   addCustomer() {
     const name = this.newCustomerName().trim();
-    if (!name || !this.selectedSession()) return;
+    const sessionId = this.selectedSession()?._id;
+    if (!name || !sessionId) return;
 
-    this.tasService.createCustomer(this.selectedSession()!._id!, name)
+    this.tasService.createCustomer(sessionId, name)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (customer) => {
+          if (this.selectedSession()?._id !== sessionId) return;
           tasStore.addCustomer(customer);
           this.newCustomerName.set('');
           this.showAddCustomer.set(false);
@@ -300,7 +315,7 @@ export class TasComponent extends OrderWorkspaceState implements OnInit, OnDestr
 
   processPayment() {
     const session = this.selectedSession();
-    if (!session || !this.paymentType()) return;
+    if (!session || !this.paymentType() || this.isProcessingPayment()) return;
 
     this.isProcessingPayment.set(true);
     const paymentType = this.paymentType()!;
@@ -337,11 +352,12 @@ export class TasComponent extends OrderWorkspaceState implements OnInit, OnDestr
 
   sendOrder() {
     const session = this.selectedSession();
-    if (!session || this.pendingItems().length === 0) return;
+    if (!session || this.pendingItems().length === 0 || this.isSendingOrder()) return;
 
     this.isSendingOrder.set(true);
 
-    const batchItems = this.pendingItems().map(p => ({
+    const submitted = this.pendingItems();
+    const batchItems = submitted.map(p => ({
       dishId: p.dish._id!,
       quantity: p.quantity,
       customerId: p.customerId || undefined,
@@ -355,14 +371,15 @@ export class TasComponent extends OrderWorkspaceState implements OnInit, OnDestr
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (result) => {
+          this.completePendingOrder(session._id!, submitted);
+          this.isSendingOrder.set(false);
+          if (this.selectedSession()?._id !== session._id) return;
           // Add all items to store — backend already notifies KDS/TAS/POS
           // via socket from addBatchItems(), so we do NOT emit tasAddItem here
           for (const item of result.items) {
             tasStore.addItem(item);
           }
 
-          this.pendingItems.set([]);
-          this.isSendingOrder.set(false);
           this.showMenu.set(false);
           this.selectedDish.set(null);
           this.notify.success(
@@ -392,15 +409,19 @@ export class TasComponent extends OrderWorkspaceState implements OnInit, OnDestr
     // additional HTTP DELETE raced the socket: whichever landed second failed
     // (CANCELED items cannot be deleted) and surfaced a bogus SERVER_ERROR
     // even though the cancellation had succeeded.
-    this.tasSocket.tasCancelItem(itemId, 'Canceled by waiter');
+    if (!this.tasSocket.tasCancelItem(itemId, 'Canceled by waiter')) {
+      this.notify.error(this.i18n.translate('errors.network'));
+    }
   }
 
   markServiceItemServed(itemId: string) {
     // Use WebSocket for real-time update
-    this.tasSocket.tasServeServiceItem(itemId);
+    if (!this.tasSocket.tasServeServiceItem(itemId)) {
+      this.notify.error(this.i18n.translate('errors.network'));
+    }
 
-    // Optimistically update UI
-    tasStore.updateItemState(itemId, 'SERVED');
+    // The server's tas:service_item_served event updates the store. A dropped
+    // or rejected socket command must not look like a successfully served item.
 
     // The confirmation will come via WebSocket (tas:item_served_confirm)
   }

@@ -83,4 +83,11 @@ describe('TasSocketService', () => {
     service.unregisterTasListeners();
     expect(connection.unregisterTasListeners).toHaveBeenCalled();
   });
+
+  it('reports whether a state-changing command was emitted', () => {
+    connection.emit.and.returnValues(false, true);
+
+    expect(service.tasServeServiceItem('item-1')).toBeFalse();
+    expect(service.tasCancelItem('item-2')).toBeTrue();
+  });
 });

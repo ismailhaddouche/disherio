@@ -1,5 +1,6 @@
 import { Injectable, OnDestroy } from '@angular/core';
 import { io, Socket } from 'socket.io-client';
+import { Subject } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { resolveActiveLanguage } from '../../interceptors/lang.interceptor';
 import { SocketEventHub, SocketEventState } from './socket-event-hub';
@@ -7,7 +8,7 @@ import { SocketEventHub, SocketEventState } from './socket-event-hub';
 type SocketEventCallback<T> = (data: T) => void;
 
 /** Re-emits domain joins after a (re)connect. Registered by domain socket services. */
-export type ReconnectHandler = (socket: Socket) => void;
+export type ReconnectHandler = (socket: Socket) => void | Promise<void>;
 
 /**
  * Callbacks the SocketEventHub invokes when totem server events arrive.
@@ -32,8 +33,11 @@ export class SocketConnectionService implements OnDestroy {
   private connectionRefCount = 0;
   private insufficientPermissions = false;
   private daemonRetryTimer: ReturnType<typeof setTimeout> | null = null;
+  private hasConnectedDuringLease = false;
+  private connectionSequence = 0;
   private activeListeners: Map<string, Set<(data: unknown) => void>> = new Map();
   private readonly eventHub = new SocketEventHub();
+  private readonly connectionRestored = new Subject<void>();
 
   // Event buffering for disconnection recovery
   private eventBuffer: Array<{ event: string; data: unknown; timestamp: number }> = [];
@@ -89,6 +93,8 @@ export class SocketConnectionService implements OnDestroy {
   readonly tasCustomerBillRequest$ = this.eventHub.tasCustomerBillRequest$;
   readonly tasNotification$ = this.eventHub.tasNotification$;
   readonly tasError$ = this.eventHub.tasError$;
+  /** Emits after every successful reconnect, including outages shorter than UI polling. */
+  readonly connectionRestored$ = this.connectionRestored.asObservable();
 
   // ---- Domain hooks --------------------------------------------------------
 
@@ -146,7 +152,13 @@ export class SocketConnectionService implements OnDestroy {
   }
 
   private doConnect(): void {
-    if (this.socket?.connected) return;
+    // Reuse an existing Manager while it is connecting or temporarily
+    // disconnected. Creating another Socket here would leave the old
+    // reconnection loop alive and can duplicate room joins and events.
+    if (this.socket) {
+      if (!this.socket.connected) this.socket.connect();
+      return;
+    }
 
     // Public totem customers authenticate with their QR token at handshake
     // time instead of a staff JWT. Staff sessions fall through to
@@ -165,7 +177,10 @@ export class SocketConnectionService implements OnDestroy {
     try {
       this.socket = io(environment.wsUrl, {
         withCredentials: true,
-        transports: ['websocket'],
+        // Prefer WebSocket, but allow long-polling when a proxy or unstable
+        // network cannot establish it. `tryAllTransports` was added in 4.8.
+        transports: ['websocket', 'polling'],
+        tryAllTransports: true,
         upgrade: false,
         reconnection: true,
         reconnectionAttempts: this.maxReconnectAttempts,
@@ -176,19 +191,33 @@ export class SocketConnectionService implements OnDestroy {
       this.isPublicTotemConnection = isPublic;
       this.connectedTotemQr = isPublic ? this.currentTotemQr : null;
 
-      this.socket.on('connect', () => {
+      this.socket.on('connect', async () => {
+        const connectedSocket = this.socket!;
+        const connectionSequence = ++this.connectionSequence;
+        const restored = this.hasConnectedDuringLease;
+        this.hasConnectedDuringLease = true;
         this.reconnectAttempts = 0;
+        this.hasReachedMaxReconnects = false;
         this.isBuffering = false;
 
         // Rejoin active sessions after reconnecting (domain handlers run in
         // registration order, before the buffered-event replay — same order
         // as the old monolith).
-        for (const handler of this.reconnectHandlers) {
-          handler(this.socket!);
-        }
+        await Promise.allSettled(this.reconnectHandlers.map(handler => handler(connectedSocket)));
+
+        // An acknowledgement from an older transport must not publish a
+        // recovery signal after another disconnect/reconnect cycle won.
+        if (this.socket !== connectedSocket
+          || !connectedSocket.connected
+          || connectionSequence !== this.connectionSequence) return;
 
         // Replay events buffered during the disconnection.
         this.replayBufferedEvents();
+
+        // Socket.IO's Redis Pub/Sub adapter cannot replay server packets that
+        // were emitted while this client was offline. Consumers reconcile
+        // from the canonical HTTP snapshots on every restored connection.
+        if (restored) this.connectionRestored.next();
       });
 
       this.socket.on('connect_error', (err: Error) => {
@@ -196,6 +225,7 @@ export class SocketConnectionService implements OnDestroy {
         this.reconnectAttempts++;
         if (this.reconnectAttempts >= this.maxReconnectAttempts) {
           this.hasReachedMaxReconnects = true;
+          this.eventHub.notifyConnectionFailed();
           if (this.socket) {
             this.socket.io.opts.reconnection = false;
             this.socket.close();
@@ -215,6 +245,7 @@ export class SocketConnectionService implements OnDestroy {
       });
 
       this.socket.on('disconnect', (reason: Socket.DisconnectReason) => {
+        this.isBuffering = true;
         if (reason === 'io server disconnect' && !this.insufficientPermissions && this.socket?.io.opts.reconnection) {
           this.socket.connect();
         }
@@ -299,12 +330,22 @@ export class SocketConnectionService implements OnDestroy {
   }
 
   /**
-   * Emits on the live socket without a connected-check (socket.io buffers
-   * while reconnecting). Matches the old `this.socket!.emit(...)` behavior in
-   * joinTotemSession, where the socket exists but may be mid-reconnect.
+   * Rejoin a room and wait until the server has finished authorization and
+   * membership registration. Timeout/failure is deliberately absorbed: the
+   * namespaced server error remains visible and recovery still proceeds to a
+   * canonical snapshot instead of hanging forever.
    */
-  emitRaw<T = unknown>(event: string, data: T): void {
-    this.socket?.emit(event, data);
+  async emitReconnectJoin<T>(socket: Socket, event: string, data: T): Promise<boolean> {
+    try {
+      const acknowledgement = await socket.timeout(5000).emitWithAck(event, data) as {
+        success?: boolean;
+      };
+      return acknowledgement?.success === true;
+    } catch {
+      // The recovery snapshot is still useful when the join cannot be
+      // confirmed; the next reconnect cycle will retry the active rooms.
+      return false;
+    }
   }
 
   on<T = unknown>(event: string, callback: SocketEventCallback<T>): () => void {
@@ -342,7 +383,7 @@ export class SocketConnectionService implements OnDestroy {
     }
   }
 
-  private doDisconnect(): void {
+  private doDisconnect(clearConsumerListeners = true, resetDomainState = true): void {
     this.insufficientPermissions = false;
 
     // Clear reconnect timers.
@@ -362,16 +403,19 @@ export class SocketConnectionService implements OnDestroy {
       this.socket.close();
       this.socket = null;
     }
-    this.activeListeners.clear();
+    if (clearConsumerListeners) this.activeListeners.clear();
 
     // Reset connection flags
     this.reconnectAttempts = 0;
     this.hasReachedMaxReconnects = false;
     this.isPublicTotemConnection = false;
     this.connectedTotemQr = null;
+    this.hasConnectedDuringLease = false;
+    this.connectionSequence++;
+    this.isBuffering = false;
 
     // Clear session state
-    this.resetSessionState();
+    if (resetDomainState) this.resetSessionState();
   }
 
   /**
@@ -442,6 +486,7 @@ export class SocketConnectionService implements OnDestroy {
     this.connectionRefCount = 0;
     this.doDisconnect();
     this.eventHub.complete();
+    this.connectionRestored.complete();
   }
 
   isConnected(): boolean {
@@ -452,11 +497,13 @@ export class SocketConnectionService implements OnDestroy {
     // Notify all holders that the connection will be reset
 
     // Force disconnect regardless of refCount
-    this.doDisconnect();
+    const reconnect = this.connectionRefCount > 0;
+    this.doDisconnect(false, false);
+    this.hasConnectedDuringLease = reconnect;
 
     // Reset connection flags without changing the reference count.
     this.hasReachedMaxReconnects = false;
-    // Components should handle reconnection
+    if (reconnect) this.doConnect();
   }
 
   hasConnectionFailed(): boolean {

@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import type { Socket } from 'socket.io-client';
 import { SocketConnectionService } from './socket-connection.service';
 
 describe('SocketConnectionService', () => {
@@ -79,6 +80,30 @@ describe('SocketConnectionService', () => {
       expect(result).toBe(false);
     });
 
+    it('waits for the bounded server acknowledgement when rejoining', async () => {
+      const emitWithAck = jasmine.createSpy('emitWithAck')
+        .and.resolveTo({ success: true });
+      const timeout = jasmine.createSpy('timeout').and.returnValue({ emitWithAck });
+      const fakeSocket = { timeout } as unknown as Socket;
+
+      const acknowledged = await service.emitReconnectJoin(fakeSocket, 'kds:join', 'session-1');
+
+      expect(acknowledged).toBeTrue();
+      expect(timeout).toHaveBeenCalledOnceWith(5000);
+      expect(emitWithAck).toHaveBeenCalledOnceWith('kds:join', 'session-1');
+    });
+
+    it('continues recovery when a room acknowledgement times out', async () => {
+      const emitWithAck = jasmine.createSpy('emitWithAck')
+        .and.rejectWith(new Error('timeout'));
+      const fakeSocket = {
+        timeout: () => ({ emitWithAck }),
+      } as unknown as Socket;
+
+      await expectAsync(service.emitReconnectJoin(fakeSocket, 'tas:join', 'session-1'))
+        .toBeResolvedTo(false);
+    });
+
     it('attaches a consumer listener when a new socket is created', () => {
       const consumerListener = jasmine.createSpy('consumerListener');
       service.on('custom:event', consumerListener);
@@ -103,6 +128,23 @@ describe('SocketConnectionService', () => {
       listeners.get('custom:event')?.({ id: 'event' });
 
       expect(consumerListener).toHaveBeenCalledWith({ id: 'event' });
+    });
+
+    it('reuses a reconnecting socket instead of creating a competing connection', () => {
+      const connect = jasmine.createSpy('connect');
+      const fakeSocket = {
+        connected: false,
+        connect,
+        io: { opts: { reconnection: true } },
+        off: () => fakeSocket,
+        close: () => fakeSocket,
+      };
+      Reflect.set(service, 'socket', fakeSocket);
+
+      (Reflect.get(service, 'doConnect') as () => void).call(service);
+
+      expect(connect).toHaveBeenCalledTimes(1);
+      expect(Reflect.get(service, 'socket')).toBe(fakeSocket);
     });
   });
 
@@ -226,6 +268,10 @@ describe('SocketConnectionService', () => {
   describe('Observables', () => {
     it('should have totemItemUpdate$ observable', () => {
       expect(service.totemItemUpdate$).toBeDefined();
+    });
+
+    it('exposes reconnect recovery notifications', () => {
+      expect(service.connectionRestored$).toBeDefined();
     });
 
     it('should have totemItemsAdded$ observable', () => {

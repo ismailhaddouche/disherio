@@ -15,18 +15,18 @@ export class TotemSocketService implements TotemEventDelegate {
 
   constructor() {
     this.connection.registerTotemEventDelegate(this);
-    this.connection.registerReconnectHandler((socket) => {
+    this.connection.registerReconnectHandler(async (socket) => {
       this.joinedTotemSessionId = null;
       // Rejoin the totem session after reconnecting.
       if (this.currentTotemSessionId && this.currentTotemQr) {
-        socket.emit('totem:join_session', {
+        const joined = await this.connection.emitReconnectJoin(socket, 'totem:join_session', {
           sessionId: this.currentTotemSessionId,
           qr: this.currentTotemQr,
           customerName: this.currentCustomerName,
           customerId: this.currentCustomerId,
           sessionToken: this.currentSessionToken ?? undefined,
         });
-        this.joinedTotemSessionId = this.currentTotemSessionId;
+        if (joined) this.joinedTotemSessionId = this.currentTotemSessionId;
       }
     });
     this.connection.registerResetHandler(() => {
@@ -60,6 +60,9 @@ export class TotemSocketService implements TotemEventDelegate {
     customerId?: string,
     sessionToken?: string
   ): void {
+    const credentialsChanged = this.currentTotemSessionId !== sessionId
+      || this.currentCustomerId !== (customerId ?? null)
+      || this.currentSessionToken !== (sessionToken ?? null);
     this.isTotemSessionClosed = false;
     this.currentTotemSessionId = sessionId;
     this.currentTotemQr = qr;
@@ -83,9 +86,13 @@ export class TotemSocketService implements TotemEventDelegate {
       return;
     }
 
-    if (!sessionId || this.joinedTotemSessionId === sessionId) return;
-    this.connection.emitRaw('totem:join_session', { sessionId, qr, customerName, customerId, sessionToken });
-    this.joinedTotemSessionId = sessionId;
+    if (!sessionId || (!credentialsChanged && this.joinedTotemSessionId === sessionId)) return;
+    // Do not queue a second Socket.IO packet while the Manager is connecting:
+    // the reconnect handler owns that join and waits for its acknowledgement.
+    if (!this.connection.isConnected()) return;
+    if (this.connection.emit('totem:join_session', { sessionId, qr, customerName, customerId, sessionToken })) {
+      this.joinedTotemSessionId = sessionId;
+    }
   }
 
   /**
@@ -93,9 +100,10 @@ export class TotemSocketService implements TotemEventDelegate {
    * QR handshake auth. Used by the totem customer flow which has no staff JWT.
    */
   private ensurePublicConnection(): void {
-    if (this.connection.isConnected()) {
-      // Already connected but with the wrong auth — disconnect so connect()
-      // rebuilds the socket with the current QR. disconnect() runs the reset
+    if (this.connection.hasSocket()) {
+      // A socket that is connected OR still reconnecting may carry the wrong
+      // handshake auth. Tear it down before rebuilding so two Managers cannot
+      // race and join with different QR credentials. disconnect() runs reset
       // handlers, so snapshot and restore the session state around it.
       const sessionState = {
         sessionId: this.currentTotemSessionId,

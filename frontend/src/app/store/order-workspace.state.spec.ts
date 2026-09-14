@@ -60,6 +60,76 @@ function createItem(overrides: Partial<ItemOrder> = {}): ItemOrder {
 }
 
 describe('OrderWorkspaceState', () => {
+  it('keeps drafts and customer selection isolated when switching tables', () => {
+    const state = new TestOrderWorkspaceState();
+    state.switchDraftSession('session-1');
+    state.quickAddToCart(createDish());
+    state.selectedCustomerId.set('customer-1');
+    state.selectDish(createDish());
+    state.openPaymentModal();
+    state.switchDraftSession('session-2');
+    expect(state.pendingCount()).toBe(0);
+    expect(state.selectedCustomerId()).toBeNull();
+    expect(state.selectedDish()).toBeNull();
+    expect(state.showPaymentModal()).toBeFalse();
+    state.switchDraftSession('session-1');
+    expect(state.pendingCount()).toBe(1);
+  });
+
+  it('keeps the current draft when refreshing the same session', () => {
+    const state = new TestOrderWorkspaceState();
+    state.switchDraftSession('session-1');
+    state.quickAddToCart(createDish());
+    state.selectedCustomerId.set('customer-1');
+    state.switchDraftSession('session-1');
+    expect(state.pendingCount()).toBe(1);
+    expect(state.selectedCustomerId()).toBe('customer-1');
+  });
+
+  it('consumes a late order response from its original draft only', () => {
+    const state = new TestOrderWorkspaceState();
+    state.switchDraftSession('session-1');
+    state.quickAddToCart(createDish());
+    const submitted = state.pendingItems();
+    state.switchDraftSession('session-2');
+    state.quickAddToCart(createDish());
+    state.completePendingOrder('session-1', submitted);
+    expect(state.pendingCount()).toBe(1);
+    state.switchDraftSession('session-1');
+    expect(state.pendingCount()).toBe(0);
+  });
+
+  it('preserves quantities added while the submitted order was pending', () => {
+    const state = new TestOrderWorkspaceState();
+    state.switchDraftSession('session-1');
+    state.quickAddToCart(createDish());
+    const submitted = state.pendingItems();
+    state.incrementPendingQuantity(0);
+    state.completePendingOrder('session-1', submitted);
+    expect(state.pendingCount()).toBe(1);
+  });
+
+  it('restores a draft after leaving the session workspace for history', () => {
+    const state = new TestOrderWorkspaceState();
+    state.switchDraftSession('session-1');
+    state.quickAddToCart(createDish());
+    state.switchDraftSession(null);
+    expect(state.pendingCount()).toBe(0);
+    state.switchDraftSession('session-1');
+    expect(state.pendingCount()).toBe(1);
+  });
+
+  it('does not consume a newly added line after the submitted draft was cleared', () => {
+    const state = new TestOrderWorkspaceState();
+    state.switchDraftSession('session-1');
+    state.quickAddToCart(createDish());
+    const submitted = state.pendingItems();
+    state.clearPendingItems();
+    state.quickAddToCart(createDish());
+    state.completePendingOrder('session-1', submitted);
+    expect(state.pendingCount()).toBe(1);
+  });
+
   it('merges equivalent pending items and calculates their configured total', () => {
     const state = new TestOrderWorkspaceState();
     const dish = createDish();

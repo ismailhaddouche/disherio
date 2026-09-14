@@ -108,6 +108,7 @@ export const getMenuDishes = asyncHandler(async (req: Request, res: Response): P
       ? {
           default_language: restaurant.default_language,
           enabled_languages: restaurant.enabled_languages,
+          currency: restaurant.currency,
         }
       : null,
   });
